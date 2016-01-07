@@ -19,20 +19,20 @@ data ModuleHead a
 
 -- | A list of export specifications surrounded by parentheses
 data ExportSpecList a
-  = ExportSpecList { espExports :: AnnList (AnnEither IESpec ExportModule) a }
+  = ExportSpecList { espExports :: AnnList ExportSpec a }
+  
+data ExportSpec a
+  = DeclExport { exportDecl :: IESpec a }
+  | ModuleExport { exportModuleName :: Ann Name a } -- ^ The export of an imported module (@ module A @)
   
 data IESpec a
   = IESpec { ieName    :: Ann Name a
            , ieSubspec :: AnnMaybe SubSpec a
            } -- Import/export a declaration
-
--- | The export of an imported module (@ module A @)
-data ExportModule a
-  = ExportModule { emName :: Ann Name a }
   
 data SubSpec a
-  = SubSpecAll -- @T(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-  | SubSpecList { essList :: AnnList Name a } -- @T(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+  = SubSpecAll -- @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
+  | SubSpecList { essList :: AnnList Name a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
            
 -- | Pragmas that affect the whole module           
 data ModulePragma a
