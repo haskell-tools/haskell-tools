@@ -10,8 +10,9 @@ data Ann elem annot
         , element      :: elem annot
         }
 
-newtype AnnList e a = AnnList [Ann e a]
-newtype AnnMaybe e a = AnnMaybe (Maybe (Ann e a))
+newtype AnnList e a = AnnList { fromAnnList :: [Ann e a] }
+
+newtype AnnMaybe e a = AnnMaybe { fromAnnMaybe :: (Maybe (Ann e a)) }
 
 annNil :: AnnList e a
 annNil = AnnList []

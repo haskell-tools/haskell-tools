@@ -7,9 +7,17 @@ import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Ann
 
+-- Annotations
 deriving instance (Show a, Show (e a)) => Show (Ann e a)
 deriving instance (Show a, Show (e a)) => Show (AnnMaybe e a)
 deriving instance (Show a, Show (e a)) => Show (AnnList e a)
+
+instance (Functor elem) => Functor (Ann elem) where
+  fmap f ann = ann { annotation = f (annotation ann), element = fmap f (element ann) }
+instance (Functor elem) => Functor (AnnList elem) where
+  fmap f annList = annList { fromAnnList = fmap (fmap f) (fromAnnList annList) }
+instance (Functor elem) => Functor (AnnMaybe elem) where
+  fmap f annMaybe = annMaybe { fromAnnMaybe = fmap (fmap f) (fromAnnMaybe annMaybe) }
 
 -- Modules
 deriving instance Show a => Show (Module a)
