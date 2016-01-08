@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
-module Language.Haskell.Tools.AST.Classes where
+module Language.Haskell.Tools.AST.Instances where
 
 import Language.Haskell.Tools.AST.Module
 import Language.Haskell.Tools.AST.Decl

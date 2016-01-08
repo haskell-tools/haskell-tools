@@ -4,7 +4,7 @@ module Language.Haskell.Tools.Analyzer where
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
-import Language.Haskell.Tools.AST.Classes
+import Language.Haskell.Tools.AST.Instances
 
 import GHC
 import Outputable
