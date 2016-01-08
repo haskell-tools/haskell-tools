@@ -10,7 +10,6 @@ import Language.Haskell.Tools.AST.Ann
 deriving instance (Show a, Show (e a)) => Show (Ann e a)
 deriving instance (Show a, Show (e a)) => Show (AnnMaybe e a)
 deriving instance (Show a, Show (e a)) => Show (AnnList e a)
-deriving instance (Show a, Show (e1 a), Show (e2 a)) => Show (AnnEither e1 e2 a)
 
 -- Modules
 deriving instance Show a => Show (Module a)
