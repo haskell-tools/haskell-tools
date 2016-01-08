@@ -72,7 +72,7 @@ data Assoc a
 data Precedence a
   = Precedence { precedenceValue :: Int } 
      
--- | Controls the activation of a rewrite rule
+-- | Controls the activation of a rewrite rule (@ [1] @)
 data PhaseControl a
   = PhaseControl { phaseInvert :: AnnMaybe PhaseInvert a
                  , phaseNumber :: Ann PhaseNumber a
