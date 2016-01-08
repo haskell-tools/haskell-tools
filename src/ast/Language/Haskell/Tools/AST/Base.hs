@@ -16,17 +16,14 @@ data IdWrapper = IdWrapper
 type family IdType a (elem :: * -> *) info
 type family ListType a (elem :: * -> *) info
 type family MaybeType a (elem :: * -> *) info
-type family EitherType a (elem1 :: * -> *) (elem2 :: * -> *) info
 
 type instance IdType AnnotationWrapper elem annot = Ann elem annot
 type instance ListType AnnotationWrapper elem annot = AnnList elem annot
 type instance MaybeType AnnotationWrapper elem annot = AnnMaybe elem annot
-type instance EitherType AnnotationWrapper elem1 elem2 annot = AnnEither elem1 elem2 annot
 
 type instance IdType IdWrapper elem annot = elem annot
 type instance ListType IdWrapper elem annot = elem annot
 type instance MaybeType IdWrapper elem annot = elem annot
-type instance EitherType IdWrapper elem1 elem2 annot = elem1 annot
 
 
 -- | Possible qualified names. Contains also implicit names.
