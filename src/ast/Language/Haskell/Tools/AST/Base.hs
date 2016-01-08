@@ -1,8 +1,34 @@
+
+{-# LANGUAGE TypeFamilies
+           , KindSignatures
+           , MultiParamTypeClasses
+           , FlexibleInstances
+           #-}
+
 -- | Simple AST elements of Haskell
 module Language.Haskell.Tools.AST.Base where
   
 import Language.Haskell.Tools.AST.Ann
-  
+
+data AnnotationWrapper = AnnotationWrapper
+data IdWrapper = IdWrapper
+
+type family IdType a (elem :: * -> *) info
+type family ListType a (elem :: * -> *) info
+type family MaybeType a (elem :: * -> *) info
+type family EitherType a (elem1 :: * -> *) (elem2 :: * -> *) info
+
+type instance IdType AnnotationWrapper elem annot = Ann elem annot
+type instance ListType AnnotationWrapper elem annot = AnnList elem annot
+type instance MaybeType AnnotationWrapper elem annot = AnnMaybe elem annot
+type instance EitherType AnnotationWrapper elem1 elem2 annot = AnnEither elem1 elem2 annot
+
+type instance IdType IdWrapper elem annot = elem annot
+type instance ListType IdWrapper elem annot = elem annot
+type instance MaybeType IdWrapper elem annot = elem annot
+type instance EitherType IdWrapper elem1 elem2 annot = elem1 annot
+
+
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
 data Name a = Name { qualifiers      :: AnnList SimpleName a
@@ -11,7 +37,7 @@ data Name a = Name { qualifiers      :: AnnList SimpleName a
          
 -- | Parts of a qualified name.         
 data SimpleName a 
-  = SimpleName { simplNameStr :: String } 
+  = SimpleName { simpleNameStr :: String } 
                
 -- | Program elements formatted as string literals (import packages, pragma texts)
 data StringNode a
