@@ -1,29 +1,14 @@
 
-{-# LANGUAGE TypeFamilies #-}
-
 module Language.Haskell.Tools.AST.Decl2 where
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Literals
 
-class WrapperType a where
-  data IdType a     :: * -> * -> *
-  data ListType a   :: * -> * -> *
-  data MaybeType a  :: * -> * -> *
-  data EitherType a :: * -> * -> * -> *
-
-data AnnotationWrapper
-
-instance WrapperType AnnotationWrapper where
-  data IdType AnnotationWrapper elem annot = Ann elem annot
-  data ListType AnnotationWrapper elem annot = AnnList elem annot
-  data MaybeType AnnotationWrapper elem annot = AnnMaybe elem annot
-  data EitherType AnnotationWrapper elem1 elem2 annot = AnnEither elem1 elem2 annot
 
 data Decl a wt
-  = TypeDecl { declHead :: Ann DeclHead a
-             , declType :: Ann Type a
+  = TypeDecl { declHead :: IdType wt (DeclHead wt) a
+             , declType :: IdType wt (Type wt) a
              } -- ^ A type synonym ( @type String = [Char]@ )
 {-  | TypeFamilyDecl { declHead :: Ann DeclHead a
                    , declKind :: AnnMaybe KindConstraint a
@@ -122,14 +107,14 @@ data ClassElement a
               } -- ^ Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) => [a] @
   -}     
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
-data DeclHead a
+data DeclHead wt a
   = DeclHead { dhName :: Name a } -- ^ Type or class name
-  | DHParen  { dhBody :: DeclHead a } -- ^ Parenthesized type
-  | DHApp    { dhAppFun :: Ann DeclHead a
-             , dhAppOperand :: Ann TyVar a
+  | DHParen  { dhBody :: DeclHead wt a } -- ^ Parenthesized type
+  | DHApp    { dhAppFun :: IdType wt (DeclHead wt) a
+             , dhAppOperand :: IdType wt (TyVar wt) a
              } -- ^ Type application
-  | DHInfix  { dhInfixName :: Ann Name a 
-             , dhInfixLeft :: Ann TyVar a
+  | DHInfix  { dhInfixName :: IdType wt Name a 
+             , dhInfixLeft :: IdType wt (TyVar wt) a
              } -- ^ Infix application of the type/class name to the left operand
        
 -- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
@@ -222,41 +207,41 @@ data TypeEqn a
             , teRhs :: Ann Type a
             } -- ^ Type equations as found in closed type families (@ T A = S @)
 -}  
-data KindConstraint a 
-  = KindConstraint { kindConstr :: Ann Kind a } -- ^ Kind constraint (@ :: * -> * @)
+data KindConstraint wt a 
+  = KindConstraint { kindConstr :: IdType wt (Kind wt) a } -- ^ Kind constraint (@ :: * -> * @)
 
 ----------------------------------------------------
 -- Types -------------------------------------------
 ----------------------------------------------------
    
 -- | Type variable declaration
-data TyVar a 
-  = TyVarDecl { tyVarName :: Ann Name a
-              , tyVarKind :: AnnMaybe KindConstraint a
+data TyVar wt a
+  = TyVarDecl { tyVarName :: IdType wt Name a
+              , tyVarKind :: MaybeType wt (KindConstraint wt) a
               }
          
-data Type a
-  = TyForall { typeBounded :: AnnMaybe TyVar a
+data Type wt a
+  = TyForall { typeBounded :: MaybeType wt (TyVar wt) a
 --             , typeCtx :: AnnMaybe Context a
-             , typeType :: Ann Type a
+             , typeType :: IdType wt (Type wt) a
              } -- ^ Forall types (@ forall x y . type @)
-  | TyFun { typeParam :: Ann Type a
-          , typeResult :: Ann Type a
+  | TyFun { typeParam :: IdType wt (Type wt) a
+          , typeResult :: IdType wt (Type wt) a
           } -- ^ Function types (@ a -> b @)
-  | TyTuple { typeElements :: AnnList Type a } -- ^ Tuple types (@ (a,b) @)
-  | TyUnbTuple { typeElements :: AnnList Type a } -- ^ Unboxed tuple types (@ (#a,b#) @)
-  | TyList { typeElement :: Ann Type a } -- ^ List type with special syntax (@ [a] @)
-  | TyParArray { typeElement :: Ann Type a } -- ^ Parallel array type (@ [:a:] @)
-  | TyApp { typeCon :: Ann Type a
-          , typeArg :: Ann Type a
-          } -- ^ Type application (@ F a @)
-  | TyVar { typeName :: Ann Name a } -- ^ type variable (@ a @)
-  | TyCon { typeName :: Ann Name a } -- ^ type constructor (@ T @)
-  | TyParen { typeInner :: Ann Type a } -- ^ type surrounded by parentheses (@ (T a) @)
-  | TyInfix { typeLeft :: Ann Type a 
-            , typeOperator :: Ann Name a
-            , typeRight :: Ann Type a
-            } -- ^ Infix type constructor (@ (a <: b) @)
+--  | TyTuple { typeElements :: AnnList Type a } -- ^ Tuple types (@ (a,b) @)
+--  | TyUnbTuple { typeElements :: AnnList Type a } -- ^ Unboxed tuple types (@ (#a,b#) @)
+--  | TyList { typeElement :: Ann Type a } -- ^ List type with special syntax (@ [a] @)
+--  | TyParArray { typeElement :: Ann Type a } -- ^ Parallel array type (@ [:a:] @)
+--  | TyApp { typeCon :: Ann Type a
+--          , typeArg :: Ann Type a
+--          } -- ^ Type application (@ F a @)
+  | TyVar { typeName :: IdType wt Name a } -- ^ type variable (@ a @)
+--  | TyCon { typeName :: Ann Name a } -- ^ type constructor (@ T @)
+--  | TyParen { typeInner :: Ann Type a } -- ^ type surrounded by parentheses (@ (T a) @)
+--  | TyInfix { typeLeft :: Ann Type a 
+--            , typeOperator :: Ann Name a
+--            , typeRight :: Ann Type a
+--            } -- ^ Infix type constructor (@ (a <: b) @)
 --  | TyKinded { typeInner :: Ann Type a
 --             , typeKind :: Ann Kind a
 --             } -- ^ Type with explicit kind signature (@ a :: * @)
@@ -265,19 +250,19 @@ data Type a
 --  | TyBang { typeInner :: Ann Type a } -- ^ Strict type marked with "!".
 --  | TyUnpack { typeInner :: Ann Type a } -- ^ Type marked with UNPACK pragma.
 
-data Kind a
+data Kind wt a
   = KindStar -- ^ @*@, the kind of types
   | KindUnbox -- ^ @#@, the kind of unboxed types
-  | KindFn { kindLeft :: Ann Kind a
-           , kindRight :: Ann Kind a
+  | KindFn { kindLeft :: IdType wt (Kind wt) a
+           , kindRight :: IdType wt (Kind wt) a
            } -- ^ @->@, the kind of type constructor
-  | KindParen { kindParen :: Ann Kind a } -- ^ A parenthesised kind
-  | KindVar { kindVar :: Ann Name a } -- ^ kind variable (using @PolyKinds@ extension)
-  | KindApp { kindAppFun :: Ann Kind a
-            , kindAppArg :: Ann Kind a 
+  | KindParen { kindParen :: IdType wt (Kind wt) a } -- ^ A parenthesised kind
+  | KindVar { kindVar :: IdType wt Name a } -- ^ kind variable (using @PolyKinds@ extension)
+  | KindApp { kindAppFun :: IdType wt (Kind wt) a
+            , kindAppArg :: IdType wt (Kind wt) a 
             } -- ^ Kind application (@ k1 k2 @)
-  | KindTuple { kindTuple :: AnnList Kind a } -- ^ A promoted tuple (@ '(k1,k2,k3) @)
-  | KindList { kindList :: AnnList Kind a } -- ^ A promoted list literal (@ '[k1,k2,k3] @)
+  | KindTuple { kindTuple :: ListType wt (Kind wt) a } -- ^ A promoted tuple (@ '(k1,k2,k3) @)
+  | KindList { kindList :: ListType wt (Kind wt) a } -- ^ A promoted list literal (@ '[k1,k2,k3] @)
 {-  
 -- One or more assertions
 data Context a
