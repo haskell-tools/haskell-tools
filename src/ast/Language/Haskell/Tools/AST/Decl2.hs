@@ -17,12 +17,14 @@ data Decl a wt
                          , declKind :: AnnMaybe KindConstraint a
                          , declDecl :: AnnList TypeEqn a -- ^ cannot be empty
                          } -- ^ A closed type family declaration
-  | DataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
-             , declCtx  :: AnnMaybe Context a
-             , declHead :: Ann DeclHead a
-             , declCons :: AnnList ConDecl a
-             , declDeriving :: AnnMaybe Deriving a
+-}
+  | DataDecl { declNewtype :: IdType wt DataOrNewtypeKeyword a
+             , declCtx  :: MaybeType wt (Context wt) a
+             , declHead :: IdType wt (DeclHead wt) a
+             , declCons :: ListType wt (ConDecl wt) a
+             , declDeriving :: MaybeType wt (Deriving wt) a
              } -- ^ A data or newtype declaration.
+{-
   | GDataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
               , declCtx  :: AnnMaybe Context a
               , declHead :: Ann DeclHead a
@@ -30,6 +32,8 @@ data Decl a wt
               , declGadt :: Ann GadtDeclList a
               , declDeriving :: AnnMaybe Deriving a
               } -- ^ A data or newtype declaration.
+-}
+{-
   | DataFamilyDecl { declCtx  :: AnnMaybe Context a
                    , declHead :: Ann DeclHead a
                    , declKind :: AnnMaybe KindConstraint a
@@ -65,9 +69,11 @@ data Decl a wt
   | DefaultDecl { declTypes :: AnnList Type a
                 , declInfo :: a
                 } -- ^ Default types (@ default (T1, T2) @)
-  | TypeSignature { declName :: Ann Name a
-                  , declType :: Ann Type a
+-}
+  | TypeSignature { declName :: IdType wt Name a
+                  , declType :: IdType wt (Type wt) a
                   } -- ^ Type signature (@ f :: Int -> Int @)
+{-
   | FunBinding { declFunBind :: Ann FunBind a } -- ^ Function binding (@ f x = 12 @)
   | ForeignImport { declCallConv :: Ann CallConv a
                   , declSafety :: AnnMaybe Safety a
@@ -161,47 +167,47 @@ data FunDep a
   = FunDep { funDepLhs :: AnnList Name a
            , funDepRhs :: AnnList Name a
            }
-  
-data ConDecl a
-  = ConDecl { conDeclName :: Ann Name a
-            , conDeclArgs :: AnnList Type a
+-}
+data ConDecl wt a
+  = ConDecl { conDeclName :: IdType wt Name a
+            , conDeclArgs :: ListType wt (Type wt) a
             } -- ^ ordinary data constructor (@ C t1 t2 @)
-  | RecordDecl { conDeclName :: Ann Name a
-               , conDeclFields :: AnnList FieldDecl a
+  | RecordDecl { conDeclName :: IdType wt Name a
+               , conDeclFields :: ListType wt (FieldDecl wt) a
                } -- ^ record data constructor (@ C { n1 :: t1, n2 :: t2 } @)
-  | InfixConDecl { icdName :: Ann Name a
-                 , icdLhs :: Ann Type a
-                 , icdRhs :: Ann Type a
+  | InfixConDecl { icdName :: IdType wt Name a
+                 , icdLhs :: IdType wt (Type wt) a
+                 , icdRhs :: IdType wt (Type wt) a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
-  
-data FieldDecl a
-  = FieldDecl { fieldNames :: AnnList Name a
-              , fieldType :: Ann Type a
+
+data FieldDecl wt a
+  = FieldDecl { fieldNames :: ListType wt Name a
+              , fieldType :: IdType wt (Type wt) a
               }
   
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
-data Deriving a
-  = DerivingOne { oneDerived :: Ann InstanceRule a }
-  | Derivings { allDerived :: AnnList InstanceRule a }
+data Deriving wt a
+  = DerivingOne { oneDerived :: IdType wt (InstanceRule wt) a }
+  | Derivings { allDerived :: ListType wt (InstanceRule wt) a }
   
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
-data InstanceRule a
-  = InstanceRule { irVars :: AnnMaybe (AnnList TyVar) a
-                 , irCtx :: AnnMaybe Context a
-                 , irHead :: Ann InstanceHead a
+data InstanceRule wt a
+  = InstanceRule { irVars :: () -- TODO MaybeType wt (ListType wt (TyVar wt)) a
+                 , irCtx :: MaybeType wt (Context wt) a
+                 , irHead :: IdType wt (InstanceHead wt) a
                  }
-  | InstanceParen { irRule :: Ann InstanceRule a }
+  | InstanceParen { irRule :: IdType wt (InstanceRule wt) a }
 
-data InstanceHead a
-  = InstanceHeadCon { ihConName :: Ann Name a } -- ^ Type or class name
-  | InstanceHeadInfix { ihLeftOp :: Ann Type a
-                      , ihOperator :: Ann Name a
+data InstanceHead wt a
+  = InstanceHeadCon { ihConName :: IdType wt Name a } -- ^ Type or class name
+  | InstanceHeadInfix { ihLeftOp :: IdType wt (Type wt) a
+                      , ihOperator :: IdType wt Name a
                       } -- ^ Infix application of the type/class name to the left operand
-  | InstanceHeadParen { ihHead :: Ann InstanceHead a } -- ^ Parenthesized instance head
-  | InstanceHeadApp { ihFun :: Ann InstanceHead a
-                    , ihType :: Ann Type a
+  | InstanceHeadParen { ihHead :: IdType wt (InstanceHead wt) a } -- ^ Parenthesized instance head
+  | InstanceHeadApp { ihFun :: IdType wt (InstanceHead wt) a
+                    , ihType :: IdType wt (Type wt) a
                     } -- ^ Application to one more type
-        
+{-        
 data TypeEqn a
   = TypeEqn { teLhs :: Ann Type a
             , teRhs :: Ann Type a
@@ -263,27 +269,27 @@ data Kind wt a
             } -- ^ Kind application (@ k1 k2 @)
   | KindTuple { kindTuple :: ListType wt (Kind wt) a } -- ^ A promoted tuple (@ '(k1,k2,k3) @)
   | KindList { kindList :: ListType wt (Kind wt) a } -- ^ A promoted list literal (@ '[k1,k2,k3] @)
-{-  
+  
 -- One or more assertions
-data Context a
-  = ContextOne { contextAssertion :: Assertion a } -- ^ One assertion (@ C a => ... @)
-  | ContextMulti { contextAssertions :: AnnList Assertion a } 
+data Context wt a
+  = ContextOne { contextAssertion :: Assertion wt a } -- ^ One assertion (@ C a => ... @)
+  | ContextMulti { contextAssertions :: ListType wt (Assertion wt) a } 
       -- ^ A set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
 
 -- | A single assertion in the context
-data Assertion a
-  = ClassAssert { assertClsName :: Ann Name a
-                , assertTypes :: AnnList Type a
+data Assertion wt a
+  = ClassAssert { assertClsName :: IdType wt Name a
+                , assertTypes :: ListType wt (Type wt) a
                 } -- ^ Class assertion (@Cls x@)
-  | AppAssert { assertConstrName :: Ann Name a
-              , assertTypes :: AnnList Type a
+  | AppAssert { assertConstrName :: IdType wt Name a
+              , assertTypes :: ListType wt (Type wt) a
               } -- ^ Class assertion application
-  | InfixAssert { assertLhs :: Ann Type a
-                , assertOp :: Ann Name a
-                , assertRhs :: Ann Type a
+  | InfixAssert { assertLhs :: IdType wt (Type wt) a
+                , assertOp :: IdType wt Name a
+                , assertRhs :: IdType wt (Type wt) a
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
-  | ParenAssert { assertInner :: Ann Assertion a } -- ^ Parenthesised class assertion
-                 
+  | ParenAssert { assertInner :: IdType wt (Assertion wt) a } -- ^ Parenthesised class assertion
+{-                 
 -- | Haskell expressions
 data Expr a
   = Var { exprName :: Ann Name a } -- ^ A variable (@ a @)
