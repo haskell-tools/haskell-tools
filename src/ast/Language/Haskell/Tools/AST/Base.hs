@@ -31,6 +31,11 @@ type instance MaybeType IdWrapper elem annot = elem annot
 data Name a = Name { qualifiers      :: AnnList SimpleName a
                    , unqualifiedName :: Ann SimpleName a 
                    } 
+                   
+nameFromList :: AnnList SimpleName a -> Name a
+nameFromList (AnnList xs) | not (null xs) 
+  = Name (AnnList $ init xs) (last xs) 
+nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         
 data SimpleName a 
