@@ -43,7 +43,7 @@ analyze workingDir moduleName =
         
         liftIO $ putStrLn "==========="
         
-        liftIO $ putStrLn $ showSDocUnsafe $ ppr $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ showSDocUnsafe $ ppr $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
