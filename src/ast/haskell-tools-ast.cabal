@@ -18,6 +18,8 @@ library
                      , Language.Haskell.Tools.AST.Module
                      , Language.Haskell.Tools.AST.Literals
                      , Language.Haskell.Tools.AST.Instances
+                     , Language.Haskell.Tools.AST.Instances.Show
+                     , Language.Haskell.Tools.AST.Instances.StructuralTraversal
                      , Language.Haskell.Tools.AST.FromGHC
                      , Language.Haskell.Tools.AST.Decl
                      , Language.Haskell.Tools.AST.Base
@@ -42,5 +44,6 @@ library
                      , transformers >=0.4 && <0.5
                      , mtl >=2.2 && <2.3
                      , split >=0.2 && <0.3
+                     , structural-traversal >=0.1 && <0.2
   -- hs-source-dirs:      
   default-language:    Haskell2010
