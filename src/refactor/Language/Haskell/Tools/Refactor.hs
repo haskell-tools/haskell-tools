@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, LambdaCase, FlexibleInstances #-}
-module Language.Haskell.Tools.Analyzer where
+module Language.Haskell.Tools.Refactor where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
