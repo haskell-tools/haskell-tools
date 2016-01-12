@@ -18,7 +18,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.AnnTrf.RangeToTemplate
-                     , Language.Haskell.Tools.AnnTrf.NormalizeRanges
                      , Language.Haskell.Tools.AnnTrf.SourceTemplate
   -- other-modules:       
   -- other-extensions:    

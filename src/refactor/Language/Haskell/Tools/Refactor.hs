@@ -5,7 +5,6 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
-import Language.Haskell.Tools.AnnTrf.NormalizeRanges
 
 import GHC
 import Outputable
@@ -40,7 +39,7 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
         
-        liftIO $ putStrLn $ show $ {- normalizeRanges $ -} runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ show $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
@@ -49,7 +48,7 @@ analyze workingDir moduleName =
         
         liftIO $ putStrLn "==========="
         
-        liftIO $ mapM_ print $ Map.toList $ annotationsToSrcMap annots
+        -- liftIO $ mapM_ print $ Map.toList $ annotationsToSrcMap annots
                 
         -- let mod = pm_parsed_source $ tm_parsed_module t
             -- adtName = msum $ map ((\case TyClD (DataDecl {tcdLName = name}) -> Just (unLoc name); _ -> Nothing) . unLoc) (hsmodDecls (unLoc mod))
