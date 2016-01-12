@@ -1,10 +1,14 @@
-{-# LANGUAGE CPP, LambdaCase, FlexibleInstances #-}
+{-# LANGUAGE CPP, LambdaCase, FlexibleInstances, FlexibleContexts, ViewPatterns, TypeOperators, DefaultSignatures, StandaloneDeriving, DeriveGeneric #-}
 module Language.Haskell.Tools.Refactor where
 
+import qualified Language.Haskell.Tools.AST.Module as AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
+import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.Refactor.RangeDebug
+import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
 import GHC
 import Outputable
@@ -13,6 +17,8 @@ import Var
 import GHC.Paths ( libdir )
  
 import Data.List
+import GHC.Generics
+import Data.StructuralTraversal
 import qualified Data.Map as Map
 import System.Directory
 import Control.Monad
@@ -39,7 +45,7 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
         
-        liftIO $ putStrLn $ show $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
@@ -71,5 +77,5 @@ analyze workingDir moduleName =
         -- liftIO $ putStrLn "==========="
         -- g <- getModuleGraph
         -- liftIO $ putStrLn $ showSDocUnsafe $ ppr g
-        
-     
+      
+

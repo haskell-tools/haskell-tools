@@ -19,6 +19,7 @@ library
                      , Language.Haskell.Tools.AST.Literals
                      , Language.Haskell.Tools.AST.Instances
                      , Language.Haskell.Tools.AST.Instances.Show
+                     , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
                      , Language.Haskell.Tools.AST.FromGHC
                      , Language.Haskell.Tools.AST.Decl
