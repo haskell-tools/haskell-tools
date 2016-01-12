@@ -3,6 +3,7 @@ module Language.Haskell.Tools.AST.SourceMap where
 import ApiAnnotation
 import Data.Map as Map
 import Data.List as List
+import Safe
 
 -- import Language.Haskell.Tools.AST as AST
 import SrcLoc as GHC
@@ -10,6 +11,10 @@ import FastString as GHC
 
 -- We store tokens in the source map so it is not a problem that they cannot overlap
 type SourceMap = Map AnnKeywordId (Map SrcLoc SrcLoc)
+
+-- | Returns the first occurrence of the keyword in the whole source file
+getKeywordAnywhere :: AnnKeywordId -> SourceMap -> Maybe SrcSpan
+getKeywordAnywhere keyw srcmap = return . uncurry mkSrcSpan =<< headMay . assocs =<< (Map.lookup keyw srcmap)
 
 getKeywordInside :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
 getKeywordInside keyw sr srcmap = getSourceElementInside sr =<< Map.lookup keyw srcmap

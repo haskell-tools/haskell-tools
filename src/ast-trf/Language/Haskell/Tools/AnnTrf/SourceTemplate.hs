@@ -22,7 +22,7 @@ instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem ni) = "<" ++ show ni ++ ">"
      
-getIndexedNode :: SourceTemplateElem -> Maybe NodeIndex
+getIndexedNode :: SourceTemplateElem -> Maybe Int
 getIndexedNode (ChildElem ni) = Just ni
 getIndexedNode _ = Nothing
      

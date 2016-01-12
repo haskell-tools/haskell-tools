@@ -27,15 +27,18 @@ import Data.List.Split
 
 
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RI)
-trfModule = trfLoc $ \(HsModule name exports imports decls deprec haddock) -> 
-  AST.Module <$> trfModuleHead name exports
-             <*> trfPragmas deprec haddock
-             <*> trfImports imports
-             <*> trfDecls decls
+trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
+  \(HsModule name exports imports decls deprec haddock) -> 
+    AST.Module <$> trfModuleHead name exports
+               <*> trfPragmas deprec haddock
+               <*> trfImports imports
+               <*> trfDecls decls
        
 trfModuleHead :: Maybe (Located ModuleName) -> Maybe (Located [LIE RdrName]) -> Trf (AnnMaybe AST.ModuleHead RI) 
 trfModuleHead (Just mn) exports 
-  = annJust <$> (noAnn <$> (AST.ModuleHead <$> trfModuleNameL mn <*> trfExportList exports))
+  = annJust <$> (Ann <$> tokensLoc [AnnModule, AnnWhere] 
+                     <*> (AST.ModuleHead <$> trfModuleNameL mn 
+                                         <*> trfExportList exports)) -- TODO: add module and where keywords
 trfModuleHead Nothing _ = pure annNothing
 
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma RI)
@@ -103,7 +106,6 @@ trfSimplName :: OccName -> Trf (Ann SimpleName RI)
 trfSimplName n = pure $ noAnn $ SimpleName (pprStr n)
 
 trfModuleName :: ModuleName -> Trf (AnnList SimpleName RI)
--- TODO: because qualified name is one token, here we must calculate spans manually
 trfModuleName mn = pure $ AnnList (map (noAnn . SimpleName) 
                                   (splitOn "." (moduleNameString mn)))
 

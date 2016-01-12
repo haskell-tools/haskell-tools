@@ -5,6 +5,7 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
+import Language.Haskell.Tools.AnnTrf.NormalizeRanges
 
 import GHC
 import Outputable
@@ -39,11 +40,12 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
         
-        liftIO $ putStrLn $ show $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ show $ {- normalizeRanges $ -} runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
         -- liftIO $ putStrLn $ showSDocUnsafe $ ppr $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ print $ getLoc $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
