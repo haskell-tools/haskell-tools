@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase
+           , TupleSections #-}
 module Language.Haskell.Tools.AST.FromGHC where
 
 import Language.Haskell.Tools.AST.Ann
@@ -69,7 +70,7 @@ trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl de
     <*> trfModuleNameL name 
     <*> maybe (pure annNothing) (\mn -> annJust <$> (Ann <$> tokensLoc [AnnAs,AnnVal] 
                                                          <*> (AST.ImportRenaming <$> (Ann <$> tokenLoc AnnVal 
-                                                                                          <*> (AST.nameFromList <$> trfModuleName mn))))) declAs
+                                                                                          <*> (AST.nameFromList . fst <$> trfModuleName mn))))) declAs
     <*> trfImportSpecs declHiding
   
 trfImportSpecs :: Maybe (Bool, Located [LIE RdrName]) -> Trf (AnnMaybe AST.ImportSpec RI)
@@ -96,21 +97,35 @@ trfDecls _ = pure $ AnnList []
   
 trfName :: Located RdrName -> Trf (Ann Name RI)
 trfName = trfLoc $ \case 
-  Unqual n -> Name (AnnList []) <$> trfSimplName n
-  Qual mn n -> Name <$> trfModuleName mn <*> trfSimplName n
-  Orig m n -> Name <$> trfModuleName (moduleName m) <*> trfSimplName n
-  Exact n -> Name <$> maybe (pure (AnnList [])) (trfModuleName . moduleName) (nameModule_maybe n)
-                  <*> trfSimplName (nameOccName n)
+  Unqual n -> do begin <- asks (srcSpanStart . contRange)
+                 Name (AnnList []) <$> (trfSimplName begin n)
+  Qual mn n -> do (qual,loc) <- trfModuleName mn
+                  unqual <- trfSimplName loc n
+                  return (Name qual unqual)
+  Orig m n -> do (qual,loc) <- trfModuleName (moduleName m)
+                 unqual <- trfSimplName loc n
+                 return (Name qual unqual)
+  Exact n -> do (qual,loc) <- maybe ((AnnList [],) <$> asks (srcSpanEnd . contRange)) 
+                                    (trfModuleName . moduleName) 
+                                    (nameModule_maybe n)
+                unqual <- trfSimplName loc (nameOccName n)
+                return (Name qual unqual)
 
-trfSimplName :: OccName -> Trf (Ann SimpleName RI)
-trfSimplName n = pure $ noAnn $ SimpleName (pprStr n)
+trfSimplName :: SrcLoc -> OccName -> Trf (Ann SimpleName RI)
+trfSimplName start n = (\srcLoc -> Ann (mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
 
-trfModuleName :: ModuleName -> Trf (AnnList SimpleName RI)
-trfModuleName mn = pure $ AnnList (map (noAnn . SimpleName) 
-                                  (splitOn "." (moduleNameString mn)))
+trfModuleName :: ModuleName -> Trf (AnnList SimpleName RI, SrcLoc)
+trfModuleName mn = (\srcLoc -> (\(ls,loc) -> (AnnList ls, loc))
+  (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
+                          in ( r ++ [Ann (mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
+  ([],srcLoc) (splitOn "." (moduleNameString mn)))) <$> asks (srcSpanStart . contRange)
 
+advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
+advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
+advanceAllSrcLoc oth _ = oth
+  
 trfModuleNameL :: Located ModuleName -> Trf (Ann Name RI)
-trfModuleNameL = trfLoc ((AST.nameFromList <$>) . trfModuleName)
+trfModuleNameL = trfLoc ((AST.nameFromList . fst <$>) . trfModuleName)
      
 pprStr :: Outputable a => a -> String
 pprStr = showSDocUnsafe . ppr
