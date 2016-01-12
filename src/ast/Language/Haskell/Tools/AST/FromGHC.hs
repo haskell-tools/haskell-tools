@@ -38,7 +38,7 @@ trfModuleHead :: Maybe (Located ModuleName) -> Maybe (Located [LIE RdrName]) -> 
 trfModuleHead (Just mn) exports 
   = annJust <$> (Ann <$> tokensLoc [AnnModule, AnnWhere] 
                      <*> (AST.ModuleHead <$> trfModuleNameL mn 
-                                         <*> trfExportList exports)) -- TODO: add module and where keywords
+                                         <*> trfExportList exports))
 trfModuleHead Nothing _ = pure annNothing
 
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma RI)

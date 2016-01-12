@@ -46,7 +46,7 @@ tokensLoc keys = asks contRange >>= tokensLoc' keys
           = do spanFirst <- fromMaybe noSrcSpan <$> getKeywordInside keyw r <$> asks srcMap
                spanRest <- tokensLoc' rest (mkSrcSpan (srcSpanEnd spanFirst) (srcSpanEnd r))
                return (combineSrcSpans spanFirst spanRest)                   
-        tokensLoc' [] r = pure r
+        tokensLoc' [] r = pure noSrcSpan
         
 -- | Searches for a token and retrieves its location anywhere
 uniqueTokenAnywhere :: AnnKeywordId -> Trf RI
