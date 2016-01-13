@@ -46,7 +46,10 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
         
-        liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ bottomUp $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn "==========="
+        liftIO $ topDown $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
@@ -82,3 +85,9 @@ analyze workingDir moduleName =
       
 deriving instance Generic SrcSpan
 deriving instance Generic RangeTemplate
+
+bottomUp :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
+bottomUp = traverseUp (putStrLn "desc") (putStrLn "asc") print
+
+topDown :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
+topDown = traverseDown (putStrLn "desc") (putStrLn "asc") print

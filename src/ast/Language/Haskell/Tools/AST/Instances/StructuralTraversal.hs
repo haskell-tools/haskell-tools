@@ -12,14 +12,18 @@ import Language.Haskell.Tools.AST.Ann
 
 -- Annotations
 instance StructuralTraversable elem => StructuralTraversable (Ann elem) where
-  structTraverse desc asc f (Ann ann e) = flip Ann <$> (desc *> structTraverse desc asc f e <* asc) <*> f ann
+  traverseUp desc asc f (Ann ann e) = flip Ann <$> (desc *> traverseUp desc asc f e <* asc) <*> f ann
+  traverseDown desc asc f (Ann ann e) = Ann <$> f ann <*> (desc *> traverseDown desc asc f e <* asc)
   
 instance StructuralTraversable elem => StructuralTraversable (AnnMaybe elem) where
-  structTraverse desc asc f (AnnMaybe (Just annotated)) = AnnMaybe . Just <$> (structTraverse desc asc f annotated)
-  structTraverse desc asc f (AnnMaybe Nothing) = pure (AnnMaybe Nothing)
+  traverseUp desc asc f (AnnMaybe (Just annotated)) = AnnMaybe . Just <$> (traverseUp desc asc f annotated)
+  traverseUp desc asc f (AnnMaybe Nothing) = pure (AnnMaybe Nothing)
+  traverseDown desc asc f (AnnMaybe (Just annotated)) = AnnMaybe . Just <$> (traverseDown desc asc f annotated)
+  traverseDown desc asc f (AnnMaybe Nothing) = pure (AnnMaybe Nothing)
 
 instance StructuralTraversable elem => StructuralTraversable (AnnList elem) where
-  structTraverse desc asc f (AnnList ls) = AnnList <$> sequenceA (map (structTraverse desc asc f) ls)
+  traverseUp desc asc f (AnnList ls) = AnnList <$> sequenceA (map (traverseUp desc asc f) ls)
+  traverseDown desc asc f (AnnList ls) = AnnList <$> sequenceA (map (traverseDown desc asc f) ls)
 
 -- Modules
 deriveStructTrav ''Module

@@ -36,7 +36,7 @@ instance Show RangeTemplateElem where
 cutUpRanges :: forall node . StructuralTraversable node => Ann node SrcSpan -> Ann node RangeTemplate
 cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
   where cutUpRanges' :: StructuralTraversable node => Ann node SrcSpan -> State [[SrcSpan]] (Ann node RangeTemplate)
-        cutUpRanges' = structTraverse desc asc f
+        cutUpRanges' = traverseUp desc asc f
         
         -- keep the stack to contain the children elements on the place of the parent element
         desc = modify ([]:)

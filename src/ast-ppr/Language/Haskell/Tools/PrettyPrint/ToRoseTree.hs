@@ -56,7 +56,7 @@ toRose tree = collectRose . toSourceRose $ tree
 toSourceRose :: forall n inf . (AnnInfo inf, StructuralTraversable n) => n inf -> RoseCollect inf
 toSourceRose n = evalState (toSrcRoseSt n) [[]]
   where toSrcRoseSt :: n inf -> State [[RoseCollect inf]] (RoseCollect inf)
-        toSrcRoseSt n = structTraverse desc asc f n *> gets (RoseCollect . reverse . head)
+        toSrcRoseSt n = traverseUp desc asc f n *> gets (RoseCollect . reverse . head)
   
         desc  = modify ([]:)
         asc   = modify (\(x:y:xs) -> ((RoseCollect (reverse x) : y) : xs))
