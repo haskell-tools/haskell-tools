@@ -3,48 +3,57 @@
            , StandaloneDeriving
            , FlexibleContexts
            , FlexibleInstances
+           , MultiParamTypeClasses
            #-}
 module Language.Haskell.Tools.Refactor.RangeDebug where
 
 import GHC.Generics
 import SrcLoc
+import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 
-rangeDebug :: RangeDebug e => e SrcSpan -> String
-rangeDebug = rangeDebug' 0
+rangeDebug :: TreeDebug e SrcSpan => e SrcSpan -> String
+rangeDebug = treeDebug' shortShowSpan 0
       
-class RangeDebug e where
-  rangeDebug' :: Int -> e SrcSpan -> String
-  default rangeDebug' :: (GRangeDebug (Rep (e SrcSpan)), Generic (e SrcSpan)) => Int -> e SrcSpan -> String
-  rangeDebug' i = gRangeDebug i . from
-
-class GRangeDebug f where 
-  gRangeDebug :: Int -> f p -> String
-  
-instance GRangeDebug V1 where
-  gRangeDebug i _ = undefined
-  
-instance GRangeDebug U1 where
-  gRangeDebug i U1 = ""  
-  
-instance (GRangeDebug f, GRangeDebug g) => GRangeDebug (f :+: g) where
-  gRangeDebug i (L1 x) = gRangeDebug i x
-  gRangeDebug i (R1 x) = gRangeDebug i x
-  
-instance (GRangeDebug f, GRangeDebug g) => GRangeDebug (f :*: g) where
-  gRangeDebug i (x :*: y) 
-    = gRangeDebug i x ++ gRangeDebug i y
-
-instance {-# OVERLAPPING #-} RangeDebug c => GRangeDebug (K1 i (c SrcSpan)) where
-  gRangeDebug i (K1 x) = rangeDebug' i x
-  
-instance {-# OVERLAPPABLE #-} GRangeDebug (K1 i c) where
-  gRangeDebug i (K1 x) = ""
-        
-instance GRangeDebug f => GRangeDebug (M1 i t f) where
-  gRangeDebug i (M1 x) = gRangeDebug i x
-  
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (RealSrcSpan sp) 
   = show (srcSpanStartLine sp) ++ ":" ++ show (srcSpanStartCol sp) 
       ++ "-" ++ show (srcSpanEndLine sp) ++ ":" ++ show (srcSpanEndCol sp)
 shortShowSpan _ = "???"
+      
+templateDebug :: TreeDebug e RangeTemplate => e RangeTemplate -> String
+templateDebug = treeDebug' shortShowRangeTemplate 0
+
+shortShowRangeTemplate (RangeTemplate _ rngs) = concatMap showRangeTemplateElem rngs
+showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan sp ++ "]"
+showRangeTemplateElem (RangeChildElem i) = "[" ++ show i ++ "]"
+      
+class TreeDebug e a where
+  treeDebug' :: (a -> String) -> Int -> e a -> String
+  default treeDebug' :: (GTreeDebug (Rep (e a)) a, Generic (e a)) => (a -> String) -> Int -> e a -> String
+  treeDebug' f i = gTreeDebug f i . from
+
+class GTreeDebug f a where 
+  gTreeDebug :: (a -> String) -> Int -> f p -> String
+  
+instance GTreeDebug V1 a where
+  gTreeDebug _ _ _ = undefined
+  
+instance GTreeDebug U1 a where
+  gTreeDebug _ _ U1 = ""  
+  
+instance (GTreeDebug f a, GTreeDebug g a) => GTreeDebug (f :+: g) a where
+  gTreeDebug f i (L1 x) = gTreeDebug f i x
+  gTreeDebug f i (R1 x) = gTreeDebug f i x
+  
+instance (GTreeDebug f a, GTreeDebug g a) => GTreeDebug (f :*: g) a where
+  gTreeDebug f i (x :*: y) 
+    = gTreeDebug f i x ++ gTreeDebug f i y
+
+instance {-# OVERLAPPING #-} TreeDebug e a => GTreeDebug (K1 i (e a)) a where
+  gTreeDebug f i (K1 x) = treeDebug' f i x
+  
+instance {-# OVERLAPPABLE #-} GTreeDebug (K1 i c) a where
+  gTreeDebug f i (K1 x) = ""
+        
+instance GTreeDebug f a => GTreeDebug (M1 i t f) a where
+  gTreeDebug f i (M1 x) = gTreeDebug f i x

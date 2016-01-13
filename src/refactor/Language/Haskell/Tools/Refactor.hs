@@ -7,6 +7,7 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
 import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
@@ -45,7 +46,8 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
         
-        liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
@@ -78,4 +80,5 @@ analyze workingDir moduleName =
         -- g <- getModuleGraph
         -- liftIO $ putStrLn $ showSDocUnsafe $ ppr g
       
-
+deriving instance Generic SrcSpan
+deriving instance Generic RangeTemplate
