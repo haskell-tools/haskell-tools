@@ -8,6 +8,7 @@ import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
+import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
@@ -21,11 +22,14 @@ import Data.List
 import GHC.Generics
 import Data.StructuralTraversal
 import qualified Data.Map as Map
+import Data.Maybe
 import System.Directory
 import Control.Monad
+import Control.Monad.State
 import Control.Monad.IO.Class
  
 import DynFlags
+import StringBuffer
 
 instance Show (GenLocated SrcSpan AnnotationComment) where
   show = show . unLoc
@@ -45,10 +49,11 @@ analyze workingDir moduleName =
         t <- typecheckModule p
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
-        
-        liftIO $ bottomUp $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        liftIO $ putStrLn "==========="
-        liftIO $ topDown $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+
+        -- liftIO $ getIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ mapM_ (\(OrdSrcSpan sp,v) -> putStrLn (shortShowSpan sp ++ " => " ++ show v)) $ Map.assocs $ getLocIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ print $ mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
@@ -86,6 +91,9 @@ analyze workingDir moduleName =
 deriving instance Generic SrcSpan
 deriving instance Generic RangeTemplate
 
+getIndices :: StructuralTraversable e => Ann e RangeTemplate -> IO (Ann e ())
+getIndices = traverseDown (return ()) (return ()) print
+                             
 bottomUp :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
 bottomUp = traverseUp (putStrLn "desc") (putStrLn "asc") print
 
