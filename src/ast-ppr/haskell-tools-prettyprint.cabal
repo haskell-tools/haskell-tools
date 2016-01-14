@@ -14,9 +14,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Language.Haskell.Tools.PrettyPrint.ToRoseTree
-                     , Language.Haskell.Tools.PrettyPrint.RoseTree
-                     , Language.Haskell.Tools.PrettyPrint.AnnInfo
+  exposed-modules:     Language.Haskell.Tools.PrettyPrint.RoseTree
   -- other-modules:       
   other-extensions:    LambdaCase
                      , MultiParamTypeClasses

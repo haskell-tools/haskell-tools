@@ -1,4 +1,4 @@
-
+{-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Tools.AnnTrf.SourceTemplate where
 
 -- | A pattern that controls how the original source code can be
@@ -20,7 +20,11 @@ isChildElem _ = False
       
 instance Show SourceTemplateElem where
   show (TextElem s) = s
-  show (ChildElem ni) = "<" ++ show ni ++ ">"
+  show (ChildElem ni) = "`" ++ show ni ++ "`"
+     
+instance {-# OVERLAPS #-} Show [SourceTemplateElem] where
+  show = concatMap show
+
      
 getIndexedNode :: SourceTemplateElem -> Maybe Int
 getIndexedNode (ChildElem ni) = Just ni

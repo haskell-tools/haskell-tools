@@ -9,6 +9,8 @@ import Language.Haskell.Tools.AST.Instances
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToSource
+import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
@@ -50,10 +52,11 @@ analyze workingDir moduleName =
         
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
-        -- liftIO $ getIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ mapM_ (\(OrdSrcSpan sp,v) -> putStrLn (shortShowSpan sp ++ " => " ++ show v)) $ Map.assocs $ getLocIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ print $ mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+
+        -- liftIO $ bottomUp $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ print $ toRoseTree $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ print $ toSourceRose $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         
@@ -99,3 +102,5 @@ bottomUp = traverseUp (putStrLn "desc") (putStrLn "asc") print
 
 topDown :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
 topDown = traverseDown (putStrLn "desc") (putStrLn "asc") print
+
+
