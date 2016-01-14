@@ -34,6 +34,11 @@ trfMaybeLoc f (L l e) = fmap (Ann l) <$> local (\s -> s { contRange = l }) (f e)
 trfListLoc :: (a -> Trf [b RI]) -> Located a -> Trf [Ann b RI]
 trfListLoc f (L l e) = fmap (Ann l) <$> local (\s -> s { contRange = l }) (f e)  
 
+annLoc :: Trf RI -> Trf (b RI) -> Trf (Ann b RI)
+annLoc locm nodem = do loc <- locm
+                       node <- local (\s -> s { contRange = loc }) nodem
+                       return (Ann loc node)
+
 -- | Searches for a token inside the parent element and retrieves its location
 tokenLoc :: AnnKeywordId -> Trf RI
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)

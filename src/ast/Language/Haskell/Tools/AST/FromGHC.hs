@@ -60,17 +60,17 @@ trfImports imps = AnnList <$> mapM trfImport imps
 trfImport :: LImportDecl RdrName -> Trf (Ann AST.ImportDecl RI)
 trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   AST.ImportDecl 
-    <$> (if isQual then annJust <$> (Ann <$> tokenLoc AnnQualified <*> pure AST.ImportQualified) else pure annNothing)
+    <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) else pure annNothing)
     -- if there is a source annotation the first open and close will mark its location
-    <*> (if isSrc then annJust <$> (Ann <$> (combineSrcSpans <$> tokenLoc AnnOpen <*> tokenLoc AnnClose) 
-                                        <*> pure AST.ImportSource)
+    <*> (if isSrc then annJust <$> (annLoc (combineSrcSpans <$> tokenLoc AnnOpen <*> tokenLoc AnnClose) 
+                                           (pure AST.ImportSource))
                   else pure annNothing)
     <*> (if isSafe then annJust <$> (Ann <$> tokenLoc AnnSafe <*> pure AST.ImportSafe) else pure annNothing)
-    <*> maybe (pure annNothing) (\str -> annJust <$> (Ann <$> tokenLoc AnnPackageName <*> pure (AST.StringNode (unpackFS str)))) pkg
+    <*> maybe (pure annNothing) (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
     <*> trfModuleNameL name 
-    <*> maybe (pure annNothing) (\mn -> annJust <$> (Ann <$> tokensLoc [AnnAs,AnnVal] 
-                                                         <*> (AST.ImportRenaming <$> (Ann <$> tokenLoc AnnVal 
-                                                                                          <*> (AST.nameFromList . fst <$> trfModuleName mn))))) declAs
+    <*> maybe (pure annNothing) (\mn -> annJust <$> (annLoc (tokensLoc [AnnAs,AnnVal])
+                                                            (AST.ImportRenaming <$> (annLoc (tokenLoc AnnVal) 
+                                                                                            (AST.nameFromList . fst <$> trfModuleName mn))))) declAs
     <*> trfImportSpecs declHiding
   
 trfImportSpecs :: Maybe (Bool, Located [LIE RdrName]) -> Trf (AnnMaybe AST.ImportSpec RI)
