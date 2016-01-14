@@ -11,6 +11,7 @@ import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint.RoseTree
+import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
@@ -38,7 +39,6 @@ instance Show (GenLocated SrcSpan AnnotationComment) where
  
 analyze :: String -> String -> IO ()
 analyze workingDir moduleName = 
-    defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
       runGhc (Just libdir) $ do
         dflags <- getSessionDynFlags
         -- don't generate any code
@@ -53,9 +53,7 @@ analyze workingDir moduleName =
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
 
-        -- liftIO $ bottomUp $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        liftIO $ print $ toRoseTree $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ print $ toSourceRose $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t

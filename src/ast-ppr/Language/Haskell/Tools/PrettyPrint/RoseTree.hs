@@ -9,14 +9,13 @@ import Data.StructuralTraversal
 
 -- | A rose tree containing additional node information         
 data RoseTree a = RoseTree { roseInfo :: a 
-                           , original :: Bool
                            , roseChildren :: [RoseTree a]
                            }
 
 instance Show a => Show (RoseTree a) where
   show sr = show' 0 sr
-    where show' i (RoseTree {roseInfo,original,roseChildren})
-             = "\n" ++ replicate (2*i) (if original then '#' else '-')
+    where show' i (RoseTree {roseInfo,roseChildren})
+             = "\n" ++ replicate (2*i) '#'
                     ++ show roseInfo 
                     ++ concatMap (show' (i+1)) roseChildren
                     
@@ -25,4 +24,4 @@ toRoseTree = head . head . flip execState [[]] . toSrcRoseSt
   where toSrcRoseSt = traverseUp desc (return ()) f
   
         desc  = modify ([]:)
-        f inf = modify (\(y:x:xs) -> (RoseTree inf True (reverse y) : x) : xs)
+        f inf = modify (\(y:x:xs) -> (RoseTree inf (reverse y) : x) : xs)
