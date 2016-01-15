@@ -2,7 +2,7 @@
 module Language.Haskell.Tools.Refactor where
 
 import qualified Language.Haskell.Tools.AST.Module as AST
-import Language.Haskell.Tools.AST.FromGHC
+import Language.Haskell.Tools.AST.FromGHC.Module
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.Instances
@@ -17,6 +17,7 @@ import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
 import GHC
 import Outputable
+import BasicTypes
 import Bag
 import Var
 import GHC.Paths ( libdir )
@@ -30,6 +31,8 @@ import System.Directory
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
+
+import Language.Haskell.Tools.Refactor.DebugGhcAST
  
 import DynFlags
 import StringBuffer
@@ -53,10 +56,11 @@ analyze workingDir moduleName =
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
 
-        liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ putStrLn $ show $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="
         
@@ -100,5 +104,4 @@ bottomUp = traverseUp (putStrLn "desc") (putStrLn "asc") print
 
 topDown :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
 topDown = traverseDown (putStrLn "desc") (putStrLn "asc") print
-
 
