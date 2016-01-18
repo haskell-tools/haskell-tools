@@ -30,17 +30,16 @@ trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere An
        
 trfModuleHead :: Maybe (Located ModuleName) -> Maybe (Located [LIE RdrName]) -> Trf (AnnMaybe AST.ModuleHead RI) 
 trfModuleHead (Just mn) exports 
-  = annJust <$> (Ann <$> tokensLoc [AnnModule, AnnWhere] 
-                     <*> (AST.ModuleHead <$> trfModuleNameL mn 
-                                         <*> trfExportList exports))
+  = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
+                        (AST.ModuleHead <$> trfModuleNameL mn 
+                                        <*> trfExportList exports))
 trfModuleHead Nothing _ = pure annNothing
 
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma RI)
 trfPragmas _ _ = pure $ AnnList []
 
 trfExportList :: Maybe (Located [LIE RdrName]) -> Trf (AnnMaybe AST.ExportSpecList RI)
-trfExportList Nothing = pure annNothing
-trfExportList (Just (L l exps)) = annJust . Ann l . AST.ExportSpecList . AnnList . catMaybes <$> (mapM trfExport exps)
+trfExportList = trfMaybe $ trfLoc (\exps -> AST.ExportSpecList . AnnList . catMaybes <$> (mapM trfExport exps))
   
 trfExport :: LIE RdrName -> Trf (Maybe (Ann AST.ExportSpec RI))
 trfExport = trfMaybeLoc $ \case 
@@ -58,7 +57,7 @@ trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl de
     <*> (if isSrc then annJust <$> (annLoc (combineSrcSpans <$> tokenLoc AnnOpen <*> tokenLoc AnnClose) 
                                            (pure AST.ImportSource))
                   else pure annNothing)
-    <*> (if isSafe then annJust <$> (Ann <$> tokenLoc AnnSafe <*> pure AST.ImportSafe) else pure annNothing)
+    <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) else pure annNothing)
     <*> maybe (pure annNothing) (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
     <*> trfModuleNameL name 
     <*> maybe (pure annNothing) (\mn -> annJust <$> (annLoc (tokensLoc [AnnAs,AnnVal])
@@ -78,7 +77,7 @@ trfIESpec' :: IE RdrName -> Trf (Maybe (AST.IESpec RI))
 trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
 trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
 trfIESpec' (IEThingAll n) 
-  = Just <$> (AST.IESpec <$> trfName n <*> (annJust <$> (Ann <$> tokenLoc AnnDotdot <*> pure AST.SubSpecAll)))
+  = Just <$> (AST.IESpec <$> trfName n <*> (annJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
   = Just <$> (AST.IESpec <$> trfName n
                          <*> (annJust . noAnn . AST.SubSpecList . AnnList <$> mapM trfName ls))

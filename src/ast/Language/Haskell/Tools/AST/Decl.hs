@@ -15,6 +15,9 @@ data Decl a
                          , declKind :: AnnMaybe KindConstraint a
                          , declDecl :: AnnList TypeEqn a -- ^ cannot be empty
                          } -- ^ A closed type family declaration
+  | DataFamilyDecl { declHead :: Ann DeclHead a
+                   , declKind :: AnnMaybe KindConstraint a
+                   } -- ^ Data family declaration
   | DataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
              , declCtx  :: AnnMaybe Context a
              , declHead :: Ann DeclHead a
@@ -28,10 +31,6 @@ data Decl a
               , declGadt :: Ann GadtDeclList a
               , declDeriving :: AnnMaybe Deriving a
               } -- ^ A data or newtype declaration.
-  | DataFamilyDecl { declCtx  :: AnnMaybe Context a
-                   , declHead :: Ann DeclHead a
-                   , declKind :: AnnMaybe KindConstraint a
-                   } -- ^ Data family declaration
   | TypeInstDecl { declInstance :: Ann Type a
                  , declAssignedType :: Ann Type a
                  } -- ^ Type instance declaration (@ type instance Fam T = AssignedT @)
@@ -255,7 +254,7 @@ data Kind a
            , kindRight :: Ann Kind a
            } -- ^ @->@, the kind of type constructor
   | KindParen { kindParen :: Ann Kind a } -- ^ A parenthesised kind
-  | KindVar { kindVar :: Ann Name a } -- ^ kind variable (using @PolyKinds@ extension)
+  | KindVar { kindVar :: Name a } -- ^ kind variable (using @PolyKinds@ extension)
   | KindApp { kindAppFun :: Ann Kind a
             , kindAppArg :: Ann Kind a 
             } -- ^ Kind application (@ k1 k2 @)

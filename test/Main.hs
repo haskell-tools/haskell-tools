@@ -11,6 +11,7 @@ import Test.HUnit hiding (test)
 import System.IO
 
 import Language.Haskell.Tools.AST.FromGHC
+import Language.Haskell.Tools.AST.FromGHC.Module
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate

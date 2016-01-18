@@ -21,20 +21,22 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
 trfName :: Located RdrName -> Trf (Ann Name RI)
-trfName = trfLoc $ \case 
-  Unqual n -> do begin <- asks (srcSpanStart . contRange)
-                 Name (AnnList []) <$> (trfSimplName begin n)
-  Qual mn n -> do (qual,loc) <- trfModuleName mn
-                  unqual <- trfSimplName loc n
-                  return (Name qual unqual)
-  Orig m n -> do (qual,loc) <- trfModuleName (moduleName m)
-                 unqual <- trfSimplName loc n
-                 return (Name qual unqual)
-  Exact n -> do (qual,loc) <- maybe ((AnnList [],) <$> asks (srcSpanEnd . contRange)) 
-                                    (trfModuleName . moduleName) 
-                                    (nameModule_maybe n)
-                unqual <- trfSimplName loc (nameOccName n)
-                return (Name qual unqual)
+trfName = trfLoc trfName'
+
+trfName' :: RdrName -> Trf (Name RI)
+trfName' (Unqual n) = do begin <- asks (srcSpanStart . contRange)
+                         Name (AnnList []) <$> (trfSimplName begin n)
+trfName' (Qual mn n) = do (qual,loc) <- trfModuleName mn
+                          unqual <- trfSimplName loc n
+                          return (Name qual unqual)
+trfName' (Orig m n) = do (qual,loc) <- trfModuleName (moduleName m)
+                         unqual <- trfSimplName loc n
+                         return (Name qual unqual)
+trfName' (Exact n) = do (qual,loc) <- maybe ((AnnList [],) <$> asks (srcSpanEnd . contRange)) 
+                                            (trfModuleName . moduleName) 
+                                            (nameModule_maybe n)
+                        unqual <- trfSimplName loc (nameOccName n)
+                        return (Name qual unqual)
 
 trfSimplName :: SrcLoc -> OccName -> Trf (Ann SimpleName RI)
 trfSimplName start n = (\srcLoc -> Ann (mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)

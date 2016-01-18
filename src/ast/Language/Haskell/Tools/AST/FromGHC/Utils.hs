@@ -16,7 +16,10 @@ type RI = SrcSpan
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfLoc :: (a -> Trf (b RI)) -> Located a -> Trf (Ann b RI)
-trfLoc f (L l e) = Ann l <$> local (\s -> s { contRange = l }) (f e) 
+trfLoc = trfLocCorrect pure
+
+trfMaybe :: (Located a -> Trf (Ann b RI)) -> Maybe (Located a) -> Trf (AnnMaybe b RI)
+trfMaybe f = maybe (pure annNothing) (fmap annJust . f)
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
