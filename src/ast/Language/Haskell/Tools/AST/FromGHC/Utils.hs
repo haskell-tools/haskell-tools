@@ -46,12 +46,12 @@ annLoc locm nodem = do loc <- locm
 tokenLoc :: AnnKeywordId -> Trf RI
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)
 
--- | Searches for tokens inside the parent element and returns their combined location
+-- | Searches for tokens in the given order inside the parent element and returns their combined location
 tokensLoc :: [AnnKeywordId] -> Trf RI
 tokensLoc keys = asks contRange >>= tokensLoc' keys
   where tokensLoc' :: [AnnKeywordId] -> RI -> Trf RI
         tokensLoc' (keyw:rest) r 
-          = do spanFirst <- fromMaybe noSrcSpan <$> getKeywordInside keyw r <$> asks srcMap
+          = do spanFirst <- tokenLoc keyw
                spanRest <- tokensLoc' rest (mkSrcSpan (srcSpanEnd spanFirst) (srcSpanEnd r))
                return (combineSrcSpans spanFirst spanRest)                   
         tokensLoc' [] r = pure noSrcSpan

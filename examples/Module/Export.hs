@@ -1,2 +1,2 @@
-module Module.Export (T(..)) where
-data T = T
+module Module.Export (maybe, Maybe(..), Either(Left)) where
+-- this module reexports Maybe from Prelude

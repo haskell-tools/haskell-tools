@@ -24,5 +24,7 @@ printRose (RoseTree (TextElem txt : rest) children)
 printRose (RoseTree (ChildElem _ : rest) (child : children)) 
   = printRose child >< printRose (RoseTree rest children) 
 printRose (RoseTree [] []) = empty 
+printRose r@(RoseTree (ChildElem _ : rest) []) = error ("More child elem in template than actual children. In: " ++ show r)
+printRose r@(RoseTree [] children) = error ("Not all children are used to pretty printing. In: " ++ show r) 
     
 

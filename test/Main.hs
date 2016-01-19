@@ -19,11 +19,12 @@ import Language.Haskell.Tools.PrettyPrint
 
 main :: IO ()
 main = do checkCorrectlyPrinted "..\\examples" "Module.Simple"
-          -- checkCorrectlyPrinted "..\\examples" "Module.Export"
+          checkCorrectlyPrinted "..\\examples" "Module.Export"
           checkCorrectlyPrinted "..\\examples" "Module.Import"
           checkCorrectlyPrinted "..\\examples" "Decl.TypeFamily"
           checkCorrectlyPrinted "..\\examples" "Decl.DataFamily"
           checkCorrectlyPrinted "..\\examples" "Decl.ClosedTypeFamily"
+          checkCorrectlyPrinted "..\\examples" "Decl.TypeSynonym"
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 

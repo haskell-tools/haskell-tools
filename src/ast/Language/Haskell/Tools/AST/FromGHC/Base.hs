@@ -24,35 +24,26 @@ trfName :: Located RdrName -> Trf (Ann Name RI)
 trfName = trfLoc trfName'
 
 trfName' :: RdrName -> Trf (Name RI)
-trfName' (Unqual n) = do begin <- asks (srcSpanStart . contRange)
-                         Name (AnnList []) <$> (trfSimplName begin n)
-trfName' (Qual mn n) = do (qual,loc) <- trfModuleName mn
-                          unqual <- trfSimplName loc n
-                          return (Name qual unqual)
-trfName' (Orig m n) = do (qual,loc) <- trfModuleName (moduleName m)
-                         unqual <- trfSimplName loc n
-                         return (Name qual unqual)
-trfName' (Exact n) = do (qual,loc) <- maybe ((AnnList [],) <$> asks (srcSpanEnd . contRange)) 
-                                            (trfModuleName . moduleName) 
-                                            (nameModule_maybe n)
-                        unqual <- trfSimplName loc (nameOccName n)
-                        return (Name qual unqual)
+trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc n))
 
 trfSimplName :: SrcLoc -> OccName -> Trf (Ann SimpleName RI)
 trfSimplName start n = (\srcLoc -> Ann (mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
 
-trfModuleName :: ModuleName -> Trf (AnnList SimpleName RI, SrcLoc)
-trfModuleName mn = (\srcLoc -> (\(ls,loc) -> (AnnList ls, loc))
+trfNameStr :: String -> Trf (AnnList SimpleName RI, SrcLoc)
+trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList ls, loc))
   (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
                           in ( r ++ [Ann (mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
-  ([],srcLoc) (splitOn "." (moduleNameString mn)))) <$> asks (srcSpanStart . contRange)
+  ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)
 
 advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
 advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
 advanceAllSrcLoc oth _ = oth
   
-trfModuleNameL :: Located ModuleName -> Trf (Ann Name RI)
-trfModuleNameL = trfLoc ((AST.nameFromList . fst <$>) . trfModuleName)
+trfModuleName :: Located ModuleName -> Trf (Ann Name RI)
+trfModuleName = trfLoc trfModuleName'
+
+trfModuleName' :: ModuleName -> Trf (Name RI)
+trfModuleName' = (AST.nameFromList . fst <$>) . trfNameStr . moduleNameString
      
 pprStr :: Outputable a => a -> String
 pprStr = showSDocUnsafe . ppr

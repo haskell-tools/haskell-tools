@@ -2,6 +2,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Module where
 
 import Data.Maybe
+import Control.Monad.Reader
 
 import ApiAnnotation as GHC
 import RdrName as GHC
@@ -31,7 +32,7 @@ trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere An
 trfModuleHead :: Maybe (Located ModuleName) -> Maybe (Located [LIE RdrName]) -> Trf (AnnMaybe AST.ModuleHead RI) 
 trfModuleHead (Just mn) exports 
   = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
-                        (AST.ModuleHead <$> trfModuleNameL mn 
+                        (AST.ModuleHead <$> trfModuleName mn 
                                         <*> trfExportList exports))
 trfModuleHead Nothing _ = pure annNothing
 
@@ -43,7 +44,7 @@ trfExportList = trfMaybe $ trfLoc (\exps -> AST.ExportSpecList . AnnList . catMa
   
 trfExport :: LIE RdrName -> Trf (Maybe (Ann AST.ExportSpec RI))
 trfExport = trfMaybeLoc $ \case 
-  IEModuleContents n -> Just . AST.ModuleExport <$> (trfModuleNameL n)
+  IEModuleContents n -> Just . AST.ModuleExport <$> (trfModuleName n)
   other -> fmap AST.DeclExport <$> trfIESpec' other
   
 trfImports :: [LImportDecl RdrName] -> Trf (AnnList AST.ImportDecl RI)
@@ -54,16 +55,19 @@ trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl de
   AST.ImportDecl 
     <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) else pure annNothing)
     -- if there is a source annotation the first open and close will mark its location
-    <*> (if isSrc then annJust <$> (annLoc (combineSrcSpans <$> tokenLoc AnnOpen <*> tokenLoc AnnClose) 
+    <*> (if isSrc then annJust <$> (annLoc (tokensLoc [AnnOpen, AnnClose]) 
                                            (pure AST.ImportSource))
                   else pure annNothing)
     <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) else pure annNothing)
     <*> maybe (pure annNothing) (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
-    <*> trfModuleNameL name 
-    <*> maybe (pure annNothing) (\mn -> annJust <$> (annLoc (tokensLoc [AnnAs,AnnVal])
-                                                            (AST.ImportRenaming <$> (annLoc (tokenLoc AnnVal) 
-                                                                                            (AST.nameFromList . fst <$> trfModuleName mn))))) declAs
+    <*> trfModuleName name 
+    <*> maybe (pure annNothing) (\mn -> annJust <$> (trfRenaming mn)) declAs
     <*> trfImportSpecs declHiding
+  where trfRenaming mn
+          = annLoc (tokensLoc [AnnAs,AnnVal])
+                   (AST.ImportRenaming <$> (annLoc (tokenLoc AnnVal) 
+                                           (trfModuleName' mn)))
+  
   
 trfImportSpecs :: Maybe (Bool, Located [LIE RdrName]) -> Trf (AnnMaybe AST.ImportSpec RI)
 trfImportSpecs (Just (True, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecHiding . AnnList . catMaybes) . mapM trfIESpec) l
@@ -80,7 +84,8 @@ trfIESpec' (IEThingAll n)
   = Just <$> (AST.IESpec <$> trfName n <*> (annJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
   = Just <$> (AST.IESpec <$> trfName n
-                         <*> (annJust . noAnn . AST.SubSpecList . AnnList <$> mapM trfName ls))
+                         <*> (annJust <$> annLoc (tokensLoc [AnnOpenP, AnnCloseP]) 
+                                                 (AST.SubSpecList . AnnList <$> mapM trfName ls)))
 trfIESpec' _ = pure Nothing
   
  

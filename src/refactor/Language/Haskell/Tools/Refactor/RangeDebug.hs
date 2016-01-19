@@ -16,6 +16,7 @@ rangeDebug :: TreeDebug e SrcSpan => e SrcSpan -> String
 rangeDebug = treeDebug' shortShowSpan 0
       
 shortShowSpan :: SrcSpan -> String
+shortShowSpan (UnhelpfulSpan _) = "???" 
 shortShowSpan (RealSrcSpan sp) 
   = show (srcSpanStartLine sp) ++ ":" ++ show (srcSpanStartCol sp) 
       ++ "-" ++ show (srcSpanEndLine sp) ++ ":" ++ show (srcSpanEndCol sp)
