@@ -1,5 +1,5 @@
 {-# LANGUAGE PackageImports #-}
-module Package.Import where
+module Module.Import where
 
 import Data.List
 import "base" Data.List

@@ -87,6 +87,7 @@ deriveStructTrav ''MinimalFormula
 deriveStructTrav ''ExprPragma
 deriveStructTrav ''SourceRange
 deriveStructTrav ''Number
+deriveStructTrav ''QuasiQuote
 
 -- Literal
 deriveStructTrav ''Literal

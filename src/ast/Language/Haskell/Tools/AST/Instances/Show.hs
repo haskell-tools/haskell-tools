@@ -81,6 +81,7 @@ deriving instance Show a => Show (MinimalFormula a)
 deriving instance Show a => Show (ExprPragma a)
 deriving instance Show a => Show (SourceRange a)
 deriving instance Show a => Show (Number a)
+deriving instance Show a => Show (QuasiQuote a)
 
 -- Literal
 deriving instance Show a => Show (Literal a)

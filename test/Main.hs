@@ -18,9 +18,9 @@ import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.PrettyPrint
 
 main :: IO ()
-main = do checkCorrectlyPrinted "..\\examples" "Package.Simple"
-          -- checkCorrectlyPrinted "..\\examples" "Package.Export"
-          checkCorrectlyPrinted "..\\examples" "Package.Import"
+main = do checkCorrectlyPrinted "..\\examples" "Module.Simple"
+          -- checkCorrectlyPrinted "..\\examples" "Module.Export"
+          checkCorrectlyPrinted "..\\examples" "Module.Import"
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 

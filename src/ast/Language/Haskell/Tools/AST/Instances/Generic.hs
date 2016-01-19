@@ -75,6 +75,7 @@ deriving instance Generic a => Generic (MinimalFormula a)
 deriving instance Generic a => Generic (ExprPragma a)
 deriving instance Generic a => Generic (SourceRange a)
 deriving instance Generic a => Generic (Number a)
+deriving instance Generic a => Generic (QuasiQuote a)
 
 -- Literal
 deriving instance Generic a => Generic (Literal a)

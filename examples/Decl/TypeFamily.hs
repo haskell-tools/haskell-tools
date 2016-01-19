@@ -1,4 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-module Package.TypeFamily where
+module Decl.TypeFamily where
 
 type family Array :: * -> *

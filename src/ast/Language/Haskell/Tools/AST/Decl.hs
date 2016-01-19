@@ -218,7 +218,7 @@ data TyVar a
               }
            
 data Type a
-  = TyForall { typeBounded :: AnnMaybe TyVar a
+  = TyForall { typeBounded :: AnnList TyVar a
              , typeCtx :: AnnMaybe Context a
              , typeType :: Ann Type a
              } -- ^ Forall types (@ forall x y . type @)
@@ -232,8 +232,8 @@ data Type a
   | TyApp { typeCon :: Ann Type a
           , typeArg :: Ann Type a
           } -- ^ Type application (@ F a @)
-  | TyVar { typeName :: Ann Name a } -- ^ type variable (@ a @)
-  | TyCon { typeName :: Ann Name a } -- ^ type constructor (@ T @)
+  | TyVar { typeName :: Name a } -- ^ type variable (@ a @)
+  | TyCon { typeName :: Name a } -- ^ type constructor (@ T @)
   | TyParen { typeInner :: Ann Type a } -- ^ type surrounded by parentheses (@ (T a) @)
   | TyInfix { typeLeft :: Ann Type a 
             , typeOperator :: Ann Name a
@@ -244,8 +244,13 @@ data Type a
              } -- ^ Type with explicit kind signature (@ a :: * @)
   | TyPromoted { tpPromoted :: Promoted a } -- A promoted data type with @-XDataKinds@ (@ '3 @).
   | TySplice { tsSplice :: Splice a } -- ^ a Template Haskell splice type (@ $(genType) @).
+  | TyQuasiQuote { typeQQ :: QuasiQuote a } -- ^ a Template Haskell quasi-quote type (@ [quoter| ... ] @).
   | TyBang { typeInner :: Ann Type a } -- ^ Strict type marked with "!".
   | TyUnpack { typeInner :: Ann Type a } -- ^ Type marked with UNPACK pragma.
+  | TyNumLit { typeNumLit :: Integer } -- ^ A numeric type literal (as @4096@ in @ ArrPtr 4096 Word8 @) with @-XDataKinds@
+  | TyStrLit { typeStrLit :: String } -- ^ A textual type literal (as @"x"@ in @ Get :: Label "x" @) with @-XDataKinds@
+  | TyWildcard -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
+  | TyNamedWildcard { typeWildcardName :: Name a } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
 
 data Kind a
   = KindStar -- ^ @*@, the kind of types
@@ -355,9 +360,7 @@ data Expr a
   | TypeQuote { quotedName :: Name a } -- ^ @''T@ for template haskell reifying of types
   | BracketExpr { bracket :: Bracket a } -- ^ Template haskell bracket expression
   | Splice { innerExpr :: Ann Expr a } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
-  | QuasiQuote { qqExprName :: Ann Name a
-               , qqExprBody :: Ann QQString a
-               } -- ^ template haskell quasi-quotation: @[$quoter|str]@
+  | QuasiQuoteExpr { exprQQ :: QuasiQuote a } -- ^ template haskell quasi-quotation: @[$quoter|str]@
   | ExprPragma { exprPragma :: ExprPragma a }
   -- Arrows
   | Proc { procPattern :: Ann Pattern a
@@ -425,9 +428,7 @@ data Pattern a
             } -- ^ View pattern (@ f -> Just 1 @)
   -- regular list pattern omitted
   -- xml patterns omitted
-  | QuasiQuotePat { qqPatternName :: Ann Name a
-                  , qqPatternBody :: Ann QQString a
-                  }
+  | QuasiQuotePat { patQQ :: QuasiQuote a }
                   
 -- Field specification of a record pattern
 data PatternField a 
@@ -441,8 +442,13 @@ data PatternField a
 data Splice a
   = IdSplice { spliceId :: Ann Name a } -- ^ A simple name splice
   | ParenSplice { spliceExpr :: Ann Expr a }
+  
+-- | Template haskell quasi-quotation: @[quoter|str]@  
+data QuasiQuote a = QuasiQuote { qqExprName :: Ann Name a
+                               , qqExprBody :: Ann QQString a
+                               } 
         
--- | Template Haskell Quasi-Quotation        
+-- | Template Haskell Quasi-quotation content
 data QQString a
   = QQString { qqString :: String } 
 

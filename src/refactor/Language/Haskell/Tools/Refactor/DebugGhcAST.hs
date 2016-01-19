@@ -24,6 +24,7 @@ import Bag
 import BooleanFormula
 import CoreSyn
 import UniqFM
+import OccName
 
 deriving instance Show a => Show (Located a)
 
@@ -306,8 +307,14 @@ instance Show ClsInst where
   show = showSDocUnsafe . ppr
 instance Show Type where
   show = showSDocUnsafe . ppr
-instance Show RdrName where
+instance Show OccName where
   show = showSDocUnsafe . ppr
+-- instance Show RdrName where
+  -- show = showSDocUnsafe . ppr
+  
+deriving instance Show RdrName
+deriving instance Show Module
+  
 instance Show Name where
   show = showSDocUnsafe . ppr
 instance Show HsTyLit where

@@ -8,6 +8,7 @@ import HsDecls as GHC
 import Name as GHC
 import OccName as GHC
 import ApiAnnotation as GHC
+import FastString as GHC
 
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Decl as AST
@@ -49,8 +50,81 @@ trfKind' (HsExplicitTupleTy _ kinds) = AST.KindTuple . AnnList <$> mapM trfKind 
 trfKind' (HsExplicitListTy _ kinds) = AST.KindList . AnnList <$> mapM trfKind kinds
   
 trfTypeEqs :: [Located (TyFamInstEqn RdrName)] -> Trf (AnnList AST.TypeEqn RI)
-trfTypeEqs = undefined 
+trfTypeEqs = fmap AnnList . mapM trfTypeEq
+
+trfTypeEq :: Located (TyFamInstEqn RdrName) -> Trf (Ann AST.TypeEqn RI)
+trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
+  -> AST.TypeEqn <$> combineTypes name pats <*> trfType rhs
+  where combineTypes :: Located RdrName -> HsTyPats RdrName -> Trf (Ann AST.Type RI)
+        combineTypes name pats 
+          = foldl (\t p -> do typ <- t
+                              annLoc (pure $ combineSrcSpans (annotation typ) (getLoc p)) 
+                                     (AST.TyApp <$> trfType p <*> pure typ)) 
+                  (annLoc (pure $ getLoc name) (AST.TyCon <$> trfName' (unLoc name))) 
+                  (hswb_cts pats)
+                 
+  
+trfType :: Located (HsType RdrName) -> Trf (Ann AST.Type RI)
+trfType = trfLoc trfType'
+
+trfType' :: HsType RdrName -> Trf (AST.Type RI)
+trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
+                                                       <*> trfCtx ctx <*> trfType typ
+trfType' (HsTyVar name) | isRdrTc name = AST.TyCon <$> trfName' name
+trfType' (HsTyVar name) | isRdrTyVar name = AST.TyVar <$> trfName' name
+trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
+trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
+trfType' (HsListTy typ) = AST.TyList <$> trfType typ
+trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
+-- HsBoxedOrConstraintTuple?
+trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple . AnnList <$> mapM trfType typs
+trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple . AnnList <$> mapM trfType typs
+trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfName (snd op) <*> trfType t2
+trfType' (HsParTy typ) = AST.TyParen <$> trfType typ
+trfType' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
+trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
+trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
+trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
+-- HsRecTy
+-- HsCoreTy
+trfType' (HsTyLit (HsNumTy _ int)) = pure $ AST.TyNumLit int
+trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
+trfType' (HsWrapTy _ typ) = trfType' typ
+trfType' HsWildcardTy = pure AST.TyWildcard
+-- not implemented as ghc 7.10.3
+trfType' (HsNamedWildcardTy name) = AST.TyNamedWildcard <$> trfName' name
+
+
+  
+trfBindings :: [Located (HsTyVarBndr RdrName)] -> Trf (AnnList AST.TyVar RI)
+trfBindings = undefined
+  
+trfCtx :: Located (HsContext RdrName) -> Trf (AnnMaybe AST.Context RI)
+trfCtx (L l []) = pure annNothing
+trfCtx (L l [L _ (HsParTy t)]) 
+  = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                       (AST.ContextMulti . AnnList . (:[]) <$> trfAssertion t)
+trfCtx (L l [L _ t]) 
+  = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                       (AST.ContextOne <$> trfAssertion' t)
+trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                                      (AST.ContextMulti . AnnList <$> mapM trfAssertion ctx) 
+  
+  
+trfAssertion :: Located (HsType RdrName) -> Trf (Ann AST.Assertion RI)
+trfAssertion = trfLoc trfAssertion'
+
+trfAssertion' :: HsType RdrName -> Trf (AST.Assertion RI)
+trfAssertion' = undefined
+-- trfAssertion' (HsIParamTy typ) = _
+-- trfAssertion' (HsEqTy t1 t2) = _
   
 createDeclHead :: Located RdrName -> LHsTyVarBndrs RdrName -> Trf (Ann AST.DeclHead RI)
 createDeclHead = undefined
+
+trfQuasiQuotation' :: HsQuasiQuote RdrName -> Trf (AST.QuasiQuote RI)
+trfQuasiQuotation' = undefined
+
+trfSplice' :: HsSplice RdrName -> Trf (AST.Splice RI)
+trfSplice' = undefined
   

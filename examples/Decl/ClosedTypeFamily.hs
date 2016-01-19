@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
-module Package.ClosedTypeFamily where
+module Decl.ClosedTypeFamily where
 
 type family F a where
   F Int  = Bool

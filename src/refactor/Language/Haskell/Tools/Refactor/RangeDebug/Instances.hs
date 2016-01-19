@@ -94,6 +94,7 @@ instance (Generic a, Show a) => TreeDebug MinimalFormula a
 instance (Generic a, Show a) => TreeDebug ExprPragma a
 instance (Generic a, Show a) => TreeDebug SourceRange a
 instance (Generic a, Show a) => TreeDebug Number a
+instance (Generic a, Show a) => TreeDebug QuasiQuote a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a
