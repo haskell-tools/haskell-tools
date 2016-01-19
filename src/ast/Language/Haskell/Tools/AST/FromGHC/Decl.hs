@@ -25,9 +25,9 @@ trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl DataFamily name tyVars kindSig)) -> AST.DataFamilyDecl <$> createDeclHead name tyVars <*> trfKindSig kindSig
   TyClD (FamDecl (FamilyDecl OpenTypeFamily name tyVars kindSig)) -> AST.TypeFamilyDecl <$> createDeclHead name tyVars <*> trfKindSig kindSig
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig)) -> AST.ClosedTypeFamilyDecl <$> createDeclHead name tyVars <*> trfKindSig kindSig <*> trfTypeEqs typeEqs
-  TyClD (SynDecl name vars rhs _) -> undefined
-  TyClD (DataDecl name vars decl _) -> undefined
-  TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) -> undefined
+  -- TyClD (SynDecl name vars rhs _) -> undefined
+  -- TyClD (DataDecl name vars decl _) -> undefined
+  -- TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) -> undefined
 
 trfKindSig :: Maybe (LHsKind RdrName) -> Trf (AnnMaybe AST.KindConstraint RI)
 trfKindSig = trfMaybe (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
@@ -59,7 +59,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
         combineTypes name pats 
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (annotation typ) (getLoc p)) 
-                                     (AST.TyApp <$> trfType p <*> pure typ)) 
+                                     (AST.TyApp <$> pure typ <*> trfType p)) 
                   (annLoc (pure $ getLoc name) (AST.TyCon <$> trfName' (unLoc name))) 
                   (hswb_cts pats)
                  
@@ -120,8 +120,18 @@ trfAssertion' = undefined
 -- trfAssertion' (HsEqTy t1 t2) = _
   
 createDeclHead :: Located RdrName -> LHsTyVarBndrs RdrName -> Trf (Ann AST.DeclHead RI)
-createDeclHead = undefined
+createDeclHead name vars
+  = foldl (\t p -> do typ <- t
+                      annLoc (pure $ combineSrcSpans (annotation typ) (getLoc p)) 
+                             (AST.DHApp typ <$> trfTyVar p)) 
+          (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfName' (unLoc name))) 
+          (hsq_tvs vars)
 
+trfTyVar :: Located (HsTyVarBndr RdrName) -> Trf (Ann AST.TyVar RI)
+trfTyVar var@(L l _) = trfLoc (\case
+  UserTyVar name -> AST.TyVarDecl <$> annLoc (pure l) (trfName' name) <*> pure annNothing
+  KindedTyVar name kind -> AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)) var
+          
 trfQuasiQuotation' :: HsQuasiQuote RdrName -> Trf (AST.QuasiQuote RI)
 trfQuasiQuotation' = undefined
 
