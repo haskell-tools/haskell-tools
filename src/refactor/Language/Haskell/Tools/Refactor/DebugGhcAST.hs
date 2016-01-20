@@ -4,6 +4,8 @@
            #-}
 module Language.Haskell.Tools.Refactor.DebugGhcAST where
 
+import Language.Haskell.Tools.Refactor.RangeDebug
+
 import GHC
 import HsSyn
 import HsDecls
@@ -26,7 +28,8 @@ import CoreSyn
 import UniqFM
 import OccName
 
-deriving instance Show a => Show (Located a)
+instance Show a => Show (Located a) where
+  show (L l a) = "L(" ++ shortShowSpan l ++ ") (" ++ show a ++ ")"
 
 deriving instance Show (ABExport RdrName)
 deriving instance Show (AnnDecl RdrName)

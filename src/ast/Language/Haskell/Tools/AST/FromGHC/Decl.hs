@@ -2,6 +2,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Decl where
 
 import RdrName as GHC
+import Class as GHC
 import HsSyn as GHC
 import SrcLoc as GHC
 import HsDecls as GHC
@@ -33,8 +34,47 @@ trfDecl = trfLoc $ \case
   -- TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
     -- -> AST.DataDecl 
   -- TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
-    -- -> AST.ClassDecl <$> trfCtx ctx <*> 
+    -- -> AST.ClassDecl <$> trfCtx ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
+                     -- <*> createClassBody sigs defs typeFuns typeFunDefs
+  -- InstD inst = 
+  ValD bind -> AST.ValueBinding <$> trfBind bind
+  -- SigD sig =
+  -- DefD def =
+  -- ForD for =
+  -- WarningD warn =
+  -- AnnD ann =
+  -- RuleD rule =
+  -- VecD vec =
+  -- SpliceD splice =
+  -- DocD doc
+  -- QuasiQuoteD qq =
+  -- RoleAnnotD role =  
 
+trfBind :: HsBind RdrName -> Trf (AST.ValueBind RI)
+trfBind (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> trfName id <*> trfExpr expr <*> trfLocalBinds locals
+trfBind (FunBind id isInfix (MG matches _ _ _) _ _ _) = AST.FunBind . AnnList <$> mapM (trfMatch id) matches
+-- TODO
+-- trfBind (PatBind (VarPat id ) rhs _ _ _) = AST.FunBind . AnnList . (:[]) <$> trfRhss
+trfBind (AbsBinds typeVars vars exports _ _) = undefined
+trfBind (PatSynBind psb) = undefined
+  
+trfMatch :: Located RdrName -> Located (Match RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Match RI)
+trfMatch name = trfLoc $ \(Match funid pats typ (GRHSs rhss locBinds))
+  -> AST.Match <$> trfName (maybe name fst funid) <*> (AnnList <$> mapM trfPattern pats) <*> trfMaybe trfType typ 
+               <*> trfRhss rhss <*> trfLocalBinds locBinds
+  
+trfRhss :: [Located (GRHS RdrName (LHsExpr RdrName))] -> Trf (Ann AST.Rhs RI)
+trfRhss = undefined  
+  
+trfLocalBinds :: HsLocalBinds RdrName -> Trf (AnnMaybe AST.LocalBinds RI)
+trfLocalBinds = undefined  
+
+trfPattern :: Located (Pat RdrName) -> Trf (Ann AST.Pattern RI)
+trfPattern = undefined
+
+trfExpr :: Located (HsExpr RdrName) -> Trf (Ann AST.Expr RI)
+trfExpr = undefined
+  
 trfKindSig :: Maybe (LHsKind RdrName) -> Trf (AnnMaybe AST.KindConstraint RI)
 trfKindSig = trfMaybe (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
                                     (fmap AST.KindConstraint $ trfLoc trfKind' k))
@@ -125,6 +165,10 @@ trfAssertion' = undefined
 -- trfAssertion' (HsIParamTy typ) = _
 -- trfAssertion' (HsEqTy t1 t2) = _
   
+trfFunDeps :: [Located (FunDep (Located name))] -> Trf (AnnMaybe AST.FunDeps RI)
+trfFunDeps [] = pure annNothing
+trfFunDeps _ = pure undefined
+  
 createDeclHead :: Located RdrName -> LHsTyVarBndrs RdrName -> Trf (Ann AST.DeclHead RI)
 createDeclHead name vars
   = foldl (\t p -> do typ <- t
@@ -132,7 +176,27 @@ createDeclHead name vars
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfName' (unLoc name))) 
           (hsq_tvs vars)
-
+          
+-- createClassBody :: [LSig RdrName] -> LHsBinds RdrName -> [LFamilyDecl RdrName] 
+                               -- -> [LTyFamDefltEqn RdrName] -> Trf (AnnMaybe AST.ClassBody RI)
+-- createClassBody sigs binds typeFams typeFamDefs 
+  -- = do isThereWhere <- not . isGoodSrcSpan <$> (tokenLoc AnnWhere)
+       -- if isThereWhere 
+         -- then annJust . annLoc (combinedLoc <$> tokenLoc AnnWhere) 
+                               -- (AST.ClassBody <$> )
+         -- else pure annNothing
+  -- where combinedLoc wh = foldl combineSrcSpan wh allLocs
+        -- allLocs = map getLoc sigs ++ map getLoc (toList binds) ++ map getLoc typeFams ++ map getLoc typeFamDefs
+        -- getSigs = mapM trfClassElemSig sigs
+        -- getBinds = mapM trfClassElemSig (toList binds)
+        -- getFams = mapM trfClassElemSig typeFams
+        -- getFamDefs = mapM trfClassElemSig typeFamDefs
+       
+-- trfClassElemSig :: Located (Sig RdrName) -> Trf (Ann AST.ClassElement RI)
+-- trfClassElemSig = trfLoc $ \case
+  -- TypeSig [name] typ _ -> AST.ClsSig <$> trfName name <*> trfType typ
+  -- GenericSig [name] typ _ -> AST.ClsDefSig <$> trfName name <*> trfType typ
+         
 trfTyVar :: Located (HsTyVarBndr RdrName) -> Trf (Ann AST.TyVar RI)
 trfTyVar var@(L l _) = trfLoc (\case
   UserTyVar name -> AST.TyVarDecl <$> annLoc (pure l) (trfName' name) <*> pure annNothing

@@ -55,17 +55,14 @@ data Decl a
   | DerivDecl { declOverlap :: AnnMaybe OverlapPragma a
               , declInstRule :: Ann InstanceRule a
               } -- ^ Standalone deriving declaration (@ deriving instance X T @)
-  | FixityDecl { declAssoc :: Ann Assoc a
-               , declPrecedence :: Ann Precedence a
-               , declOperators :: AnnList Name a
+  | FixityDecl { declFixity :: FixitySignature a 
                } -- ^ Fixity declaration (@ infixl 5 +, - @)
   | DefaultDecl { declTypes :: AnnList Type a
                 , declInfo :: a
                 } -- ^ Default types (@ default (T1, T2) @)
-  | TypeSignature { declName :: Ann Name a
-                  , declType :: Ann Type a
-                  } -- ^ Type signature (@ f :: Int -> Int @)
-  | FunBinding { declFunBind :: Ann FunBind a } -- ^ Function binding (@ f x = 12 @)
+  | TypeSigDecl { declTypeSig :: TypeSignature a 
+                } -- ^ Type signature declaration (@ f :: Int -> Int @)
+  | ValueBinding { declValBind :: ValueBind a } -- ^ Function binding (@ f x = 12 @)
   | ForeignImport { declCallConv :: Ann CallConv a
                   , declSafety :: AnnMaybe Safety a
                   , declName :: Ann Name a
@@ -78,6 +75,19 @@ data Decl a
   | Pragma { declPragma :: TopLevelPragma a } -- ^ top level pragmas
   | SpliceDecl { declExpr :: Ann Expr a } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
        
+-- | A type signature (@ f :: Int -> Int @)
+data TypeSignature a 
+  = TypeSignature { tsName :: Ann Name a
+                  , tsType :: Ann Type a
+                  }     
+                  
+-- | A fixity signature (@ infixl 5 +, - @).
+data FixitySignature a 
+  = FixitySignature { fixityAssoc :: Ann Assoc a
+                    , fixityPrecedence :: Ann Precedence a
+                    , fixityOperators :: AnnList Name a
+                    }
+       
 -- | The list of declarations that can appear in a typeclass
 data ClassBody a
   = ClassBody { cbElements :: AnnList ClassElement a }
@@ -88,7 +98,10 @@ data GadtDeclList a
                  
 -- | Members of a class declaration       
 data ClassElement a
-  = ClsDecl { ceDecl :: Ann Decl a } -- ^ Ordinary declaration: @ f :: A -> B @
+  = ClsSig     { ceTypeSig :: TypeSignature a 
+               } -- ^ Signature: @ f :: A -> B @
+  | ClsDef     { ceBind :: Ann ValueBind a
+               } -- ^ Default binding: @ f x = "aaa" @
   | ClsDataFam { ceCtx :: AnnMaybe Context a
                , ceHead :: Ann DeclHead a
                , ceKind :: AnnMaybe Kind a
@@ -99,9 +112,9 @@ data ClassElement a
   | ClsTypeDef { ceHead :: Ann DeclHead a
                , ceKind :: AnnMaybe Kind a
                } -- ^ Default choice for type synonym: @ type T x = TE @ or @ type instance T x = TE @ 
-  | ClsDefSig { ceName :: Ann Name a
-              , ceType :: Ann Type a
-              } -- ^ Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) => [a] @
+  | ClsDefSig  { ceName :: Ann Name a
+               , ceType :: Ann Type a
+               } -- ^ Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) => [a] @
        
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
 data DeclHead a
@@ -120,7 +133,7 @@ data InstBody a
 
 -- | Declarations inside an instance declaration.
 data InstBodyDecl a
-  = InstBodyNormalDecl { instBodyDeclFunbind :: FunBind a } -- ^ A normal declaration (@ f x = 12 @)
+  = InstBodyNormalDecl { instBodyDeclFunbind :: ValueBind a } -- ^ A normal declaration (@ f x = 12 @)
   | InstBodyTypeDecl { instBodyLhsType :: Ann Type a
                      , instBodyRhsType :: Ann Type a
                      } -- ^ An associated type definition (@ type A X = B @)
@@ -210,7 +223,7 @@ data KindConstraint a
 ----------------------------------------------------
 -- Types -------------------------------------------
 ----------------------------------------------------
-   
+      
 -- | Type variable declaration
 data TyVar a 
   = TyVarDecl { tyVarName :: Ann Name a
@@ -302,7 +315,7 @@ data Expr a
   | Lambda { exprBindings :: AnnList Pattern a -- ^ at least one
            , exprInner :: Ann Expr a
            } -- ^ Lambda expression (@ \a b -> a + b @)
-  | Let { exprFunBind :: AnnList FunBind a -- ^ nonempty
+  | Let { exprFunBind :: AnnList ValueBind a -- ^ nonempty
         , exprInner :: Ann Expr a
         } -- ^ Local binding (@ let x = 2; y = 3 in e x y @)
   | If { exprCond :: Ann Expr a
@@ -378,7 +391,7 @@ data Stmt a
              , stmtBounded :: Ann Expr a
              } -- ^ Binding statement (@ x <- action @)
   | ExprStmt { stmtExpr :: Expr a } -- ^ Non-binding statement (@ action @)
-  | LetStmt  { stmtBinds :: Ann Binds a } -- ^ Let statement (@ let x = 3; y = 4 @)
+  | LetStmt  { stmtBinds :: Ann LocalBinds a } -- ^ Let statement (@ let x = 3; y = 4 @)
   | RecStmt  { stmtRecBinds :: AnnList Stmt a } -- ^ A recursive binding group for arrows (@ rec b <- f a c; c <- f b a @)
          
 -- | List comprehension statement
@@ -392,9 +405,15 @@ data CompStmt a
                } -- ^ Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
                  -- Note: byExpr or usingExpr must have a value
           
--- | Function binding for top-level and local bindings
-data FunBind a
-  = FunBind { funBindMatches :: AnnList Match a }                    
+-- | Value binding for top-level and local bindings
+data ValueBind a
+  = SimpleBind { valBindName :: Ann Name a
+               , valBindRhs :: Ann Expr a  
+               , valBindLocals :: AnnMaybe LocalBinds a
+               } -- ^ Non-function binding (@ v = "12" @)  
+  -- TODO: use one name for a function instead of names in each match
+  | FunBind    { funBindMatches :: AnnList Match a 
+               } -- ^ Function binding (@ f 0 = 1; f x = x @). All matches must have the same name.
 
 -- | Representation of patterns for pattern bindings
 data Pattern a
@@ -452,25 +471,30 @@ data QuasiQuote a = QuasiQuote { qqExprName :: Ann Name a
 data QQString a
   = QQString { qqString :: String } 
 
--- | Clause of function binding   
+-- | Clause of function (or value) binding   
 data Match a
   = Match { matchName :: Ann Name a
           , matchArgs :: AnnList Pattern a
           , matchType :: AnnMaybe Type a
           , matchRhs :: Ann Rhs a
-          , matchBinds :: AnnMaybe Binds a
+          , matchBinds :: AnnMaybe LocalBinds a
           } 
     
 -- | Clause of case expression          
 data Alt a
   = Alt { altPattern :: Ann Pattern a
         , altRhs :: Ann Rhs a
-        , altBinds :: AnnMaybe Binds a
+        , altBinds :: AnnMaybe LocalBinds a
         }
 
 -- | Local bindings attached to a declaration (@ where x = 42 @)             
-data Binds a
-  = DeclBindings { bindingDecls :: AnnList Decl a }
+data LocalBinds a
+  = LocalBinds { localBinds :: AnnList LocalBind a }
+  
+data LocalBind a 
+  = LocalValBind { localVal :: ValueBind a }
+  | LocalSignature { localSig :: TypeSignature a }
+  | LocalFixity { localFixity :: FixitySignature a }
    
 data Rhs a
   = UnguardedRhs { rhsExpr :: Expr a }
