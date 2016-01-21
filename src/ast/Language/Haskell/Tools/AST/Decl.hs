@@ -4,6 +4,7 @@ import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Literals
 
+-- | Haskell declaration
 data Decl a
   = TypeDecl { declHead :: Ann DeclHead a
              , declType :: Ann Type a
@@ -157,7 +158,8 @@ data GadtDecl a
              }
              
 data GadtField a
-  = GadtNormalField { gadtFieldType :: Ann Type a }
+  = GadtNormalField { gadtFieldType :: Ann Type a 
+                    } -- ^ Normal GADT field type (@ Int @)
   | GadtNamedField { gadtFieldName :: Ann Name a
                    , gadtFieldType :: Ann Type a
                    } -- ^ Named GADT field (@ { val :: Int } @)
@@ -184,6 +186,7 @@ data ConDecl a
                  , icdRhs :: Ann Type a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
   
+-- | Field declaration (@ fld :: Int @)
 data FieldDecl a
   = FieldDecl { fieldNames :: AnnList Name a
               , fieldType :: Ann Type a
@@ -202,6 +205,7 @@ data InstanceRule a
                  }
   | InstanceParen { irRule :: Ann InstanceRule a }
 
+-- | The specification of the class instance declaration
 data InstanceHead a
   = InstanceHeadCon { ihConName :: Ann Name a } -- ^ Type or class name
   | InstanceHeadInfix { ihLeftOp :: Ann Type a
@@ -212,13 +216,15 @@ data InstanceHead a
                     , ihType :: Ann Type a
                     } -- ^ Application to one more type
         
+-- | Type equations as found in closed type families (@ T A = S @)
 data TypeEqn a
   = TypeEqn { teLhs :: Ann Type a
             , teRhs :: Ann Type a
-            } -- ^ Type equations as found in closed type families (@ T A = S @)
+            }
   
+-- | Kind constraint (@ :: * -> * @)
 data KindConstraint a 
-  = KindConstraint { kindConstr :: Ann Kind a } -- ^ Kind constraint (@ :: * -> * @)
+  = KindConstraint { kindConstr :: Ann Kind a }
 
 ----------------------------------------------------
 -- Types -------------------------------------------
@@ -229,7 +235,8 @@ data TyVar a
   = TyVarDecl { tyVarName :: Ann Name a
               , tyVarKind :: AnnMaybe KindConstraint a
               }
-           
+
+-- | Haskell types
 data Type a
   = TyForall { typeBounded :: AnnList TyVar a
              , typeCtx :: AnnMaybe Context a
@@ -265,6 +272,7 @@ data Type a
   | TyWildcard -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
   | TyNamedWildcard { typeWildcardName :: Name a } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
 
+-- | Haskell kinds
 data Kind a
   = KindStar -- ^ @*@, the kind of types
   | KindUnbox -- ^ @#@, the kind of unboxed types
@@ -385,7 +393,8 @@ data Expr a
              }
   | LamCase { exprAlts :: AnnList Alt a } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
   -- XML expressions omitted
-          
+        
+-- | Normal monadic statements
 data Stmt a
   = BindStmt { stmtPattern :: Ann Pattern a
              , stmtBounded :: Ann Expr a
@@ -491,12 +500,14 @@ data Alt a
 data LocalBinds a
   = LocalBinds { localBinds :: AnnList LocalBind a }
   
+-- | Bindings that are enabled in local blocks (where or let).
 data LocalBind a 
   = LocalValBind { localVal :: ValueBind a }
   -- TODO: check that no other signature can be inside a local binding
   | LocalSignature { localSig :: TypeSignature a }
   | LocalFixity { localFixity :: FixitySignature a }
    
+-- | Right hand side of a value binding or a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
 data Rhs a
   = UnguardedRhs { rhsExpr :: Ann Expr a }
   | GuardedRhss { rhsGuards :: AnnList GuardedRhs a }
@@ -515,6 +526,7 @@ data RhsGuard a
   | GuardLet   { guardBinds :: AnnList LocalBind a }
   | GuardCheck { guardCheck :: Ann Expr a }
                
+-- Field update expressions
 data FieldUpdate a 
   = NormalFieldUpdate { fieldName :: Ann Name a
                       , fieldValue :: Ann Expr a
@@ -560,7 +572,8 @@ data Annotation a
                    , annotateExpr :: Ann Expr a
                    }
   | ModuleAnnotation { annotateExpr :: Ann Expr a }
-         
+
+-- | Formulas of minimal annotations declaring which functions should be defined.
 data MinimalFormula a
   = MinimalName { minimalName :: Name a }
   | MinimalParen { minimalInner :: Ann MinimalFormula a }
