@@ -3,9 +3,12 @@ module Language.Haskell.Tools.AST.FromGHC.Utils where
 
 import Control.Monad.Reader
 import Data.Maybe
+import Data.Function
+import Data.List
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
+import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import ApiAnnotation
 import SrcLoc
 import HsSyn
@@ -62,3 +65,16 @@ uniqueTokenAnywhere keyw = fromMaybe noSrcSpan <$> (getKeywordAnywhere keyw <$> 
         
 -- | No annotation for a part of the AST
 noAnn = Ann noSrcSpan
+
+collectLocs :: [Located e] -> RI
+collectLocs = foldl1 combineSrcSpans . map getLoc
+
+collectAnnots :: [Ann e RI] -> RI
+collectAnnots = foldl1 combineSrcSpans . map annotation
+
+orderDefs :: [Ann e RI] -> [Ann e RI]
+orderDefs = sortBy (compare `on` ordSrcSpan . annotation)
+
+takeAnnot :: (a i -> b i) -> Trf (Ann a i) -> Trf (Ann b i)
+takeAnnot f at = (\(Ann i a) -> Ann i (f a)) <$> at
+

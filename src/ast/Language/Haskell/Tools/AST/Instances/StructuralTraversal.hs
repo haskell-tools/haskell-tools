@@ -68,14 +68,13 @@ deriveStructTrav ''Assertion
 deriveStructTrav ''Expr
 deriveStructTrav ''Stmt
 deriveStructTrav ''CompStmt
-deriveStructTrav ''FunBind
+deriveStructTrav ''ValueBind
 deriveStructTrav ''Pattern
 deriveStructTrav ''PatternField
 deriveStructTrav ''Splice
 deriveStructTrav ''QQString
 deriveStructTrav ''Match
 deriveStructTrav ''Alt
-deriveStructTrav ''Binds
 deriveStructTrav ''Rhs
 deriveStructTrav ''GuardedRhs
 deriveStructTrav ''FieldUpdate
@@ -88,6 +87,11 @@ deriveStructTrav ''ExprPragma
 deriveStructTrav ''SourceRange
 deriveStructTrav ''Number
 deriveStructTrav ''QuasiQuote
+deriveStructTrav ''RhsGuard
+deriveStructTrav ''LocalBind
+deriveStructTrav ''LocalBinds
+deriveStructTrav ''FixitySignature
+deriveStructTrav ''TypeSignature
 
 -- Literal
 deriveStructTrav ''Literal

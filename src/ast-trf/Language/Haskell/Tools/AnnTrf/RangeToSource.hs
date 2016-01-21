@@ -8,6 +8,7 @@ import Data.Map
 import Data.Monoid
 import Control.Monad.State
 import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
@@ -35,14 +36,6 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
         takeSpan' start end (sb, taken) | start < end && not (atEnd sb)
           = let (c,rem) = nextChar sb in takeSpan' (advanceSrcLoc start c) end (rem, c:taken)
         takeSpan' _ _ (rem, taken) = (rem, taken)
-        
-newtype OrdSrcSpan = OrdSrcSpan RealSrcSpan
-  deriving Eq
-
-instance Ord OrdSrcSpan where
-  compare (OrdSrcSpan rsp1)  (OrdSrcSpan rsp2) 
-    = compare (realSrcSpanStart rsp1) (realSrcSpanStart rsp2)
-        `mappend` compare (realSrcSpanEnd rsp1) (realSrcSpanEnd rsp2)
         
 applyFragments :: StructuralTraversable node => [String] -> Ann node RangeTemplate -> Ann node SourceTemplate
 applyFragments srcs = flip evalState srcs

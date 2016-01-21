@@ -493,17 +493,27 @@ data LocalBinds a
   
 data LocalBind a 
   = LocalValBind { localVal :: ValueBind a }
+  -- TODO: check that no other signature can be inside a local binding
   | LocalSignature { localSig :: TypeSignature a }
   | LocalFixity { localFixity :: FixitySignature a }
    
 data Rhs a
-  = UnguardedRhs { rhsExpr :: Expr a }
+  = UnguardedRhs { rhsExpr :: Ann Expr a }
   | GuardedRhss { rhsGuards :: AnnList GuardedRhs a }
-               
+      
+-- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)      
 data GuardedRhs a
-  = GuardedRhs { guardStmts :: AnnList Stmt a
+  = GuardedRhs { guardStmts :: AnnList RhsGuard a -- ^ Guards: @ Just v <- x, v > 1 @. Cannot be empty.
                , guardExpr :: Ann Expr a
                } 
+
+-- | Pattern bindings and expressions of guards
+data RhsGuard a
+  = GuardBind  { guardPat :: Ann Pattern a
+               , guardRhs :: Ann Expr a
+               }
+  | GuardLet   { guardBinds :: AnnList LocalBind a }
+  | GuardCheck { guardCheck :: Ann Expr a }
                
 data FieldUpdate a 
   = NormalFieldUpdate { fieldName :: Ann Name a

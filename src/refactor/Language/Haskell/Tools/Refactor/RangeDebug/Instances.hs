@@ -75,14 +75,13 @@ instance (Generic a, Show a) => TreeDebug Assertion a
 instance (Generic a, Show a) => TreeDebug Expr a
 instance (Generic a, Show a) => TreeDebug Stmt a
 instance (Generic a, Show a) => TreeDebug CompStmt a
-instance (Generic a, Show a) => TreeDebug FunBind a
+instance (Generic a, Show a) => TreeDebug ValueBind a
 instance (Generic a, Show a) => TreeDebug Pattern a
 instance (Generic a, Show a) => TreeDebug PatternField a
 instance (Generic a, Show a) => TreeDebug Splice a
 instance (Generic a, Show a) => TreeDebug QQString a
 instance (Generic a, Show a) => TreeDebug Match a
 instance (Generic a, Show a) => TreeDebug Alt a
-instance (Generic a, Show a) => TreeDebug Binds a
 instance (Generic a, Show a) => TreeDebug Rhs a
 instance (Generic a, Show a) => TreeDebug GuardedRhs a
 instance (Generic a, Show a) => TreeDebug FieldUpdate a
@@ -95,6 +94,11 @@ instance (Generic a, Show a) => TreeDebug ExprPragma a
 instance (Generic a, Show a) => TreeDebug SourceRange a
 instance (Generic a, Show a) => TreeDebug Number a
 instance (Generic a, Show a) => TreeDebug QuasiQuote a
+instance (Generic a, Show a) => TreeDebug RhsGuard a
+instance (Generic a, Show a) => TreeDebug LocalBind a
+instance (Generic a, Show a) => TreeDebug LocalBinds a
+instance (Generic a, Show a) => TreeDebug FixitySignature a
+instance (Generic a, Show a) => TreeDebug TypeSignature a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a

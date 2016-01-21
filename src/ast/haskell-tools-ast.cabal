@@ -30,6 +30,7 @@ library
                      , Language.Haskell.Tools.AST.FromGHC.Base
                      , Language.Haskell.Tools.AST.FromGHC.Utils
                      , Language.Haskell.Tools.AST.FromGHC.Monad
+                     , Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
   -- other-modules:       
   other-extensions:    CPP
                      , LambdaCase
