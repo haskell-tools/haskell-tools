@@ -56,10 +56,9 @@ trfBind :: Located (HsBind RdrName) -> Trf (Ann AST.ValueBind RI)
 trfBind = trfLoc trfBind'
   
 trfBind' :: HsBind RdrName -> Trf (AST.ValueBind RI)
-trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> trfName id <*> trfExpr expr <*> trfWhereLocalBinds locals
+trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> (takeAnnot AST.VarPat (trfName id)) <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) <*> trfWhereLocalBinds locals
 trfBind' (FunBind id isInfix (MG matches _ _ _) _ _ _) = AST.FunBind . AnnList <$> mapM (trfMatch id) matches
--- TODO
--- trfBind (PatBind (VarPat id ) rhs _ _ _) = AST.FunBind . AnnList . (:[]) <$> trfRhss
+trfBind' (PatBind pat (GRHSs rhs locals) _ _ _) = AST.SimpleBind <$> trfPattern pat <*> trfRhss rhs <*> trfWhereLocalBinds locals
 trfBind' (AbsBinds typeVars vars exports _ _) = undefined
 trfBind' (PatSynBind psb) = undefined
   

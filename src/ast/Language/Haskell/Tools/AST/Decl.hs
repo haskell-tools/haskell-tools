@@ -407,8 +407,8 @@ data CompStmt a
           
 -- | Value binding for top-level and local bindings
 data ValueBind a
-  = SimpleBind { valBindName :: Ann Name a
-               , valBindRhs :: Ann Expr a  
+  = SimpleBind { valBindPat :: Ann Pattern a
+               , valBindRhs :: Ann Rhs a  
                , valBindLocals :: AnnMaybe LocalBinds a
                } -- ^ Non-function binding (@ v = "12" @)  
   -- TODO: use one name for a function instead of names in each match
