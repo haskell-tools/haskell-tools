@@ -176,7 +176,6 @@ trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> (annLoc (tokenLoc AnnDo) (pure AST.D
                                         <*> (AnnList <$> mapM trfDoStmt stmts)
 trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> (annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)) 
                                          <*> (AnnList <$> mapM trfDoStmt stmts)
--- TODO: list comprehension blocks
 trfExpr' (HsDo ListComp stmts _)
   = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
 trfExpr' (HsDo MonadComp stmts _)
@@ -222,10 +221,16 @@ trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
   = AnnList <$> mapM (fmap ((\lcb -> Ann (collectAnnots $ fromAnnList (AST.compStmts lcb)) lcb) 
                                . AST.ListCompBody . AnnList . concat) 
                        . mapM trfListCompStmt . (\(ParStmtBlock stmts _ _) -> stmts)) blocks
+trfListCompStmts others 
+  = AnnList . (:[]) <$> annLoc (collectAnnots <$> stmts) (AST.ListCompBody . AnnList <$> stmts) 
+  where stmts = concat <$> mapM trfListCompStmt others
 
 trfListCompStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf [Ann AST.CompStmt RI]
-trfListCompStmt (L _ trst@(TransStmt { trS_stmts = stmts })) 
+trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
   = (++) <$> (concat <$> mapM trfListCompStmt stmts) <*> ((:[]) <$> extractActualStmt trst)
+-- last statement is extracted
+trfListCompStmt (unLoc -> LastStmt _ _) = pure []
+trfListCompStmt other = (:[]) <$> takeAnnot AST.CompStmt (trfDoStmt other)
   
 extractActualStmt :: Stmt RdrName (LHsExpr RdrName) -> Trf (Ann AST.CompStmt RI)
 extractActualStmt = \case
@@ -238,7 +243,8 @@ extractActualStmt = \case
                       <$> tokensLoc [AnnThen, AnnBy])
   
 getLastStmt :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Located (HsExpr RdrName)
-getLastStmt = undefined
+getLastStmt (L _ (LastStmt body _) : rest) = body
+getLastStmt (_ : rest) = getLastStmt rest
   
 trfFieldUpdates :: HsRecordBinds RdrName -> Trf (AnnList AST.FieldUpdate RI)
 trfFieldUpdates (HsRecFields fields dotdot) 

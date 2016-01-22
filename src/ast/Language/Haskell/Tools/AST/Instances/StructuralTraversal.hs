@@ -92,6 +92,8 @@ deriveStructTrav ''LocalBind
 deriveStructTrav ''LocalBinds
 deriveStructTrav ''FixitySignature
 deriveStructTrav ''TypeSignature
+deriveStructTrav ''ListCompBody
+deriveStructTrav ''TupSecElem
 
 -- Literal
 deriveStructTrav ''Literal

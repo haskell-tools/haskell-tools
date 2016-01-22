@@ -6,6 +6,7 @@ import DynFlags
 import GHC.Paths ( libdir )
 
 import Control.Monad.IO.Class
+import Control.Monad
 import Data.Maybe
 import Test.HUnit hiding (test)
 import System.IO
@@ -17,14 +18,25 @@ import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.PrettyPrint
 
-main :: IO ()
-main = do checkCorrectlyPrinted "..\\examples" "Module.Simple"
-          checkCorrectlyPrinted "..\\examples" "Module.Export"
-          checkCorrectlyPrinted "..\\examples" "Module.Import"
-          checkCorrectlyPrinted "..\\examples" "Decl.TypeFamily"
-          checkCorrectlyPrinted "..\\examples" "Decl.DataFamily"
-          checkCorrectlyPrinted "..\\examples" "Decl.ClosedTypeFamily"
-          checkCorrectlyPrinted "..\\examples" "Decl.TypeSynonym"
+main :: IO Counts
+main = runTestTT $ TestList $ map makeReprintTest 
+        [ "Module.Simple"
+        , "Module.Export"
+        , "Module.Import"
+        , "Decl.TypeFamily"
+        , "Decl.DataFamily"
+        , "Decl.ClosedTypeFamily"
+        , "Decl.TypeSynonym"
+        , "Expr.Operator"
+        , "Expr.Negate"
+        , "Expr.ListComp"
+        , "Expr.ParListComp"
+        , "Expr.Sections"
+        , "Pattern.Constructor"
+        ]
+       
+makeReprintTest :: String -> Test       
+makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "..\\examples" mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 

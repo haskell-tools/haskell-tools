@@ -86,6 +86,8 @@ deriving instance Show a => Show (LocalBind a)
 deriving instance Show a => Show (LocalBinds a)
 deriving instance Show a => Show (FixitySignature a)
 deriving instance Show a => Show (TypeSignature a)
+deriving instance Show a => Show (ListCompBody a)
+deriving instance Show a => Show (TupSecElem a)
 
 -- Literal
 deriving instance Show a => Show (Literal a)

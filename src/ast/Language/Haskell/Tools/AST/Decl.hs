@@ -418,7 +418,7 @@ data ListCompBody a
          
 -- | List comprehension statement
 data CompStmt a
-  = CompStmt   { compStmt :: Ann Stmt a } -- ^ Normal monadic statement of a list comprehension
+  = CompStmt   { compStmt :: Stmt a } -- ^ Normal monadic statement of a list comprehension
   | ThenStmt   { thenExpr :: Ann Expr a 
                , byExpr :: AnnMaybe Expr a
                } -- ^ Then statements by @TransformListComp@ (@ then sortWith by (x + y) @)
