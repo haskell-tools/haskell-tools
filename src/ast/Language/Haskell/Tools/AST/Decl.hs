@@ -309,13 +309,15 @@ data Assertion a
                  
 -- | Haskell expressions
 data Expr a
-  = Var { exprName :: Ann Name a } -- ^ A variable (@ a @)
-  | Con { exprName :: Ann Name a } -- ^ Data constructor (@Point@ in @Point 1 2@)
-  | Lit { exprLit :: Ann Literal a } -- ^ Primitive literal
+  = Var { exprName :: Name a } -- ^ A variable or a data constructor (@ a @)
+  | Lit { exprLit :: Literal a } -- ^ Primitive literal
   | InfixApp { exprLhs :: Ann Expr a
              , exprOperator :: Ann Name a
              , exprRhs :: Ann Expr a
              } -- ^ Infix operator application (@ a + b @)
+  | PrefixApp { exprOperator :: Ann Name a
+              , exprRhs :: Ann Expr a
+              } -- ^ Prefix operator application (@ -x @)
   | App { exprFun :: Ann Expr a
         , exprArg :: Ann Expr a
         } -- ^ Function application (@ f 4 @)
@@ -323,7 +325,7 @@ data Expr a
   | Lambda { exprBindings :: AnnList Pattern a -- ^ at least one
            , exprInner :: Ann Expr a
            } -- ^ Lambda expression (@ \a b -> a + b @)
-  | Let { exprFunBind :: AnnList ValueBind a -- ^ nonempty
+  | Let { exprFunBind :: AnnList LocalBind a -- ^ nonempty
         , exprInner :: Ann Expr a
         } -- ^ Local binding (@ let x = 2; y = 3 in e x y @)
   | If { exprCond :: Ann Expr a
@@ -340,9 +342,9 @@ data Expr a
        } -- ^ Do-notation expressions (@ do x <- act1; act2 @)
   | Tuple { tupleElems :: AnnList Expr a } -- ^ Tuple expression (@ (e1, e2, e3) @)
   | UnboxedTuple { tupleElems :: AnnList Expr a } -- ^ Unboxed tuple expression (@ (# e1, e2, e3 #) @)
-  | TupleSection { tupleSectionElems :: AnnList (AnnMaybe Expr) a }
-    -- ^ Tuple section, enabled with @TupleSections@ (@ (a,,b) @)
-  | BoxedTupleSection { tupleSectionElems :: AnnList (AnnMaybe Expr) a }
+  | TupleSection { tupleSectionElems :: AnnList TupSecElem a }
+    -- ^ Tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
+  | UnboxedTupleSection { tupleSectionElems :: AnnList TupSecElem a }
   | List { listElems :: AnnList Expr a } -- ^ List expression: @[1,2,3]@
   | ParArray { listElems :: AnnList Expr a } -- ^ Parallel array expression: @[: 1,2,3 :]@
   | Paren { exprInner :: Ann Expr a }
@@ -352,27 +354,26 @@ data Expr a
   | RightSection { exprOperator :: Ann Name a
                  , exprRhs :: Ann Expr a
                  } -- ^ Right operator section: @(+1)@
-  | RecExpr { exprRecName :: Ann Expr a
-            , exprRecFields :: AnnList FieldUpdate a
-            } -- ^ Record value construction or update: @p1 { x = 3, y = -2 }@
+  | RecCon { exprRecName :: Ann Name a
+           , exprRecFields :: AnnList FieldUpdate a
+           } -- ^ Record value construction: @Point { x = 3, y = -2 }@
+  | RecUpdate { exprRecBase :: Ann Expr a
+              , exprRecFields :: AnnList FieldUpdate a
+              } -- ^ Record value  update: @p1 { x = 3, y = -2 }@
   | Enum { enumFrom :: Ann Expr a
          , enumThen :: AnnMaybe Expr a
          , enumTo :: AnnMaybe Expr a
-         , exprInfo :: a
          } -- ^ Enumeration expression (@ [1,3..10] @)
   | ParArrayEnum { parEnumFrom :: Ann Expr a
                  , parEnumThen :: AnnMaybe Expr a
                  , parEnumTo :: Ann Expr a
                  } -- ^ Parallel array enumeration (@ [: 1,3 .. 10 :] @)
   | ListComp { compExpr :: Ann Expr a
-             , compBody :: AnnList CompStmt a
-             } -- ^ List comprehension (@  @)
-  | ParListComp { compExpr :: Ann Expr a
-                , parCompBody :: AnnList (AnnList CompStmt) a
-                } -- ^ Parallel list comprehension: @ [ (x, y) | x <- xs | y <- ys ] @
+             , compBody :: AnnList ListCompBody a -- ^ Can only have 1 element without @ParallelListComp@
+             } -- ^ List comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
   | ParArrayComp { compExpr :: Ann Expr a
-                 , parCompBody :: AnnList (AnnList CompStmt) a
-                 } -- ^ List comprehension  
+                 , parCompBody :: AnnList ListCompBody a
+                 } -- ^ Parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
   | TypeSig { exprInner :: Ann Expr a
             , exprSig :: Ann Type a
             } -- ^ Explicit type signature (@ x :: Int @)
@@ -380,7 +381,7 @@ data Expr a
   | VarQuote { quotedName :: Name a } -- ^ @'x@ for template haskell reifying of expressions
   | TypeQuote { quotedName :: Name a } -- ^ @''T@ for template haskell reifying of types
   | BracketExpr { bracket :: Bracket a } -- ^ Template haskell bracket expression
-  | Splice { innerExpr :: Ann Expr a } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
+  | Splice { innerExpr :: Splice a } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
   | QuasiQuoteExpr { exprQQ :: QuasiQuote a } -- ^ template haskell quasi-quotation: @[$quoter|str]@
   | ExprPragma { exprPragma :: ExprPragma a }
   -- Arrows
@@ -394,14 +395,26 @@ data Expr a
   | LamCase { exprAlts :: AnnList Alt a } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
   -- XML expressions omitted
         
+data TupSecElem a
+  = Present { tupSecExpr :: Expr a 
+            } -- ^ An existing element in a tuple section
+  | Missing -- ^ A missing element in a tuple section
+        
 -- | Normal monadic statements
 data Stmt a
   = BindStmt { stmtPattern :: Ann Pattern a
              , stmtBounded :: Ann Expr a
              } -- ^ Binding statement (@ x <- action @)
-  | ExprStmt { stmtExpr :: Expr a } -- ^ Non-binding statement (@ action @)
-  | LetStmt  { stmtBinds :: Ann LocalBinds a } -- ^ Let statement (@ let x = 3; y = 4 @)
-  | RecStmt  { stmtRecBinds :: AnnList Stmt a } -- ^ A recursive binding group for arrows (@ rec b <- f a c; c <- f b a @)
+  | ExprStmt { stmtExpr :: Expr a 
+             } -- ^ Non-binding statement (@ action @)
+  | LetStmt  { stmtBinds :: AnnList LocalBind a 
+             } -- ^ Let statement (@ let x = 3; y = 4 @)
+  | RecStmt  { stmtRecBinds :: AnnList Stmt a 
+             } -- ^ A recursive binding group for arrows (@ rec b <- f a c; c <- f b a @)
+        
+-- | Body of a list comprehension: (@ | x <- [1..10] @)
+data ListCompBody a
+  = ListCompBody { compStmts :: AnnList CompStmt a } 
          
 -- | List comprehension statement
 data CompStmt a
@@ -412,7 +425,7 @@ data CompStmt a
   | GroupStmt  { byExpr :: AnnMaybe Expr a
                , usingExpr :: AnnMaybe Expr a
                } -- ^ Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
-                 -- Note: byExpr or usingExpr must have a value
+                 -- Note: either byExpr or usingExpr must have a value
           
 -- | Value binding for top-level and local bindings
 data ValueBind a
@@ -438,6 +451,7 @@ data Pattern a
   | TuplePat { patternElems :: AnnList Pattern a } -- ^ Tuple pattern (@ (x,y) @)
   | UnboxTuplePat { patternElems :: AnnList Pattern a } -- ^ Unboxed tuple pattern (@ (# x, y #) @)
   | ListPat { patternElems :: AnnList Pattern a } -- ^ List pattern (@ [1,2,a,x] @)
+  | ParArrPat { patternElems :: AnnList Pattern a } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
   | ParenPat { patternInner :: Ann Pattern a } -- ^ Parenthesised patterns
   | RecPat { patternName :: Ann Name a
            , patternFields :: AnnList PatternField a
@@ -445,7 +459,7 @@ data Pattern a
   | AsPat { patternName :: Ann Name a
           , patternInner :: Ann Pattern a
           } -- ^ As-pattern (explicit name binding) (@ ls\@(hd:_) @)
-  | WildPat { patternInfo :: a } -- ^ Wildcard pattern: (@ _ @)
+  | WildPat -- ^ Wildcard pattern: (@ _ @)
   | IrrPat { patternInner :: Ann Pattern a } -- ^ Irrefutable pattern (@ ~(x:_) @)
   | BangPat { patternInner :: Ann Pattern a } -- ^ Bang pattern (@ !x @)
   | TypeSigPat { patternInner :: Ann Pattern a
@@ -456,6 +470,7 @@ data Pattern a
             } -- ^ View pattern (@ f -> Just 1 @)
   -- regular list pattern omitted
   -- xml patterns omitted
+  | SplicePat { patternSplice :: Splice a }
   | QuasiQuotePat { patQQ :: QuasiQuote a }
                   
 -- Field specification of a record pattern
@@ -532,7 +547,7 @@ data FieldUpdate a
                       , fieldValue :: Ann Expr a
                       } -- ^ Update of a field (@ x = 1 @)
   | FieldPun { fieldUpdateName :: Name a } -- ^ Update the field to the value of the same name (@ x @)
-  | FieldWildcard -- ^ Update the fields of the bounded names to their values (@ .. @)
+  | FieldWildcard -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last update. Cannot be used in a record update expression.
                
 -- | Template Haskell bracket expressions
 data Bracket a

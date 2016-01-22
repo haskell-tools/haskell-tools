@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase 
+           , ViewPatterns
+             #-}
 module Language.Haskell.Tools.AST.FromGHC.Decl where
 
 import RdrName as GHC
@@ -12,6 +14,9 @@ import ApiAnnotation as GHC
 import FastString as GHC
 import BasicTypes as GHC
 import Bag as GHC
+
+import Control.Monad.Reader
+import Data.Maybe
 
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Base as AST
@@ -116,10 +121,136 @@ trfFixitySig (FixitySig names (Fixity prec dir))
         moveBackOneCol (UnhelpfulLoc fs) = UnhelpfulLoc fs
         
 trfPattern :: Located (Pat RdrName) -> Trf (Ann AST.Pattern RI)
-trfPattern = undefined
-
+trfPattern = trfLoc $ \case
+  WildPat _ -> pure AST.WildPat
+  VarPat name -> AST.VarPat <$> trfName' name
+  LazyPat pat -> AST.IrrPat <$> trfPattern pat
+  AsPat name pat -> AST.AsPat <$> trfName name <*> trfPattern pat
+  ParPat pat -> AST.ParenPat <$> trfPattern pat
+  BangPat pat -> AST.BangPat <$> trfPattern pat
+  ListPat pats _ _ -> AST.ListPat . AnnList <$> mapM trfPattern pats
+  TuplePat pats Boxed _ -> AST.TuplePat . AnnList <$> mapM trfPattern pats
+  PArrPat pats _ -> AST.ParArrPat . AnnList <$> mapM trfPattern pats
+  ConPatIn name _ -> AST.VarPat <$> trfName' (unLoc name)
+  ViewPat expr pat _ -> AST.ViewPat <$> trfExpr expr <*> trfPattern pat
+  SplicePat splice -> AST.SplicePat <$> trfSplice' splice
+  QuasiQuotePat qq -> AST.QuasiQuotePat <$> trfQuasiQuotation' qq
+  LitPat lit -> AST.LitPat <$> trfLiteral' lit
+  SigPatIn pat (hswb_cts -> typ) -> AST.TypeSigPat <$> trfPattern pat <*> trfType typ
+  -- NPat, NPlusKPat, CoPat?
+  
 trfExpr :: Located (HsExpr RdrName) -> Trf (Ann AST.Expr RI)
-trfExpr = undefined
+trfExpr = trfLoc trfExpr'
+
+trfExpr' :: HsExpr RdrName -> Trf (AST.Expr RI)
+trfExpr' (HsVar name) = AST.Var <$> trfName' name
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var . AST.nameFromList . fst <$> trfNameStr (unpackFS ip)
+trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> trfOverloadedLit val
+trfExpr' (HsLit val) = AST.Lit <$> trfLiteral' val
+trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
+  = AST.Lambda <$> (AnnList <$> mapM trfPattern pats) <*> trfExpr expr
+trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase . AnnList <$> mapM trfAlt matches
+trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
+trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
+  = AST.InfixApp <$> trfExpr e1 <*> annLoc (pure opLoc) (trfName' op) <*> trfExpr e2
+trfExpr' (NegApp e _) = AST.PrefixApp <$> (annLoc (mkSrcSpan <$> (srcSpanStart <$> asks contRange) 
+                                                             <*> (pure $ srcSpanStart (getLoc e))) 
+                                                  (AST.nameFromList . fst <$> trfNameStr "-")) 
+                                      <*> trfExpr e
+trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
+trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> annLoc (pure l) (trfName' op)
+trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> annLoc (pure l) (trfName' op) <*> trfExpr expr
+trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
+  = wrap . AnnList <$> mapM (trfExpr . (\(Present e) -> e) . unLoc) tupArgs 
+  where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
+trfExpr' (ExplicitTuple tupArgs box)
+  = wrap . AnnList <$> mapM (trfLoc $ (\case (Present e) -> AST.Present <$> trfExpr' (unLoc e)
+                                             (Missing _) -> pure AST.Missing
+                                       )) tupArgs 
+  where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupleSection
+trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (AnnList <$> mapM trfAlt cases)
+trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
+trfExpr' (HsMultiIf _ parts) = AST.MultiIf . AnnList <$> mapM trfGuardedRhs parts
+trfExpr' (HsLet binds expr) = AST.Let <$> trfLocalBinds binds <*> trfExpr expr
+trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> (annLoc (tokenLoc AnnDo) (pure AST.DoKeyword)) 
+                                        <*> (AnnList <$> mapM trfDoStmt stmts)
+trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> (annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)) 
+                                         <*> (AnnList <$> mapM trfDoStmt stmts)
+-- TODO: list comprehension blocks
+trfExpr' (HsDo ListComp stmts _)
+  = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
+trfExpr' (HsDo MonadComp stmts _)
+  = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
+trfExpr' (HsDo PArrComp stmts _)
+  = AST.ParArrayComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
+trfExpr' (ExplicitList _ _ exprs) = AST.List . AnnList <$> mapM trfExpr exprs
+trfExpr' (ExplicitPArr _ exprs) = AST.ParArray . AnnList <$> mapM trfExpr exprs
+trfExpr' (RecordCon name _ fields) = AST.RecCon <$> trfName name <*> trfFieldUpdates fields
+trfExpr' (RecordUpd expr fields _ _ _) = AST.RecUpdate <$> trfExpr expr <*> trfFieldUpdates fields
+trfExpr' (ExprWithTySig expr typ _) = AST.TypeSig <$> trfExpr expr <*> trfType typ
+trfExpr' (ArithSeq _ _ (From from)) = AST.Enum <$> trfExpr from <*> pure annNothing <*> pure annNothing
+trfExpr' (ArithSeq _ _ (FromThen from step)) 
+  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> pure annNothing
+trfExpr' (ArithSeq _ _ (FromTo from to)) 
+  = AST.Enum <$> trfExpr from <*> pure annNothing <*> (annJust <$> trfExpr to)
+trfExpr' (ArithSeq _ _ (FromThenTo from step to)) 
+  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> (annJust <$> trfExpr to)
+trfExpr' (PArrSeq _ (FromTo from to)) 
+  = AST.ParArrayEnum <$> trfExpr from <*> pure annNothing <*> trfExpr to
+trfExpr' (PArrSeq _ (FromThenTo from step to)) 
+  = AST.ParArrayEnum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> trfExpr to
+-- TODO: SCC, CORE, GENERATED annotations
+trfExpr' (HsBracket brack) = AST.BracketExpr <$> trfBracket' brack
+trfExpr' (HsSpliceE _ splice) = AST.Splice <$> trfSplice' splice
+trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> trfQuasiQuotation' qq
+-- TODO: arrows
+-- TODO: static
+  
+trfAlt :: Located (Match RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Alt RI)
+trfAlt = trfLoc $ \(Match _ [pat] typ (GRHSs rhss locBinds))
+  -> AST.Alt <$> trfPattern pat <*> trfRhss rhss <*> trfWhereLocalBinds locBinds
+  
+trfDoStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Stmt RI)
+trfDoStmt = trfLoc $ \case
+  BindStmt pat expr _ _ -> AST.BindStmt <$> trfPattern pat <*> trfExpr expr
+  BodyStmt expr _ _ _ -> AST.ExprStmt <$> trfExpr' (unLoc expr)
+  LetStmt binds -> AST.LetStmt <$> trfLocalBinds binds
+  RecStmt { recS_stmts = stmts } -> AST.RecStmt . AnnList <$> mapM trfDoStmt stmts
+
+trfListCompStmts :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Trf (AnnList AST.ListCompBody RI)
+trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
+  = AnnList <$> mapM (fmap ((\lcb -> Ann (collectAnnots $ fromAnnList (AST.compStmts lcb)) lcb) 
+                               . AST.ListCompBody . AnnList . concat) 
+                       . mapM trfListCompStmt . (\(ParStmtBlock stmts _ _) -> stmts)) blocks
+
+trfListCompStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf [Ann AST.CompStmt RI]
+trfListCompStmt (L _ trst@(TransStmt { trS_stmts = stmts })) 
+  = (++) <$> (concat <$> mapM trfListCompStmt stmts) <*> ((:[]) <$> extractActualStmt trst)
+  
+extractActualStmt :: Stmt RdrName (LHsExpr RdrName) -> Trf (Ann AST.CompStmt RI)
+extractActualStmt = \case
+  TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
+    -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe trfExpr by)
+  TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by } 
+    -> addAnnotation by using (AST.GroupStmt <$> (annJust <$> trfExpr using) <*> trfMaybe trfExpr by)
+  where addAnnotation by using
+          = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by) 
+                      <$> tokensLoc [AnnThen, AnnBy])
+  
+getLastStmt :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Located (HsExpr RdrName)
+getLastStmt = undefined
+  
+trfFieldUpdates :: HsRecordBinds RdrName -> Trf (AnnList AST.FieldUpdate RI)
+trfFieldUpdates (HsRecFields fields dotdot) 
+  = AnnList 
+      <$> ((++) <$> mapM trfFieldUpdate fields 
+                <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcard) 
+                                      else pure []) )
+  
+trfFieldUpdate :: Located (HsRecField RdrName (LHsExpr RdrName)) -> Trf (Ann AST.FieldUpdate RI)
+trfFieldUpdate = trfLoc $ \case
+  HsRecField id _ True -> AST.FieldPun <$> trfName' (unLoc id)
+  HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
 trfKindSig :: Maybe (LHsKind RdrName) -> Trf (AnnMaybe AST.KindConstraint RI)
 trfKindSig = trfMaybe (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
@@ -253,4 +384,7 @@ trfQuasiQuotation' = undefined
 
 trfSplice' :: HsSplice RdrName -> Trf (AST.Splice RI)
 trfSplice' = undefined
+
+trfBracket' :: HsBracket RdrName -> Trf (AST.Bracket RI)
+trfBracket' = undefined
   
