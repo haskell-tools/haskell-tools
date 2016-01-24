@@ -1,6 +1,11 @@
+{-# LANGUAGE TypeFamilies #-}
 module Decl.TypeClass where
 
--- class C a where
-  -- f :: a -> String
+class Show a => C a where
+  type X a :: *
+  type X a = Int
+  data Q a :: *
   
--- class C a where
+  f :: a -> String
+  f = show
+  

@@ -101,6 +101,7 @@ instance (Generic a, Show a) => TreeDebug FixitySignature a
 instance (Generic a, Show a) => TreeDebug TypeSignature a
 instance (Generic a, Show a) => TreeDebug ListCompBody a
 instance (Generic a, Show a) => TreeDebug TupSecElem a
+instance (Generic a, Show a) => TreeDebug TypeFamily a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a

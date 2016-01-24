@@ -94,6 +94,7 @@ deriveStructTrav ''FixitySignature
 deriveStructTrav ''TypeSignature
 deriveStructTrav ''ListCompBody
 deriveStructTrav ''TupSecElem
+deriveStructTrav ''TypeFamily
 
 -- Literal
 deriveStructTrav ''Literal

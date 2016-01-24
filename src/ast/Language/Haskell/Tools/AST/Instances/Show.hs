@@ -88,6 +88,7 @@ deriving instance Show a => Show (FixitySignature a)
 deriving instance Show a => Show (TypeSignature a)
 deriving instance Show a => Show (ListCompBody a)
 deriving instance Show a => Show (TupSecElem a)
+deriving instance Show a => Show (TypeFamily a)
 
 -- Literal
 deriving instance Show a => Show (Literal a)

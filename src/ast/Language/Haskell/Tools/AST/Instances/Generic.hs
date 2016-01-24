@@ -82,6 +82,7 @@ deriving instance Generic a => Generic (FixitySignature a)
 deriving instance Generic a => Generic (TypeSignature a)
 deriving instance Generic a => Generic (ListCompBody a)
 deriving instance Generic a => Generic (TupSecElem a)
+deriving instance Generic a => Generic (TypeFamily a)
 
 -- Literal
 deriving instance Generic a => Generic (Literal a)

@@ -9,16 +9,11 @@ data Decl a
   = TypeDecl { declHead :: Ann DeclHead a
              , declType :: Ann Type a
              } -- ^ A type synonym ( @type String = [Char]@ )
-  | TypeFamilyDecl { declHead :: Ann DeclHead a
-                   , declKind :: AnnMaybe KindConstraint a
-                   } -- ^ A type family declaration
+  | TypeFamilyDecl { declTypeFamily :: TypeFamily a }
   | ClosedTypeFamilyDecl { declHead :: Ann DeclHead a
                          , declKind :: AnnMaybe KindConstraint a
                          , declDecl :: AnnList TypeEqn a -- ^ cannot be empty
                          } -- ^ A closed type family declaration
-  | DataFamilyDecl { declHead :: Ann DeclHead a
-                   , declKind :: AnnMaybe KindConstraint a
-                   } -- ^ Data family declaration
   | DataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
              , declCtx  :: AnnMaybe Context a
              , declHead :: Ann DeclHead a
@@ -81,6 +76,15 @@ data TypeSignature a
   = TypeSignature { tsName :: Ann Name a
                   , tsType :: Ann Type a
                   }     
+    
+-- | Open type and data families
+data TypeFamily a
+  = TypeFamily { tfHead :: Ann DeclHead a
+               , tfKind :: AnnMaybe KindConstraint a
+               } -- ^ A type family declaration (@ type family A a :: * -> * @)    
+ | DataFamily { tfHead :: Ann DeclHead a
+              , tfKind :: AnnMaybe KindConstraint a
+              } -- ^ Data family declaration
                   
 -- | A fixity signature (@ infixl 5 +, - @).
 data FixitySignature a 
@@ -101,17 +105,12 @@ data GadtDeclList a
 data ClassElement a
   = ClsSig     { ceTypeSig :: TypeSignature a 
                } -- ^ Signature: @ f :: A -> B @
-  | ClsDef     { ceBind :: Ann ValueBind a
+  | ClsDef     { ceBind :: ValueBind a
                } -- ^ Default binding: @ f x = "aaa" @
-  | ClsDataFam { ceCtx :: AnnMaybe Context a
-               , ceHead :: Ann DeclHead a
-               , ceKind :: AnnMaybe Kind a
-               } -- ^ Declaration of an associated data type: @ data T x :: * @ 
-  | ClsTypeFam { ceHead :: Ann DeclHead a
-               , ceKind :: AnnMaybe Kind a
+  | ClsTypeFam { ceTypeFam :: TypeFamily a
                } -- ^ Declaration of an associated type synonym: @ type T x :: * @ 
   | ClsTypeDef { ceHead :: Ann DeclHead a
-               , ceKind :: AnnMaybe Kind a
+               , ceKind :: Ann Type a
                } -- ^ Default choice for type synonym: @ type T x = TE @ or @ type instance T x = TE @ 
   | ClsDefSig  { ceName :: Ann Name a
                , ceType :: Ann Type a
@@ -207,7 +206,7 @@ data InstanceRule a
 
 -- | The specification of the class instance declaration
 data InstanceHead a
-  = InstanceHeadCon { ihConName :: Ann Name a } -- ^ Type or class name
+  = InstanceHeadCon { ihConName :: Name a } -- ^ Type or class name
   | InstanceHeadInfix { ihLeftOp :: Ann Type a
                       , ihOperator :: Ann Name a
                       } -- ^ Infix application of the type/class name to the left operand
@@ -298,14 +297,10 @@ data Assertion a
   = ClassAssert { assertClsName :: Ann Name a
                 , assertTypes :: AnnList Type a
                 } -- ^ Class assertion (@Cls x@)
-  | AppAssert { assertConstrName :: Ann Name a
-              , assertTypes :: AnnList Type a
-              } -- ^ Class assertion application
   | InfixAssert { assertLhs :: Ann Type a
                 , assertOp :: Ann Name a
                 , assertRhs :: Ann Type a
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
-  | ParenAssert { assertInner :: Ann Assertion a } -- ^ Parenthesised class assertion
                  
 -- | Haskell expressions
 data Expr a
