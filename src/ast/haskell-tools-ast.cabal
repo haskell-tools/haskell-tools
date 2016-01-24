@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.AST.SourceMap
+                     , Language.Haskell.Tools.AST
                      , Language.Haskell.Tools.AST.Module
                      , Language.Haskell.Tools.AST.Literals
                      , Language.Haskell.Tools.AST.Instances
@@ -22,6 +23,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
                      , Language.Haskell.Tools.AST.Instances.Lenses
+                     , Language.Haskell.Tools.AST.Lenses
                      , Language.Haskell.Tools.AST.Decl
                      , Language.Haskell.Tools.AST.Base
                      , Language.Haskell.Tools.AST.Ann
