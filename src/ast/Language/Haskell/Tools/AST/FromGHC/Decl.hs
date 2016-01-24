@@ -122,7 +122,8 @@ trfMatch name = trfLoc $ \(Match funid pats typ (GRHSs rhss locBinds))
                <*> trfRhss rhss <*> trfWhereLocalBinds locBinds
   
 trfRhss :: [Located (GRHS RdrName (LHsExpr RdrName))] -> Trf (Ann AST.Rhs RI)
-trfRhss [L l (GRHS [] body)] = annLoc (pure l) (AST.UnguardedRhs <$> trfExpr body)
+trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
+                                         (AST.UnguardedRhs <$> trfExpr body)
 trfRhss rhss = annLoc (pure $ collectLocs rhss) 
                       (AST.GuardedRhss . AnnList <$> mapM trfGuardedRhs rhss)
   
@@ -185,6 +186,7 @@ trfPattern = trfLoc $ \case
   SplicePat splice -> AST.SplicePat <$> trfSplice' splice
   QuasiQuotePat qq -> AST.QuasiQuotePat <$> trfQuasiQuotation' qq
   LitPat lit -> AST.LitPat <$> trfLiteral' lit
+  NPat (ol_val . unLoc -> lit) _ _ -> AST.LitPat <$> trfOverloadedLit lit
   SigPatIn pat (hswb_cts -> typ) -> AST.TypeSigPat <$> trfPattern pat <*> trfType typ
   -- NPat, NPlusKPat, CoPat?
   
@@ -276,7 +278,8 @@ trfListCompStmts others
 
 trfListCompStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf [Ann AST.CompStmt RI]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
-  = (++) <$> (concat <$> mapM trfListCompStmt stmts) <*> ((:[]) <$> extractActualStmt trst)
+  = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (mapM trfListCompStmt stmts)) 
+         <*> ((:[]) <$> extractActualStmt trst)
 -- last statement is extracted
 trfListCompStmt (unLoc -> LastStmt _ _) = pure []
 trfListCompStmt other = (:[]) <$> takeAnnot AST.CompStmt (trfDoStmt other)
@@ -288,8 +291,8 @@ extractActualStmt = \case
   TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by } 
     -> addAnnotation by using (AST.GroupStmt <$> (annJust <$> trfExpr using) <*> trfMaybe trfExpr by)
   where addAnnotation by using
-          = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by) 
-                      <$> tokensLoc [AnnThen, AnnBy])
+          = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
+                      <$> tokenLocBack AnnThen)
   
 getLastStmt :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Located (HsExpr RdrName)
 getLastStmt (L _ (LastStmt body _) : rest) = body

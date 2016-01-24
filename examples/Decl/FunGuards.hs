@@ -1,5 +1,5 @@
-module Decl.LocalDefs where
+module Decl.FunGuards where
 
-f x = g x
-  where g :: Int -> Int
-        g x = x
+f 0 = 1
+f x | even x = 0
+    | otherwise = 2
