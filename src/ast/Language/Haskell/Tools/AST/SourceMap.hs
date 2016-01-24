@@ -17,11 +17,14 @@ getKeywordAnywhere keyw srcmap = return . uncurry mkSrcSpan =<< headMay . assocs
 
 -- | Get the source location of a token restricted to a certain source span
 getKeywordInside :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
-getKeywordInside keyw sr srcmap = getSourceElementInside sr =<< Map.lookup keyw srcmap
+getKeywordInside keyw sr srcmap = getSourceElementInside True sr =<< Map.lookup keyw srcmap
 
-getSourceElementInside :: SrcSpan -> Map SrcLoc SrcLoc -> Maybe SrcSpan
-getSourceElementInside sr srcmap = 
-  case lookupGE (srcSpanStart sr) srcmap of
+getKeywordInsideBack :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
+getKeywordInsideBack keyw sr srcmap = getSourceElementInside False sr =<< Map.lookup keyw srcmap
+
+getSourceElementInside :: Bool -> SrcSpan -> Map SrcLoc SrcLoc -> Maybe SrcSpan
+getSourceElementInside b sr srcmap = 
+  case (if b then lookupGE (srcSpanStart sr) else lookupLE (srcSpanEnd sr)) srcmap of
     Just (k, v) -> if k <= srcSpanEnd sr then Just (mkSrcSpan k v)
                                          else Nothing
     Nothing -> Nothing

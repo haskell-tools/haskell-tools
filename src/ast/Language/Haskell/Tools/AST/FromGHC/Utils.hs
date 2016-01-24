@@ -49,6 +49,9 @@ annLoc locm nodem = do loc <- locm
 tokenLoc :: AnnKeywordId -> Trf RI
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)
 
+tokenLocBack :: AnnKeywordId -> Trf RI
+tokenLocBack keyw = fromMaybe noSrcSpan <$> (getKeywordInsideBack keyw <$> asks contRange <*> asks srcMap)
+
 -- | Searches for tokens in the given order inside the parent element and returns their combined location
 tokensLoc :: [AnnKeywordId] -> Trf RI
 tokensLoc keys = asks contRange >>= tokensLoc' keys
