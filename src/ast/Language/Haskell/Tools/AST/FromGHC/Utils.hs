@@ -66,6 +66,9 @@ uniqueTokenAnywhere keyw = fromMaybe noSrcSpan <$> (getKeywordAnywhere keyw <$> 
 -- | No annotation for a part of the AST
 noAnn = Ann noSrcSpan
 
+foldLocs :: [SrcSpan] -> SrcSpan
+foldLocs = foldl combineSrcSpans noSrcSpan
+
 collectLocs :: [Located e] -> RI
 collectLocs = foldl1 combineSrcSpans . map getLoc
 

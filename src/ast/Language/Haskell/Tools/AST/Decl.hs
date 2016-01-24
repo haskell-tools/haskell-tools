@@ -54,7 +54,6 @@ data Decl a
   | FixityDecl { declFixity :: FixitySignature a 
                } -- ^ Fixity declaration (@ infixl 5 +, - @)
   | DefaultDecl { declTypes :: AnnList Type a
-                , declInfo :: a
                 } -- ^ Default types (@ default (T1, T2) @)
   | TypeSigDecl { declTypeSig :: TypeSignature a 
                 } -- ^ Type signature declaration (@ f :: Int -> Int @)
@@ -69,7 +68,7 @@ data Decl a
                   , declType :: Ann Type a
                   } -- ^ foreign export (@ foreign export ccall foo :: Int -> IO Int @)
   | Pragma { declPragma :: TopLevelPragma a } -- ^ top level pragmas
-  | SpliceDecl { declExpr :: Ann Expr a } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
+  | SpliceDecl { declSplice :: Splice a } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
        
 -- | A type signature (@ f :: Int -> Int @)
 data TypeSignature a 
@@ -134,16 +133,15 @@ data InstBody a
 -- | Declarations inside an instance declaration.
 data InstBodyDecl a
   = InstBodyNormalDecl { instBodyDeclFunbind :: ValueBind a } -- ^ A normal declaration (@ f x = 12 @)
-  | InstBodyTypeDecl { instBodyLhsType :: Ann Type a
-                     , instBodyRhsType :: Ann Type a
-                     } -- ^ An associated type definition (@ type A X = B @)
+  | InstBodyTypeSig { instBodyTypeSig :: TypeSignature a } -- ^ Type signature in instance definition with @InstanceSigs@
+  | InstBodyTypeDecl { instBodyTypeEqn :: TypeEqn a } -- ^ An associated type definition (@ type A X = B @)
   | InstBodyDataDecl { instBodyDataNew :: Ann DataOrNewtypeKeyword a
-                     , instBodyLhsType :: Ann Type a
+                     , instBodyLhsType :: Ann InstanceRule a
                      , instBodyDataCons :: AnnList ConDecl a
                      , instBodyDerivings :: AnnMaybe Deriving a
                      } -- ^ An associated data type implementation (@ data A X = C1 | C2 @)
   | InstBodyGadtDataDecl { instBodyDataNew :: Ann DataOrNewtypeKeyword a
-                         , instBodyLhsType :: Ann Type a
+                         , instBodyLhsType :: Ann InstanceRule a
                          , instBodyDataKind :: AnnMaybe Kind a
                          , instBodyGadtCons :: AnnList GadtDecl a
                          , instBodyDerivings :: AnnMaybe Deriving a

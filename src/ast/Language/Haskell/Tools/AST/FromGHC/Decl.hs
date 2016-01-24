@@ -14,6 +14,7 @@ import ApiAnnotation as GHC
 import FastString as GHC
 import BasicTypes as GHC
 import Bag as GHC
+import ForeignCall as GHC
 
 import Control.Monad.Reader
 import Data.Maybe
@@ -26,6 +27,7 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
 trfDecls :: [LHsDecl RdrName] -> Trf (AnnList AST.Decl RI)
+-- TODO: filter documentation comments
 trfDecls decls = AnnList <$> mapM trfDecl decls
 
 trfDecl :: Located (HsDecl RdrName) -> Trf (Ann AST.Decl RI)
@@ -39,8 +41,7 @@ trfDecl = trfLoc $ \case
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> createDeclHead name vars <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
-    -> AST.DataDecl <$> case nd of NewType -> annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
-                                   DataType -> annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
+    -> AST.DataDecl <$> trfDataKeyword nd
                     <*> trfCtx ctx
                     <*> createDeclHead name vars
                     <*> (AnnList <$> mapM trfConDecl cons)
@@ -48,19 +49,20 @@ trfDecl = trfLoc $ \case
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
-  -- InstD (ClsInstD (ClsInstDecl binds sigs)) = 
+  InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
+    -> AST.InstDecl <$> trfMaybe trfOverlap overlap <*> trfInstanceRule typ 
+                    <*> trfInstBody binds sigs typefam datafam
   ValD bind -> AST.ValueBinding <$> trfBind' bind
-  -- SigD sig =
-  -- DefD def =
-  -- ForD for =
-  -- WarningD warn =
-  -- AnnD ann =
-  -- RuleD rule =
-  -- VecD vec =
-  -- SpliceD splice =
-  -- DocD doc
-  -- QuasiQuoteD qq =
-  -- RoleAnnotD role =  
+  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> trfTypeSig ts
+  SigD (FixSig fs) -> AST.FixityDecl <$> trfFixitySig fs
+  -- TODO: pattern synonym type signature
+  -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
+  DefD (DefaultDecl types) -> AST.DefaultDecl . AnnList <$> mapM trfType types
+  ForD (ForeignImport name typ _ (CImport ccall safe _ _ _)) 
+    -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety safe <*> trfName name <*> trfType typ
+  ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
+    -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
+  SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> trfSplice' spl
 
 trfConDecl :: Located (ConDecl RdrName) -> Trf (Ann AST.ConDecl RI)
 trfConDecl = trfLoc $ \case 
@@ -145,7 +147,7 @@ trfLocalBinds :: HsLocalBinds RdrName -> Trf (AnnList AST.LocalBind RI)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
   = AnnList . orderDefs <$> ((++) <$> mapM (takeAnnot AST.LocalValBind . trfBind) (bagToList binds) 
                                   <*> mapM trfLocalSig sigs)
-
+                                 
 trfLocalSig :: Located (Sig RdrName) -> Trf (Ann AST.LocalBind RI)
 trfLocalSig = trfLoc $ \case
   ts@(TypeSig {}) -> AST.LocalSignature <$> trfTypeSig ts
@@ -408,7 +410,11 @@ createDeclHead name vars
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfName' (unLoc name))) 
           (hsq_tvs vars)
-          
+         
+trfDataKeyword :: NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword RI)
+trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
+trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
+         
 createClassBody :: [LSig RdrName] -> LHsBinds RdrName -> [LFamilyDecl RdrName] 
                                -> [LTyFamDefltEqn RdrName] -> Trf (AnnMaybe AST.ClassBody RI)
 createClassBody sigs binds typeFams typeFamDefs 
@@ -445,6 +451,58 @@ trfTypeFam = trfLoc $ \case
 trfTypeFamDef :: Located (TyFamDefltEqn RdrName) -> Trf (Ann AST.ClassElement RI)
 trfTypeFamDef = trfLoc $ \(TyFamEqn con pats rhs) 
   -> AST.ClsTypeDef <$> createDeclHead con pats <*> trfType rhs
+          
+trfOverlap :: Located OverlapMode -> Trf (Ann AST.OverlapPragma RI)
+trfOverlap = trfLoc $ pure . \case
+  NoOverlap _ -> AST.DisableOverlap
+  Overlappable _ -> AST.Overlappable
+  Overlapping _ -> AST.Overlapping
+  Overlaps _ -> AST.Overlaps
+  Incoherent _ -> AST.IncoherentOverlap
+          
+trfInstBody :: LHsBinds RdrName -> [LSig RdrName] -> [LTyFamInstDecl RdrName] -> [LDataFamInstDecl RdrName] -> Trf (AnnMaybe AST.InstBody RI)
+trfInstBody binds sigs fams dats = do
+    wh <- tokenLoc AnnWhere
+    if isGoodSrcSpan wh then
+      annJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
+                         (AST.InstBody . AnnList . orderDefs . concat
+                             <$> sequenceA [getSigs, getBinds, getFams, getDats])
+    else return annNothing
+  where combinedLoc wh = foldl combineSrcSpans wh allLocs
+        allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc fams ++ map getLoc dats
+        getSigs = mapM trfClassInstSig sigs
+        getBinds = mapM (takeAnnot AST.InstBodyNormalDecl . trfBind) (bagToList binds)
+        getFams = mapM trfInstTypeFam fams
+        getDats = mapM trfInstDataFam dats
+          
+trfClassInstSig :: Located (Sig RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfClassInstSig = trfLoc $ \case
+  TypeSig [name] typ _ -> AST.InstBodyTypeSig <$> (AST.TypeSignature <$> trfName name <*> trfType typ)
+          
+trfInstTypeFam :: Located (TyFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = takeAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)
+
+trfInstDataFam :: Located (DataFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfInstDataFam = trfLoc $ \case 
+  (DataFamInstDecl tc (hswb_cts -> pats) (HsDataDefn dn ctx _ _ cons derivs) _) 
+    -> AST.InstBodyDataDecl <$> trfDataKeyword dn 
+         <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
+                    (AST.InstanceRule annNothing <$> trfCtx ctx 
+                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . annotation <$> r) 
+                                                                           (AST.InstanceHeadApp <$> r <*> (trfType t))) 
+                                                           (takeAnnot AST.InstanceHeadCon (trfName tc)) pats)
+         <*> (AnnList <$> mapM trfConDecl cons)
+         <*> trfMaybe trfDerivings derivs
+          
+          
+trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv RI)
+trfCallConv = undefined      
+   
+trfCallConv' :: CCallConv -> Trf (AST.CallConv RI)
+trfCallConv' = undefined 
+
+trfSafety :: Located Safety -> Trf (AnnMaybe AST.Safety RI)
+trfSafety = undefined 
           
 trfQuasiQuotation' :: HsQuasiQuote RdrName -> Trf (AST.QuasiQuote RI)
 trfQuasiQuotation' = undefined
