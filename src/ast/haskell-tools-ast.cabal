@@ -21,6 +21,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.Show
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
+                     , Language.Haskell.Tools.AST.Instances.Lenses
                      , Language.Haskell.Tools.AST.Decl
                      , Language.Haskell.Tools.AST.Base
                      , Language.Haskell.Tools.AST.Ann
@@ -45,6 +46,7 @@ library
                      , ghc >=7.10 && <7.11
                      , bytestring >=0.10 && <1.0
                      , safe >=0.3
+                     , lens >=4.0 && <5.0
                      , ghc-paths >=0.1 && <0.2
                      , containers >=0.5 && <0.6
                      , directory >=1.2 && <1.3

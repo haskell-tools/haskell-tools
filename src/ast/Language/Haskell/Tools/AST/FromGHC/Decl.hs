@@ -140,7 +140,7 @@ trfRhsGuard = trfLoc $ \case
 trfWhereLocalBinds :: HsLocalBinds RdrName -> Trf (AnnMaybe AST.LocalBinds RI)
 trfWhereLocalBinds EmptyLocalBinds = pure annNothing  
 trfWhereLocalBinds binds@(HsValBinds (ValBindsIn vals sigs)) 
-  = annJust <$> annLoc (collectAnnots . fromAnnList <$> localBinds) (AST.LocalBinds <$> localBinds)
+  = annJust <$> annLoc (collectAnnots . _fromAnnList <$> localBinds) (AST.LocalBinds <$> localBinds)
       where localBinds = trfLocalBinds binds
 
 
@@ -269,7 +269,7 @@ trfDoStmt = trfLoc $ \case
 
 trfListCompStmts :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Trf (AnnList AST.ListCompBody RI)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
-  = AnnList <$> mapM (fmap ((\lcb -> Ann (collectAnnots $ fromAnnList (AST.compStmts lcb)) lcb) 
+  = AnnList <$> mapM (fmap ((\lcb -> Ann (collectAnnots $ _fromAnnList (AST._compStmts lcb)) lcb) 
                                . AST.ListCompBody . AnnList . concat) 
                        . mapM trfListCompStmt . (\(ParStmtBlock stmts _ _) -> stmts)) blocks
 trfListCompStmts others 
@@ -339,7 +339,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
   where combineTypes :: Located RdrName -> HsTyPats RdrName -> Trf (Ann AST.Type RI)
         combineTypes name pats 
           = foldl (\t p -> do typ <- t
-                              annLoc (pure $ combineSrcSpans (annotation typ) (getLoc p)) 
+                              annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
                   (annLoc (pure $ getLoc name) (AST.TyCon <$> trfName' (unLoc name))) 
                   (hswb_cts pats)
@@ -387,7 +387,7 @@ trfCtx (L l [L _ (HsParTy t)])
                        (AST.ContextMulti . AnnList . (:[]) <$> trfAssertion t)
 trfCtx (L l [t]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                       (AST.ContextOne . element <$> trfAssertion t)
+                       (AST.ContextOne . _element <$> trfAssertion t)
 trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                                       (AST.ContextMulti . AnnList <$> mapM trfAssertion ctx) 
   
@@ -409,7 +409,7 @@ trfFunDeps _ = pure undefined
 createDeclHead :: Located RdrName -> LHsTyVarBndrs RdrName -> Trf (Ann AST.DeclHead RI)
 createDeclHead name vars
   = foldl (\t p -> do typ <- t
-                      annLoc (pure $ combineSrcSpans (annotation typ) (getLoc p)) 
+                      annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfName' (unLoc name))) 
           (hsq_tvs vars)
@@ -491,7 +491,7 @@ trfInstDataFam = trfLoc $ \case
     -> AST.InstBodyDataDecl <$> trfDataKeyword dn 
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
                     (AST.InstanceRule annNothing <$> trfCtx ctx 
-                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . annotation <$> r) 
+                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . _annotation <$> r) 
                                                                            (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                            (takeAnnot AST.InstanceHeadCon (trfName tc)) pats)
          <*> (AnnList <$> mapM trfConDecl cons)

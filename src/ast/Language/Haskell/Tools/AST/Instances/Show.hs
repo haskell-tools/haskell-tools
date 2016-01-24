@@ -13,11 +13,11 @@ deriving instance (Show a, Show (e a)) => Show (AnnMaybe e a)
 deriving instance (Show a, Show (e a)) => Show (AnnList e a)
 
 instance (Functor elem) => Functor (Ann elem) where
-  fmap f ann = ann { annotation = f (annotation ann), element = fmap f (element ann) }
+  fmap f ann = ann { _annotation = f (_annotation ann), _element = fmap f (_element ann) }
 instance (Functor elem) => Functor (AnnList elem) where
-  fmap f annList = annList { fromAnnList = fmap (fmap f) (fromAnnList annList) }
+  fmap f annList = annList { _fromAnnList = fmap (fmap f) (_fromAnnList annList) }
 instance (Functor elem) => Functor (AnnMaybe elem) where
-  fmap f annMaybe = annMaybe { fromAnnMaybe = fmap (fmap f) (fromAnnMaybe annMaybe) }
+  fmap f annMaybe = annMaybe { _fromAnnMaybe = fmap (fmap f) (_fromAnnMaybe annMaybe) }
 
 -- Modules
 deriving instance Show a => Show (Module a)

@@ -6,222 +6,222 @@ import Language.Haskell.Tools.AST.Literals
 
 -- | Haskell declaration
 data Decl a
-  = TypeDecl { declHead :: Ann DeclHead a
-             , declType :: Ann Type a
+  = TypeDecl { __declHead :: Ann DeclHead a
+             , _declType :: Ann Type a
              } -- ^ A type synonym ( @type String = [Char]@ )
-  | TypeFamilyDecl { declTypeFamily :: TypeFamily a }
-  | ClosedTypeFamilyDecl { declHead :: Ann DeclHead a
-                         , declKind :: AnnMaybe KindConstraint a
-                         , declDecl :: AnnList TypeEqn a -- ^ cannot be empty
+  | TypeFamilyDecl { _declTypeFamily :: TypeFamily a }
+  | ClosedTypeFamilyDecl { _declHead :: Ann DeclHead a
+                         , _declKind :: AnnMaybe KindConstraint a
+                         , _declDecl :: AnnList TypeEqn a -- ^ cannot be empty
                          } -- ^ A closed type family declaration
-  | DataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
+  | DataDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
              , declCtx  :: AnnMaybe Context a
-             , declHead :: Ann DeclHead a
-             , declCons :: AnnList ConDecl a
-             , declDeriving :: AnnMaybe Deriving a
+             , _declHead :: Ann DeclHead a
+             , _declCons :: AnnList ConDecl a
+             , _declDeriving :: AnnMaybe Deriving a
              } -- ^ A data or newtype declaration.
-  | GDataDecl { declNewtype :: Ann DataOrNewtypeKeyword a
+  | GDataDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
               , declCtx  :: AnnMaybe Context a
-              , declHead :: Ann DeclHead a
-              , declKind :: AnnMaybe KindConstraint a
-              , declGadt :: Ann GadtDeclList a
-              , declDeriving :: AnnMaybe Deriving a
+              , _declHead :: Ann DeclHead a
+              , _declKind :: AnnMaybe KindConstraint a
+              , _declGadt :: Ann GadtDeclList a
+              , _declDeriving :: AnnMaybe Deriving a
               } -- ^ A data or newtype declaration.
-  | TypeInstDecl { declInstance :: Ann Type a
-                 , declAssignedType :: Ann Type a
+  | TypeInstDecl { _declInstance :: Ann Type a
+                 , _declAssignedType :: Ann Type a
                  } -- ^ Type instance declaration (@ type instance Fam T = AssignedT @)
-  | DataInstDecl { declNewtype :: Ann DataOrNewtypeKeyword a
-                 , declInstance :: Ann Type a
-                 , declCons :: AnnList ConDecl a
+  | DataInstDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
+                 , _declInstance :: Ann Type a
+                 , _declCons :: AnnList ConDecl a
                  } -- ^ Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
-  | GDataInstDecl { declNewtype :: Ann DataOrNewtypeKeyword a
-                  , declInstance :: Ann Type a
-                  , declKind :: AnnMaybe KindConstraint a
-                  , declGadt :: Ann GadtDeclList a
+  | GDataInstDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
+                  , _declInstance :: Ann Type a
+                  , _declKind :: AnnMaybe KindConstraint a
+                  , _declGadt :: Ann GadtDeclList a
                   } -- ^ Data instance declaration (@ data instance T = Con1 | Con2 @)
-  | ClassDecl { declCtx :: AnnMaybe Context a
-              , declHead :: Ann DeclHead a
-              , declFunDeps :: AnnMaybe FunDeps a
-              , declBody :: AnnMaybe ClassBody a
+  | ClassDecl { _declCtx :: AnnMaybe Context a
+              , _declHead :: Ann DeclHead a
+              , _declFunDeps :: AnnMaybe FunDeps a
+              , _declBody :: AnnMaybe ClassBody a
               } -- ^ Type class declaration (@ class X a [where f = ...] @)
-  | InstDecl { declOverlap :: AnnMaybe OverlapPragma a
-             , declInstRule :: Ann InstanceRule a
-             , declInstDecl :: AnnMaybe InstBody a
+  | InstDecl { _declOverlap :: AnnMaybe OverlapPragma a
+             , _declInstRule :: Ann InstanceRule a
+             , _declInstDecl :: AnnMaybe InstBody a
              } -- ^ Instance declaration (@ instance X T [where f = ...] @)
-  | DerivDecl { declOverlap :: AnnMaybe OverlapPragma a
-              , declInstRule :: Ann InstanceRule a
+  | DerivDecl { _declOverlap :: AnnMaybe OverlapPragma a
+              , _declInstRule :: Ann InstanceRule a
               } -- ^ Standalone deriving declaration (@ deriving instance X T @)
-  | FixityDecl { declFixity :: FixitySignature a 
+  | FixityDecl { _declFixity :: FixitySignature a 
                } -- ^ Fixity declaration (@ infixl 5 +, - @)
-  | DefaultDecl { declTypes :: AnnList Type a
+  | DefaultDecl { _declTypes :: AnnList Type a
                 } -- ^ Default types (@ default (T1, T2) @)
-  | TypeSigDecl { declTypeSig :: TypeSignature a 
-                } -- ^ Type signature declaration (@ f :: Int -> Int @)
-  | ValueBinding { declValBind :: ValueBind a } -- ^ Function binding (@ f x = 12 @)
-  | ForeignImport { declCallConv :: Ann CallConv a
-                  , declSafety :: AnnMaybe Safety a
-                  , declName :: Ann Name a
-                  , declType :: Ann Type a
-                  } -- ^ Foreign import (@ foreign import foo :: Int -> IO Int @)
-  | ForeignExport { declCallConv :: Ann CallConv a
-                  , declName :: Ann Name a
-                  , declType :: Ann Type a
-                  } -- ^ foreign export (@ foreign export ccall foo :: Int -> IO Int @)
-  | Pragma { declPragma :: TopLevelPragma a } -- ^ top level pragmas
-  | SpliceDecl { declSplice :: Splice a } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
+  | TypeSigDecl { _declTypeSig :: TypeSignature a 
+                } -- ^ Type signature declaration (@ _f :: Int -> Int @)
+  | ValueBinding { _declValBind :: ValueBind a } -- ^ Function binding (@ f x = 12 @)
+  | ForeignImport { _declCallConv :: Ann CallConv a
+                  , _declSafety :: AnnMaybe Safety a
+                  , _declName :: Ann Name a
+                  , _declType :: Ann Type a
+                  } -- ^ Foreign import (@ foreign import _foo :: Int -> IO Int @)
+  | ForeignExport { _declCallConv :: Ann CallConv a
+                  , _declName :: Ann Name a
+                  , _declType :: Ann Type a
+                  } -- ^ foreign export (@ foreign export ccall _foo :: Int -> IO Int @)
+  | Pragma { _declPragma :: TopLevelPragma a } -- ^ top level pragmas
+  | SpliceDecl { _declSplice :: Splice a } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
        
--- | A type signature (@ f :: Int -> Int @)
+-- | A type signature (@ _f :: Int -> Int @)
 data TypeSignature a 
-  = TypeSignature { tsName :: Ann Name a
-                  , tsType :: Ann Type a
+  = TypeSignature { _tsName :: Ann Name a
+                  , _tsType :: Ann Type a
                   }     
     
 -- | Open type and data families
 data TypeFamily a
-  = TypeFamily { tfHead :: Ann DeclHead a
-               , tfKind :: AnnMaybe KindConstraint a
-               } -- ^ A type family declaration (@ type family A a :: * -> * @)    
- | DataFamily { tfHead :: Ann DeclHead a
-              , tfKind :: AnnMaybe KindConstraint a
+  = TypeFamily { _tfHead :: Ann DeclHead a
+               , _tfKind :: AnnMaybe KindConstraint a
+               } -- ^ A type family declaration (@ type family A _a :: * -> * @)    
+ | DataFamily { _tfHead :: Ann DeclHead a
+              , _tfKind :: AnnMaybe KindConstraint a
               } -- ^ Data family declaration
                   
 -- | A fixity signature (@ infixl 5 +, - @).
 data FixitySignature a 
-  = FixitySignature { fixityAssoc :: Ann Assoc a
-                    , fixityPrecedence :: Ann Precedence a
-                    , fixityOperators :: AnnList Name a
+  = FixitySignature { _fixityAssoc :: Ann Assoc a
+                    , _fixityPrecedence :: Ann Precedence a
+                    , _fixityOperators :: AnnList Name a
                     }
        
 -- | The list of declarations that can appear in a typeclass
 data ClassBody a
-  = ClassBody { cbElements :: AnnList ClassElement a }
+  = ClassBody { _cbElements :: AnnList ClassElement a }
               
 -- | A list of GADT declarations with the @where@ keyword
 data GadtDeclList a 
-  = GadtDeclList { gadtList :: AnnList GadtDecl a } 
+  = GadtDeclList { _gadtList :: AnnList GadtDecl a } 
                  
 -- | Members of a class declaration       
 data ClassElement a
-  = ClsSig     { ceTypeSig :: TypeSignature a 
-               } -- ^ Signature: @ f :: A -> B @
-  | ClsDef     { ceBind :: ValueBind a
+  = ClsSig     { _ceTypeSig :: TypeSignature a 
+               } -- ^ Signature: @ _f :: A -> B @
+  | ClsDef     { _ceBind :: ValueBind a
                } -- ^ Default binding: @ f x = "aaa" @
-  | ClsTypeFam { ceTypeFam :: TypeFamily a
-               } -- ^ Declaration of an associated type synonym: @ type T x :: * @ 
-  | ClsTypeDef { ceHead :: Ann DeclHead a
-               , ceKind :: Ann Type a
+  | ClsTypeFam { _ceTypeFam :: TypeFamily a
+               } -- ^ Declaration of an associated type synonym: @ type T _x :: * @ 
+  | ClsTypeDef { _ceHead :: Ann DeclHead a
+               , _ceKind :: Ann Type a
                } -- ^ Default choice for type synonym: @ type T x = TE @ or @ type instance T x = TE @ 
-  | ClsDefSig  { ceName :: Ann Name a
-               , ceType :: Ann Type a
-               } -- ^ Default signature (by using @DefaultSignatures@): @ default enum :: (Generic a, GEnum (Rep a)) => [a] @
+  | ClsDefSig  { _ceName :: Ann Name a
+               , _ceType :: Ann Type a
+               } -- ^ Default signature (by using @DefaultSignatures@): @ default _enum :: (Generic a, GEnum (Rep a)) => [a] @
        
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
 data DeclHead a
-  = DeclHead { dhName :: Name a } -- ^ Type or class name
-  | DHParen  { dhBody :: DeclHead a } -- ^ Parenthesized type
-  | DHApp    { dhAppFun :: Ann DeclHead a
-             , dhAppOperand :: Ann TyVar a
+  = DeclHead { _dhName :: Name a } -- ^ Type or class name
+  | DHParen  { _dhBody :: DeclHead a } -- ^ Parenthesized type
+  | DHApp    { _dhAppFun :: Ann DeclHead a
+             , _dhAppOperand :: Ann TyVar a
              } -- ^ Type application
-  | DHInfix  { dhInfixName :: Ann Name a 
-             , dhInfixLeft :: Ann TyVar a
+  | DHInfix  { _dhInfixName :: Ann Name a 
+             , _dhInfixLeft :: Ann TyVar a
              } -- ^ Infix application of the type/class name to the left operand
        
 -- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
 data InstBody a
-  = InstBody { instBodyDecls :: AnnList InstBodyDecl a }
+  = InstBody { _instBodyDecls :: AnnList InstBodyDecl a }
 
 -- | Declarations inside an instance declaration.
 data InstBodyDecl a
-  = InstBodyNormalDecl { instBodyDeclFunbind :: ValueBind a } -- ^ A normal declaration (@ f x = 12 @)
-  | InstBodyTypeSig { instBodyTypeSig :: TypeSignature a } -- ^ Type signature in instance definition with @InstanceSigs@
-  | InstBodyTypeDecl { instBodyTypeEqn :: TypeEqn a } -- ^ An associated type definition (@ type A X = B @)
-  | InstBodyDataDecl { instBodyDataNew :: Ann DataOrNewtypeKeyword a
-                     , instBodyLhsType :: Ann InstanceRule a
-                     , instBodyDataCons :: AnnList ConDecl a
-                     , instBodyDerivings :: AnnMaybe Deriving a
+  = InstBodyNormalDecl { _instBodyDeclFunbind :: ValueBind a } -- ^ A normal declaration (@ f x = 12 @)
+  | InstBodyTypeSig { _instBodyTypeSig :: TypeSignature a } -- ^ Type signature in instance definition with @InstanceSigs@
+  | InstBodyTypeDecl { _instBodyTypeEqn :: TypeEqn a } -- ^ An associated type definition (@ type A X = B @)
+  | InstBodyDataDecl { _instBodyDataNew :: Ann DataOrNewtypeKeyword a
+                     , _instBodyLhsType :: Ann InstanceRule a
+                     , _instBodyDataCons :: AnnList ConDecl a
+                     , _instBodyDerivings :: AnnMaybe Deriving a
                      } -- ^ An associated data type implementation (@ data A X = C1 | C2 @)
-  | InstBodyGadtDataDecl { instBodyDataNew :: Ann DataOrNewtypeKeyword a
-                         , instBodyLhsType :: Ann InstanceRule a
-                         , instBodyDataKind :: AnnMaybe Kind a
-                         , instBodyGadtCons :: AnnList GadtDecl a
-                         , instBodyDerivings :: AnnMaybe Deriving a
+  | InstBodyGadtDataDecl { _instBodyDataNew :: Ann DataOrNewtypeKeyword a
+                         , _instBodyLhsType :: Ann InstanceRule a
+                         , _instBodyDataKind :: AnnMaybe Kind a
+                         , _instBodyGadtCons :: AnnList GadtDecl a
+                         , _instBodyDerivings :: AnnMaybe Deriving a
                          } -- ^ An associated data type implemented using GADT style
 
--- | GADT constructor declaration (@ D1 :: { val :: Int } -> T String @)
+-- | GADT constructor declaration (@ _D1 :: { _val :: Int } -> T String @)
 data GadtDecl a
-  = GadtDecl { gdName :: Ann Name a
-             , gdFields :: AnnList FieldDecl a
-             , gdResType :: Ann Type a
+  = GadtDecl { _gdName :: Ann Name a
+             , _gdFields :: AnnList FieldDecl a
+             , _gdResType :: Ann Type a
              }
              
 data GadtField a
-  = GadtNormalField { gadtFieldType :: Ann Type a 
+  = GadtNormalField { _gadtFieldType :: Ann Type a 
                     } -- ^ Normal GADT field type (@ Int @)
-  | GadtNamedField { gadtFieldName :: Ann Name a
-                   , gadtFieldType :: Ann Type a
-                   } -- ^ Named GADT field (@ { val :: Int } @)
+  | GadtNamedField { _gadtFieldName :: Ann Name a
+                   , _gadtFieldType :: Ann Type a
+                   } -- ^ Named GADT field (@ { _val :: Int } @)
          
 -- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas  
 data FunDeps a
-  = FunDeps { funDeps :: AnnList FunDep a } 
+  = FunDeps { _funDeps :: AnnList FunDep a } 
          
 -- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@         
 data FunDep a
-  = FunDep { funDepLhs :: AnnList Name a
-           , funDepRhs :: AnnList Name a
+  = FunDep { _funDepLhs :: AnnList Name a
+           , _funDepRhs :: AnnList Name a
            }
   
 data ConDecl a
-  = ConDecl { conDeclName :: Ann Name a
-            , conDeclArgs :: AnnList Type a
+  = ConDecl { _conDeclName :: Ann Name a
+            , _conDeclArgs :: AnnList Type a
             } -- ^ ordinary data constructor (@ C t1 t2 @)
-  | RecordDecl { conDeclName :: Ann Name a
-               , conDeclFields :: AnnList FieldDecl a
-               } -- ^ record data constructor (@ C { n1 :: t1, n2 :: t2 } @)
-  | InfixConDecl { icdName :: Ann Name a
-                 , icdLhs :: Ann Type a
-                 , icdRhs :: Ann Type a
+  | RecordDecl { _conDeclName :: Ann Name a
+               , _conDeclFields :: AnnList FieldDecl a
+               } -- ^ record data constructor (@ C { _n1 :: t1, _n2 :: t2 } @)
+  | InfixConDecl { _icdName :: Ann Name a
+                 , _icdLhs :: Ann Type a
+                 , _icdRhs :: Ann Type a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
   
--- | Field declaration (@ fld :: Int @)
+-- | Field declaration (@ _fld :: Int @)
 data FieldDecl a
-  = FieldDecl { fieldNames :: AnnList Name a
-              , fieldType :: Ann Type a
+  = FieldDecl { _fieldNames :: AnnList Name a
+              , _fieldType :: Ann Type a
               }
   
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 data Deriving a
-  = DerivingOne { oneDerived :: Ann InstanceRule a }
-  | Derivings { allDerived :: AnnList InstanceRule a }
+  = DerivingOne { _oneDerived :: Ann InstanceRule a }
+  | Derivings { _allDerived :: AnnList InstanceRule a }
   
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
 data InstanceRule a
-  = InstanceRule { irVars :: AnnMaybe (AnnList TyVar) a
-                 , irCtx :: AnnMaybe Context a
-                 , irHead :: Ann InstanceHead a
+  = InstanceRule { _irVars :: AnnMaybe (AnnList TyVar) a
+                 , _irCtx :: AnnMaybe Context a
+                 , _irHead :: Ann InstanceHead a
                  }
-  | InstanceParen { irRule :: Ann InstanceRule a }
+  | InstanceParen { _irRule :: Ann InstanceRule a }
 
 -- | The specification of the class instance declaration
 data InstanceHead a
-  = InstanceHeadCon { ihConName :: Name a } -- ^ Type or class name
-  | InstanceHeadInfix { ihLeftOp :: Ann Type a
-                      , ihOperator :: Ann Name a
+  = InstanceHeadCon { _ihConName :: Name a } -- ^ Type or class name
+  | InstanceHeadInfix { _ihLeftOp :: Ann Type a
+                      , _ihOperator :: Ann Name a
                       } -- ^ Infix application of the type/class name to the left operand
-  | InstanceHeadParen { ihHead :: Ann InstanceHead a } -- ^ Parenthesized instance head
-  | InstanceHeadApp { ihFun :: Ann InstanceHead a
-                    , ihType :: Ann Type a
+  | InstanceHeadParen { _ihHead :: Ann InstanceHead a } -- ^ Parenthesized instance head
+  | InstanceHeadApp { _ihFun :: Ann InstanceHead a
+                    , _ihType :: Ann Type a
                     } -- ^ Application to one more type
         
 -- | Type equations as found in closed type families (@ T A = S @)
 data TypeEqn a
-  = TypeEqn { teLhs :: Ann Type a
-            , teRhs :: Ann Type a
+  = TypeEqn { _teLhs :: Ann Type a
+            , _teRhs :: Ann Type a
             }
   
 -- | Kind constraint (@ :: * -> * @)
 data KindConstraint a 
-  = KindConstraint { kindConstr :: Ann Kind a }
+  = KindConstraint { _kindConstr :: Ann Kind a }
 
 ----------------------------------------------------
 -- Types -------------------------------------------
@@ -229,382 +229,382 @@ data KindConstraint a
       
 -- | Type variable declaration
 data TyVar a 
-  = TyVarDecl { tyVarName :: Ann Name a
-              , tyVarKind :: AnnMaybe KindConstraint a
+  = TyVarDecl { _tyVarName :: Ann Name a
+              , _tyVarKind :: AnnMaybe KindConstraint a
               }
 
 -- | Haskell types
 data Type a
-  = TyForall { typeBounded :: AnnList TyVar a
-             , typeCtx :: AnnMaybe Context a
-             , typeType :: Ann Type a
+  = TyForall { _typeBounded :: AnnList TyVar a
+             , _typeCtx :: AnnMaybe Context a
+             , _typeType :: Ann Type a
              } -- ^ Forall types (@ forall x y . type @)
-  | TyFun { typeParam :: Ann Type a
-          , typeResult :: Ann Type a
+  | TyFun { _typeParam :: Ann Type a
+          , _typeResult :: Ann Type a
           } -- ^ Function types (@ a -> b @)
-  | TyTuple { typeElements :: AnnList Type a } -- ^ Tuple types (@ (a,b) @)
-  | TyUnbTuple { typeElements :: AnnList Type a } -- ^ Unboxed tuple types (@ (#a,b#) @)
-  | TyList { typeElement :: Ann Type a } -- ^ List type with special syntax (@ [a] @)
-  | TyParArray { typeElement :: Ann Type a } -- ^ Parallel array type (@ [:a:] @)
-  | TyApp { typeCon :: Ann Type a
-          , typeArg :: Ann Type a
+  | TyTuple { _typeElements :: AnnList Type a } -- ^ Tuple types (@ (a,b) @)
+  | TyUnbTuple { _typeElements :: AnnList Type a } -- ^ Unboxed tuple types (@ (#a,b#) @)
+  | TyList { _typeElement :: Ann Type a } -- ^ List type with special syntax (@ [a] @)
+  | TyParArray { _typeElement :: Ann Type a } -- ^ Parallel array type (@ [:a:] @)
+  | TyApp { _typeCon :: Ann Type a
+          , _typeArg :: Ann Type a
           } -- ^ Type application (@ F a @)
-  | TyVar { typeName :: Name a } -- ^ type variable (@ a @)
-  | TyCon { typeName :: Name a } -- ^ type constructor (@ T @)
-  | TyParen { typeInner :: Ann Type a } -- ^ type surrounded by parentheses (@ (T a) @)
-  | TyInfix { typeLeft :: Ann Type a 
-            , typeOperator :: Ann Name a
-            , typeRight :: Ann Type a
+  | TyVar { _typeName :: Name a } -- ^ type variable (@ a @)
+  | TyCon { _typeName :: Name a } -- ^ type constructor (@ T @)
+  | TyParen { _typeInner :: Ann Type a } -- ^ type surrounded by parentheses (@ (T a) @)
+  | TyInfix { _typeLeft :: Ann Type a 
+            , _typeOperator :: Ann Name a
+            , _typeRight :: Ann Type a
             } -- ^ Infix type constructor (@ (a <: b) @)
-  | TyKinded { typeInner :: Ann Type a
-             , typeKind :: Ann Kind a
-             } -- ^ Type with explicit kind signature (@ a :: * @)
-  | TyPromoted { tpPromoted :: Promoted a } -- A promoted data type with @-XDataKinds@ (@ '3 @).
-  | TySplice { tsSplice :: Splice a } -- ^ a Template Haskell splice type (@ $(genType) @).
-  | TyQuasiQuote { typeQQ :: QuasiQuote a } -- ^ a Template Haskell quasi-quote type (@ [quoter| ... ] @).
-  | TyBang { typeInner :: Ann Type a } -- ^ Strict type marked with "!".
-  | TyUnpack { typeInner :: Ann Type a } -- ^ Type marked with UNPACK pragma.
-  | TyNumLit { typeNumLit :: Integer } -- ^ A numeric type literal (as @4096@ in @ ArrPtr 4096 Word8 @) with @-XDataKinds@
-  | TyStrLit { typeStrLit :: String } -- ^ A textual type literal (as @"x"@ in @ Get :: Label "x" @) with @-XDataKinds@
+  | TyKinded { _typeInner :: Ann Type a
+             , _typeKind :: Ann Kind a
+             } -- ^ Type with explicit kind signature (@ _a :: * @)
+  | TyPromoted { _tpPromoted :: Promoted a } -- A promoted data type with @-XDataKinds@ (@ '3 @).
+  | TySplice { _tsSplice :: Splice a } -- ^ a Template Haskell splice type (@ $(genType) @).
+  | TyQuasiQuote { _typeQQ :: QuasiQuote a } -- ^ a Template Haskell quasi-quote type (@ [quoter| ... ] @).
+  | TyBang { _typeInner :: Ann Type a } -- ^ Strict type marked with "!".
+  | TyUnpack { _typeInner :: Ann Type a } -- ^ Type marked with UNPACK pragma.
+  | TyNumLit { _typeNumLit :: Integer } -- ^ A numeric type literal (as @4096@ in @ ArrPtr 4096 Word8 @) with @-XDataKinds@
+  | TyStrLit { _typeStrLit :: String } -- ^ A textual type literal (as @"x"@ in @ _Get :: Label "x" @) with @-XDataKinds@
   | TyWildcard -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
-  | TyNamedWildcard { typeWildcardName :: Name a } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
+  | TyNamedWildcard { _typeWildcardName :: Name a } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
 
 -- | Haskell kinds
 data Kind a
   = KindStar -- ^ @*@, the kind of types
   | KindUnbox -- ^ @#@, the kind of unboxed types
-  | KindFn { kindLeft :: Ann Kind a
-           , kindRight :: Ann Kind a
+  | KindFn { _kindLeft :: Ann Kind a
+           , _kindRight :: Ann Kind a
            } -- ^ @->@, the kind of type constructor
-  | KindParen { kindParen :: Ann Kind a } -- ^ A parenthesised kind
-  | KindVar { kindVar :: Name a } -- ^ kind variable (using @PolyKinds@ extension)
-  | KindApp { kindAppFun :: Ann Kind a
-            , kindAppArg :: Ann Kind a 
+  | KindParen { _kindParen :: Ann Kind a } -- ^ A parenthesised kind
+  | KindVar { _kindVar :: Name a } -- ^ kind variable (using @PolyKinds@ extension)
+  | KindApp { _kindAppFun :: Ann Kind a
+            , _kindAppArg :: Ann Kind a 
             } -- ^ Kind application (@ k1 k2 @)
-  | KindTuple { kindTuple :: AnnList Kind a } -- ^ A promoted tuple (@ '(k1,k2,k3) @)
-  | KindList { kindList :: AnnList Kind a } -- ^ A promoted list literal (@ '[k1,k2,k3] @)
+  | KindTuple { _kindTuple :: AnnList Kind a } -- ^ A promoted tuple (@ '(k1,k2,k3) @)
+  | KindList { _kindList :: AnnList Kind a } -- ^ A promoted list literal (@ '[k1,k2,k3] @)
   
 -- One or more assertions
 data Context a
-  = ContextOne { contextAssertion :: Assertion a } -- ^ One assertion (@ C a => ... @)
-  | ContextMulti { contextAssertions :: AnnList Assertion a } 
+  = ContextOne { _contextAssertion :: Assertion a } -- ^ One assertion (@ C a => ... @)
+  | ContextMulti { _contextAssertions :: AnnList Assertion a } 
       -- ^ A set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
 
 -- | A single assertion in the context
 data Assertion a
-  = ClassAssert { assertClsName :: Ann Name a
-                , assertTypes :: AnnList Type a
+  = ClassAssert { _assertClsName :: Ann Name a
+                , _assertTypes :: AnnList Type a
                 } -- ^ Class assertion (@Cls x@)
-  | InfixAssert { assertLhs :: Ann Type a
-                , assertOp :: Ann Name a
-                , assertRhs :: Ann Type a
+  | InfixAssert { _assertLhs :: Ann Type a
+                , _assertOp :: Ann Name a
+                , _assertRhs :: Ann Type a
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
                  
 -- | Haskell expressions
 data Expr a
-  = Var { exprName :: Name a } -- ^ A variable or a data constructor (@ a @)
-  | Lit { exprLit :: Literal a } -- ^ Primitive literal
-  | InfixApp { exprLhs :: Ann Expr a
-             , exprOperator :: Ann Name a
-             , exprRhs :: Ann Expr a
+  = Var { _exprName :: Name a } -- ^ A variable or a data constructor (@ a @)
+  | Lit { _exprLit :: Literal a } -- ^ Primitive literal
+  | InfixApp { _exprLhs :: Ann Expr a
+             , _exprOperator :: Ann Name a
+             , _exprRhs :: Ann Expr a
              } -- ^ Infix operator application (@ a + b @)
-  | PrefixApp { exprOperator :: Ann Name a
-              , exprRhs :: Ann Expr a
+  | PrefixApp { _exprOperator :: Ann Name a
+              , _exprRhs :: Ann Expr a
               } -- ^ Prefix operator application (@ -x @)
-  | App { exprFun :: Ann Expr a
-        , exprArg :: Ann Expr a
+  | App { _exprFun :: Ann Expr a
+        , _exprArg :: Ann Expr a
         } -- ^ Function application (@ f 4 @)
   -- unary minus omitted
-  | Lambda { exprBindings :: AnnList Pattern a -- ^ at least one
-           , exprInner :: Ann Expr a
+  | Lambda { _exprBindings :: AnnList Pattern a -- ^ at least one
+           , _exprInner :: Ann Expr a
            } -- ^ Lambda expression (@ \a b -> a + b @)
-  | Let { exprFunBind :: AnnList LocalBind a -- ^ nonempty
-        , exprInner :: Ann Expr a
+  | Let { _exprFunBind :: AnnList LocalBind a -- ^ nonempty
+        , _exprInner :: Ann Expr a
         } -- ^ Local binding (@ let x = 2; y = 3 in e x y @)
-  | If { exprCond :: Ann Expr a
-       , exprThen :: Ann Expr a
-       , exprElse :: Ann Expr a
+  | If { _exprCond :: Ann Expr a
+       , _exprThen :: Ann Expr a
+       , _exprElse :: Ann Expr a
        } -- ^ If expression (@ if a then b else c @)
-  | MultiIf { exprIfAlts :: AnnList GuardedRhs a }
+  | MultiIf { _exprIfAlts :: AnnList GuardedRhs a }
     -- ^ Multi way if expressions with @MultiWayIf@ extension (@ if | guard1 -> expr1; guard2 -> expr2 @)
-  | Case { exprCase :: Ann Expr a
-         , exprAlts :: AnnList Alt a
+  | Case { _exprCase :: Ann Expr a
+         , _exprAlts :: AnnList Alt a
          } -- ^ Pattern matching expression (@ case expr of pat1 -> expr1; pat2 -> expr2 @)
-  | Do { doKind :: Ann DoKind a
-       , exprStmts :: AnnList Stmt a
+  | Do { _doKind :: Ann DoKind a
+       , _exprStmts :: AnnList Stmt a
        } -- ^ Do-notation expressions (@ do x <- act1; act2 @)
-  | Tuple { tupleElems :: AnnList Expr a } -- ^ Tuple expression (@ (e1, e2, e3) @)
-  | UnboxedTuple { tupleElems :: AnnList Expr a } -- ^ Unboxed tuple expression (@ (# e1, e2, e3 #) @)
-  | TupleSection { tupleSectionElems :: AnnList TupSecElem a }
+  | Tuple { _tupleElems :: AnnList Expr a } -- ^ Tuple expression (@ (e1, e2, e3) @)
+  | UnboxedTuple { _tupleElems :: AnnList Expr a } -- ^ Unboxed tuple expression (@ (# e1, e2, e3 #) @)
+  | TupleSection { _tupleSectionElems :: AnnList TupSecElem a }
     -- ^ Tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
-  | UnboxedTupleSection { tupleSectionElems :: AnnList TupSecElem a }
-  | List { listElems :: AnnList Expr a } -- ^ List expression: @[1,2,3]@
-  | ParArray { listElems :: AnnList Expr a } -- ^ Parallel array expression: @[: 1,2,3 :]@
-  | Paren { exprInner :: Ann Expr a }
-  | LeftSection { exprLhs :: Ann Expr a
-                , exprOperator :: Ann Name a
+  | UnboxedTupleSection { _tupleSectionElems :: AnnList TupSecElem a }
+  | List { _listElems :: AnnList Expr a } -- ^ List expression: @[1,2,3]@
+  | ParArray { _listElems :: AnnList Expr a } -- ^ Parallel array expression: @[: 1,2,3 :]@
+  | Paren { _exprInner :: Ann Expr a }
+  | LeftSection { _exprLhs :: Ann Expr a
+                , _exprOperator :: Ann Name a
                 } -- ^ Left operator section: @(1+)@
-  | RightSection { exprOperator :: Ann Name a
-                 , exprRhs :: Ann Expr a
+  | RightSection { _exprOperator :: Ann Name a
+                 , _exprRhs :: Ann Expr a
                  } -- ^ Right operator section: @(+1)@
-  | RecCon { exprRecName :: Ann Name a
-           , exprRecFields :: AnnList FieldUpdate a
+  | RecCon { _exprRecName :: Ann Name a
+           , _exprRecFields :: AnnList FieldUpdate a
            } -- ^ Record value construction: @Point { x = 3, y = -2 }@
-  | RecUpdate { exprRecBase :: Ann Expr a
-              , exprRecFields :: AnnList FieldUpdate a
+  | RecUpdate { _exprRecBase :: Ann Expr a
+              , _exprRecFields :: AnnList FieldUpdate a
               } -- ^ Record value  update: @p1 { x = 3, y = -2 }@
-  | Enum { enumFrom :: Ann Expr a
-         , enumThen :: AnnMaybe Expr a
-         , enumTo :: AnnMaybe Expr a
+  | Enum { _enumFrom :: Ann Expr a
+         , _enumThen :: AnnMaybe Expr a
+         , _enumTo :: AnnMaybe Expr a
          } -- ^ Enumeration expression (@ [1,3..10] @)
-  | ParArrayEnum { parEnumFrom :: Ann Expr a
-                 , parEnumThen :: AnnMaybe Expr a
-                 , parEnumTo :: Ann Expr a
+  | ParArrayEnum { _parEnumFrom :: Ann Expr a
+                 , _parEnumThen :: AnnMaybe Expr a
+                 , _parEnumTo :: Ann Expr a
                  } -- ^ Parallel array enumeration (@ [: 1,3 .. 10 :] @)
-  | ListComp { compExpr :: Ann Expr a
-             , compBody :: AnnList ListCompBody a -- ^ Can only have 1 element without @ParallelListComp@
+  | ListComp { _compExpr :: Ann Expr a
+             , _compBody :: AnnList ListCompBody a -- ^ Can only have 1 element without @ParallelListComp@
              } -- ^ List comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
-  | ParArrayComp { compExpr :: Ann Expr a
-                 , parCompBody :: AnnList ListCompBody a
+  | ParArrayComp { _compExpr :: Ann Expr a
+                 , _parCompBody :: AnnList ListCompBody a
                  } -- ^ Parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
-  | TypeSig { exprInner :: Ann Expr a
-            , exprSig :: Ann Type a
-            } -- ^ Explicit type signature (@ x :: Int @)
+  | TypeSig { _exprInner :: Ann Expr a
+            , _exprSig :: Ann Type a
+            } -- ^ Explicit type signature (@ _x :: Int @)
   -- Template Haskell
-  | VarQuote { quotedName :: Name a } -- ^ @'x@ for template haskell reifying of expressions
-  | TypeQuote { quotedName :: Name a } -- ^ @''T@ for template haskell reifying of types
-  | BracketExpr { bracket :: Bracket a } -- ^ Template haskell bracket expression
-  | Splice { innerExpr :: Splice a } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
-  | QuasiQuoteExpr { exprQQ :: QuasiQuote a } -- ^ template haskell quasi-quotation: @[$quoter|str]@
-  | ExprPragma { exprPragma :: ExprPragma a }
+  | VarQuote { _quotedName :: Name a } -- ^ @'x@ for template haskell reifying of expressions
+  | TypeQuote { _quotedName :: Name a } -- ^ @''T@ for template haskell reifying of types
+  | BracketExpr { _bracket :: Bracket a } -- ^ Template haskell bracket expression
+  | Splice { _innerExpr :: Splice a } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
+  | QuasiQuoteExpr { _exprQQ :: QuasiQuote a } -- ^ template haskell quasi-quotation: @[$quoter|str]@
+  | ExprPragma { _exprPragma :: ExprPragma a }
   -- Arrows
-  | Proc { procPattern :: Ann Pattern a
-         , procExpr :: Ann Expr a
+  | Proc { _procPattern :: Ann Pattern a
+         , _procExpr :: Ann Expr a
          }
-  | ArrowApp { exprLhs :: Ann Expr a
-             , arrowAppl :: Ann ArrowAppl a
-             , exprRhs :: Ann Expr a
+  | ArrowApp { _exprLhs :: Ann Expr a
+             , _arrowAppl :: Ann ArrowAppl a
+             , _exprRhs :: Ann Expr a
              }
-  | LamCase { exprAlts :: AnnList Alt a } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
+  | LamCase { _exprAlts :: AnnList Alt a } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
   -- XML expressions omitted
         
 data TupSecElem a
-  = Present { tupSecExpr :: Expr a 
+  = Present { _tupSecExpr :: Expr a 
             } -- ^ An existing element in a tuple section
   | Missing -- ^ A missing element in a tuple section
         
 -- | Normal monadic statements
 data Stmt a
-  = BindStmt { stmtPattern :: Ann Pattern a
-             , stmtBounded :: Ann Expr a
+  = BindStmt { _stmtPattern :: Ann Pattern a
+             , _stmtBounded :: Ann Expr a
              } -- ^ Binding statement (@ x <- action @)
-  | ExprStmt { stmtExpr :: Expr a 
+  | ExprStmt { _stmtExpr :: Expr a 
              } -- ^ Non-binding statement (@ action @)
-  | LetStmt  { stmtBinds :: AnnList LocalBind a 
+  | LetStmt  { _stmtBinds :: AnnList LocalBind a 
              } -- ^ Let statement (@ let x = 3; y = 4 @)
-  | RecStmt  { stmtRecBinds :: AnnList Stmt a 
+  | RecStmt  { _stmtRecBinds :: AnnList Stmt a 
              } -- ^ A recursive binding group for arrows (@ rec b <- f a c; c <- f b a @)
         
 -- | Body of a list comprehension: (@ | x <- [1..10] @)
 data ListCompBody a
-  = ListCompBody { compStmts :: AnnList CompStmt a } 
+  = ListCompBody { _compStmts :: AnnList CompStmt a } 
          
 -- | List comprehension statement
 data CompStmt a
-  = CompStmt   { compStmt :: Stmt a } -- ^ Normal monadic statement of a list comprehension
-  | ThenStmt   { thenExpr :: Ann Expr a 
-               , byExpr :: AnnMaybe Expr a
+  = CompStmt   { _compStmt :: Stmt a } -- ^ Normal monadic statement of a list comprehension
+  | ThenStmt   { _thenExpr :: Ann Expr a 
+               , _byExpr :: AnnMaybe Expr a
                } -- ^ Then statements by @TransformListComp@ (@ then sortWith by (x + y) @)
-  | GroupStmt  { byExpr :: AnnMaybe Expr a
-               , usingExpr :: AnnMaybe Expr a
+  | GroupStmt  { _byExpr :: AnnMaybe Expr a
+               , _usingExpr :: AnnMaybe Expr a
                } -- ^ Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
                  -- Note: either byExpr or usingExpr must have a value
           
 -- | Value binding for top-level and local bindings
 data ValueBind a
-  = SimpleBind { valBindPat :: Ann Pattern a
-               , valBindRhs :: Ann Rhs a  
-               , valBindLocals :: AnnMaybe LocalBinds a
+  = SimpleBind { _valBindPat :: Ann Pattern a
+               , _valBindRhs :: Ann Rhs a  
+               , _valBindLocals :: AnnMaybe LocalBinds a
                } -- ^ Non-function binding (@ v = "12" @)  
   -- TODO: use one name for a function instead of names in each match
-  | FunBind    { funBindMatches :: AnnList Match a 
+  | FunBind    { _funBindMatches :: AnnList Match a 
                } -- ^ Function binding (@ f 0 = 1; f x = x @). All matches must have the same name.
 
 -- | Representation of patterns for pattern bindings
 data Pattern a
-  = VarPat { patternVar :: Name a } -- ^ Pattern name binding
-  | LitPat { patternLiteral :: Literal a } -- ^ Literal pattern
-  | InfixPat { patternLhs :: Ann Pattern a
-             , patternOp :: Ann Name a
-             , patternRhs :: Ann Pattern a
+  = VarPat { _patternVar :: Name a } -- ^ Pattern name binding
+  | LitPat { _patternLiteral :: Literal a } -- ^ Literal pattern
+  | InfixPat { _patternLhs :: Ann Pattern a
+             , _patternOp :: Ann Name a
+             , _patternRhs :: Ann Pattern a
              } -- ^ Infix constructor application pattern (@ a :+: b @)
-  | AppPat { patternCon :: Ann Name a
-           , patternArg :: Ann Pattern a
+  | AppPat { _patternCon :: Ann Name a
+           , _patternArg :: Ann Pattern a
            } -- ^ Constructor application pattern (@ Point x y @)
-  | TuplePat { patternElems :: AnnList Pattern a } -- ^ Tuple pattern (@ (x,y) @)
-  | UnboxTuplePat { patternElems :: AnnList Pattern a } -- ^ Unboxed tuple pattern (@ (# x, y #) @)
-  | ListPat { patternElems :: AnnList Pattern a } -- ^ List pattern (@ [1,2,a,x] @)
-  | ParArrPat { patternElems :: AnnList Pattern a } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
-  | ParenPat { patternInner :: Ann Pattern a } -- ^ Parenthesised patterns
-  | RecPat { patternName :: Ann Name a
-           , patternFields :: AnnList PatternField a
+  | TuplePat { _patternElems :: AnnList Pattern a } -- ^ Tuple pattern (@ (x,y) @)
+  | UnboxTuplePat { _patternElems :: AnnList Pattern a } -- ^ Unboxed tuple pattern (@ (# x, y #) @)
+  | ListPat { _patternElems :: AnnList Pattern a } -- ^ List pattern (@ [1,2,a,x] @)
+  | ParArrPat { _patternElems :: AnnList Pattern a } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
+  | ParenPat { _patternInner :: Ann Pattern a } -- ^ Parenthesised patterns
+  | RecPat { _patternName :: Ann Name a
+           , _patternFields :: AnnList PatternField a
            } -- ^ Record pattern (@ Point { x = 3, y } @)
-  | AsPat { patternName :: Ann Name a
-          , patternInner :: Ann Pattern a
+  | AsPat { _patternName :: Ann Name a
+          , _patternInner :: Ann Pattern a
           } -- ^ As-pattern (explicit name binding) (@ ls\@(hd:_) @)
   | WildPat -- ^ Wildcard pattern: (@ _ @)
-  | IrrPat { patternInner :: Ann Pattern a } -- ^ Irrefutable pattern (@ ~(x:_) @)
-  | BangPat { patternInner :: Ann Pattern a } -- ^ Bang pattern (@ !x @)
-  | TypeSigPat { patternInner :: Ann Pattern a
-               , patternType :: Ann Type a
-               } -- ^ Pattern with explicit type signature (@ _ :: Int @)
-  | ViewPat { patternExpr :: Ann Expr a
-            , patternInner :: Ann Pattern a
+  | IrrPat { _patternInner :: Ann Pattern a } -- ^ Irrefutable pattern (@ ~(x:_) @)
+  | BangPat { _patternInner :: Ann Pattern a } -- ^ Bang pattern (@ !x @)
+  | TypeSigPat { _patternInner :: Ann Pattern a
+               , _patternType :: Ann Type a
+               } -- ^ Pattern with explicit type signature (@ __ :: Int @)
+  | ViewPat { _patternExpr :: Ann Expr a
+            , _patternInner :: Ann Pattern a
             } -- ^ View pattern (@ f -> Just 1 @)
   -- regular list pattern omitted
   -- xml patterns omitted
-  | SplicePat { patternSplice :: Splice a }
-  | QuasiQuotePat { patQQ :: QuasiQuote a }
+  | SplicePat { _patternSplice :: Splice a }
+  | QuasiQuotePat { _patQQ :: QuasiQuote a }
                   
 -- Field specification of a record pattern
 data PatternField a 
-  = NormalFieldPattern { fieldPatternName :: Ann Name a
-                       , fieldPattern :: Ann Pattern a
+  = NormalFieldPattern { _fieldPatternName :: Ann Name a
+                       , _fieldPattern :: Ann Pattern a
                        } -- ^ Named field pattern (@ p = Point 3 2 @)
-  | FieldPunPattern { fieldPunName :: Name a } -- ^ Named field pun (@ p @)
+  | FieldPunPattern { _fieldPunName :: Name a } -- ^ Named field pun (@ p @)
   | FieldWildcardPattern -- ^ Wildcard field pattern (@ .. @)
           
 -- | A template haskell splice          
 data Splice a
-  = IdSplice { spliceId :: Ann Name a } -- ^ A simple name splice
-  | ParenSplice { spliceExpr :: Ann Expr a }
+  = IdSplice { _spliceId :: Ann Name a } -- ^ A simple name splice
+  | ParenSplice { _spliceExpr :: Ann Expr a }
   
 -- | Template haskell quasi-quotation: @[quoter|str]@  
-data QuasiQuote a = QuasiQuote { qqExprName :: Ann Name a
-                               , qqExprBody :: Ann QQString a
+data QuasiQuote a = QuasiQuote { _qqExprName :: Ann Name a
+                               , _qqExprBody :: Ann QQString a
                                } 
         
 -- | Template Haskell Quasi-quotation content
 data QQString a
-  = QQString { qqString :: String } 
+  = QQString { _qqString :: String } 
 
 -- | Clause of function (or value) binding   
 data Match a
-  = Match { matchName :: Ann Name a
-          , matchArgs :: AnnList Pattern a
-          , matchType :: AnnMaybe Type a
-          , matchRhs :: Ann Rhs a
-          , matchBinds :: AnnMaybe LocalBinds a
+  = Match { _matchName :: Ann Name a
+          , _matchArgs :: AnnList Pattern a
+          , _matchType :: AnnMaybe Type a
+          , _matchRhs :: Ann Rhs a
+          , _matchBinds :: AnnMaybe LocalBinds a
           } 
     
 -- | Clause of case expression          
 data Alt a
-  = Alt { altPattern :: Ann Pattern a
-        , altRhs :: Ann Rhs a
-        , altBinds :: AnnMaybe LocalBinds a
+  = Alt { _altPattern :: Ann Pattern a
+        , _altRhs :: Ann Rhs a
+        , _altBinds :: AnnMaybe LocalBinds a
         }
 
 -- | Local bindings attached to a declaration (@ where x = 42 @)             
 data LocalBinds a
-  = LocalBinds { localBinds :: AnnList LocalBind a }
+  = LocalBinds { _localBinds :: AnnList LocalBind a }
   
 -- | Bindings that are enabled in local blocks (where or let).
 data LocalBind a 
-  = LocalValBind { localVal :: ValueBind a }
+  = LocalValBind { _localVal :: ValueBind a }
   -- TODO: check that no other signature can be inside a local binding
-  | LocalSignature { localSig :: TypeSignature a }
-  | LocalFixity { localFixity :: FixitySignature a }
+  | LocalSignature { _localSig :: TypeSignature a }
+  | LocalFixity { _localFixity :: FixitySignature a }
    
 -- | Right hand side of a value binding or a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
 data Rhs a
-  = UnguardedRhs { rhsExpr :: Ann Expr a }
-  | GuardedRhss { rhsGuards :: AnnList GuardedRhs a }
+  = UnguardedRhs { _rhsExpr :: Ann Expr a }
+  | GuardedRhss { _rhsGuards :: AnnList GuardedRhs a }
       
 -- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)      
 data GuardedRhs a
-  = GuardedRhs { guardStmts :: AnnList RhsGuard a -- ^ Guards: @ Just v <- x, v > 1 @. Cannot be empty.
-               , guardExpr :: Ann Expr a
+  = GuardedRhs { _guardStmts :: AnnList RhsGuard a -- ^ Guards: @ Just v <- x, v > 1 @. Cannot be empty.
+               , _guardExpr :: Ann Expr a
                } 
 
 -- | Pattern bindings and expressions of guards
 data RhsGuard a
-  = GuardBind  { guardPat :: Ann Pattern a
-               , guardRhs :: Ann Expr a
+  = GuardBind  { _guardPat :: Ann Pattern a
+               , _guardRhs :: Ann Expr a
                }
-  | GuardLet   { guardBinds :: AnnList LocalBind a }
-  | GuardCheck { guardCheck :: Ann Expr a }
+  | GuardLet   { _guardBinds :: AnnList LocalBind a }
+  | GuardCheck { _guardCheck :: Ann Expr a }
                
 -- Field update expressions
 data FieldUpdate a 
-  = NormalFieldUpdate { fieldName :: Ann Name a
-                      , fieldValue :: Ann Expr a
+  = NormalFieldUpdate { _fieldName :: Ann Name a
+                      , _fieldValue :: Ann Expr a
                       } -- ^ Update of a field (@ x = 1 @)
-  | FieldPun { fieldUpdateName :: Name a } -- ^ Update the field to the value of the same name (@ x @)
+  | FieldPun { _fieldUpdateName :: Name a } -- ^ Update the field to the value of the same name (@ x @)
   | FieldWildcard -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last update. Cannot be used in a record update expression.
                
 -- | Template Haskell bracket expressions
 data Bracket a
-  = ExprBracket { bracketExpr :: Ann Expr a } -- ^ Expression bracket (@ [| x + y |] @)
-  | PatternBracket { bracketPattern :: Ann Pattern a } -- ^ Pattern bracket (@ [| Point x y |] @)
-  | TypeBracket { bracketType :: Ann Type a } -- ^ Pattern bracket (@ [| (Int,Int) |] @)
-  | DeclBracket { bracketDecl :: Ann Decl a } -- ^ Declaration bracket (@ [| f :: Int -> Int; f x = x*x |] @)
+  = ExprBracket { _bracketExpr :: Ann Expr a } -- ^ Expression bracket (@ [| x + y |] @)
+  | PatternBracket { _bracketPattern :: Ann Pattern a } -- ^ Pattern bracket (@ [| Point x y |] @)
+  | TypeBracket { _bracketType :: Ann Type a } -- ^ Pattern bracket (@ [| (Int,Int) |] @)
+  | DeclBracket { _bracketDecl :: Ann Decl a } -- ^ Declaration bracket (@ [| _f :: Int -> Int; f x = x*x |] @)
                   
 -- * Pragmas
 
 -- | Top level pragmas
 data TopLevelPragma a
-  = RulePragma { pragmaRule :: AnnList Rule a }
-  | DeprPragma { pragmaObjects :: AnnList Name a
-               , pragmaMessage :: Ann StringNode a
+  = RulePragma { _pragmaRule :: AnnList Rule a }
+  | DeprPragma { _pragmaObjects :: AnnList Name a
+               , _pragmaMessage :: Ann StringNode a
                }
-  | WarningPragma { pragmaObjects :: AnnList Name a
-                  , pragmaMessage :: Ann StringNode a
+  | WarningPragma { _pragmaObjects :: AnnList Name a
+                  , _pragmaMessage :: Ann StringNode a
                   }
-  | AnnPragma { pragmaAnnotation :: Annotation a }
-  | MinimalPragma { pragmaFormula :: AnnMaybe MinimalFormula a }
+  | AnnPragma { _pragmaAnnotation :: Annotation a }
+  | MinimalPragma { _pragmaFormula :: AnnMaybe MinimalFormula a }
  
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 data Rule a
-  = Rule { ruleName :: Ann StringNode a -- ^ User name of the rule
-         , rulePhase :: AnnMaybe PhaseControl a
-         , ruleBounded :: AnnList Name a
-         , ruleTopLevel :: Ann Name a
-         , ruleApplied :: AnnList Expr a
-         , ruleRhs :: Ann Expr a
+  = Rule { _ruleName :: Ann StringNode a -- ^ User name of the rule
+         , _rulePhase :: AnnMaybe PhaseControl a
+         , _ruleBounded :: AnnList Name a
+         , _ruleTopLevel :: Ann Name a
+         , _ruleApplied :: AnnList Expr a
+         , _ruleRhs :: Ann Expr a
          }
  
 -- | Annotation allows you to connect an expression to any declaration. 
 data Annotation a
-  = NameAnnotation { annotateType :: AnnMaybe TypeKeyword a
-                   , annotateName :: Ann Name a
-                   , annotateExpr :: Ann Expr a
+  = NameAnnotation { _annotateType :: AnnMaybe TypeKeyword a
+                   , _annotateName :: Ann Name a
+                   , _annotateExpr :: Ann Expr a
                    }
-  | ModuleAnnotation { annotateExpr :: Ann Expr a }
+  | ModuleAnnotation { _annotateExpr :: Ann Expr a }
 
 -- | Formulas of minimal annotations declaring which functions should be defined.
 data MinimalFormula a
-  = MinimalName { minimalName :: Name a }
-  | MinimalParen { minimalInner :: Ann MinimalFormula a }
-  | MinimalOr { minimalLhs :: Ann MinimalFormula a
-              , minimalRhs :: Ann MinimalFormula a
+  = MinimalName { _minimalName :: Name a }
+  | MinimalParen { _minimalInner :: Ann MinimalFormula a }
+  | MinimalOr { _minimalLhs :: Ann MinimalFormula a
+              , _minimalRhs :: Ann MinimalFormula a
               } -- ^ One of the minimal formulas are needed (@ min1 | min2 @)
-  | MinimalAnd { minimalLhs :: Ann MinimalFormula a
-               , minimalRhs :: Ann MinimalFormula a
+  | MinimalAnd { _minimalLhs :: Ann MinimalFormula a
+               , _minimalRhs :: Ann MinimalFormula a
                } -- ^ Both of the minimal formulas are needed (@ min1 , min2 @)
          
 -- | Pragmas that can be applied to expressions
 data ExprPragma a
-  = CorePragma { pragmaStr :: Ann StringNode a }
-  | SccPragma { pragmaStr :: Ann StringNode a }
-  | GeneratedPragma { pragmaSrcRange :: Ann SourceRange a }
+  = CorePragma { _pragmaStr :: Ann StringNode a }
+  | SccPragma { _pragmaStr :: Ann StringNode a }
+  | GeneratedPragma { _pragmaSrcRange :: Ann SourceRange a }
                   
 data SourceRange a
-  = SourceRange { srFileName :: Ann StringNode a
-                , srFromLine :: Ann Number a
-                , srFromCol :: Ann Number a
-                , srToLine :: Ann Number a
-                , srToCol :: Ann Number a
+  = SourceRange { _srFileName :: Ann StringNode a
+                , _srFromLine :: Ann Number a
+                , _srFromCol :: Ann Number a
+                , _srToLine :: Ann Number a
+                , _srToCol :: Ann Number a
                 }
   
-data Number a = Number { numberInteger :: Integer }
+data Number a = Number { _numberInteger :: Integer }
                   

@@ -76,10 +76,10 @@ collectLocs :: [Located e] -> RI
 collectLocs = foldl1 combineSrcSpans . map getLoc
 
 collectAnnots :: [Ann e RI] -> RI
-collectAnnots = foldl1 combineSrcSpans . map annotation
+collectAnnots = foldl1 combineSrcSpans . map _annotation
 
 orderDefs :: [Ann e RI] -> [Ann e RI]
-orderDefs = sortBy (compare `on` ordSrcSpan . annotation)
+orderDefs = sortBy (compare `on` ordSrcSpan . _annotation)
 
 takeAnnot :: (a i -> b i) -> Trf (Ann a i) -> Trf (Ann b i)
 takeAnnot f at = (\(Ann i a) -> Ann i (f a)) <$> at
