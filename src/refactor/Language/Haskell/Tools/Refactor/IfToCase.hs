@@ -29,8 +29,8 @@ doIfToCase :: RealSrcSpan -> Ann Expr ST -> Ann Expr ST
 doIfToCase sp (Ann l (If pred thenE elseE)) 
   | similarSpans sp (l ^. sourceTemplateRange)
   = case' pred 
-     [ alt (varPat "Data.Bool.True") (caseUnguardedRhs thenE) Nothing
-     , alt (varPat "Data.Bool.False") (caseUnguardedRhs elseE) Nothing 
+     [ alt (varPat "Data.Bool.True") (unguardedCaseRhs thenE) Nothing
+     , alt (varPat "Data.Bool.False") (unguardedCaseRhs elseE) Nothing 
      ]
 doIfToCase _ e = e
     
@@ -38,15 +38,15 @@ case' :: Ann Expr ST -> [Ann Alt ST] -> Ann Expr ST
 case' e alts = Ann ("case " <> (×) <> " of { " <> (×) <> "; " <> (×) <> " }")
                  $ Case e (AnnList alts)
   
-alt :: Ann Pattern ST -> Ann Rhs ST -> Maybe (Ann LocalBinds ST) -> Ann Alt ST
+alt :: Ann Pattern ST -> Ann CaseRhs ST -> Maybe (Ann LocalBinds ST) -> Ann Alt ST
 alt pat rhs Nothing = Ann ( (×) <> (×) ) $ Alt pat rhs (AnnMaybe Nothing)  
 alt pat rhs locs@(Just _) = Ann ( (×) <> (×) <> " " <> (×) ) $ Alt pat rhs (AnnMaybe locs)  
 
 varPat :: String -> Ann Pattern ST
 varPat str = Ann (×) $ VarPat (Name (AnnList []) (Ann (fromString str) $ SimpleName str)) 
 
-caseUnguardedRhs :: Ann Expr ST -> Ann Rhs ST
-caseUnguardedRhs e = Ann ( " -> " <> (×) ) $ UnguardedRhs e
+unguardedCaseRhs :: Ann Expr ST -> Ann CaseRhs ST
+unguardedCaseRhs e = Ann ( " -> " <> (×) ) $ UnguardedCaseRhs e
 
 
 

@@ -83,6 +83,8 @@ deriving instance Data a => Data (TypeSignature a)
 deriving instance Data a => Data (ListCompBody a)
 deriving instance Data a => Data (TupSecElem a)
 deriving instance Data a => Data (TypeFamily a)
+deriving instance Data a => Data (CaseRhs a)
+deriving instance Data a => Data (GuardedCaseRhs a)
 
 -- Literal
 deriving instance Data a => Data (Literal a)

@@ -83,6 +83,8 @@ deriving instance Generic a => Generic (TypeSignature a)
 deriving instance Generic a => Generic (ListCompBody a)
 deriving instance Generic a => Generic (TupSecElem a)
 deriving instance Generic a => Generic (TypeFamily a)
+deriving instance Generic a => Generic (CaseRhs a)
+deriving instance Generic a => Generic (GuardedCaseRhs a)
 
 -- Literal
 deriving instance Generic a => Generic (Literal a)

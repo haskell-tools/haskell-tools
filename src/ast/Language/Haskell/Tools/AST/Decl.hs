@@ -500,7 +500,7 @@ data Match a
 -- | Clause of case expression          
 data Alt a
   = Alt { _altPattern :: Ann Pattern a
-        , _altRhs :: Ann Rhs a
+        , _altRhs :: Ann CaseRhs a
         , _altBinds :: AnnMaybe LocalBinds a
         }
 
@@ -515,18 +515,29 @@ data LocalBind a
   | LocalSignature { _localSig :: TypeSignature a }
   | LocalFixity { _localFixity :: FixitySignature a }
    
--- | Right hand side of a value binding or a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
+-- | Right hand side of a value binding (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
 data Rhs a
   = UnguardedRhs { _rhsExpr :: Ann Expr a }
   | GuardedRhss { _rhsGuards :: AnnList GuardedRhs a }
+  
+-- | Right hand side of a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
+data CaseRhs a
+  = UnguardedCaseRhs { _rhsCaseExpr :: Ann Expr a }
+  | GuardedCaseRhss { _rhsCaseGuards :: AnnList GuardedCaseRhs a }
       
 -- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)      
 data GuardedRhs a
-  = GuardedRhs { _guardStmts :: AnnList RhsGuard a -- ^ Guards: @ Just v <- x, v > 1 @. Cannot be empty.
+  = GuardedRhs { _guardStmts :: AnnList RhsGuard a -- ^ Cannot be empty.
                , _guardExpr :: Ann Expr a
                } 
 
--- | Pattern bindings and expressions of guards
+-- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
+data GuardedCaseRhs a
+  = GuardedCaseRhs { _caseGuardStmts :: AnnList RhsGuard a -- ^ Cannot be empty.
+                   , _caseGuardExpr :: Ann Expr a
+                   } 
+               
+-- | Guards for value bindings and pattern matches (@ Just v <- x, v > 1 @)
 data RhsGuard a
   = GuardBind  { _guardPat :: Ann Pattern a
                , _guardRhs :: Ann Expr a

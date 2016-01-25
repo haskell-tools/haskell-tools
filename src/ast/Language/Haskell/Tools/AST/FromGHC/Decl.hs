@@ -126,10 +126,20 @@ trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> toke
                                          (AST.UnguardedRhs <$> trfExpr body)
 trfRhss rhss = annLoc (pure $ collectLocs rhss) 
                       (AST.GuardedRhss . AnnList <$> mapM trfGuardedRhs rhss)
+                      
+trfCaseRhss :: [Located (GRHS RdrName (LHsExpr RdrName))] -> Trf (Ann AST.CaseRhs RI)
+trfCaseRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
+                                             (AST.UnguardedCaseRhs <$> trfExpr body)
+trfCaseRhss rhss = annLoc (pure $ collectLocs rhss) 
+                          (AST.GuardedCaseRhss . AnnList <$> mapM trfGuardedCaseRhs rhss)
   
 trfGuardedRhs :: Located (GRHS RdrName (LHsExpr RdrName)) -> Trf (Ann AST.GuardedRhs RI)
 trfGuardedRhs = trfLoc $ \(GRHS guards body) 
   -> AST.GuardedRhs . AnnList <$> mapM trfRhsGuard guards <*> trfExpr body
+
+trfGuardedCaseRhs :: Located (GRHS RdrName (LHsExpr RdrName)) -> Trf (Ann AST.GuardedCaseRhs RI)
+trfGuardedCaseRhs = trfLoc $ \(GRHS guards body) 
+  -> AST.GuardedCaseRhs . AnnList <$> mapM trfRhsGuard guards <*> trfExpr body
   
 trfRhsGuard :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.RhsGuard RI)
 trfRhsGuard = trfLoc $ \case
@@ -258,7 +268,7 @@ trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> trfQuasiQuotation' qq
   
 trfAlt :: Located (Match RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Alt RI)
 trfAlt = trfLoc $ \(Match _ [pat] typ (GRHSs rhss locBinds))
-  -> AST.Alt <$> trfPattern pat <*> trfRhss rhss <*> trfWhereLocalBinds locBinds
+  -> AST.Alt <$> trfPattern pat <*> trfCaseRhss rhss <*> trfWhereLocalBinds locBinds
   
 trfDoStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Stmt RI)
 trfDoStmt = trfLoc $ \case

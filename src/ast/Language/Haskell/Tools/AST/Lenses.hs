@@ -84,6 +84,8 @@ makeLenses ''TypeSignature
 makeLenses ''ListCompBody
 makeLenses ''TupSecElem
 makeLenses ''TypeFamily
+makeLenses ''CaseRhs
+makeLenses ''GuardedCaseRhs
 
 -- Literal
 makeLenses ''Literal
