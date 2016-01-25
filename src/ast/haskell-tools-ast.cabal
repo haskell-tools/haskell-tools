@@ -20,9 +20,9 @@ library
                      , Language.Haskell.Tools.AST.Literals
                      , Language.Haskell.Tools.AST.Instances
                      , Language.Haskell.Tools.AST.Instances.Show
+                     , Language.Haskell.Tools.AST.Instances.Data
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
-                     , Language.Haskell.Tools.AST.Instances.Lenses
                      , Language.Haskell.Tools.AST.Lenses
                      , Language.Haskell.Tools.AST.Decl
                      , Language.Haskell.Tools.AST.Base

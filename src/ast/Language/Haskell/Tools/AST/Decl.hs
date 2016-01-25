@@ -6,7 +6,7 @@ import Language.Haskell.Tools.AST.Literals
 
 -- | Haskell declaration
 data Decl a
-  = TypeDecl { __declHead :: Ann DeclHead a
+  = TypeDecl { _declHead :: Ann DeclHead a
              , _declType :: Ann Type a
              } -- ^ A type synonym ( @type String = [Char]@ )
   | TypeFamilyDecl { _declTypeFamily :: TypeFamily a }
@@ -15,13 +15,13 @@ data Decl a
                          , _declDecl :: AnnList TypeEqn a -- ^ cannot be empty
                          } -- ^ A closed type family declaration
   | DataDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
-             , declCtx  :: AnnMaybe Context a
+             , _declCtx  :: AnnMaybe Context a
              , _declHead :: Ann DeclHead a
              , _declCons :: AnnList ConDecl a
              , _declDeriving :: AnnMaybe Deriving a
              } -- ^ A data or newtype declaration.
   | GDataDecl { _declNewtype :: Ann DataOrNewtypeKeyword a
-              , declCtx  :: AnnMaybe Context a
+              , _declCtx  :: AnnMaybe Context a
               , _declHead :: Ann DeclHead a
               , _declKind :: AnnMaybe KindConstraint a
               , _declGadt :: Ann GadtDeclList a

@@ -1,29 +1,39 @@
 {-# LANGUAGE ScopedTypeVariables
            , LambdaCase
-           , FlexibleContexts #-}
+           , FlexibleContexts 
+           , TemplateHaskell 
+           , DeriveDataTypeable 
+           #-}
 module Language.Haskell.Tools.AnnTrf.RangeToTemplate where
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Instances
 
+import Data.Data
+import Control.Lens
 import Data.StructuralTraversal
 import Control.Monad.State
 import SrcLoc
 import Debug.Trace
 
-data RangeTemplate = RangeTemplate { rangeTemplateSpan :: RealSrcSpan
-                                   , rangeTemplateElems :: [RangeTemplateElem] 
-                                   }
+
+data RangeTemplateElem = RangeElem RealSrcSpan
+                       | RangeChildElem
+                       deriving Data
+
+instance Show RangeTemplateElem where
+  show (RangeElem sp) = show sp
+  show RangeChildElem = "×"
+  
+data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan
+                                   , _rangeTemplateElems :: [RangeTemplateElem] 
+                                   } deriving Data
+                                   
+makeLenses ''RangeTemplate      
 
 instance Show RangeTemplate where
   show (RangeTemplate rng rngs) = show rngs
 
-data RangeTemplateElem = RangeElem RealSrcSpan
-                       | RangeChildElem Int
-
-instance Show RangeTemplateElem where
-  show (RangeElem sp) = show sp
-  show (RangeChildElem i) = "<" ++ show i ++ ">"
 
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
@@ -45,20 +55,20 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
 
 -- | Cuts out a list of source ranges from a given range
 cutOutElem :: RealSrcSpan -> [RealSrcSpan] -> RangeTemplate
-cutOutElem sp = RangeTemplate sp . snd . foldl (\(n, temp) spIn -> (n + 1, (concatMap (\t -> breakUpRangeElem n t spIn) temp))) (0, [RangeElem sp])
+cutOutElem sp = RangeTemplate sp . foldl (\temp spIn -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) [RangeElem sp]
 
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element.
-breakUpRangeElem :: Int -> RangeTemplateElem -> RealSrcSpan -> [RangeTemplateElem]
-breakUpRangeElem n (RangeElem outer) inner
+breakUpRangeElem :: RangeTemplateElem -> RealSrcSpan -> [RangeTemplateElem]
+breakUpRangeElem (RangeElem outer) inner
   | outer `containsSpan` inner 
   = (if (realSrcSpanStart outer) < (realSrcSpanStart inner) 
        then [ RangeElem (mkRealSrcSpan (realSrcSpanStart outer) (realSrcSpanStart inner)) ]
        else []) ++
-    [ RangeChildElem n ] ++
+    [ RangeChildElem ] ++
     (if (realSrcSpanEnd inner) < (realSrcSpanEnd outer) 
        then [ RangeElem (mkRealSrcSpan (realSrcSpanEnd inner) (realSrcSpanEnd outer)) ]
        else [])
-breakUpRangeElem _ outer _ = [ outer ]
+breakUpRangeElem outer _ = [ outer ]
 
 

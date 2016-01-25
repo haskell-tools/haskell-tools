@@ -23,6 +23,7 @@ library
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
+                     , lens >= 4.0 && <5.0
                      , haskell-tools-ast ==0.1.*
                      , ghc >=7.10 && <7.11
                      , structural-traversal ==0.1.*

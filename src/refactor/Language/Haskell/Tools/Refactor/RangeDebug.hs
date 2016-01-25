@@ -26,14 +26,14 @@ templateDebug = treeDebug' shortShowRangeTemplate 0
 
 shortShowRangeTemplate (RangeTemplate _ rngs) = concatMap showRangeTemplateElem rngs
 showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan (RealSrcSpan sp) ++ "]"
-showRangeTemplateElem (RangeChildElem i) = "[" ++ show i ++ "]"
+showRangeTemplateElem (RangeChildElem) = "×"
 
 sourceTemplateDebug :: TreeDebug e SourceTemplate => e SourceTemplate -> String
 sourceTemplateDebug = treeDebug' shortShowSourceTemplate 0
 
-shortShowSourceTemplate srcs = concatMap showSourceTemplateElem srcs
+shortShowSourceTemplate = concatMap showSourceTemplateElem . _sourceTemplateElems
 showSourceTemplateElem (TextElem sp) = sp
-showSourceTemplateElem (ChildElem i) = "`" ++ show i ++ "`"
+showSourceTemplateElem (ChildElem) = "×"
       
 class TreeDebug e a where
   treeDebug' :: (a -> String) -> Int -> e a -> String

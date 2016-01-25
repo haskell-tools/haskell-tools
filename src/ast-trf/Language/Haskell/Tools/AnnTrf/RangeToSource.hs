@@ -24,7 +24,7 @@ getLocIndices = snd . flip execState (0, empty) .
   traverseDown (return ()) 
                (return ()) 
                (mapM_ (\case (RangeElem sp) -> modify (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
-                             _              -> return ()) . rangeTemplateElems)
+                             _              -> return ()) . _rangeTemplateElems)
 
 mapLocIndices :: Ord k => StringBuffer -> Map OrdSrcSpan k -> Map k String
 mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = takeSpan str sp
@@ -40,7 +40,9 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
 applyFragments :: StructuralTraversable node => [String] -> Ann node RangeTemplate -> Ann node SourceTemplate
 applyFragments srcs = flip evalState srcs
   . traverseDown (return ()) (return ())
-                 (mapM (\case RangeElem sp     -> do (src:rest) <- get
-                                                     put rest
-                                                     return (TextElem src)
-                              RangeChildElem i -> return $ ChildElem i) . rangeTemplateElems)
+                 (\rt -> SourceTemplate (RealSrcSpan $ _rangeTemplateSpan rt)
+                           <$> mapM (\case RangeElem sp   -> do (src:rest) <- get
+                                                                put rest
+                                                                return (TextElem src)
+                                           RangeChildElem -> return ChildElem) 
+                                     (_rangeTemplateElems rt))

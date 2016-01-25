@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns
            , FlexibleContexts 
+           , DeriveFunctor
            #-}
 -- | A simpler representation of the original AST. Enables easy relative indexing of the nodes.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
@@ -10,7 +11,7 @@ import Data.StructuralTraversal
 -- | A rose tree containing additional node information         
 data RoseTree a = RoseTree { roseInfo :: a 
                            , roseChildren :: [RoseTree a]
-                           }
+                           } deriving Functor
 
 instance Show a => Show (RoseTree a) where
   show sr = show' 0 sr

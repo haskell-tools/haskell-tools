@@ -37,6 +37,7 @@ main = runTestTT $ TestList $ map makeReprintTest
         , "Decl.TypeSynonym"
         , "Decl.ValBind"
         , "Expr.GeneralizedListComp"
+        , "Expr.If"
         , "Expr.ListComp"
         , "Expr.Negate"
         , "Expr.Operator"
