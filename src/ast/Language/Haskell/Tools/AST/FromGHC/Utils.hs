@@ -66,8 +66,11 @@ tokensLoc keys = asks contRange >>= tokensLoc' keys
 uniqueTokenAnywhere :: AnnKeywordId -> Trf RI
 uniqueTokenAnywhere keyw = fromMaybe noSrcSpan <$> (getKeywordAnywhere keyw <$> asks srcMap)
         
--- | No annotation for a part of the AST
-noAnn = Ann noSrcSpan
+annCont :: Trf (e RI) -> Trf (Ann e RI)
+annCont = annLoc (asks contRange)
+
+copyAnnot :: (Ann a i -> b i) -> Trf (Ann a i) -> Trf (Ann b i)
+copyAnnot f at = (\(Ann i a) -> Ann i (f (Ann i a))) <$> at
 
 foldLocs :: [SrcSpan] -> SrcSpan
 foldLocs = foldl combineSrcSpans noSrcSpan
@@ -80,7 +83,4 @@ collectAnnots = foldl1 combineSrcSpans . map _annotation
 
 orderDefs :: [Ann e RI] -> [Ann e RI]
 orderDefs = sortBy (compare `on` ordSrcSpan . _annotation)
-
-takeAnnot :: (a i -> b i) -> Trf (Ann a i) -> Trf (Ann b i)
-takeAnnot f at = (\(Ann i a) -> Ann i (f a)) <$> at
 

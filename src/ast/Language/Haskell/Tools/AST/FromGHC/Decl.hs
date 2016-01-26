@@ -33,9 +33,9 @@ trfDecls decls = AnnList <$> mapM trfDecl decls
 trfDecl :: Located (HsDecl RdrName) -> Trf (Ann AST.Decl RI)
 trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl DataFamily name tyVars kindSig)) 
-    -> AST.TypeFamilyDecl <$> (AST.DataFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
+    -> AST.TypeFamilyDecl <$> (annCont $ AST.DataFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
   TyClD (FamDecl (FamilyDecl OpenTypeFamily name tyVars kindSig)) 
-    -> AST.TypeFamilyDecl <$> (AST.TypeFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
+    -> AST.TypeFamilyDecl <$> (annCont $ AST.TypeFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig)) 
     -> AST.ClosedTypeFamilyDecl <$> createDeclHead name tyVars <*> trfKindSig kindSig <*> trfTypeEqs typeEqs
   TyClD (SynDecl name vars rhs _) 
@@ -52,9 +52,9 @@ trfDecl = trfLoc $ \case
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
     -> AST.InstDecl <$> trfMaybe trfOverlap overlap <*> trfInstanceRule typ 
                     <*> trfInstBody binds sigs typefam datafam
-  ValD bind -> AST.ValueBinding <$> trfBind' bind
-  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> trfTypeSig ts
-  SigD (FixSig fs) -> AST.FixityDecl <$> trfFixitySig fs
+  ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
+  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig ts)
+  SigD (FixSig fs) -> AST.FixityDecl <$> (annCont $ trfFixitySig fs)
   -- TODO: pattern synonym type signature
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   DefD (DefaultDecl types) -> AST.DefaultDecl . AnnList <$> mapM trfType types
@@ -62,7 +62,7 @@ trfDecl = trfLoc $ \case
     -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety safe <*> trfName name <*> trfType typ
   ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
-  SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> trfSplice' spl
+  SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
 
 trfConDecl :: Located (ConDecl RdrName) -> Trf (Ann AST.ConDecl RI)
 trfConDecl = trfLoc $ \case 
@@ -94,11 +94,12 @@ trfInstanceRule = trfLoc $ \case
   HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
   HsTyVar tv -> AST.InstanceRule <$> pure annNothing 
                                  <*> pure annNothing 
-                                 <*> annLoc (asks contRange) (AST.InstanceHeadCon <$> trfName' tv)
+                                 <*> annLoc (asks contRange) 
+                                            (AST.InstanceHeadCon <$> annCont (trfName' tv))
                                  
 trfInstanceHead :: Located (HsType RdrName) -> Trf (Ann AST.InstanceHead RI)
 trfInstanceHead = trfLoc $ \case
-  HsTyVar tv -> AST.InstanceHeadCon <$> trfName' tv
+  HsTyVar tv -> AST.InstanceHeadCon <$> annCont (trfName' tv)
   HsAppTy t1 t2 -> AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
   HsParTy typ -> AST.InstanceHeadParen <$> trfInstanceHead typ
   HsOpTy t1 (_,op) t2 
@@ -110,7 +111,7 @@ trfBind :: Located (HsBind RdrName) -> Trf (Ann AST.ValueBind RI)
 trfBind = trfLoc trfBind'
   
 trfBind' :: HsBind RdrName -> Trf (AST.ValueBind RI)
-trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> (takeAnnot AST.VarPat (trfName id)) <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) <*> trfWhereLocalBinds locals
+trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> (copyAnnot AST.VarPat (trfName id)) <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) <*> trfWhereLocalBinds locals
 trfBind' (FunBind id isInfix (MG matches _ _ _) _ _ _) = AST.FunBind . AnnList <$> mapM (trfMatch id) matches
 trfBind' (PatBind pat (GRHSs rhs locals) _ _ _) = AST.SimpleBind <$> trfPattern pat <*> trfRhss rhs <*> trfWhereLocalBinds locals
 trfBind' (AbsBinds typeVars vars exports _ _) = undefined
@@ -156,13 +157,13 @@ trfWhereLocalBinds binds@(HsValBinds (ValBindsIn vals sigs))
 
 trfLocalBinds :: HsLocalBinds RdrName -> Trf (AnnList AST.LocalBind RI)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
-  = AnnList . orderDefs <$> ((++) <$> mapM (takeAnnot AST.LocalValBind . trfBind) (bagToList binds) 
+  = AnnList . orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
                                   <*> mapM trfLocalSig sigs)
                                  
 trfLocalSig :: Located (Sig RdrName) -> Trf (Ann AST.LocalBind RI)
 trfLocalSig = trfLoc $ \case
-  ts@(TypeSig {}) -> AST.LocalSignature <$> trfTypeSig ts
-  (FixSig fs) -> AST.LocalFixity <$> trfFixitySig fs
+  ts@(TypeSig {}) -> AST.LocalSignature <$> annCont (trfTypeSig ts)
+  (FixSig fs) -> AST.LocalFixity <$> annCont (trfFixitySig fs)
   
 trfTypeSig :: Sig RdrName -> Trf (AST.TypeSignature RI)
 trfTypeSig (TypeSig [name] typ _) = AST.TypeSignature <$> trfName name <*> trfType typ
@@ -183,7 +184,7 @@ trfFixitySig (FixitySig names (Fixity prec dir))
 trfPattern :: Located (Pat RdrName) -> Trf (Ann AST.Pattern RI)
 trfPattern = trfLoc $ \case
   WildPat _ -> pure AST.WildPat
-  VarPat name -> AST.VarPat <$> trfName' name
+  VarPat name -> AST.VarPat <$> annCont (trfName' name)
   LazyPat pat -> AST.IrrPat <$> trfPattern pat
   AsPat name pat -> AST.AsPat <$> trfName name <*> trfPattern pat
   ParPat pat -> AST.ParenPat <$> trfPattern pat
@@ -191,12 +192,12 @@ trfPattern = trfLoc $ \case
   ListPat pats _ _ -> AST.ListPat . AnnList <$> mapM trfPattern pats
   TuplePat pats Boxed _ -> AST.TuplePat . AnnList <$> mapM trfPattern pats
   PArrPat pats _ -> AST.ParArrPat . AnnList <$> mapM trfPattern pats
-  ConPatIn name _ -> AST.VarPat <$> trfName' (unLoc name)
+  ConPatIn name _ -> AST.VarPat <$> annCont (trfName' (unLoc name))
   ViewPat expr pat _ -> AST.ViewPat <$> trfExpr expr <*> trfPattern pat
-  SplicePat splice -> AST.SplicePat <$> trfSplice' splice
-  QuasiQuotePat qq -> AST.QuasiQuotePat <$> trfQuasiQuotation' qq
-  LitPat lit -> AST.LitPat <$> trfLiteral' lit
-  NPat (ol_val . unLoc -> lit) _ _ -> AST.LitPat <$> trfOverloadedLit lit
+  SplicePat splice -> AST.SplicePat <$> annCont (trfSplice' splice)
+  QuasiQuotePat qq -> AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)
+  LitPat lit -> AST.LitPat <$> annCont (trfLiteral' lit)
+  NPat (ol_val . unLoc -> lit) _ _ -> AST.LitPat <$> annCont (trfOverloadedLit lit)
   SigPatIn pat (hswb_cts -> typ) -> AST.TypeSigPat <$> trfPattern pat <*> trfType typ
   -- NPat, NPlusKPat, CoPat?
   
@@ -204,10 +205,10 @@ trfExpr :: Located (HsExpr RdrName) -> Trf (Ann AST.Expr RI)
 trfExpr = trfLoc trfExpr'
 
 trfExpr' :: HsExpr RdrName -> Trf (AST.Expr RI)
-trfExpr' (HsVar name) = AST.Var <$> trfName' name
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var . AST.nameFromList . fst <$> trfNameStr (unpackFS ip)
-trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> trfOverloadedLit val
-trfExpr' (HsLit val) = AST.Lit <$> trfLiteral' val
+trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <$> trfNameStr (unpackFS ip))
+trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
+trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
 trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
   = AST.Lambda <$> (AnnList <$> mapM trfPattern pats) <*> trfExpr expr
 trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase . AnnList <$> mapM trfAlt matches
@@ -225,10 +226,10 @@ trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs
   = wrap . AnnList <$> mapM (trfExpr . (\(Present e) -> e) . unLoc) tupArgs 
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
 trfExpr' (ExplicitTuple tupArgs box)
-  = wrap . AnnList <$> mapM (trfLoc $ (\case (Present e) -> AST.Present <$> trfExpr' (unLoc e)
+  = wrap . AnnList <$> mapM (trfLoc $ (\case (Present e) -> AST.Present <$> annCont (trfExpr' (unLoc e))
                                              (Missing _) -> pure AST.Missing
                                        )) tupArgs 
-  where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupleSection
+  where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
 trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (AnnList <$> mapM trfAlt cases)
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf . AnnList <$> mapM trfGuardedRhs parts
@@ -260,9 +261,9 @@ trfExpr' (PArrSeq _ (FromTo from to))
 trfExpr' (PArrSeq _ (FromThenTo from step to)) 
   = AST.ParArrayEnum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> trfExpr to
 -- TODO: SCC, CORE, GENERATED annotations
-trfExpr' (HsBracket brack) = AST.BracketExpr <$> trfBracket' brack
-trfExpr' (HsSpliceE _ splice) = AST.Splice <$> trfSplice' splice
-trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> trfQuasiQuotation' qq
+trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
+trfExpr' (HsSpliceE _ splice) = AST.Splice <$> annCont (trfSplice' splice)
+trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
 -- TODO: arrows
 -- TODO: static
   
@@ -273,7 +274,7 @@ trfAlt = trfLoc $ \(Match _ [pat] typ (GRHSs rhss locBinds))
 trfDoStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Stmt RI)
 trfDoStmt = trfLoc $ \case
   BindStmt pat expr _ _ -> AST.BindStmt <$> trfPattern pat <*> trfExpr expr
-  BodyStmt expr _ _ _ -> AST.ExprStmt <$> trfExpr' (unLoc expr)
+  BodyStmt expr _ _ _ -> AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
   LetStmt binds -> AST.LetStmt <$> trfLocalBinds binds
   RecStmt { recS_stmts = stmts } -> AST.RecStmt . AnnList <$> mapM trfDoStmt stmts
 
@@ -292,7 +293,7 @@ trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts }))
          <*> ((:[]) <$> extractActualStmt trst)
 -- last statement is extracted
 trfListCompStmt (unLoc -> LastStmt _ _) = pure []
-trfListCompStmt other = (:[]) <$> takeAnnot AST.CompStmt (trfDoStmt other)
+trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
   
 extractActualStmt :: Stmt RdrName (LHsExpr RdrName) -> Trf (Ann AST.CompStmt RI)
 extractActualStmt = \case
@@ -317,7 +318,7 @@ trfFieldUpdates (HsRecFields fields dotdot)
   
 trfFieldUpdate :: Located (HsRecField RdrName (LHsExpr RdrName)) -> Trf (Ann AST.FieldUpdate RI)
 trfFieldUpdate = trfLoc $ \case
-  HsRecField id _ True -> AST.FieldPun <$> trfName' (unLoc id)
+  HsRecField id _ True -> AST.FieldPun <$> annCont (trfName' (unLoc id))
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
 trfKindSig :: Maybe (LHsKind RdrName) -> Trf (AnnMaybe AST.KindConstraint RI)
@@ -336,7 +337,7 @@ trfKind' (HsTyVar (Exact n))
 trfKind' (HsParTy kind) = AST.KindParen <$> trfKind kind
 trfKind' (HsFunTy k1 k2) = AST.KindFn <$> trfKind k1 <*> trfKind k2
 trfKind' (HsAppTy k1 k2) = AST.KindApp <$> trfKind k1 <*> trfKind k2
-trfKind' (HsTyVar kv) = AST.KindVar <$> trfName' kv
+trfKind' (HsTyVar kv) = AST.KindVar <$> annCont (trfName' kv)
 trfKind' (HsExplicitTupleTy _ kinds) = AST.KindTuple . AnnList <$> mapM trfKind kinds
 trfKind' (HsExplicitListTy _ kinds) = AST.KindList . AnnList <$> mapM trfKind kinds
   
@@ -351,7 +352,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
-                  (annLoc (pure $ getLoc name) (AST.TyCon <$> trfName' (unLoc name))) 
+                  (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
                   (hswb_cts pats)
                  
   
@@ -361,8 +362,7 @@ trfType = trfLoc trfType'
 trfType' :: HsType RdrName -> Trf (AST.Type RI)
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
                                                        <*> trfCtx ctx <*> trfType typ
-trfType' (HsTyVar name) | isRdrTc name = AST.TyCon <$> trfName' name
-trfType' (HsTyVar name) | isRdrTyVar name = AST.TyVar <$> trfName' name
+trfType' (HsTyVar name) = AST.TyVar <$> annCont (trfName' name)
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ
@@ -383,7 +383,7 @@ trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
 trfType' (HsWrapTy _ typ) = trfType' typ
 trfType' HsWildcardTy = pure AST.TyWildcard
 -- not implemented as ghc 7.10.3
-trfType' (HsNamedWildcardTy name) = AST.TyNamedWildcard <$> trfName' name
+trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> annCont (trfName' name)
 
 
   
@@ -397,7 +397,7 @@ trfCtx (L l [L _ (HsParTy t)])
                        (AST.ContextMulti . AnnList . (:[]) <$> trfAssertion t)
 trfCtx (L l [t]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                       (AST.ContextOne . _element <$> trfAssertion t)
+                       (AST.ContextOne <$> trfAssertion t)
 trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                                       (AST.ContextMulti . AnnList <$> mapM trfAssertion ctx) 
   
@@ -421,7 +421,7 @@ createDeclHead name vars
   = foldl (\t p -> do typ <- t
                       annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
-          (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfName' (unLoc name))) 
+          (annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
           (hsq_tvs vars)
          
 trfDataKeyword :: NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword RI)
@@ -440,13 +440,13 @@ createClassBody sigs binds typeFams typeFamDefs
   where combinedLoc wh = foldl combineSrcSpans wh allLocs
         allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc typeFams ++ map getLoc typeFamDefs
         getSigs = mapM trfClassElemSig sigs
-        getBinds = mapM (takeAnnot AST.ClsDef . trfBind) (bagToList binds)
-        getFams = mapM (takeAnnot AST.ClsTypeFam . trfTypeFam) typeFams
+        getBinds = mapM (copyAnnot AST.ClsDef . trfBind) (bagToList binds)
+        getFams = mapM (copyAnnot AST.ClsTypeFam . trfTypeFam) typeFams
         getFamDefs = mapM trfTypeFamDef typeFamDefs
        
 trfClassElemSig :: Located (Sig RdrName) -> Trf (Ann AST.ClassElement RI)
 trfClassElemSig = trfLoc $ \case
-  TypeSig [name] typ _ -> AST.ClsSig <$> (AST.TypeSignature <$> trfName name <*> trfType typ)
+  TypeSig [name] typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
   GenericSig [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType typ
          
 trfTyVar :: Located (HsTyVarBndr RdrName) -> Trf (Ann AST.TyVar RI)
@@ -484,16 +484,16 @@ trfInstBody binds sigs fams dats = do
   where combinedLoc wh = foldl combineSrcSpans wh allLocs
         allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc fams ++ map getLoc dats
         getSigs = mapM trfClassInstSig sigs
-        getBinds = mapM (takeAnnot AST.InstBodyNormalDecl . trfBind) (bagToList binds)
+        getBinds = mapM (copyAnnot AST.InstBodyNormalDecl . trfBind) (bagToList binds)
         getFams = mapM trfInstTypeFam fams
         getDats = mapM trfInstDataFam dats
           
 trfClassInstSig :: Located (Sig RdrName) -> Trf (Ann AST.InstBodyDecl RI)
 trfClassInstSig = trfLoc $ \case
-  TypeSig [name] typ _ -> AST.InstBodyTypeSig <$> (AST.TypeSignature <$> trfName name <*> trfType typ)
+  TypeSig [name] typ _ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
           
 trfInstTypeFam :: Located (TyFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
-trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = takeAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)
+trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)
 
 trfInstDataFam :: Located (DataFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
 trfInstDataFam = trfLoc $ \case 
@@ -503,7 +503,7 @@ trfInstDataFam = trfLoc $ \case
                     (AST.InstanceRule annNothing <$> trfCtx ctx 
                                                  <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . _annotation <$> r) 
                                                                            (AST.InstanceHeadApp <$> r <*> (trfType t))) 
-                                                           (takeAnnot AST.InstanceHeadCon (trfName tc)) pats)
+                                                           (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)
          <*> (AnnList <$> mapM trfConDecl cons)
          <*> trfMaybe trfDerivings derivs
           

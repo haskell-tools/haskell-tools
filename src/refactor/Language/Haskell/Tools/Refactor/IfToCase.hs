@@ -43,7 +43,7 @@ alt pat rhs Nothing = Ann ( (×) <> (×) ) $ Alt pat rhs (AnnMaybe Nothing)
 alt pat rhs locs@(Just _) = Ann ( (×) <> (×) <> " " <> (×) ) $ Alt pat rhs (AnnMaybe locs)  
 
 varPat :: String -> Ann Pattern ST
-varPat str = Ann (×) $ VarPat (Name (AnnList []) (Ann (fromString str) $ SimpleName str)) 
+varPat str = Ann (×) $ VarPat (Ann (×) (Name (AnnList []) (Ann (fromString str) $ SimpleName str))) 
 
 unguardedCaseRhs :: Ann Expr ST -> Ann CaseRhs ST
 unguardedCaseRhs e = Ann ( " -> " <> (×) ) $ UnguardedCaseRhs e
