@@ -1,12 +1,8 @@
 {-# LANGUAGE CPP, LambdaCase, FlexibleInstances, FlexibleContexts, ViewPatterns, TypeOperators, DefaultSignatures, StandaloneDeriving, DeriveGeneric #-}
 module Language.Haskell.Tools.Refactor where
 
-import qualified Language.Haskell.Tools.AST.Module as AST
-import Language.Haskell.Tools.AST.FromGHC.Module
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.SourceMap
-import Language.Haskell.Tools.AST.Instances
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.FromGHC
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
@@ -60,13 +56,13 @@ analyze workingDir moduleName =
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
 
-        -- let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
+        let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
         
         -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ show $ pm_parsed_source $ tm_parsed_module t
         
         liftIO $ putStrLn "==========="

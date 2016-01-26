@@ -1,8 +1,10 @@
-module Language.Haskell.Tools.AST.Module where
+module Language.Haskell.Tools.AST.Modules where
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Base
-import Language.Haskell.Tools.AST.Decl
+import Language.Haskell.Tools.AST.Exprs
+import Language.Haskell.Tools.AST.Binds
+import Language.Haskell.Tools.AST.Decls
 
 data Module a 
   = Module { _modHead :: AnnMaybe ModuleHead a

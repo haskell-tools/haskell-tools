@@ -6,8 +6,7 @@
            #-}
 module Language.Haskell.Tools.AnnTrf.RangeToTemplate where
 
-import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Instances
+import Language.Haskell.Tools.AST
 
 import Data.Data
 import Control.Lens

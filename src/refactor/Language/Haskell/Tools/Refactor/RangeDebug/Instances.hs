@@ -11,12 +11,7 @@ import Language.Haskell.Tools.Refactor.RangeDebug
 
 import GHC.Generics
 
-import Language.Haskell.Tools.AST.Instances
-import Language.Haskell.Tools.AST.Module
-import Language.Haskell.Tools.AST.Decl
-import Language.Haskell.Tools.AST.Literals
-import Language.Haskell.Tools.AST.Base
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST
 
 -- Annotations
 instance (TreeDebug e a, Show (e a)) => TreeDebug (Ann e) a where

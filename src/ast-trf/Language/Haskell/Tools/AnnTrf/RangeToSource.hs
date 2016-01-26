@@ -7,7 +7,7 @@ import Data.StructuralTraversal
 import Data.Map
 import Data.Monoid
 import Control.Monad.State
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate

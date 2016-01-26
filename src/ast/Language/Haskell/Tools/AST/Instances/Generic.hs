@@ -2,8 +2,16 @@
 module Language.Haskell.Tools.AST.Instances.Generic where
 
 import GHC.Generics
-import Language.Haskell.Tools.AST.Module
-import Language.Haskell.Tools.AST.Decl
+
+import Language.Haskell.Tools.AST.Modules
+import Language.Haskell.Tools.AST.TH
+import Language.Haskell.Tools.AST.Decls
+import Language.Haskell.Tools.AST.Binds
+import Language.Haskell.Tools.AST.Exprs
+import Language.Haskell.Tools.AST.Stmts
+import Language.Haskell.Tools.AST.Patterns
+import Language.Haskell.Tools.AST.Types
+import Language.Haskell.Tools.AST.Kinds
 import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Ann

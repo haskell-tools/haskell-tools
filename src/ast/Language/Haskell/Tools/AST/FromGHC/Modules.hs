@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Language.Haskell.Tools.AST.FromGHC.Module where
+module Language.Haskell.Tools.AST.FromGHC.Modules where
 
 import Data.Maybe
 import Control.Monad.Reader
@@ -14,10 +14,10 @@ import HsSyn as GHC
 
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Base as AST
-import qualified Language.Haskell.Tools.AST.Module as AST
+import qualified Language.Haskell.Tools.AST.Modules as AST
 
 import Language.Haskell.Tools.AST.FromGHC.Base
-import Language.Haskell.Tools.AST.FromGHC.Decl
+import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 

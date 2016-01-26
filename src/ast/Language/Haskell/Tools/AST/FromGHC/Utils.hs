@@ -12,6 +12,7 @@ import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import ApiAnnotation
 import SrcLoc
 import HsSyn
+import Outputable
 
 -- | RangeInfo (RI) is an alias for SrcSpan
 type RI = SrcSpan
@@ -84,3 +85,11 @@ collectAnnots = foldl1 combineSrcSpans . map _annotation
 orderDefs :: [Ann e RI] -> [Ann e RI]
 orderDefs = sortBy (compare `on` ordSrcSpan . _annotation)
 
+advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
+advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
+advanceAllSrcLoc oth _ = oth
+  
+pprStr :: Outputable a => a -> String
+pprStr = showSDocUnsafe . ppr
+                
+                

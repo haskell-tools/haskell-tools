@@ -14,27 +14,45 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Language.Haskell.Tools.AST.SourceMap
-                     , Language.Haskell.Tools.AST
-                     , Language.Haskell.Tools.AST.Module
+  exposed-modules:     Language.Haskell.Tools.AST
+                     , Language.Haskell.Tools.AST.FromGHC
+                     , Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
+                     
+  other-modules:       Language.Haskell.Tools.AST.Modules
+                     , Language.Haskell.Tools.AST.TH
+                     , Language.Haskell.Tools.AST.Decls
+                     , Language.Haskell.Tools.AST.Binds
+                     , Language.Haskell.Tools.AST.Exprs
+                     , Language.Haskell.Tools.AST.Stmts
+                     , Language.Haskell.Tools.AST.Patterns
+                     , Language.Haskell.Tools.AST.Types
+                     , Language.Haskell.Tools.AST.Kinds
                      , Language.Haskell.Tools.AST.Literals
+                     , Language.Haskell.Tools.AST.Base
+                     , Language.Haskell.Tools.AST.Ann
+                     , Language.Haskell.Tools.AST.SourceMap
+                   
                      , Language.Haskell.Tools.AST.Instances
                      , Language.Haskell.Tools.AST.Instances.Show
                      , Language.Haskell.Tools.AST.Instances.Data
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
                      , Language.Haskell.Tools.AST.Lenses
-                     , Language.Haskell.Tools.AST.Decl
-                     , Language.Haskell.Tools.AST.Base
-                     , Language.Haskell.Tools.AST.Ann
-                     , Language.Haskell.Tools.AST.FromGHC
-                     , Language.Haskell.Tools.AST.FromGHC.Module
-                     , Language.Haskell.Tools.AST.FromGHC.Decl
+
+                     , Language.Haskell.Tools.AST.FromGHC.Modules
+                     , Language.Haskell.Tools.AST.FromGHC.TH
+                     , Language.Haskell.Tools.AST.FromGHC.Decls
+                     , Language.Haskell.Tools.AST.FromGHC.Binds
+                     , Language.Haskell.Tools.AST.FromGHC.Exprs
+                     , Language.Haskell.Tools.AST.FromGHC.Stmts
+                     , Language.Haskell.Tools.AST.FromGHC.Patterns
+                     , Language.Haskell.Tools.AST.FromGHC.Types
+                     , Language.Haskell.Tools.AST.FromGHC.Kinds
+                     , Language.Haskell.Tools.AST.FromGHC.Literals
                      , Language.Haskell.Tools.AST.FromGHC.Base
-                     , Language.Haskell.Tools.AST.FromGHC.Utils
                      , Language.Haskell.Tools.AST.FromGHC.Monad
-                     , Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
-  -- other-modules:       
+                     , Language.Haskell.Tools.AST.FromGHC.Utils
+                     
   other-extensions:    CPP
                      , LambdaCase
                      , FlexibleInstances

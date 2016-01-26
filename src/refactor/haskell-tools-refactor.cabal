@@ -19,6 +19,8 @@ library
   other-extensions:    CPP, LambdaCase, FlexibleInstances
   build-depends:       base >=4.8 && <4.9
                      , ghc >=7.10 && < 7.11
+                     , uniplate >=1.6 && < 1.7
+                     , lens >=4.0 && <5.0
                      , structural-traversal >=0.1 && <0.2
                      , haskell-tools-ast >=0.1 && <0.2
                      , haskell-tools-ast-trf >=0.1 && <0.2

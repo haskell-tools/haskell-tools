@@ -15,6 +15,8 @@ import Outputable as GHC
 import SrcLoc as GHC
 import BasicTypes as GHC
 import FastString as GHC
+import ApiAnnotation as GHC
+import ForeignCall as GHC
 
 import Language.Haskell.Tools.AST.Ann as AST
 import qualified Language.Haskell.Tools.AST.Base as AST
@@ -39,25 +41,6 @@ trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList ls, loc))
                           in ( r ++ [Ann (mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)
 
-trfLiteral' :: HsLit -> Trf (AST.Literal RI)
-trfLiteral' (HsChar _ ch) = pure $ AST.CharLit ch
-trfLiteral' (HsCharPrim _ ch) = pure $ AST.PrimCharLit ch
-trfLiteral' (HsString _ str) = pure $ AST.StringLit (unpackFS str)
-trfLiteral' (HsStringPrim _ str) = pure $ AST.PrimStringLit (BS.foldr (:) "" str)
-trfLiteral' (HsInt _ i) = pure $ AST.IntLit i
-trfLiteral' (HsIntPrim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsWordPrim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsInt64Prim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsWord64Prim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsInteger _ i _) = pure $ AST.PrimIntLit i
-trfLiteral' (HsRat frac _) = pure $ AST.FracLit (fl_value frac)
-trfLiteral' (HsFloatPrim frac) = pure $ AST.PrimFloatLit (fl_value frac)
-trfLiteral' (HsDoublePrim frac) = pure $ AST.PrimDoubleLit (fl_value frac)
-  
-trfOverloadedLit :: OverLitVal -> Trf (AST.Literal RI)
-trfOverloadedLit (HsIntegral _ i) = pure $ AST.IntLit i
-trfOverloadedLit (HsFractional frac) = pure $ AST.FracLit (fl_value frac)
-trfOverloadedLit (HsIsString _ str) = pure $ AST.StringLit (unpackFS str)
   
 trfModuleName :: Located ModuleName -> Trf (Ann Name RI)
 trfModuleName = trfLoc trfModuleName'
@@ -65,13 +48,25 @@ trfModuleName = trfLoc trfModuleName'
 trfModuleName' :: ModuleName -> Trf (Name RI)
 trfModuleName' = (AST.nameFromList . fst <$>) . trfNameStr . moduleNameString
   
--- * utility methods
-  
-advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
-advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
-advanceAllSrcLoc oth _ = oth
-  
-pprStr :: Outputable a => a -> String
-pprStr = showSDocUnsafe . ppr
-                
-                
+trfDataKeyword :: NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword RI)
+trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
+trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
+     
+trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv RI)
+trfCallConv = undefined      
+   
+trfCallConv' :: CCallConv -> Trf (AST.CallConv RI)
+trfCallConv' = undefined 
+
+trfSafety :: Located Safety -> Trf (AnnMaybe AST.Safety RI)
+trfSafety = undefined 
+
+trfOverlap :: Located OverlapMode -> Trf (Ann AST.OverlapPragma RI)
+trfOverlap = trfLoc $ pure . \case
+  NoOverlap _ -> AST.DisableOverlap
+  Overlappable _ -> AST.Overlappable
+  Overlapping _ -> AST.Overlapping
+  Overlaps _ -> AST.Overlaps
+  Incoherent _ -> AST.IncoherentOverlap
+          
+          
