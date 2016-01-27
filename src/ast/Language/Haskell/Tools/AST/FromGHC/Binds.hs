@@ -23,58 +23,60 @@ import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Patterns as AST
 import qualified Language.Haskell.Tools.AST.Binds as AST
 
-trfBind :: Located (HsBind RdrName) -> Trf (Ann AST.ValueBind RI)
+trfBind :: TransformName n => Located (HsBind n) -> Trf (Ann AST.ValueBind (AnnotType n))
 trfBind = trfLoc trfBind'
   
-trfBind' :: HsBind RdrName -> Trf (AST.ValueBind RI)
+trfBind' :: TransformName n => HsBind n -> Trf (AST.ValueBind (AnnotType n))
 trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> (copyAnnot AST.VarPat (trfName id)) <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) <*> trfWhereLocalBinds locals
 trfBind' (FunBind id isInfix (MG matches _ _ _) _ _ _) = AST.FunBind . AnnList <$> mapM (trfMatch id) matches
 trfBind' (PatBind pat (GRHSs rhs locals) _ _ _) = AST.SimpleBind <$> trfPattern pat <*> trfRhss rhs <*> trfWhereLocalBinds locals
 trfBind' (AbsBinds typeVars vars exports _ _) = undefined
 trfBind' (PatSynBind psb) = undefined
   
-trfMatch :: Located RdrName -> Located (Match RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Match RI)
+trfMatch :: TransformName n => Located n -> Located (Match n (LHsExpr n)) -> Trf (Ann AST.Match (AnnotType n))
 trfMatch name = trfLoc $ \(Match funid pats typ (GRHSs rhss locBinds))
   -> AST.Match <$> trfName (maybe name fst funid) <*> (AnnList <$> mapM trfPattern pats) <*> trfMaybe trfType typ 
                <*> trfRhss rhss <*> trfWhereLocalBinds locBinds
   
-trfRhss :: [Located (GRHS RdrName (LHsExpr RdrName))] -> Trf (Ann AST.Rhs RI)
+trfRhss :: TransformName n => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.Rhs (AnnotType n))
 trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
                                          (AST.UnguardedRhs <$> trfExpr body)
 trfRhss rhss = annLoc (pure $ collectLocs rhss) 
                       (AST.GuardedRhss . AnnList <$> mapM trfGuardedRhs rhss)
                       
-trfGuardedRhs :: Located (GRHS RdrName (LHsExpr RdrName)) -> Trf (Ann AST.GuardedRhs RI)
+trfGuardedRhs :: TransformName n => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedRhs (AnnotType n))
 trfGuardedRhs = trfLoc $ \(GRHS guards body) 
   -> AST.GuardedRhs . AnnList <$> mapM trfRhsGuard guards <*> trfExpr body
   
-trfRhsGuard :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.RhsGuard RI)
+trfRhsGuard :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard (AnnotType n))
 trfRhsGuard = trfLoc $ \case
   BindStmt pat body _ _ -> AST.GuardBind <$> trfPattern pat <*> trfExpr body
   BodyStmt body _ _ _ -> AST.GuardCheck <$> trfExpr body
   LetStmt binds -> AST.GuardLet <$> trfLocalBinds binds
   
-trfWhereLocalBinds :: HsLocalBinds RdrName -> Trf (AnnMaybe AST.LocalBinds RI)
+trfWhereLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds (AnnotType n))
 trfWhereLocalBinds EmptyLocalBinds = pure annNothing  
-trfWhereLocalBinds binds@(HsValBinds (ValBindsIn vals sigs)) 
-  = annJust <$> annLoc (collectAnnots . _fromAnnList <$> localBinds) (AST.LocalBinds <$> localBinds)
-      where localBinds = trfLocalBinds binds
+trfWhereLocalBinds binds
+  = annJust <$> annLoc (pure $ getBindLocs binds) (AST.LocalBinds <$> trfLocalBinds binds)
 
-trfLocalBinds :: HsLocalBinds RdrName -> Trf (AnnList AST.LocalBind RI)
+getBindLocs :: HsLocalBinds n -> RI
+getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs
+getBindLocs (HsValBinds (ValBindsOut binds sigs)) = foldLocs $ map getLoc (concatMap (bagToList . snd) binds) ++ map getLoc sigs
+  
+trfLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnList AST.LocalBind (AnnotType n))
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
   = AnnList . orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
                                   <*> mapM trfLocalSig sigs)
              
-
-trfLocalSig :: Located (Sig RdrName) -> Trf (Ann AST.LocalBind RI)
+trfLocalSig :: TransformName n => Located (Sig n) -> Trf (Ann AST.LocalBind (AnnotType n))
 trfLocalSig = trfLoc $ \case
   ts@(TypeSig {}) -> AST.LocalSignature <$> annCont (trfTypeSig ts)
   (FixSig fs) -> AST.LocalFixity <$> annCont (trfFixitySig fs)
   
-trfTypeSig :: Sig RdrName -> Trf (AST.TypeSignature RI)
+trfTypeSig :: TransformName n => Sig n -> Trf (AST.TypeSignature (AnnotType n))
 trfTypeSig (TypeSig [name] typ _) = AST.TypeSignature <$> trfName name <*> trfType typ
   
-trfFixitySig :: FixitySig RdrName -> Trf (AST.FixitySignature RI)
+trfFixitySig :: TransformName n => FixitySig n -> Trf (AST.FixitySignature (AnnotType n))
 trfFixitySig (FixitySig names (Fixity prec dir)) 
   = AST.FixitySignature <$> transformDir dir
                         <*> annLoc (tokenLoc AnnVal) (pure $ AST.Precedence prec) 

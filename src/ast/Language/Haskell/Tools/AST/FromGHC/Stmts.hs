@@ -24,23 +24,24 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Stmts as AST
  
-trfDoStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Stmt RI)
+trfDoStmt :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.Stmt (AnnotType n))
 trfDoStmt = trfLoc $ \case
   BindStmt pat expr _ _ -> AST.BindStmt <$> trfPattern pat <*> trfExpr expr
   BodyStmt expr _ _ _ -> AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
   LetStmt binds -> AST.LetStmt <$> trfLocalBinds binds
   RecStmt { recS_stmts = stmts } -> AST.RecStmt . AnnList <$> mapM trfDoStmt stmts
 
-trfListCompStmts :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Trf (AnnList AST.ListCompBody RI)
+trfListCompStmts :: TransformName n => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody (AnnotType n))
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
-  = AnnList <$> mapM (fmap ((\lcb -> Ann (collectAnnots $ _fromAnnList (AST._compStmts lcb)) lcb) 
-                               . AST.ListCompBody . AnnList . concat) 
-                       . mapM trfListCompStmt . (\(ParStmtBlock stmts _ _) -> stmts)) blocks
+  = AnnList <$> mapM (\(ParStmtBlock stmts _ _) -> 
+                         annLoc (pure $ collectLocs $ getNormalStmts stmts)
+                                (AST.ListCompBody . AnnList . concat <$> mapM trfListCompStmt stmts)
+                     ) blocks
 trfListCompStmts others 
-  = AnnList . (:[]) <$> annLoc (collectAnnots <$> stmts) (AST.ListCompBody . AnnList <$> stmts) 
-  where stmts = concat <$> mapM trfListCompStmt others
+  = AnnList . (:[]) <$> annLoc (pure $ collectLocs $ getNormalStmts others)
+                               (AST.ListCompBody . AnnList . concat <$> mapM trfListCompStmt others) 
 
-trfListCompStmt :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf [Ann AST.CompStmt RI]
+trfListCompStmt :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt (AnnotType n)]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
   = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (mapM trfListCompStmt stmts)) 
          <*> ((:[]) <$> extractActualStmt trst)
@@ -48,7 +49,7 @@ trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts }))
 trfListCompStmt (unLoc -> LastStmt _ _) = pure []
 trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
   
-extractActualStmt :: Stmt RdrName (LHsExpr RdrName) -> Trf (Ann AST.CompStmt RI)
+extractActualStmt :: TransformName n => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt (AnnotType n))
 extractActualStmt = \case
   TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
     -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe trfExpr by)
@@ -58,7 +59,12 @@ extractActualStmt = \case
           = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
                       <$> tokenLocBack AnnThen)
   
-getLastStmt :: [Located (Stmt RdrName (LHsExpr RdrName))] -> Located (HsExpr RdrName)
+getNormalStmts :: [Located (Stmt n (LHsExpr n))] -> [Located (Stmt n (LHsExpr n))]
+getNormalStmts (L _ (LastStmt body _) : rest) = getNormalStmts rest
+getNormalStmts (stmt : rest) = stmt : getNormalStmts rest 
+getNormalStmts [] = []
+ 
+getLastStmt :: [Located (Stmt n (LHsExpr n))] -> Located (HsExpr n)
 getLastStmt (L _ (LastStmt body _) : rest) = body
 getLastStmt (_ : rest) = getLastStmt rest
   

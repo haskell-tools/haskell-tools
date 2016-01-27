@@ -22,7 +22,7 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Patterns as AST
 
-trfPattern :: Located (Pat RdrName) -> Trf (Ann AST.Pattern RI)
+trfPattern :: TransformName n => Located (Pat n) -> Trf (Ann AST.Pattern (AnnotType n))
 trfPattern = trfLoc $ \case
   WildPat _ -> pure AST.WildPat
   VarPat name -> AST.VarPat <$> annCont (trfName' name)

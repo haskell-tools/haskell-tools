@@ -16,10 +16,10 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Types as AST
 
-trfType :: Located (HsType RdrName) -> Trf (Ann AST.Type RI)
+trfType :: TransformName n => Located (HsType n) -> Trf (Ann AST.Type (AnnotType n))
 trfType = trfLoc trfType'
 
-trfType' :: HsType RdrName -> Trf (AST.Type RI)
+trfType' :: TransformName n => HsType n -> Trf (AST.Type (AnnotType n))
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
                                                        <*> trfCtx ctx <*> trfType typ
 trfType' (HsTyVar name) = AST.TyVar <$> annCont (trfName' name)
@@ -45,15 +45,15 @@ trfType' HsWildcardTy = pure AST.TyWildcard
 -- not implemented as ghc 7.10.3
 trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> annCont (trfName' name)
   
-trfBindings :: [Located (HsTyVarBndr RdrName)] -> Trf (AnnList AST.TyVar RI)
+trfBindings :: TransformName n => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar (AnnotType n))
 trfBindings vars = AnnList <$> mapM trfTyVar vars
   
-trfTyVar :: Located (HsTyVarBndr RdrName) -> Trf (Ann AST.TyVar RI)
+trfTyVar :: TransformName n => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar (AnnotType n))
 trfTyVar var@(L l _) = trfLoc (\case
   UserTyVar name -> AST.TyVarDecl <$> annLoc (pure l) (trfName' name) <*> pure annNothing
   KindedTyVar name kind -> AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)) var
   
-trfCtx :: Located (HsContext RdrName) -> Trf (AnnMaybe AST.Context RI)
+trfCtx :: TransformName n => Located (HsContext n) -> Trf (AnnMaybe AST.Context (AnnotType n))
 trfCtx (L l []) = pure annNothing
 trfCtx (L l [L _ (HsParTy t)]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
@@ -64,13 +64,13 @@ trfCtx (L l [t])
 trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                                       (AST.ContextMulti . AnnList <$> mapM trfAssertion ctx) 
   
-trfAssertion :: LHsType RdrName -> Trf (Ann AST.Assertion RI)
+trfAssertion :: TransformName n => LHsType n -> Trf (Ann AST.Assertion (AnnotType n))
 trfAssertion t = annLoc (pure $ getLoc t) $ case base of 
   L l (HsTyVar name) -> AST.ClassAssert <$> annLoc (pure l) (trfName' name) 
                                         <*> (AnnList <$> mapM trfType args)
   L l (HsOpTy left op right) -> AST.InfixAssert <$> trfType left <*> trfName (snd op) <*> trfType right
   where (args, base) = getArgs t
-        getArgs :: LHsType RdrName -> ([LHsType RdrName], LHsType RdrName)
+        getArgs :: TransformName n => LHsType n -> ([LHsType n], LHsType n)
         getArgs (L l (HsAppTy ft at)) = case getArgs ft of (args, base) -> (args++[at], base)
         getArgs t = ([], t)
   

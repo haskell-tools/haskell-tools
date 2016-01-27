@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 module Language.Haskell.Tools.AST.FromGHC.Kinds where
 
 import SrcLoc as GHC
@@ -14,15 +15,15 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann as AST
 import qualified Language.Haskell.Tools.AST.Kinds as AST
 
-trfKindSig :: Maybe (LHsKind RdrName) -> Trf (AnnMaybe AST.KindConstraint RI)
+trfKindSig :: TransformName n => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint (AnnotType n))
 trfKindSig = trfMaybe (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
                                     (fmap AST.KindConstraint $ trfLoc trfKind' k))
 
-trfKind :: Located (HsKind RdrName) -> Trf (Ann AST.Kind RI)
+trfKind :: TransformName n => Located (HsKind n) -> Trf (Ann AST.Kind (AnnotType n))
 trfKind = trfLoc trfKind'
 
-trfKind' :: HsKind RdrName -> Trf (AST.Kind RI)
-trfKind' (HsTyVar (Exact n)) 
+trfKind' :: TransformName n => HsKind n -> Trf (AST.Kind (AnnotType n))
+trfKind' (HsTyVar (rdrName -> Exact n)) 
   | isWiredInName n && occNameString (nameOccName n) == "*"
   = pure AST.KindStar
   | isWiredInName n && occNameString (nameOccName n) == "#"

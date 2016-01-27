@@ -14,7 +14,7 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Literals as AST
 
-trfLiteral' :: HsLit -> Trf (AST.Literal RI)
+trfLiteral' :: HsLit -> Trf (AST.Literal a)
 trfLiteral' (HsChar _ ch) = pure $ AST.CharLit ch
 trfLiteral' (HsCharPrim _ ch) = pure $ AST.PrimCharLit ch
 trfLiteral' (HsString _ str) = pure $ AST.StringLit (unpackFS str)
@@ -29,7 +29,7 @@ trfLiteral' (HsRat frac _) = pure $ AST.FracLit (fl_value frac)
 trfLiteral' (HsFloatPrim frac) = pure $ AST.PrimFloatLit (fl_value frac)
 trfLiteral' (HsDoublePrim frac) = pure $ AST.PrimDoubleLit (fl_value frac)
   
-trfOverloadedLit :: OverLitVal -> Trf (AST.Literal RI)
+trfOverloadedLit :: OverLitVal -> Trf (AST.Literal a)
 trfOverloadedLit (HsIntegral _ i) = pure $ AST.IntLit i
 trfOverloadedLit (HsFractional frac) = pure $ AST.FracLit (fl_value frac)
 trfOverloadedLit (HsIsString _ str) = pure $ AST.StringLit (unpackFS str)

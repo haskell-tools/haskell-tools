@@ -7,9 +7,10 @@ import HsBinds as GHC
 import HsExpr as GHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Binds as AST
 
-trfLocalBinds :: HsLocalBinds RdrName -> Trf (AnnList AST.LocalBind RI)
-trfWhereLocalBinds :: HsLocalBinds RdrName -> Trf (AnnMaybe AST.LocalBinds RI)
-trfRhsGuard :: Located (Stmt RdrName (LHsExpr RdrName)) -> Trf (Ann AST.RhsGuard RI)
+trfLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnList AST.LocalBind (AnnotType n))
+trfWhereLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds (AnnotType n))
+trfRhsGuard :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard (AnnotType n))

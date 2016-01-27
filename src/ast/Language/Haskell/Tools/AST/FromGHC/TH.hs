@@ -7,15 +7,16 @@ import HsExpr as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.Base
 
 import qualified Language.Haskell.Tools.AST.TH as AST
 
-trfQuasiQuotation' :: HsQuasiQuote RdrName -> Trf (AST.QuasiQuote RI)
+trfQuasiQuotation' :: TransformName n => HsQuasiQuote n -> Trf (AST.QuasiQuote (AnnotType n))
 trfQuasiQuotation' = undefined
 
-trfSplice' :: HsSplice RdrName -> Trf (AST.Splice RI)
+trfSplice' :: TransformName n => HsSplice n -> Trf (AST.Splice (AnnotType n))
 trfSplice' = undefined
 
-trfBracket' :: HsBracket RdrName -> Trf (AST.Bracket RI)
+trfBracket' :: TransformName n => HsBracket n -> Trf (AST.Bracket (AnnotType n))
 trfBracket' = undefined
   

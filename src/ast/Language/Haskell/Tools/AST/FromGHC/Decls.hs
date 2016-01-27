@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase 
            , ViewPatterns
-             #-}
+           #-}
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
 import RdrName as GHC
@@ -33,11 +33,11 @@ import qualified Language.Haskell.Tools.AST.Binds as AST
 import qualified Language.Haskell.Tools.AST.Types as AST
 import qualified Language.Haskell.Tools.AST.Decls as AST
 
-trfDecls :: [LHsDecl RdrName] -> Trf (AnnList AST.Decl RI)
+trfDecls :: TransformName n => [LHsDecl n] -> Trf (AnnList AST.Decl (AnnotType n))
 -- TODO: filter documentation comments
 trfDecls decls = AnnList <$> mapM trfDecl decls
 
-trfDecl :: Located (HsDecl RdrName) -> Trf (Ann AST.Decl RI)
+trfDecl :: TransformName n => Located (HsDecl n) -> Trf (Ann AST.Decl (AnnotType n))
 trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl DataFamily name tyVars kindSig)) 
     -> AST.TypeFamilyDecl <$> (annCont $ AST.DataFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
@@ -71,7 +71,7 @@ trfDecl = trfLoc $ \case
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
 
-trfConDecl :: Located (ConDecl RdrName) -> Trf (Ann AST.ConDecl RI)
+trfConDecl :: TransformName n => Located (ConDecl n) -> Trf (Ann AST.ConDecl (AnnotType n))
 trfConDecl = trfLoc $ \case 
   ConDecl { con_names = [name], con_details = PrefixCon args }
     -> AST.ConDecl <$> trfName name <*> (AnnList <$> mapM trfType args)
@@ -80,16 +80,16 @@ trfConDecl = trfLoc $ \case
   ConDecl { con_names = [name], con_details = InfixCon t1 t2 }
     -> AST.InfixConDecl <$> trfName name <*> trfType t1 <*> trfType t2
 
-trfFieldDecl :: Located (ConDeclField RdrName) -> Trf (Ann AST.FieldDecl RI)
+trfFieldDecl :: TransformName n => Located (ConDeclField n) -> Trf (Ann AST.FieldDecl (AnnotType n))
 trfFieldDecl = trfLoc $ \(ConDeclField names typ _)
   -> AST.FieldDecl <$> (AnnList <$> mapM trfName names) <*> trfType typ
 
-trfDerivings :: Located [LHsType RdrName] -> Trf (Ann AST.Deriving RI)
+trfDerivings :: TransformName n => Located [LHsType n] -> Trf (Ann AST.Deriving (AnnotType n))
 trfDerivings = trfLoc $ \case
   [typ@(unLoc -> HsTyVar cls)] -> AST.DerivingOne <$> trfInstanceRule typ
   derivs -> AST.Derivings . AnnList <$> mapM trfInstanceRule derivs
   
-trfInstanceRule :: Located (HsType RdrName) -> Trf (Ann AST.InstanceRule RI)
+trfInstanceRule :: TransformName n => Located (HsType n) -> Trf (Ann AST.InstanceRule (AnnotType n))
 trfInstanceRule = trfLoc $ \case
   (HsForAllTy Explicit _ bndrs ctx typ) 
     -> AST.InstanceRule <$> (annJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
@@ -104,7 +104,7 @@ trfInstanceRule = trfLoc $ \case
                                  <*> annLoc (asks contRange) 
                                             (AST.InstanceHeadCon <$> annCont (trfName' tv))
                                  
-trfInstanceHead :: Located (HsType RdrName) -> Trf (Ann AST.InstanceHead RI)
+trfInstanceHead :: TransformName n => Located (HsType n) -> Trf (Ann AST.InstanceHead (AnnotType n))
 trfInstanceHead = trfLoc $ \case
   HsTyVar tv -> AST.InstanceHeadCon <$> annCont (trfName' tv)
   HsAppTy t1 t2 -> AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
@@ -114,35 +114,35 @@ trfInstanceHead = trfLoc $ \case
                                        (AST.InstanceHeadInfix <$> trfType t1 <*> trfName op)) 
                            <*> trfType t2
  
-trfTypeEqs :: [Located (TyFamInstEqn RdrName)] -> Trf (AnnList AST.TypeEqn RI)
+trfTypeEqs :: TransformName n => [Located (TyFamInstEqn n)] -> Trf (AnnList AST.TypeEqn (AnnotType n))
 trfTypeEqs = fmap AnnList . mapM trfTypeEq
 
-trfTypeEq :: Located (TyFamInstEqn RdrName) -> Trf (Ann AST.TypeEqn RI)
+trfTypeEq :: TransformName n => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn (AnnotType n))
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
   -> AST.TypeEqn <$> combineTypes name pats <*> trfType rhs
-  where combineTypes :: Located RdrName -> HsTyPats RdrName -> Trf (Ann AST.Type RI)
+  where combineTypes :: TransformName n => Located n -> HsTyPats n -> Trf (Ann AST.Type (AnnotType n))
         combineTypes name pats 
           = foldl (\t p -> do typ <- t
-                              annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
+                              annLoc (pure $ combineSrcSpans (extractSpan $ _annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
                   (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
                   (hswb_cts pats)
                  
-trfFunDeps :: [Located (FunDep (Located name))] -> Trf (AnnMaybe AST.FunDeps RI)
+trfFunDeps :: TransformName n => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps (AnnotType n))
 trfFunDeps [] = pure annNothing
 trfFunDeps _ = pure undefined
   
-createDeclHead :: Located RdrName -> LHsTyVarBndrs RdrName -> Trf (Ann AST.DeclHead RI)
+createDeclHead :: TransformName n => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead (AnnotType n))
 createDeclHead name vars
   = foldl (\t p -> do typ <- t
-                      annLoc (pure $ combineSrcSpans (_annotation typ) (getLoc p)) 
+                      annLoc (pure $ combineSrcSpans (extractSpan $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
           (hsq_tvs vars)
       
          
-createClassBody :: [LSig RdrName] -> LHsBinds RdrName -> [LFamilyDecl RdrName] 
-                               -> [LTyFamDefltEqn RdrName] -> Trf (AnnMaybe AST.ClassBody RI)
+createClassBody :: TransformName n => [LSig n] -> LHsBinds n -> [LFamilyDecl n] 
+                               -> [LTyFamDefltEqn n] -> Trf (AnnMaybe AST.ClassBody (AnnotType n))
 createClassBody sigs binds typeFams typeFamDefs 
   = do isThereWhere <- isGoodSrcSpan <$> (tokenLoc AnnWhere)
        if isThereWhere 
@@ -157,23 +157,23 @@ createClassBody sigs binds typeFams typeFamDefs
         getFams = mapM (copyAnnot AST.ClsTypeFam . trfTypeFam) typeFams
         getFamDefs = mapM trfTypeFamDef typeFamDefs
        
-trfClassElemSig :: Located (Sig RdrName) -> Trf (Ann AST.ClassElement RI)
+trfClassElemSig :: TransformName n => Located (Sig n) -> Trf (Ann AST.ClassElement (AnnotType n))
 trfClassElemSig = trfLoc $ \case
   TypeSig [name] typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
   GenericSig [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType typ
          
-trfTypeFam :: Located (FamilyDecl RdrName) -> Trf (Ann AST.TypeFamily RI)
+trfTypeFam :: TransformName n => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily (AnnotType n))
 trfTypeFam = trfLoc $ \case
   FamilyDecl DataFamily name tyVars kindSig
     -> AST.DataFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig
   FamilyDecl OpenTypeFamily name tyVars kindSig
     -> AST.TypeFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig
           
-trfTypeFamDef :: Located (TyFamDefltEqn RdrName) -> Trf (Ann AST.ClassElement RI)
+trfTypeFamDef :: TransformName n => Located (TyFamDefltEqn n) -> Trf (Ann AST.ClassElement (AnnotType n))
 trfTypeFamDef = trfLoc $ \(TyFamEqn con pats rhs) 
   -> AST.ClsTypeDef <$> createDeclHead con pats <*> trfType rhs
           
-trfInstBody :: LHsBinds RdrName -> [LSig RdrName] -> [LTyFamInstDecl RdrName] -> [LDataFamInstDecl RdrName] -> Trf (AnnMaybe AST.InstBody RI)
+trfInstBody :: TransformName n => LHsBinds n -> [LSig n] -> [LTyFamInstDecl n] -> [LDataFamInstDecl n] -> Trf (AnnMaybe AST.InstBody (AnnotType n))
 trfInstBody binds sigs fams dats = do
     wh <- tokenLoc AnnWhere
     if isGoodSrcSpan wh then
@@ -188,20 +188,20 @@ trfInstBody binds sigs fams dats = do
         getFams = mapM trfInstTypeFam fams
         getDats = mapM trfInstDataFam dats
           
-trfClassInstSig :: Located (Sig RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfClassInstSig :: TransformName n => Located (Sig n) -> Trf (Ann AST.InstBodyDecl (AnnotType n))
 trfClassInstSig = trfLoc $ \case
   TypeSig [name] typ _ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
           
-trfInstTypeFam :: Located (TyFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfInstTypeFam :: TransformName n => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl (AnnotType n))
 trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)
 
-trfInstDataFam :: Located (DataFamInstDecl RdrName) -> Trf (Ann AST.InstBodyDecl RI)
+trfInstDataFam :: TransformName n => Located (DataFamInstDecl n) -> Trf (Ann AST.InstBodyDecl (AnnotType n))
 trfInstDataFam = trfLoc $ \case 
   (DataFamInstDecl tc (hswb_cts -> pats) (HsDataDefn dn ctx _ _ cons derivs) _) 
     -> AST.InstBodyDataDecl <$> trfDataKeyword dn 
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
                     (AST.InstanceRule annNothing <$> trfCtx ctx 
-                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . _annotation <$> r) 
+                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractSpan . _annotation <$> r) 
                                                                            (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                            (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)
          <*> (AnnList <$> mapM trfConDecl cons)

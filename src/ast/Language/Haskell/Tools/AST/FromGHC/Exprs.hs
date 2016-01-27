@@ -31,10 +31,10 @@ import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Exprs as AST
 
-trfExpr :: Located (HsExpr RdrName) -> Trf (Ann AST.Expr RI)
+trfExpr :: TransformName n => Located (HsExpr n) -> Trf (Ann AST.Expr (AnnotType n))
 trfExpr = trfLoc trfExpr'
 
-trfExpr' :: HsExpr RdrName -> Trf (AST.Expr RI)
+trfExpr' :: TransformName n => HsExpr n -> Trf (AST.Expr (AnnotType n))
 trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
 trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <$> trfNameStr (unpackFS ip))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
@@ -97,29 +97,29 @@ trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation'
 -- TODO: arrows
 -- TODO: static
 
-trfFieldUpdates :: HsRecordBinds RdrName -> Trf (AnnList AST.FieldUpdate RI)
+trfFieldUpdates :: TransformName n => HsRecordBinds n -> Trf (AnnList AST.FieldUpdate (AnnotType n))
 trfFieldUpdates (HsRecFields fields dotdot) 
   = AnnList 
       <$> ((++) <$> mapM trfFieldUpdate fields 
                 <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcard) 
                                       else pure []) )
   
-trfFieldUpdate :: Located (HsRecField RdrName (LHsExpr RdrName)) -> Trf (Ann AST.FieldUpdate RI)
+trfFieldUpdate :: TransformName n => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (AnnotType n))
 trfFieldUpdate = trfLoc $ \case
   HsRecField id _ True -> AST.FieldPun <$> annCont (trfName' (unLoc id))
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
-trfAlt :: Located (Match RdrName (LHsExpr RdrName)) -> Trf (Ann AST.Alt RI)
+trfAlt :: TransformName n => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt (AnnotType n))
 trfAlt = trfLoc $ \(Match _ [pat] typ (GRHSs rhss locBinds))
   -> AST.Alt <$> trfPattern pat <*> trfCaseRhss rhss <*> trfWhereLocalBinds locBinds
 
-trfCaseRhss :: [Located (GRHS RdrName (LHsExpr RdrName))] -> Trf (Ann AST.CaseRhs RI)
+trfCaseRhss :: TransformName n => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.CaseRhs (AnnotType n))
 trfCaseRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
                                              (AST.UnguardedCaseRhs <$> trfExpr body)
 trfCaseRhss rhss = annLoc (pure $ collectLocs rhss) 
                           (AST.GuardedCaseRhss . AnnList <$> mapM trfGuardedCaseRhs rhss)
   
-trfGuardedCaseRhs :: Located (GRHS RdrName (LHsExpr RdrName)) -> Trf (Ann AST.GuardedCaseRhs RI)
+trfGuardedCaseRhs :: TransformName n => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedCaseRhs (AnnotType n))
 trfGuardedCaseRhs = trfLoc $ \(GRHS guards body) 
   -> AST.GuardedCaseRhs . AnnList <$> mapM trfRhsGuard guards <*> trfExpr body
             

@@ -17,34 +17,43 @@ import Outputable
 -- | RangeInfo (RI) is an alias for SrcSpan
 type RI = SrcSpan
 
+class Annot annot where
+  createAnnot :: RI -> annot
+  extractSpan :: annot -> RI
+  
+instance Annot SrcSpan where
+  createAnnot = id
+  extractSpan = id
+
+
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
-trfLoc :: (a -> Trf (b RI)) -> Located a -> Trf (Ann b RI)
+trfLoc :: Annot i => (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
 trfLoc = trfLocCorrect pure
 
-trfMaybe :: (Located a -> Trf (Ann b RI)) -> Maybe (Located a) -> Trf (AnnMaybe b RI)
+trfMaybe :: Annot i => (Located a -> Trf (Ann b i)) -> Maybe (Located a) -> Trf (AnnMaybe b i)
 trfMaybe f = maybe (pure annNothing) (fmap annJust . f)
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
-trfLocCorrect :: (RI -> Trf RI) -> (a -> Trf (b RI)) -> Located a -> Trf (Ann b RI)
+trfLocCorrect :: Annot i => (RI -> Trf RI) -> (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
 trfLocCorrect locF f (L l e) = do loc <- locF l
-                                  Ann loc <$> local (\s -> s { contRange = loc }) (f e)
+                                  Ann (createAnnot loc) <$> local (\s -> s { contRange = loc }) (f e)
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
-trfMaybeLoc :: (a -> Trf (Maybe (b RI))) -> Located a -> Trf (Maybe (Ann b RI))
-trfMaybeLoc f (L l e) = fmap (Ann l) <$> local (\s -> s { contRange = l }) (f e)  
+trfMaybeLoc :: Annot i => (a -> Trf (Maybe (b i))) -> Located a -> Trf (Maybe (Ann b i))
+trfMaybeLoc f (L l e) = fmap (Ann (createAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
-trfListLoc :: (a -> Trf [b RI]) -> Located a -> Trf [Ann b RI]
-trfListLoc f (L l e) = fmap (Ann l) <$> local (\s -> s { contRange = l }) (f e)  
+trfListLoc :: Annot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
+trfListLoc f (L l e) = fmap (Ann (createAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
 
-annLoc :: Trf RI -> Trf (b RI) -> Trf (Ann b RI)
+annLoc :: Annot a => Trf RI -> Trf (b a) -> Trf (Ann b a)
 annLoc locm nodem = do loc <- locm
                        node <- local (\s -> s { contRange = loc }) nodem
-                       return (Ann loc node)
+                       return (Ann (createAnnot loc) node)
 
 -- | Searches for a token inside the parent element and retrieves its location
 tokenLoc :: AnnKeywordId -> Trf RI
@@ -67,7 +76,7 @@ tokensLoc keys = asks contRange >>= tokensLoc' keys
 uniqueTokenAnywhere :: AnnKeywordId -> Trf RI
 uniqueTokenAnywhere keyw = fromMaybe noSrcSpan <$> (getKeywordAnywhere keyw <$> asks srcMap)
         
-annCont :: Trf (e RI) -> Trf (Ann e RI)
+annCont :: Annot a => Trf (e a) -> Trf (Ann e a)
 annCont = annLoc (asks contRange)
 
 copyAnnot :: (Ann a i -> b i) -> Trf (Ann a i) -> Trf (Ann b i)
@@ -77,13 +86,10 @@ foldLocs :: [SrcSpan] -> SrcSpan
 foldLocs = foldl combineSrcSpans noSrcSpan
 
 collectLocs :: [Located e] -> RI
-collectLocs = foldl1 combineSrcSpans . map getLoc
+collectLocs = foldLocs . map getLoc
 
-collectAnnots :: [Ann e RI] -> RI
-collectAnnots = foldl1 combineSrcSpans . map _annotation
-
-orderDefs :: [Ann e RI] -> [Ann e RI]
-orderDefs = sortBy (compare `on` ordSrcSpan . _annotation)
+orderDefs :: Annot i => [Ann e i] -> [Ann e i]
+orderDefs = sortBy (compare `on` ordSrcSpan . extractSpan . _annotation)
 
 advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
 advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
