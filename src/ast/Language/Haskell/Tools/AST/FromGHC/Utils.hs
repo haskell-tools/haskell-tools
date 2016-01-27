@@ -19,11 +19,11 @@ type RI = SrcSpan
 
 class Annot annot where
   createAnnot :: RI -> annot
-  extractSpan :: annot -> RI
+  extractRange :: annot -> RI
   
 instance Annot SrcSpan where
   createAnnot = id
-  extractSpan = id
+  extractRange = id
 
 
 -- | Transform a located part of the AST by automatically transforming the location.
@@ -89,7 +89,7 @@ collectLocs :: [Located e] -> RI
 collectLocs = foldLocs . map getLoc
 
 orderDefs :: Annot i => [Ann e i] -> [Ann e i]
-orderDefs = sortBy (compare `on` ordSrcSpan . extractSpan . _annotation)
+orderDefs = sortBy (compare `on` ordSrcSpan . extractRange . _annotation)
 
 advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
 advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str

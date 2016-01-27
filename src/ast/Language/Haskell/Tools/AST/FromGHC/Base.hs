@@ -2,6 +2,7 @@
            , TupleSections
            , TypeFamilies
            , FlexibleContexts
+           , TypeSynonymInstances
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
@@ -9,10 +10,14 @@ import Control.Monad.Reader
 import Data.List.Split
 import qualified Data.ByteString.Char8 as BS
 
+import Control.Lens
+
 import HsSyn as GHC
 import Module as GHC
 import RdrName as GHC
+import Id as GHC
 import Name as GHC hiding (Name)
+import qualified Name as GHC (Name)
 import Outputable as GHC
 import SrcLoc as GHC
 import BasicTypes as GHC
@@ -21,6 +26,7 @@ import ApiAnnotation as GHC
 import ForeignCall as GHC
 
 import Language.Haskell.Tools.AST.Ann as AST
+import Language.Haskell.Tools.AST.Lenses as AST
 import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Literals as AST
 import Language.Haskell.Tools.AST.Base(Name(..), SimpleName(..))
@@ -32,14 +38,50 @@ class Annot (AnnotType name) => TransformName name where
   type AnnotType name :: *
   rdrName :: name -> RdrName
   trfName :: Located name -> Trf (Ann Name (AnnotType name))
-  trfName' :: name -> Trf (Name (AnnotType name))
   
 instance TransformName RdrName where
   type AnnotType RdrName = RI
   rdrName = id
   trfName = trfLoc trfName' 
-  trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc n))
+  
+data SourceAndName
+  = SN { snName :: Maybe GHC.Name
+       , snRange :: RI
+       }
 
+instance Annot SourceAndName where
+  createAnnot = SN Nothing
+  extractRange = snRange
+       
+snSetName :: GHC.Name -> SourceAndName -> SourceAndName
+snSetName name sn = sn { snName = Just name }
+  
+instance TransformName GHC.Name where
+  type AnnotType GHC.Name = SourceAndName
+  rdrName = nameRdrName
+  trfName name = (annotation %~ snSetName (unLoc name)) <$> trfLoc trfName' name
+  
+data SourceAndType
+  = ST { stName :: Maybe GHC.Id
+       , stRange :: RI
+       }
+       
+instance Annot SourceAndType where
+  createAnnot = ST Nothing
+  extractRange = stRange
+       
+stSetName :: GHC.Id -> SourceAndType -> SourceAndType
+stSetName name st = st { stName = Just name }
+  
+instance TransformName GHC.Id where
+  type AnnotType GHC.Id = SourceAndType
+  rdrName = nameRdrName . idName
+  trfName name = (annotation %~ stSetName (unLoc name)) <$> trfLoc trfName' name
+  
+  
+trfName' :: TransformName name => name -> Trf (Name (AnnotType name))
+trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))
+  
 trfSimplName :: Annot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)
 trfSimplName start n = (\srcLoc -> Ann (createAnnot $ mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
 

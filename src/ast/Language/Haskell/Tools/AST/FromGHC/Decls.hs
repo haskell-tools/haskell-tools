@@ -123,7 +123,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
   where combineTypes :: TransformName n => Located n -> HsTyPats n -> Trf (Ann AST.Type (AnnotType n))
         combineTypes name pats 
           = foldl (\t p -> do typ <- t
-                              annLoc (pure $ combineSrcSpans (extractSpan $ _annotation typ) (getLoc p)) 
+                              annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
                   (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
                   (hswb_cts pats)
@@ -135,7 +135,7 @@ trfFunDeps _ = pure undefined
 createDeclHead :: TransformName n => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead (AnnotType n))
 createDeclHead name vars
   = foldl (\t p -> do typ <- t
-                      annLoc (pure $ combineSrcSpans (extractSpan $ _annotation typ) (getLoc p)) 
+                      annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
           (hsq_tvs vars)
@@ -201,7 +201,7 @@ trfInstDataFam = trfLoc $ \case
     -> AST.InstBodyDataDecl <$> trfDataKeyword dn 
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
                     (AST.InstanceRule annNothing <$> trfCtx ctx 
-                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractSpan . _annotation <$> r) 
+                                                 <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractRange . _annotation <$> r) 
                                                                            (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                            (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)
          <*> (AnnList <$> mapM trfConDecl cons)
