@@ -11,6 +11,6 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Binds as AST
 
-trfLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnList AST.LocalBind (AnnotType n))
-trfWhereLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds (AnnotType n))
-trfRhsGuard :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard (AnnotType n))
+trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind r)
+trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)
+trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard r)

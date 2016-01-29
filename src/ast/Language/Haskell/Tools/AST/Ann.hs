@@ -39,14 +39,17 @@ type RangeWithName = NodeInfo (Maybe SemanticInfo) SrcSpan
 
 class RangeAnnot annot where
   toRangeAnnot :: SrcSpan -> annot
+  addSemanticInfo :: SemanticInfo -> annot -> annot
   extractRange :: annot -> SrcSpan
   
-instance RangeAnnot (NodeInfo (Maybe a) SrcSpan) where
+instance RangeAnnot RangeWithName where
   toRangeAnnot = NodeInfo Nothing
+  addSemanticInfo si = NodeInfo (Just si) . extractRange
   extractRange = view sourceInfo 
   
-instance RangeAnnot (NodeInfo () SrcSpan) where
+instance RangeAnnot RangeInfo where
   toRangeAnnot = NodeInfo ()
+  addSemanticInfo si = id
   extractRange = view sourceInfo
 
 

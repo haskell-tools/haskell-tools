@@ -1,8 +1,11 @@
 {-# LANGUAGE LambdaCase
            , TupleSections
            , TypeFamilies
+           , FlexibleInstances
            , FlexibleContexts
            , TypeSynonymInstances
+           , ScopedTypeVariables
+           , MultiParamTypeClasses
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
@@ -34,40 +37,36 @@ import Language.Haskell.Tools.AST.Base(Name(..), SimpleName(..))
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-class (OutputableBndr name, RangeAnnot (AnnotType name)) => TransformName name where
-  type AnnotType name :: *
+class GHCName name where 
   rdrName :: name -> RdrName
-  trfName :: Located name -> Trf (Ann Name (AnnotType name))
   
-instance TransformName RdrName where
-  type AnnotType RdrName = RangeInfo
+instance GHCName RdrName where
   rdrName = id
+    
+instance GHCName GHC.Name where
+  rdrName = nameRdrName
+  
+instance GHCName Id where
+  rdrName = nameRdrName . idName
+  
+
+class (RangeAnnot res, GHCName name) => TransformName name res where
+  trfName :: Located name -> Trf (Ann Name res)
+  
+instance TransformName RdrName RangeInfo where
   trfName = trfLoc trfName' 
 
-instance TransformName GHC.Name where
-  type AnnotType GHC.Name = RangeWithName
-  rdrName = nameRdrName
-  trfName name = (annotation.semanticInfo .~ Just (NameInfo $ unLoc name)) <$> trfLoc trfName' name
+-- instance TransformName GHC.Name RangeWithName where
+  -- trfName name = (annotation.semanticInfo .~ Just (NameInfo $ unLoc name)) <$> trfLoc trfName' name
   
-data SourceAndType
-  = ST { stName :: Maybe GHC.Id
-       , stRange :: SrcSpan
-       }
-       
-instance RangeAnnot SourceAndType where
-  toRangeAnnot = ST Nothing
-  extractRange = stRange
-       
-stSetName :: GHC.Id -> SourceAndType -> SourceAndType
-stSetName name st = st { stName = Just name }
+instance RangeAnnot r => TransformName GHC.Name r where
+  trfName name = (annotation %~ addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
   
-instance TransformName GHC.Id where
-  type AnnotType GHC.Id = SourceAndType
-  rdrName = nameRdrName . idName
-  trfName name = (annotation %~ stSetName (unLoc name)) <$> trfLoc trfName' name
+instance TransformName GHC.Id RangeWithName where
+  trfName name = (annotation.semanticInfo .~ Just (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
   
-trfName' :: TransformName name => name -> Trf (Name (AnnotType name))
+trfName' :: forall name res . TransformName name res => name -> Trf (Name res)
 trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))
   
 trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)

@@ -24,14 +24,14 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Stmts as AST
  
-trfDoStmt :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.Stmt (AnnotType n))
+trfDoStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.Stmt r)
 trfDoStmt = trfLoc $ \case
   BindStmt pat expr _ _ -> AST.BindStmt <$> trfPattern pat <*> trfExpr expr
   BodyStmt expr _ _ _ -> AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
   LetStmt binds -> AST.LetStmt <$> trfLocalBinds binds
   RecStmt { recS_stmts = stmts } -> AST.RecStmt . AnnList <$> mapM trfDoStmt stmts
 
-trfListCompStmts :: TransformName n => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody (AnnotType n))
+trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
   = AnnList <$> mapM (\(ParStmtBlock stmts _ _) -> 
                          annLoc (pure $ collectLocs $ getNormalStmts stmts)
@@ -41,7 +41,7 @@ trfListCompStmts others
   = AnnList . (:[]) <$> annLoc (pure $ collectLocs $ getNormalStmts others)
                                (AST.ListCompBody . AnnList . concat <$> mapM trfListCompStmt others) 
 
-trfListCompStmt :: TransformName n => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt (AnnotType n)]
+trfListCompStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt r]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
   = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (mapM trfListCompStmt stmts)) 
          <*> ((:[]) <$> extractActualStmt trst)
@@ -49,7 +49,7 @@ trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts }))
 trfListCompStmt (unLoc -> LastStmt _ _) = pure []
 trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
   
-extractActualStmt :: TransformName n => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt (AnnotType n))
+extractActualStmt :: TransformName n r => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt r)
 extractActualStmt = \case
   TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
     -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe trfExpr by)

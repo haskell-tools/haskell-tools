@@ -15,14 +15,14 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.Ann as AST
 import qualified Language.Haskell.Tools.AST.Kinds as AST
 
-trfKindSig :: TransformName n => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint (AnnotType n))
+trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
 trfKindSig = trfMaybe (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
                                     (fmap AST.KindConstraint $ trfLoc trfKind' k))
 
-trfKind :: TransformName n => Located (HsKind n) -> Trf (Ann AST.Kind (AnnotType n))
+trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind r)
 trfKind = trfLoc trfKind'
 
-trfKind' :: TransformName n => HsKind n -> Trf (AST.Kind (AnnotType n))
+trfKind' :: TransformName n r => HsKind n -> Trf (AST.Kind r)
 trfKind' (HsTyVar (rdrName -> Exact n)) 
   | isWiredInName n && occNameString (nameOccName n) == "*"
   = pure AST.KindStar

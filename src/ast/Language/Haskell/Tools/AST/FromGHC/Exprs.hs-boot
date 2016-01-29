@@ -10,5 +10,5 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Exprs as AST
 
-trfExpr :: TransformName n => Located (HsExpr n) -> Trf (Ann AST.Expr (AnnotType n))
-trfExpr' :: TransformName n => HsExpr n -> Trf (AST.Expr (AnnotType n))
+trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
+trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)

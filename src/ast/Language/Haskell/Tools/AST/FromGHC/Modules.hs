@@ -41,7 +41,7 @@ trfModuleRename (gr,imports,exps,_)
                    <*> (orderAnnList <$> (trfImports imports))
                    <*> trfDeclsGroup gr
        
-trfModuleHead :: TransformName n => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ModuleHead (AnnotType n)) 
+trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ModuleHead r) 
 trfModuleHead (Just mn) exports 
   = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                         (AST.ModuleHead <$> trfModuleName mn 
@@ -51,18 +51,18 @@ trfModuleHead Nothing _ = pure annNothing
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
 trfPragmas _ _ = pure $ AnnList []
 
-trfExportList :: TransformName n => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList (AnnotType n))
+trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
 trfExportList = trfMaybe $ trfLoc (\exps -> AST.ExportSpecList . AnnList . orderDefs . catMaybes <$> (mapM trfExport exps))
   
-trfExport :: TransformName n => LIE n -> Trf (Maybe (Ann AST.ExportSpec (AnnotType n)))
+trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.ExportSpec r))
 trfExport = trfMaybeLoc $ \case 
   IEModuleContents n -> Just . AST.ModuleExport <$> (trfModuleName n)
   other -> fmap AST.DeclExport <$> trfIESpec' other
   
-trfImports :: TransformName n => [LImportDecl n] -> Trf (AnnList AST.ImportDecl (AnnotType n))
+trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
 trfImports imps = AnnList <$> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
 
-trfImport :: TransformName n => LImportDecl n -> Trf (Ann AST.ImportDecl (AnnotType n))
+trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
 trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   AST.ImportDecl 
     <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) else pure annNothing)
@@ -81,15 +81,15 @@ trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl de
                                            (trfModuleName' mn)))
   
   
-trfImportSpecs :: TransformName n => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec (AnnotType n))
+trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec r)
 trfImportSpecs (Just (True, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecHiding . AnnList . catMaybes) . mapM trfIESpec) l
 trfImportSpecs (Just (False, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecList . AnnList . catMaybes) . mapM trfIESpec) l
 trfImportSpecs Nothing = pure annNothing
     
-trfIESpec :: TransformName n => LIE n -> Trf (Maybe (Ann AST.IESpec (AnnotType n))) 
+trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.IESpec r)) 
 trfIESpec = trfMaybeLoc trfIESpec'
   
-trfIESpec' :: TransformName n => IE n -> Trf (Maybe (AST.IESpec (AnnotType n)))
+trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.IESpec r))
 trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
 trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
 trfIESpec' (IEThingAll n) 
