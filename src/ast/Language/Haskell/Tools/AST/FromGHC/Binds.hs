@@ -10,6 +10,7 @@ import HsExpr as GHC
 import BasicTypes as GHC
 import ApiAnnotation as GHC
 import Bag as GHC
+import Outputable as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Exprs
@@ -59,7 +60,7 @@ trfWhereLocalBinds EmptyLocalBinds = pure annNothing
 trfWhereLocalBinds binds
   = annJust <$> annLoc (pure $ getBindLocs binds) (AST.LocalBinds <$> trfLocalBinds binds)
 
-getBindLocs :: HsLocalBinds n -> RI
+getBindLocs :: HsLocalBinds n -> SrcSpan
 getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs
 getBindLocs (HsValBinds (ValBindsOut binds sigs)) = foldLocs $ map getLoc (concatMap (bagToList . snd) binds) ++ map getLoc sigs
   
@@ -67,14 +68,21 @@ trfLocalBinds :: TransformName n => HsLocalBinds n -> Trf (AnnList AST.LocalBind
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
   = AnnList . orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
                                   <*> mapM trfLocalSig sigs)
+trfLocalBinds (HsValBinds (ValBindsOut binds sigs)) 
+  = AnnList . orderDefs <$> 
+     ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.LocalValBind . trfBind) . bagToList . snd) binds)
+           <*> mapM (error . showSDocUnsafe . ppr) sigs)
              
 trfLocalSig :: TransformName n => Located (Sig n) -> Trf (Ann AST.LocalBind (AnnotType n))
 trfLocalSig = trfLoc $ \case
-  ts@(TypeSig {}) -> AST.LocalSignature <$> annCont (trfTypeSig ts)
+  ts@(TypeSig {}) -> AST.LocalSignature <$> annCont (trfTypeSig' ts)
   (FixSig fs) -> AST.LocalFixity <$> annCont (trfFixitySig fs)
   
-trfTypeSig :: TransformName n => Sig n -> Trf (AST.TypeSignature (AnnotType n))
-trfTypeSig (TypeSig [name] typ _) = AST.TypeSignature <$> trfName name <*> trfType typ
+trfTypeSig :: TransformName n => Located (Sig n) -> Trf (Ann AST.TypeSignature (AnnotType n))
+trfTypeSig = trfLoc trfTypeSig'
+
+trfTypeSig' :: TransformName n => Sig n -> Trf (AST.TypeSignature (AnnotType n))
+trfTypeSig' (TypeSig [name] typ _) = AST.TypeSignature <$> trfName name <*> trfType typ
   
 trfFixitySig :: TransformName n => FixitySig n -> Trf (AST.FixitySignature (AnnotType n))
 trfFixitySig (FixitySig names (Fixity prec dir)) 

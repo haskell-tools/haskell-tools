@@ -11,6 +11,7 @@ import Data.Maybe
 import Test.HUnit hiding (test)
 import System.IO
 
+import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToSource
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
@@ -55,16 +56,20 @@ main = runTestTT $ TestList $ map makeReprintTest
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "..\\examples" mod)
 
+data TestMode = TypeChecked | Source
+
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
-       actual <- parseAndPrettyPrint workingDir moduleName
+       actual <- parseAndPrettyPrint TypeChecked workingDir moduleName
+       actual' <- parseAndPrettyPrint Source workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual
+       assertEqual "The original and the transformed source differ" expected actual'
 
-parseAndPrettyPrint :: String -> String -> IO String
-parseAndPrettyPrint workingDir moduleName = 
+parseAndPrettyPrint :: TestMode -> String -> String -> IO String
+parseAndPrettyPrint mode workingDir moduleName = 
   runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     -- don't generate any code
@@ -74,14 +79,15 @@ parseAndPrettyPrint workingDir moduleName =
     load LoadAllTargets
     modSum <- getModSummary $ mkModuleName moduleName
     p <- parseModule modSum
-    
     let annots = fst $ pm_annotations p
         srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-    
-    return $ prettyPrint 
-           $ rangeToSource srcBuffer
-           $ cutUpRanges
-           $ runTrf annots 
-           $ trfModule 
-           $ pm_parsed_source p
+        transform :: Trf (Ann AST.Module (NodeInfo sema SrcSpan)) -> String
+        transform = prettyPrint . rangeToSource srcBuffer . cutUpRanges . runTrf annots 
+    case mode of 
+      Source -> return $ transform $ trfModule $ pm_parsed_source p
+      TypeChecked -> do tc <- typecheckModule p
+                        return $ transform 
+                               $ trfModuleRename 
+                                   (fromJust $ tm_renamed_source tc) 
+                                   (pm_parsed_source $ tm_parsed_module tc)
            

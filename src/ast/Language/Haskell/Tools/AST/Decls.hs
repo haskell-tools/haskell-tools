@@ -33,15 +33,15 @@ data Decl a
                          , _declGadt :: Ann GadtDeclList a
                          , _declDeriving :: AnnMaybe Deriving a
                          } -- ^ A data or newtype declaration.
-  | TypeInstDecl         { _declInstance :: Ann Type a
+  | TypeInstDecl         { _declInstance :: Ann InstanceRule a
                          , _declAssignedType :: Ann Type a
                          } -- ^ Type instance declaration (@ type instance Fam T = AssignedT @)
   | DataInstDecl         { _declNewtype :: Ann DataOrNewtypeKeyword a
-                         , _declInstance :: Ann Type a
+                         , _declInstance :: Ann InstanceRule a
                          , _declCons :: AnnList ConDecl a
                          } -- ^ Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
   | GDataInstDecl        { _declNewtype :: Ann DataOrNewtypeKeyword a
-                         , _declInstance :: Ann Type a
+                         , _declInstance :: Ann InstanceRule a
                          , _declKind :: AnnMaybe KindConstraint a
                          , _declGadt :: Ann GadtDeclList a
                          } -- ^ Data instance declaration (@ data instance T = Con1 | Con2 @)

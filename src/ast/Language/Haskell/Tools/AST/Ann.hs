@@ -1,5 +1,16 @@
+{-# LANGUAGE FlexibleInstances
+           , TemplateHaskell
+           , DeriveDataTypeable
+           #-}
+
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
+
+import Data.Data
+import Control.Lens
+import SrcLoc
+import Name
+import Id
 
 -- | An element of the AST keeping extra information.
 data Ann elem annot
@@ -9,6 +20,36 @@ data Ann elem annot
   = Ann { _annotation :: annot -- ^ The extra information for the AST part
         , _element    :: elem annot -- ^ The original AST part
         }
+        
+data NodeInfo sema src 
+  = NodeInfo { _semanticInfo :: sema
+             , _sourceInfo :: src
+             }
+  deriving (Show, Data)
+             
+makeLenses ''NodeInfo
+
+data SemanticInfo 
+  = NameInfo Name
+  -- | ImplicitImports [ImportDecl]
+  -- | ImplicitFieldUpdates [ImportDecl]
+
+type RangeInfo = NodeInfo () SrcSpan
+type RangeWithName = NodeInfo (Maybe SemanticInfo) SrcSpan
+
+class RangeAnnot annot where
+  toRangeAnnot :: SrcSpan -> annot
+  extractRange :: annot -> SrcSpan
+  
+instance RangeAnnot (NodeInfo (Maybe a) SrcSpan) where
+  toRangeAnnot = NodeInfo Nothing
+  extractRange = view sourceInfo 
+  
+instance RangeAnnot (NodeInfo () SrcSpan) where
+  toRangeAnnot = NodeInfo ()
+  extractRange = view sourceInfo
+
+
 
 -- | A list of AST elements
 newtype AnnList e a = AnnList { _fromAnnList :: [Ann e a] }

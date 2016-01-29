@@ -34,40 +34,28 @@ import Language.Haskell.Tools.AST.Base(Name(..), SimpleName(..))
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-class Annot (AnnotType name) => TransformName name where
+class (OutputableBndr name, RangeAnnot (AnnotType name)) => TransformName name where
   type AnnotType name :: *
   rdrName :: name -> RdrName
   trfName :: Located name -> Trf (Ann Name (AnnotType name))
   
 instance TransformName RdrName where
-  type AnnotType RdrName = RI
+  type AnnotType RdrName = RangeInfo
   rdrName = id
   trfName = trfLoc trfName' 
-  
-data SourceAndName
-  = SN { snName :: Maybe GHC.Name
-       , snRange :: RI
-       }
 
-instance Annot SourceAndName where
-  createAnnot = SN Nothing
-  extractRange = snRange
-       
-snSetName :: GHC.Name -> SourceAndName -> SourceAndName
-snSetName name sn = sn { snName = Just name }
-  
 instance TransformName GHC.Name where
-  type AnnotType GHC.Name = SourceAndName
+  type AnnotType GHC.Name = RangeWithName
   rdrName = nameRdrName
-  trfName name = (annotation %~ snSetName (unLoc name)) <$> trfLoc trfName' name
+  trfName name = (annotation.semanticInfo .~ Just (NameInfo $ unLoc name)) <$> trfLoc trfName' name
   
 data SourceAndType
   = ST { stName :: Maybe GHC.Id
-       , stRange :: RI
+       , stRange :: SrcSpan
        }
        
-instance Annot SourceAndType where
-  createAnnot = ST Nothing
+instance RangeAnnot SourceAndType where
+  toRangeAnnot = ST Nothing
   extractRange = stRange
        
 stSetName :: GHC.Id -> SourceAndType -> SourceAndType
@@ -82,23 +70,23 @@ instance TransformName GHC.Id where
 trfName' :: TransformName name => name -> Trf (Name (AnnotType name))
 trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))
   
-trfSimplName :: Annot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)
-trfSimplName start n = (\srcLoc -> Ann (createAnnot $ mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
+trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)
+trfSimplName start n = (\srcLoc -> Ann (toRangeAnnot $ mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
 
-trfNameStr :: Annot a => String -> Trf (AnnList SimpleName a, SrcLoc)
+trfNameStr :: RangeAnnot a => String -> Trf (AnnList SimpleName a, SrcLoc)
 trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList ls, loc))
   (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                          in ( r ++ [Ann (createAnnot $ mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
+                          in ( r ++ [Ann (toRangeAnnot $ mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)
 
   
-trfModuleName :: Annot a => Located ModuleName -> Trf (Ann Name a)
+trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann Name a)
 trfModuleName = trfLoc trfModuleName'
 
-trfModuleName' :: Annot a => ModuleName -> Trf (Name a)
+trfModuleName' :: RangeAnnot a => ModuleName -> Trf (Name a)
 trfModuleName' = (AST.nameFromList . fst <$>) . trfNameStr . moduleNameString
   
-trfDataKeyword :: Annot a => NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword a)
+trfDataKeyword :: RangeAnnot a => NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword a)
 trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
 trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
      
@@ -111,7 +99,7 @@ trfCallConv' = undefined
 trfSafety :: Located Safety -> Trf (AnnMaybe AST.Safety a)
 trfSafety = undefined 
 
-trfOverlap :: Annot a => Located OverlapMode -> Trf (Ann AST.OverlapPragma a)
+trfOverlap :: RangeAnnot a => Located OverlapMode -> Trf (Ann AST.OverlapPragma a)
 trfOverlap = trfLoc $ pure . \case
   NoOverlap _ -> AST.DisableOverlap
   Overlappable _ -> AST.Overlappable

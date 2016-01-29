@@ -99,10 +99,11 @@ trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation'
 
 trfFieldUpdates :: TransformName n => HsRecordBinds n -> Trf (AnnList AST.FieldUpdate (AnnotType n))
 trfFieldUpdates (HsRecFields fields dotdot) 
-  = AnnList 
-      <$> ((++) <$> mapM trfFieldUpdate fields 
-                <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcard) 
-                                      else pure []) )
+  = do cont <- asks contRange
+       AnnList <$> ((++) <$> mapM trfFieldUpdate (filter ((cont /=) . getLoc) fields) 
+                         <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) 
+                                                                     (pure AST.FieldWildcard) 
+                                               else pure []) )
   
 trfFieldUpdate :: TransformName n => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (AnnotType n))
 trfFieldUpdate = trfLoc $ \case

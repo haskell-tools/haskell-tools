@@ -40,4 +40,4 @@ trfPattern = trfLoc $ \case
   LitPat lit -> AST.LitPat <$> annCont (trfLiteral' lit)
   NPat (ol_val . unLoc -> lit) _ _ -> AST.LitPat <$> annCont (trfOverloadedLit lit)
   SigPatIn pat (hswb_cts -> typ) -> AST.TypeSigPat <$> trfPattern pat <*> trfType typ
-  -- NPat, NPlusKPat, CoPat?
+  -- NPlusKPat, CoPat?

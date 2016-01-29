@@ -3,20 +3,22 @@
 -- | Pretty printing the AST
 module Language.Haskell.Tools.PrettyPrint where
 
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
+import Control.Lens
 import Data.Maybe
 import Data.Foldable
 import Data.StructuralTraversal
 import Data.Sequence
 
 -- | Pretty prints an AST by using source templates stored as node info
-prettyPrint :: (StructuralTraversable node) => node SourceTemplate -> String
+prettyPrint :: (StructuralTraversable node) => node (NodeInfo sema SourceTemplate) -> String
 prettyPrint = toList . printRose . toRoseTree
 
-printRose :: RoseTree SourceTemplate -> Seq Char      
-printRose = printRose' . fmap _sourceTemplateElems
+printRose :: RoseTree (NodeInfo sema SourceTemplate) -> Seq Char      
+printRose = printRose' . fmap (view (sourceInfo.sourceTemplateElems))
       
 -- | Pretty prints a rose tree according to the source templates remainig from the original AST
 printRose' :: RoseTree [SourceTemplateElem] -> Seq Char

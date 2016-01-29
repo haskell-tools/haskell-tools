@@ -36,9 +36,11 @@ instance Show RangeTemplate where
 
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
-cutUpRanges :: forall node . StructuralTraversable node => Ann node SrcSpan -> Ann node RangeTemplate
+cutUpRanges :: forall node sema . StructuralTraversable node => Ann node (NodeInfo sema SrcSpan) 
+                                                             -> Ann node (NodeInfo sema RangeTemplate)
 cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
-  where cutUpRanges' :: StructuralTraversable node => Ann node SrcSpan -> State [[RealSrcSpan]] (Ann node RangeTemplate)
+  where cutUpRanges' :: StructuralTraversable node => Ann node (NodeInfo sema SrcSpan) 
+                                                   -> State [[SrcSpan]] (Ann node (NodeInfo sema RangeTemplate))
         cutUpRanges' = traverseUp desc asc f
         
         -- keep the stack to contain the children elements on the place of the parent element
@@ -46,20 +48,20 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         asc  = modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
-        f (RealSrcSpan ni) 
-          = do (below : top : xs) <- get
-               put ([] : (top++[ni]) : xs)
-               return (cutOutElem ni below)
-        f _ = error "Not a real source range"
+        f ni = do (below : top : xs) <- get
+                  put ([] : (top ++ [ ni ^. sourceInfo ]) : xs)
+                  return (ni & sourceInfo %~ flip cutOutElem below)
 
 -- | Cuts out a list of source ranges from a given range
-cutOutElem :: RealSrcSpan -> [RealSrcSpan] -> RangeTemplate
-cutOutElem sp = RangeTemplate sp . foldl (\temp spIn -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) [RangeElem sp]
+cutOutElem :: SrcSpan -> [SrcSpan] -> RangeTemplate
+cutOutElem (RealSrcSpan sp) 
+  = RangeTemplate sp . foldl (\temp spIn -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) 
+                             [RangeElem sp]
 
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element.
-breakUpRangeElem :: RangeTemplateElem -> RealSrcSpan -> [RangeTemplateElem]
-breakUpRangeElem (RangeElem outer) inner
+breakUpRangeElem :: RangeTemplateElem -> SrcSpan -> [RangeTemplateElem]
+breakUpRangeElem (RangeElem outer) (RealSrcSpan inner)
   | outer `containsSpan` inner 
   = (if (realSrcSpanStart outer) < (realSrcSpanStart inner) 
        then [ RangeElem (mkRealSrcSpan (realSrcSpanStart outer) (realSrcSpanStart inner)) ]

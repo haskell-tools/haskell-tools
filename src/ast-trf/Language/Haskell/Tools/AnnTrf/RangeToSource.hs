@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase 
+           , FlexibleContexts
+           #-}
 module Language.Haskell.Tools.AnnTrf.RangeToSource where
 
 import SrcLoc
@@ -6,25 +8,27 @@ import StringBuffer
 import Data.StructuralTraversal
 import Data.Map
 import Data.Monoid
+import Control.Lens
 import Control.Monad.State
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
-rangeToSource :: StructuralTraversable node => StringBuffer -> Ann node RangeTemplate -> Ann node SourceTemplate
+rangeToSource :: StructuralTraversable node => StringBuffer -> Ann node (NodeInfo sema RangeTemplate) 
+                                                            -> Ann node (NodeInfo sema SourceTemplate)
 rangeToSource srcInput tree = let locIndices = getLocIndices tree
                                   srcMap = mapLocIndices srcInput locIndices
                                in applyFragments (elems srcMap) tree
 
 -- maps could be strict
 
-getLocIndices :: StructuralTraversable e => Ann e RangeTemplate -> Map OrdSrcSpan Int
+getLocIndices :: StructuralTraversable e => Ann e (NodeInfo sema RangeTemplate) -> Map OrdSrcSpan Int
 getLocIndices = snd . flip execState (0, empty) .
   traverseDown (return ()) 
                (return ()) 
                (mapM_ (\case (RangeElem sp) -> modify (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
-                             _              -> return ()) . _rangeTemplateElems)
+                             _              -> return ()) . view (sourceInfo.rangeTemplateElems))
 
 mapLocIndices :: Ord k => StringBuffer -> Map OrdSrcSpan k -> Map k String
 mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = takeSpan str sp
@@ -37,12 +41,15 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
           = let (c,rem) = nextChar sb in takeSpan' (advanceSrcLoc start c) end (rem, c:taken)
         takeSpan' _ _ (rem, taken) = (rem, taken)
         
-applyFragments :: StructuralTraversable node => [String] -> Ann node RangeTemplate -> Ann node SourceTemplate
+applyFragments :: StructuralTraversable node => [String] -> Ann node (NodeInfo sema RangeTemplate) 
+                                                         -> Ann node (NodeInfo sema SourceTemplate)
 applyFragments srcs = flip evalState srcs
-  . traverseDown (return ()) (return ())
-                 (\rt -> SourceTemplate (RealSrcSpan $ _rangeTemplateSpan rt)
-                           <$> mapM (\case RangeElem sp   -> do (src:rest) <- get
-                                                                put rest
-                                                                return (TextElem src)
-                                           RangeChildElem -> return ChildElem) 
-                                     (_rangeTemplateElems rt))
+  . traverseDown 
+     (return ()) (return ())
+     (\ni -> do template <- mapM getTextFor (ni ^. sourceInfo.rangeTemplateElems)
+                return $ ni & sourceInfo .~ SourceTemplate (RealSrcSpan $ ni ^. sourceInfo.rangeTemplateSpan) template)
+  where getTextFor (RangeElem sp) = do (src:rest) <- get
+                                       put rest
+                                       return (TextElem src)
+        getTextFor RangeChildElem = return ChildElem
+        

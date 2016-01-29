@@ -39,6 +39,9 @@ import StringBuffer
 
 instance Show (GenLocated SrcSpan AnnotationComment) where
   show = show . unLoc
+  
+-- instance Show SourceAndName where
+  -- show (SN name range) = maybe "" (showSDocUnsafe . ppr) name ++ shortShowSpan range
  
 analyze :: String -> String -> IO ()
 analyze workingDir moduleName = 
@@ -52,18 +55,19 @@ analyze workingDir moduleName =
         modSum <- getModSummary $ mkModuleName moduleName
         p <- parseModule modSum
         t <- typecheckModule p
-        
+        let r = tm_renamed_source t
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
 
-        let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
+        let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        -- liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
+        liftIO $ putStrLn $ prettyPrint mod
         
         -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ putStrLn $ show $ pm_parsed_source $ tm_parsed_module t
+        -- liftIO $ putStrLn $ templateDebug $ cutUpRanges $ runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        -- liftIO $ putStrLn $ rangeDebug $ runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        -- liftIO $ putStrLn $ show $ tm_renamed_source t
         
         liftIO $ putStrLn "==========="
         
@@ -97,7 +101,9 @@ analyze workingDir moduleName =
         -- liftIO $ putStrLn $ showSDocUnsafe $ ppr g
       
 deriving instance Generic SrcSpan
+deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
 deriving instance Generic RangeTemplate
+deriving instance Generic SourceTemplate
 
 getIndices :: StructuralTraversable e => Ann e RangeTemplate -> IO (Ann e ())
 getIndices = traverseDown (return ()) (return ()) print

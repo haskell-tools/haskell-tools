@@ -15,6 +15,7 @@ import FastString as GHC
 import BasicTypes as GHC
 import Bag as GHC
 import ForeignCall as GHC
+import Outputable as GHC
 
 import Control.Monad.Reader
 import Data.Maybe
@@ -37,6 +38,29 @@ trfDecls :: TransformName n => [LHsDecl n] -> Trf (AnnList AST.Decl (AnnotType n
 -- TODO: filter documentation comments
 trfDecls decls = AnnList <$> mapM trfDecl decls
 
+trfDeclsGroup :: HsGroup Name -> Trf (AnnList AST.Decl (AnnotType Name))
+trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
+  = AnnList <$> (fmap (orderDefs . concat) $ sequence $
+      [ trfBindOrSig vals
+      , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
+      , mapM (trfDecl . (fmap SpliceD)) splices
+      , mapM (trfDecl . (fmap InstD)) insts
+      , mapM (trfDecl . (fmap DerivD)) derivs
+      , mapM (trfDecl . (fmap (SigD . FixSig))) fixities
+      , mapM (trfDecl . (fmap DefD)) defaults
+      , mapM (trfDecl . (fmap ForD)) foreigns
+      , mapM (trfDecl . (fmap WarningD)) warns
+      , mapM (trfDecl . (fmap AnnD)) anns
+      , mapM (trfDecl . (fmap RuleD)) rules
+      , mapM (trfDecl . (fmap VectD)) vects
+      -- , mapM (trfDecl . (fmap DocD)) docs
+      ])
+  where trfBindOrSig :: HsValBinds Name -> Trf [Ann AST.Decl (AnnotType Name)]
+        trfBindOrSig (ValBindsOut vals sigs) 
+          = (++) <$> (concat <$> mapM (mapM (copyAnnot AST.ValueBinding . trfBind) . bagToList . snd) vals)
+                 <*> (mapM (copyAnnot AST.TypeSigDecl . trfTypeSig) sigs)
+           
+           
 trfDecl :: TransformName n => Located (HsDecl n) -> Trf (Ann AST.Decl (AnnotType n))
 trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl DataFamily name tyVars kindSig)) 
@@ -59,8 +83,14 @@ trfDecl = trfLoc $ \case
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
     -> AST.InstDecl <$> trfMaybe trfOverlap overlap <*> trfInstanceRule typ 
                     <*> trfInstBody binds sigs typefam datafam
+  -- InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd ctx ct kind cons derivs) _))
+    -- -> AST.DataInstDecl <$> trfDataKeyword nd
+                        -- <$> trfInstanceRule typ 
+                        -- <*> (AnnList <$> mapM trfConDecl cons)
+  -- InstD (TyFamInstD (TyFamInstDecl eq _))
+    -- -> AST.DataInstDecl <$> --
   ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
-  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig ts)
+  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
   SigD (FixSig fs) -> AST.FixityDecl <$> (annCont $ trfFixitySig fs)
   -- TODO: pattern synonym type signature
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
@@ -70,7 +100,7 @@ trfDecl = trfLoc $ \case
   ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
-
+  
 trfConDecl :: TransformName n => Located (ConDecl n) -> Trf (Ann AST.ConDecl (AnnotType n))
 trfConDecl = trfLoc $ \case 
   ConDecl { con_names = [name], con_details = PrefixCon args }
@@ -91,18 +121,15 @@ trfDerivings = trfLoc $ \case
   
 trfInstanceRule :: TransformName n => Located (HsType n) -> Trf (Ann AST.InstanceRule (AnnotType n))
 trfInstanceRule = trfLoc $ \case
-  (HsForAllTy Explicit _ bndrs ctx typ) 
-    -> AST.InstanceRule <$> (annJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
-                        <*> trfCtx ctx
-                        <*> trfInstanceHead typ
-  (HsForAllTy Implicit _ _ _ typ) -> AST.InstanceRule <$> pure annNothing 
-                                                      <*> pure annNothing 
-                                                      <*> trfInstanceHead typ
-  HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
-  HsTyVar tv -> AST.InstanceRule <$> pure annNothing 
-                                 <*> pure annNothing 
-                                 <*> annLoc (asks contRange) 
-                                            (AST.InstanceHeadCon <$> annCont (trfName' tv))
+    (HsForAllTy Explicit _ bndrs ctx typ) 
+      -> AST.InstanceRule <$> (annJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
+                          <*> trfCtx ctx
+                          <*> trfInstanceHead typ
+    (HsForAllTy Implicit _ _ _ typ) -> instanceHead <$> trfInstanceHead typ
+    HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
+    HsTyVar tv -> instanceHead <$> annCont (AST.InstanceHeadCon <$> annCont (trfName' tv))
+    HsAppTy t1 t2 -> instanceHead <$> annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
+  where instanceHead = AST.InstanceRule annNothing annNothing
                                  
 trfInstanceHead :: TransformName n => Located (HsType n) -> Trf (Ann AST.InstanceHead (AnnotType n))
 trfInstanceHead = trfLoc $ \case

@@ -15,9 +15,12 @@ data TyVar a
 -- | Haskell types
 data Type a
   = TyForall     { _typeBounded :: AnnList TyVar a
-                 , _typeCtx :: AnnMaybe Context a
+                 , _forallCtx :: AnnMaybe Context a
                  , _typeType :: Ann Type a
                  } -- ^ Forall types (@ forall x y . type @)
+  | TyCtx        { _typeCtx :: Ann Context a
+                 , _typeType :: Ann Type a
+                 } -- ^ Type with a context (@ forall x y . type @)
   | TyFun        { _typeParam :: Ann Type a
                  , _typeResult :: Ann Type a
                  } -- ^ Function types (@ a -> b @)

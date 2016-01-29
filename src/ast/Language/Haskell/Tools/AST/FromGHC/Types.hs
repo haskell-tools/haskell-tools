@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase
+           , ViewPatterns
+           #-}
 module Language.Haskell.Tools.AST.FromGHC.Types where
  
 import SrcLoc as GHC
@@ -7,27 +9,33 @@ import HsTypes as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
 
+import Control.Lens
+import Data.Maybe
+
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST
 import qualified Language.Haskell.Tools.AST.Types as AST
 
 trfType :: TransformName n => Located (HsType n) -> Trf (Ann AST.Type (AnnotType n))
 trfType = trfLoc trfType'
 
 trfType' :: TransformName n => HsType n -> Trf (AST.Type (AnnotType n))
+trfType' (HsForAllTy Implicit _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
+trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . view fromAnnMaybe <$> trfCtx ctx) 
+                                                       <*> trfType typ
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
-                                                       <*> trfCtx ctx <*> trfType typ
+                                                       <*> trfCtx ctx
+                                                       <*> trfType typ
 trfType' (HsTyVar name) = AST.TyVar <$> annCont (trfName' name)
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ
 trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
--- HsBoxedOrConstraintTuple?
 trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple . AnnList <$> mapM trfType typs
 trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple . AnnList <$> mapM trfType typs
 trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfName (snd op) <*> trfType t2
@@ -37,7 +45,6 @@ trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
 trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
 trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
 -- HsRecTy
--- HsCoreTy
 trfType' (HsTyLit (HsNumTy _ int)) = pure $ AST.TyNumLit int
 trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
 trfType' (HsWrapTy _ typ) = trfType' typ
