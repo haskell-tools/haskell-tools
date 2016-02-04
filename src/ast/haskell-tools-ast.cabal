@@ -38,6 +38,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
                      , Language.Haskell.Tools.AST.Lenses
+                     , Language.Haskell.Tools.AST.Helpers
 
                      , Language.Haskell.Tools.AST.FromGHC.Modules
                      , Language.Haskell.Tools.AST.FromGHC.TH

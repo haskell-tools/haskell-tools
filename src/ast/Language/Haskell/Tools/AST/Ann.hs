@@ -30,12 +30,15 @@ data NodeInfo sema src
 makeLenses ''NodeInfo
 
 data SemanticInfo 
-  = NameInfo Name
+  = NoSemanticInfo
+  | NameInfo { _nameInfo :: Name }
   -- | ImplicitImports [ImportDecl]
   -- | ImplicitFieldUpdates [ImportDecl]
+  
+makeLenses ''SemanticInfo
 
 type RangeInfo = NodeInfo () SrcSpan
-type RangeWithName = NodeInfo (Maybe SemanticInfo) SrcSpan
+type RangeWithName = NodeInfo SemanticInfo SrcSpan
 
 class RangeAnnot annot where
   toRangeAnnot :: SrcSpan -> annot
@@ -43,8 +46,8 @@ class RangeAnnot annot where
   extractRange :: annot -> SrcSpan
   
 instance RangeAnnot RangeWithName where
-  toRangeAnnot = NodeInfo Nothing
-  addSemanticInfo si = NodeInfo (Just si) . extractRange
+  toRangeAnnot = NodeInfo NoSemanticInfo
+  addSemanticInfo si = NodeInfo si . extractRange
   extractRange = view sourceInfo 
   
 instance RangeAnnot RangeInfo where
@@ -55,14 +58,18 @@ instance RangeAnnot RangeInfo where
 
 
 -- | A list of AST elements
-newtype AnnList e a = AnnList { _fromAnnList :: [Ann e a] }
+newtype AnnList e a = AnnList { _annList :: [Ann e a] }
 
 -- | An optional AST element
-newtype AnnMaybe e a = AnnMaybe { _fromAnnMaybe :: (Maybe (Ann e a)) }
+newtype AnnMaybe e a = AnnMaybe { _annMaybe :: (Maybe (Ann e a)) }
 
 -- | An empty list of AST elements
 annNil :: AnnList e a
 annNil = AnnList []
+
+isAnnNothing :: AnnMaybe e a -> Bool
+isAnnNothing (AnnMaybe Nothing) = True
+isAnnNothing (AnnMaybe _) = False
 
 -- | An existing AST element
 annJust :: Ann e a -> AnnMaybe e a

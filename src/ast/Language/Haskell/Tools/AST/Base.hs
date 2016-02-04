@@ -12,10 +12,11 @@ import Language.Haskell.Tools.AST.Ann
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
-data Name a = Name { qualifiers      :: AnnList SimpleName a
-                   , unqualifiedName :: Ann SimpleName a 
-                   } 
-                   
+data Name a 
+  = Name { _qualifiers      :: AnnList SimpleName a
+         , _unqualifiedName :: Ann SimpleName a 
+         } 
+
 nameFromList :: AnnList SimpleName a -> Name a
 nameFromList (AnnList xs) | not (null xs) 
   = Name (AnnList $ init xs) (last xs) 
@@ -23,11 +24,11 @@ nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         
 data SimpleName a 
-  = SimpleName { simpleNameStr :: String } 
+  = SimpleName { _simpleNameStr :: String } 
                
 -- | Program elements formatted as string literals (import packages, pragma texts)
 data StringNode a
-  = StringNode { stringNodeStr :: String }
+  = StringNode { _stringNodeStr :: String }
                    
 -- | The @data@ or the @newtype@ keyword to define ADTs.
 data DataOrNewtypeKeyword a
@@ -82,15 +83,16 @@ data Assoc a
   
 -- | Numeric precedence of an operator
 data Precedence a
-  = Precedence { precedenceValue :: Int } 
+  = Precedence { _precedenceValue :: Int } 
      
 -- | Controls the activation of a rewrite rule (@ [1] @)
 data PhaseControl a
-  = PhaseControl { phaseInvert :: AnnMaybe PhaseInvert a
-                 , phaseNumber :: Ann PhaseNumber a
+  = PhaseControl { _phaseInvert :: AnnMaybe PhaseInvert a
+                 , _phaseNumber :: Ann PhaseNumber a
                  } 
 
-data PhaseNumber a = PhaseNumber { phaseNum :: Integer }
+data PhaseNumber a 
+  = PhaseNumber { _phaseNum :: Integer }
 
 -- | A tilde that marks the inversion of the phase number
 data PhaseInvert a = PhaseInvert

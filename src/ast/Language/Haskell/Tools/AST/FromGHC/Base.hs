@@ -56,14 +56,11 @@ class (RangeAnnot res, GHCName name) => TransformName name res where
 instance TransformName RdrName RangeInfo where
   trfName = trfLoc trfName' 
 
--- instance TransformName GHC.Name RangeWithName where
-  -- trfName name = (annotation.semanticInfo .~ Just (NameInfo $ unLoc name)) <$> trfLoc trfName' name
-  
 instance RangeAnnot r => TransformName GHC.Name r where
   trfName name = (annotation %~ addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
   
 instance TransformName GHC.Id RangeWithName where
-  trfName name = (annotation.semanticInfo .~ Just (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
+  trfName name = (annotation.semanticInfo .~ (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
   
 trfName' :: forall name res . TransformName name res => name -> Trf (Name res)

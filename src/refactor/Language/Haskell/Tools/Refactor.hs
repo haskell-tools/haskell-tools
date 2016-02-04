@@ -17,7 +17,9 @@ import BasicTypes
 import Bag
 import Var
 import SrcLoc
+import Module
 import FastString
+import HscTypes
 import GHC.Paths ( libdir )
  
 import Data.List
@@ -26,12 +28,13 @@ import Data.StructuralTraversal
 import qualified Data.Map as Map
 import Data.Maybe
 import System.Directory
+import Data.IORef
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
 
 import Language.Haskell.Tools.Refactor.DebugGhcAST
--- import Language.Haskell.Tools.Refactor.EtaReduce
+import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.IfToCase
  
 import DynFlags
@@ -58,10 +61,18 @@ analyze workingDir moduleName =
         let r = tm_renamed_source t
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
+        -- TODO: do this while converting AST
+        env <- getSession
+        eps <- liftIO $ readIORef (hsc_EPS env)
+        mapM_ (\mi -> do liftIO $ putStrLn . moduleNameString . GHC.moduleName $ (mi_module mi)
+                         liftIO $ print . map (showSDocUnsafe . ppr) $ mi_exports mi
+                         ) 
+              (moduleEnvElts (eps_PIT eps))
 
         let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        organizeImports mod
         -- liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
-        liftIO $ putStrLn $ prettyPrint mod
+        -- liftIO $ putStrLn $ show mod
         
         -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
@@ -103,6 +114,8 @@ analyze workingDir moduleName =
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
 deriving instance Generic RangeTemplate
+deriving instance Show SemanticInfo
+deriving instance Generic SemanticInfo
 deriving instance Generic SourceTemplate
 
 getIndices :: StructuralTraversable e => Ann e RangeTemplate -> IO (Ann e ())

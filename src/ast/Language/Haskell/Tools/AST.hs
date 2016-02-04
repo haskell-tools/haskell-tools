@@ -12,10 +12,12 @@ module Language.Haskell.Tools.AST
   , module Language.Haskell.Tools.AST.Base
   , module Language.Haskell.Tools.AST.Ann
   , module Language.Haskell.Tools.AST.Lenses
+  , module Language.Haskell.Tools.AST.Helpers
   ) where
 
 import Language.Haskell.Tools.AST.Instances
 import Language.Haskell.Tools.AST.Lenses
+import Language.Haskell.Tools.AST.Helpers
 
 import Language.Haskell.Tools.AST.Modules
 import Language.Haskell.Tools.AST.TH

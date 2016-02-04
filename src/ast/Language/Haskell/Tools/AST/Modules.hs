@@ -56,7 +56,7 @@ data ImportDecl a
                
 data ImportSpec a
   = ImportSpecList { _importSpecList :: AnnList IESpec a }
-  | ImportSpecHiding { _importSpecList :: AnnList IESpec a } 
+  | ImportSpecHiding { _importSpecHiding :: AnnList IESpec a } 
                
 data ImportQualified a = ImportQualified
 data ImportSource a = ImportSource
@@ -64,5 +64,5 @@ data ImportSafe a = ImportSafe
 data TypeNamespace a = TypeNamespace
 
 -- | Renaming imports (@ as A @)
-data ImportRenaming a = ImportRenaming { _importRenamingName :: Ann Name a }
+data ImportRenaming a = ImportRenaming { _importRename :: Ann Name a }
                
