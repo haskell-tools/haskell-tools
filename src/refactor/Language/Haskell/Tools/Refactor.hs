@@ -61,18 +61,10 @@ analyze workingDir moduleName =
         let r = tm_renamed_source t
         let annots = fst $ pm_annotations $ tm_parsed_module t
 
-        -- TODO: do this while converting AST
-        env <- getSession
-        eps <- liftIO $ readIORef (hsc_EPS env)
-        mapM_ (\mi -> do liftIO $ putStrLn . moduleNameString . GHC.moduleName $ (mi_module mi)
-                         liftIO $ print . map (showSDocUnsafe . ppr) $ mi_exports mi
-                         ) 
-              (moduleEnvElts (eps_PIT eps))
-
-        let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
-        organizeImports mod
-        -- liftIO $ ifToCase (mkRealSrcSpan (mkRealSrcLoc (fsLit "") 4 5) (mkRealSrcLoc (fsLit "") 4 27)) mod
-        -- liftIO $ putStrLn $ show mod
+        trfAst <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges trfAst
+        res <- organizeImports mod
+        liftIO $ putStrLn $ prettyPrint res
         
         -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t

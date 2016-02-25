@@ -16,11 +16,6 @@ import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Ann
 
--- Annotations
-makeLenses ''Ann
-makeLenses ''AnnList
-makeLenses ''AnnMaybe
-
 -- Modules
 makeLenses ''Module
 makeLenses ''ModuleHead

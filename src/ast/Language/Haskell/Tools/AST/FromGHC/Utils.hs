@@ -1,18 +1,82 @@
 -- | Utility functions for transforming the GHC AST representation into our own.
+{-# LANGUAGE TypeSynonymInstances 
+           , FlexibleInstances
+           , LambdaCase
+           , ViewPatterns
+           #-}
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
+import ApiAnnotation
+import SrcLoc
+import GHC
+import Avail
+import HscTypes
+import HsSyn
+import Module
+import Name
+import Outputable
+import FastString
+
 import Control.Monad.Reader
+import Control.Lens hiding (element)
 import Data.Maybe
+import Data.IORef
 import Data.Function
 import Data.List
+import Language.Haskell.Tools.AST.Lenses
 import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Helpers
+import Language.Haskell.Tools.AST.Modules as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
-import ApiAnnotation
-import SrcLoc
-import HsSyn
-import Outputable
+
+class RangeAnnot annot where
+  toRangeAnnot :: SrcSpan -> annot
+  addSemanticInfo :: SemanticInfo -> annot -> annot
+  extractRange :: annot -> SrcSpan
+  addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
+  
+instance RangeAnnot RangeWithName where
+  toRangeAnnot = NodeInfo NoSemanticInfo
+  addSemanticInfo si = NodeInfo si . extractRange
+  extractRange = view sourceInfo
+  addImportData = addImportData'
+
+addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
+addImportData' imp = lift $ 
+  do eps <- getSession >>= liftIO . readIORef . hsc_EPS
+     mod <- findModule (mkModuleName . nameString $ imp ^. element.importModule.element) 
+                       (fmap mkFastString $ imp ^? element.importPkg.annMaybe._Just.element.stringNodeStr)
+     let importedNames = concatMap availNames $ maybe [] mi_exports 
+                                              $ flip lookupModuleEnv mod 
+                                              $ eps_PIT eps
+     names <- filterM (checkImportVisible (imp ^. element)) importedNames
+     return $ (imp & annotation %~ addSemanticInfo (ImportInfo mod importedNames names))
+       
+checkImportVisible :: GhcMonad m => AST.ImportDecl RangeWithName -> GHC.Name -> m Bool
+checkImportVisible imp name
+  | importIsExact imp 
+  = or <$> mapM (`ieSpecMatches` name) (imp ^.. importExacts)
+  | importIsHiding imp 
+  = not . or <$> mapM (`ieSpecMatches` name) (imp ^.. importHidings)
+  | otherwise = return True
+
+ieSpecMatches :: GhcMonad m => AST.IESpec RangeWithName -> GHC.Name -> m Bool
+ieSpecMatches (AST.IESpec ((^?! annotation.semanticInfo.nameInfo) -> n) ss) name
+  | n == name = return True
+  | isTyConName n
+  = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
+             <$> lookupGlobalName n
+  | otherwise = return False
+  
+    
+instance RangeAnnot RangeInfo where
+  toRangeAnnot = NodeInfo ()
+  addSemanticInfo si = id
+  extractRange = view sourceInfo
+  addImportData = pure
+
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.

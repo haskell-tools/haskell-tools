@@ -11,6 +11,7 @@ import GHC.Generics
 import Control.Lens hiding (from)
 import SrcLoc
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 

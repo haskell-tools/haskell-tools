@@ -27,68 +27,57 @@ import Data.Data
 import Data.List
 import Data.Generics.Uniplate.Data
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 
 type STWithNames = NodeInfo SemanticInfo SourceTemplate
 
-deriving instance Data SemanticInfo
-
-organizeImports :: GhcMonad m => Ann Module STWithNames -> m ()
+organizeImports :: GhcMonad m => Ann Module STWithNames -> m (Ann Module STWithNames)
 organizeImports mod
-  = do -- res <- mod & modImports.annList.act ^! (narrowImports usedNames . groupImports . sortImports)
-       mapM_ (\imp -> do names <- filterM (isActuallyImported (imp ^. element)) usedNames
-                         liftIO . putStrLn $ prettyPrint imp ++ " -> " ++ show names) 
-             (mod ^. element.modImports.annList)
+  = return $ mod & element.modImports.annList %~ narrowImports usedNames . sortImports
   where usedNames :: [GHC.Name]
         usedNames = catMaybes $ map (preview (annotation.semanticInfo.nameInfo)) (universeBi mod :: [Ann Name STWithNames])
 
 sortImports :: [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
 sortImports = sortBy (ordByOccurrence `on` view (element.importModule.element))
 
-isActuallyImported :: GhcMonad m => ImportDecl STWithNames -> GHC.Name -> m Bool
-isActuallyImported imp name 
-  = do liftIO $ putStrLn (nameString $ imp ^. importModule.element)
-       ms <- GHC.getModSummary (GHC.mkModuleName $ nameString $ imp ^. importModule.element)
-       Just mi <- GHC.getModuleInfo (GHC.ms_mod ms)
-       (GHC.modInfoIsExportedName mi name &&) <$> checkImportVisible imp name
-  
-checkImportVisible :: GhcMonad m => ImportDecl STWithNames -> GHC.Name -> m Bool
-checkImportVisible imp name
-  | importIsExact imp 
-  = or <$> mapM (`ieSpecMatches` name) (imp ^.. importExacts)
-  | importIsHiding imp 
-  = not . or <$> mapM (`ieSpecMatches` name) (imp ^.. importHidings)
-  | otherwise = return True
-
-ieSpecMatches :: GhcMonad m => IESpec STWithNames -> GHC.Name -> m Bool
-ieSpecMatches (IESpec ((^?! annotation.semanticInfo.nameInfo) -> n) ss) name
-  | n == name = return True
-  | isTyConName n
-  = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
-             <$> lookupGlobalName n
-  | otherwise = return False
+narrowImports :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
+narrowImports usedNames imps 
+  = catMaybes $ map (\(imp,rest) -> narrowImport usedNames (map semantics rest) imp) 
+                    (listViews imps)
         
-narrowImports :: [GHC.Name] -> [[Ann ImportDecl STWithNames]] -> [Ann ImportDecl STWithNames]
-narrowImports names = undefined
-        
-narrowImport :: [GHC.Name] -> Ann ImportDecl STWithNames -> Ann ImportDecl STWithNames
-narrowImport names (Ann l imp) 
-  = undefined -- imp & importSpec.importSpecList
+narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames 
+                           -> Maybe (Ann ImportDecl STWithNames)
+narrowImport usedNames otherModules imp
+  = if null actuallyImported
+      then if canBeRemoved then Nothing 
+                           else Just $ imp & element.importSpec .~ annJust (mkImportSpecList [])
+      else Just imp
+  where actuallyImported = (imp ^. annotation.semanticInfo.importedNames) `intersect` usedNames
+        canBeRemoved = any (== (imp ^?! annotation.semanticInfo.importedModule)) 
+                           (otherModules ^.. traverse.importedModule)
     
 -- * General utilities
 
 class TemplateAnnot annot where
   fromTemplate :: SourceTemplate -> annot
   
-instance TemplateAnnot (NodeInfo (Maybe a) SourceTemplate) where
-  fromTemplate = NodeInfo Nothing
+instance TemplateAnnot (NodeInfo SemanticInfo SourceTemplate) where
+  fromTemplate = NodeInfo NoSemanticInfo
   
 instance TemplateAnnot (NodeInfo () SourceTemplate) where
   fromTemplate = NodeInfo ()
     
+listViews :: Eq a => [a] -> [(a,[a])]
+listViews ls = map (\e -> (e, delete e ls)) ls  
+  
+semantics :: Ann a STWithNames -> SemanticInfo
+semantics = view (annotation.semanticInfo)
+    
 -- * AST creation
     
-
+mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
+mkImportSpecList specs = Ann (fromTemplate "()") (ImportSpecList (AnnList specs))
 

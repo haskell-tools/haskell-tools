@@ -1,6 +1,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Monad where
 
 import SrcLoc
+import GHC
 import ApiAnnotation
 import Control.Monad.Reader
 import Language.Haskell.Tools.AST.SourceMap
@@ -15,7 +16,7 @@ trfInit annots = TrfInput { srcMap = annotationsToSrcMap annots
                           , contRange = noSrcSpan
                           }
 
-runTrf :: Map ApiAnnKey [SrcSpan] -> Trf a -> a
-runTrf annots trf = runReader trf (trfInit annots)
+runTrf :: Map ApiAnnKey [SrcSpan] -> Trf a -> Ghc a
+runTrf annots trf = runReaderT trf (trfInit annots)
                           
-type Trf = Reader TrfInput
+type Trf = ReaderT TrfInput Ghc

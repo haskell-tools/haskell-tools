@@ -1,9 +1,15 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase
+           , ViewPatterns
+           #-}
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
+import Control.Lens hiding (element)
 import Data.Maybe
+import Data.IORef
 import Control.Monad.Reader
 
+import Avail as GHC
+import GHC as GHC
 import ApiAnnotation as GHC
 import RdrName as GHC
 import Name as GHC
@@ -13,11 +19,14 @@ import FastString as GHC
 import Module as GHC
 import BasicTypes as GHC
 import HsSyn as GHC
+import HscTypes as GHC
 
 import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Lenses
 import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Modules as AST
 
+import Language.Haskell.Tools.AST.Helpers
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad
@@ -63,7 +72,7 @@ trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDec
 trfImports imps = AnnList <$> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
 
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
-trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
+trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   AST.ImportDecl 
     <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) else pure annNothing)
     -- if there is a source annotation the first open and close will mark its location
@@ -78,8 +87,7 @@ trfImport = trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl de
   where trfRenaming mn
           = annLoc (tokensLoc [AnnAs,AnnVal])
                    (AST.ImportRenaming <$> (annLoc (tokenLoc AnnVal) 
-                                           (trfModuleName' mn)))
-  
+                                           (trfModuleName' mn)))  
   
 trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec r)
 trfImportSpecs (Just (True, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecHiding . AnnList . catMaybes) . mapM trfIESpec) l
