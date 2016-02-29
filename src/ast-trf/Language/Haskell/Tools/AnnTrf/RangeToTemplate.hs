@@ -18,6 +18,8 @@ import Debug.Trace
 
 data RangeTemplateElem = RangeElem RealSrcSpan
                        | RangeChildElem
+                       | RangeOptionalElem
+                       | RangeListElem
                        deriving Data
 
 instance Show RangeTemplateElem where

@@ -11,6 +11,8 @@ import SrcLoc
 
 data SourceTemplateElem = TextElem String 
                         | ChildElem
+                        | OptionalChildElem
+                        | ChildListElem
      deriving (Eq, Ord, Data)
 
 -- | A pattern that controls how the original source code can be
@@ -24,7 +26,9 @@ makeLenses ''SourceTemplate
       
 instance Show SourceTemplateElem where
   show (TextElem s) = s
-  show (ChildElem) = "×"
+  show (ChildElem) = "«.»"
+  show (OptionalChildElem) = "«?»"
+  show (ChildListElem) = "«*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp
