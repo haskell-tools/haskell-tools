@@ -55,7 +55,7 @@ trfModuleHead (Just mn) exports
   = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                         (AST.ModuleHead <$> trfModuleName mn 
                                         <*> trfExportList exports))
-trfModuleHead Nothing _ = annNothing <$> startPos
+trfModuleHead Nothing _ = nothing atTheStart
 
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
 trfPragmas _ _ = pure $ AnnList undefined []
@@ -64,7 +64,7 @@ trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe A
 trfExportList = trfMaybe $ trfLoc trfExportList'
 
 trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.ExportSpecList r)
-trfExportList' exps = AST.ExportSpecList <$> (AnnList <$> after AnnOpenP <*> (orderDefs . catMaybes <$> (mapM trfExport exps)))
+trfExportList' exps = AST.ExportSpecList <$> (makeList (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))
   
 trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.ExportSpec r))
 trfExport = trfMaybeLoc $ \case 
@@ -74,7 +74,7 @@ trfExport = trfMaybeLoc $ \case
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
 trfImports imps 
   = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
-  where importDefaultLoc = toRangeAnnot . srcLocSpan . srcSpanEnd 
+  where importDefaultLoc = toNodeAnnot . srcLocSpan . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> tokenLoc AnnCloseP)
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
@@ -83,20 +83,19 @@ trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc i
       annBeforeQual = if isSrc then AnnClose else AnnImport
       annBeforeSafe = if isQual then AnnQualified else annBeforeQual
       annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
-      asPos :: RangeAnnot i => Trf i
-      asPos = if isJust declHiding then before AnnOpenP else endPos
+      atAsPos = if isJust declHiding then before AnnOpenP else atTheEnd
   in AST.ImportDecl 
        <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) 
-                      else annNothing <$> after annBeforeQual)
+                      else nothing (after annBeforeQual))
        -- if there is a source annotation the first open and close will mark its location
        <*> (if isSrc then annJust <$> annLoc (tokensLoc [AnnOpen, AnnClose]) (pure AST.ImportSource)
-                     else annNothing <$> after AnnImport)
+                     else nothing (after AnnImport))
        <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) 
-                      else annNothing <$> after annBeforeSafe)
-       <*> maybe (annNothing <$> after annBeforePkg) 
+                      else nothing (after annBeforeSafe))
+       <*> maybe (nothing (after annBeforePkg)) 
                  (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
        <*> trfModuleName name 
-       <*> maybe (annNothing <$> asPos) (\mn -> annJust <$> (trfRenaming mn)) declAs
+       <*> maybe (nothing atAsPos) (\mn -> annJust <$> (trfRenaming mn)) declAs
        <*> trfImportSpecs declHiding
   where trfRenaming mn
           = annLoc (tokensLoc [AnnAs,AnnVal])
@@ -105,23 +104,23 @@ trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc i
   
 trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec r)
 trfImportSpecs (Just (True, l)) 
-  = annJust <$> trfLoc (\specs -> AST.ImportSpecHiding <$> (AnnList <$> after AnnOpenP <*> (catMaybes <$> mapM trfIESpec specs))) l
+  = annJust <$> trfLoc (\specs -> AST.ImportSpecHiding <$> (makeList (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
 trfImportSpecs (Just (False, l)) 
-  = annJust <$> trfLoc (\specs -> AST.ImportSpecList <$> (AnnList <$> after AnnOpenP <*> (catMaybes <$> mapM trfIESpec specs))) l
-trfImportSpecs Nothing = annNothing <$> endPos
+  = annJust <$> trfLoc (\specs -> AST.ImportSpecList <$> (makeList (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
+trfImportSpecs Nothing = nothing atTheEnd
     
 trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.IESpec r)) 
 trfIESpec = trfMaybeLoc trfIESpec'
   
 trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.IESpec r))
-trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> (annNothing <$> endPos))
-trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> (annNothing <$> endPos))
+trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing atTheEnd))
+trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing atTheEnd))
 trfIESpec' (IEThingAll n) 
   = Just <$> (AST.IESpec <$> trfName n <*> (annJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
   = Just <$> (AST.IESpec <$> trfName n
                          <*> (annJust <$> annLoc (tokensLoc [AnnOpenP, AnnCloseP]) 
-                                                 (AST.SubSpecList <$> (AnnList <$> (before AnnCloseP) <*> mapM trfName ls))))
+                                                 (AST.SubSpecList <$> makeList (before AnnCloseP) (mapM trfName ls))))
 trfIESpec' _ = pure Nothing
   
  

@@ -80,17 +80,17 @@ trfExpr' (ExplicitPArr _ exprs) = AST.ParArray <$> trfAnnList trfExpr' exprs
 trfExpr' (RecordCon name _ fields) = AST.RecCon <$> trfName name <*> trfFieldUpdates fields
 trfExpr' (RecordUpd expr fields _ _ _) = AST.RecUpdate <$> trfExpr expr <*> trfFieldUpdates fields
 trfExpr' (ExprWithTySig expr typ _) = AST.TypeSig <$> trfExpr expr <*> trfType typ
-trfExpr' (ArithSeq _ _ (From from)) = AST.Enum <$> trfExpr from <*> (annNothing <$> before AnnDotdot)
-                                                                <*> (annNothing <$> before AnnCloseS) 
+trfExpr' (ArithSeq _ _ (From from)) = AST.Enum <$> trfExpr from <*> nothing (before AnnDotdot)
+                                                                <*> nothing (before AnnCloseS)
 trfExpr' (ArithSeq _ _ (FromThen from step)) 
-  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> (annNothing <$> before AnnCloseS) 
+  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> nothing (before AnnCloseS) 
 trfExpr' (ArithSeq _ _ (FromTo from to)) 
-  = AST.Enum <$> trfExpr from <*> (annNothing <$> before AnnDotdot)
+  = AST.Enum <$> trfExpr from <*> nothing (before AnnDotdot)
                               <*> (annJust <$> trfExpr to)
 trfExpr' (ArithSeq _ _ (FromThenTo from step to)) 
   = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> (annJust <$> trfExpr to)
 trfExpr' (PArrSeq _ (FromTo from to)) 
-  = AST.ParArrayEnum <$> trfExpr from <*> (annNothing <$> before AnnDotdot) <*> trfExpr to
+  = AST.ParArrayEnum <$> trfExpr from <*> nothing (before AnnDotdot) <*> trfExpr to
 trfExpr' (PArrSeq _ (FromThenTo from step to)) 
   = AST.ParArrayEnum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> trfExpr to
 -- TODO: SCC, CORE, GENERATED annotations
@@ -103,11 +103,11 @@ trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation'
 trfFieldUpdates :: TransformName n r => HsRecordBinds n -> Trf (AnnList AST.FieldUpdate r)
 trfFieldUpdates (HsRecFields fields dotdot) 
   = do cont <- asks contRange
-       AnnList <$> before AnnCloseC
-               <*> ((++) <$> mapM trfFieldUpdate (filter ((cont /=) . getLoc) fields) 
-                         <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) 
-                                                                     (pure AST.FieldWildcard) 
-                                               else pure []) )
+       makeList (before AnnCloseC)
+         $ ((++) <$> mapM trfFieldUpdate (filter ((cont /=) . getLoc) fields) 
+                 <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) 
+                                                             (pure AST.FieldWildcard) 
+                                       else pure []))
   
 trfFieldUpdate :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate r)
 trfFieldUpdate = trfLoc $ \case

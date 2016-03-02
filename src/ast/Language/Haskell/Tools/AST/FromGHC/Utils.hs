@@ -32,19 +32,23 @@ import Language.Haskell.Tools.AST.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 
 class RangeAnnot annot where
-  toRangeAnnot :: SrcSpan -> annot
+  toNodeAnnot :: SrcSpan -> annot
+  toListAnnot :: SrcLoc -> annot
+  toOptAnnot :: SrcLoc -> annot
   addSemanticInfo :: SemanticInfo -> annot -> annot
   extractRange :: annot -> SrcSpan
   addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
 instance RangeAnnot RangeWithName where
-  toRangeAnnot = NodeInfo NoSemanticInfo
-  addSemanticInfo si = NodeInfo si . extractRange
-  extractRange = view sourceInfo
+  toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
+  toListAnnot = NodeInfo NoSemanticInfo . ListPos
+  toOptAnnot = NodeInfo NoSemanticInfo . OptionalPos
+  addSemanticInfo si ni = ni & semanticInfo .~ si
+  extractRange = spanRange . view sourceInfo
   addImportData = addImportData'
 
 contRangeAnnot :: RangeAnnot a => Trf a
-contRangeAnnot = toRangeAnnot <$> asks contRange
+contRangeAnnot = toNodeAnnot <$> asks contRange
 
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
 addImportData' imp = lift $ 
@@ -75,12 +79,17 @@ ieSpecMatches (AST.IESpec ((^?! annotation.semanticInfo.nameInfo) -> n) ss) name
   
     
 instance RangeAnnot RangeInfo where
-  toRangeAnnot = NodeInfo ()
+  toNodeAnnot = NodeInfo () . NodeSpan
+  toListAnnot = NodeInfo () . ListPos
+  toOptAnnot = NodeInfo () . OptionalPos
   addSemanticInfo si = id
-  extractRange = view sourceInfo
+  extractRange = spanRange . view sourceInfo
   addImportData = pure
 
 
+nothing pos = annNothing . toOptAnnot <$> pos 
+makeList ann ls = AnnList <$> (toListAnnot <$> ann) <*> ls
+  
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfLoc :: RangeAnnot i => (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
@@ -88,35 +97,35 @@ trfLoc = trfLocCorrect pure
 
 trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
 trfMaybe f (Just e) = annJust <$> f e
-trfMaybe f Nothing = annNothing . toRangeAnnot <$> asks contRange
+trfMaybe f Nothing = annNothing . toNodeAnnot <$> asks contRange
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
 trfLocCorrect :: RangeAnnot i => (SrcSpan -> Trf SrcSpan) -> (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
 trfLocCorrect locF f (L l e) = do loc <- locF l
-                                  Ann (toRangeAnnot loc) <$> local (\s -> s { contRange = loc }) (f e)
+                                  Ann (toNodeAnnot loc) <$> local (\s -> s { contRange = loc }) (f e)
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfMaybeLoc :: RangeAnnot i => (a -> Trf (Maybe (b i))) -> Located a -> Trf (Maybe (Ann b i))
-trfMaybeLoc f (L l e) = fmap (Ann (toRangeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
+trfMaybeLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfListLoc :: RangeAnnot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
-trfListLoc f (L l e) = fmap (Ann (toRangeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
+trfListLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
 
 trfAnnList :: RangeAnnot i => (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)
 trfAnnList _ [] = AnnList <$> contRangeAnnot <*> pure []
-trfAnnList f ls = AnnList <$> pure (toRangeAnnot $ collectLocs ls) <*> mapM (trfLoc f) ls
+trfAnnList f ls = AnnList <$> pure (toNodeAnnot $ collectLocs ls) <*> mapM (trfLoc f) ls
 
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
-nonemptyAnnList = AnnList (toRangeAnnot noSrcSpan)
+nonemptyAnnList = AnnList (toNodeAnnot noSrcSpan)
 
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)
 annLoc locm nodem = do loc <- locm
                        node <- local (\s -> s { contRange = loc }) nodem
-                       return (Ann (toRangeAnnot loc) node)
+                       return (Ann (toNodeAnnot loc) node)
 
 -- | Focuses the transformation to go between tokens
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
@@ -125,22 +134,22 @@ between firstTok lastTok trf
        lastToken <- tokenLoc lastTok
        local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanStart lastToken)}) trf
        
--- | Creates an annotation from an empty range before a given token
-before :: RangeAnnot i => AnnKeywordId -> Trf i
-before tok = toRangeAnnot . srcLocSpan . srcSpanStart <$> tokenLoc tok
+-- | Gets the position before the given token
+before :: AnnKeywordId -> Trf SrcLoc
+before tok = srcSpanStart <$> tokenLoc tok
                
--- | Creates an annotation from an empty range after a given token
-after :: RangeAnnot i => AnnKeywordId -> Trf i
-after tok = toRangeAnnot . srcLocSpan . srcSpanEnd <$> tokenLoc tok
-       
--- | Annotating the last AST element in focus       
-endPos :: RangeAnnot i => Trf i
-endPos = asks (toRangeAnnot . srcLocSpan . srcSpanEnd . contRange)
+-- | Gets the position after the given token
+after :: AnnKeywordId -> Trf SrcLoc
+after tok = srcSpanEnd <$> tokenLoc tok
 
--- | Annotating the first AST element in focus       
-startPos :: RangeAnnot i => Trf i
-startPos = asks (toRangeAnnot . srcLocSpan . srcSpanStart . contRange)
-                       
+-- | Gets the position at the beginning of the focus       
+atTheStart :: Trf SrcLoc
+atTheStart = asks (srcSpanStart . contRange)
+            
+-- | Gets the position at the end of the focus      
+atTheEnd :: Trf SrcLoc
+atTheEnd = asks (srcSpanEnd . contRange)
+                 
 -- | Searches for a token inside the parent element and retrieves its location
 tokenLoc :: AnnKeywordId -> Trf SrcSpan
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)

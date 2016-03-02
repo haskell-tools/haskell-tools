@@ -37,15 +37,15 @@ trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
   = nonemptyAnnList
       <$> mapM (\(ParStmtBlock stmts _ _) -> 
-                   let ann = toRangeAnnot $ collectLocs $ getNormalStmts stmts
+                   let ann = toNodeAnnot $ collectLocs $ getNormalStmts stmts
                     in Ann ann . AST.ListCompBody . AnnList ann . concat 
                          <$> mapM trfListCompStmt stmts
                ) blocks
 trfListCompStmts others 
   = let ann = (collectLocs $ getNormalStmts others)
-     in AnnList (toRangeAnnot ann) . (:[]) 
+     in AnnList (toNodeAnnot ann) . (:[]) 
           <$> annLoc (pure ann)
-                     (AST.ListCompBody . AnnList (toRangeAnnot ann) . concat <$> mapM trfListCompStmt others) 
+                     (AST.ListCompBody . AnnList (toNodeAnnot ann) . concat <$> mapM trfListCompStmt others) 
 
 trfListCompStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt r]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 

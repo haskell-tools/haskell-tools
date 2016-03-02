@@ -42,7 +42,7 @@ trfMatch id = trfLoc (trfMatch' id)
 trfMatch' :: TransformName n r => Located n -> Match n (LHsExpr n) -> Trf (AST.Match r)
 trfMatch' name (Match funid pats typ (GRHSs rhss locBinds))
   = AST.Match <$> trfName (maybe name fst funid) 
-              <*> (AnnList <$> before AnnEqual <*> mapM trfPattern pats) 
+              <*> makeList (before AnnEqual) (mapM trfPattern pats)
               <*> trfMaybe trfType typ 
               <*> trfRhss rhss <*> trfWhereLocalBinds locBinds
   
@@ -65,7 +65,7 @@ trfRhsGuard' (BodyStmt body _ _ _) = AST.GuardCheck <$> trfExpr body
 trfRhsGuard' (LetStmt binds) = AST.GuardLet <$> trfLocalBinds binds
   
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)
-trfWhereLocalBinds EmptyLocalBinds = annNothing <$> endPos
+trfWhereLocalBinds EmptyLocalBinds = nothing atTheEnd
 trfWhereLocalBinds binds
   = annJust <$> annLoc (pure $ getBindLocs binds) (AST.LocalBinds <$> trfLocalBinds binds)
 
@@ -75,14 +75,13 @@ getBindLocs (HsValBinds (ValBindsOut binds sigs)) = foldLocs $ map getLoc (conca
   
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind r)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
-  = AnnList <$> after AnnWhere
-            <*> (orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
-                                     <*> mapM trfLocalSig sigs))
+  = makeList (after AnnWhere)
+             (orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
+                                  <*> mapM trfLocalSig sigs))
 trfLocalBinds (HsValBinds (ValBindsOut binds sigs)) 
-  = AnnList 
-      <$> after AnnWhere 
-      <*> (orderDefs <$> ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.LocalValBind . trfBind) . bagToList . snd) binds)
-                               <*> mapM trfLocalSig sigs))
+  = makeList (after AnnWhere)
+             (orderDefs <$> ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.LocalValBind . trfBind) . bagToList . snd) binds)
+                                  <*> mapM trfLocalSig sigs))
              
 trfLocalSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.LocalBind r)
 trfLocalSig = trfLoc $ \case

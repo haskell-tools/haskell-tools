@@ -33,8 +33,18 @@ data NodeInfo sema src
              
 makeLenses ''NodeInfo
 
-type RangeInfo = NodeInfo () SrcSpan
-type RangeWithName = NodeInfo SemanticInfo SrcSpan
+data SpanInfo 
+  = NodeSpan SrcSpan
+  | ListPos SrcLoc
+  | OptionalPos SrcLoc
+
+spanRange :: SpanInfo -> SrcSpan
+spanRange (NodeSpan sp) = sp
+spanRange (ListPos pos) = srcLocSpan pos
+spanRange (OptionalPos pos) = srcLocSpan pos
+  
+type RangeInfo = NodeInfo () SpanInfo
+type RangeWithName = NodeInfo SemanticInfo SpanInfo
 
 -- | Semantic information for an AST node. Semantic information is
 -- currently heterogeneous.
