@@ -24,7 +24,9 @@ data RangeTemplateElem = RangeElem RealSrcSpan
 
 instance Show RangeTemplateElem where
   show (RangeElem sp) = show sp
-  show RangeChildElem = "×"
+  show RangeChildElem = "«.»"
+  show RangeOptionalElem = "«?»"
+  show RangeListElem = "«*»"
   
 data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan
                                    , _rangeTemplateElems :: [RangeTemplateElem] 

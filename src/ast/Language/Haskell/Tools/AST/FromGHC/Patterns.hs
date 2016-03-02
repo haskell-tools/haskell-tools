@@ -23,21 +23,23 @@ import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Patterns as AST
 
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern r)
-trfPattern = trfLoc $ \case
-  WildPat _ -> pure AST.WildPat
-  VarPat name -> AST.VarPat <$> annCont (trfName' name)
-  LazyPat pat -> AST.IrrPat <$> trfPattern pat
-  AsPat name pat -> AST.AsPat <$> trfName name <*> trfPattern pat
-  ParPat pat -> AST.ParenPat <$> trfPattern pat
-  BangPat pat -> AST.BangPat <$> trfPattern pat
-  ListPat pats _ _ -> AST.ListPat . AnnList <$> mapM trfPattern pats
-  TuplePat pats Boxed _ -> AST.TuplePat . AnnList <$> mapM trfPattern pats
-  PArrPat pats _ -> AST.ParArrPat . AnnList <$> mapM trfPattern pats
-  ConPatIn name _ -> AST.VarPat <$> annCont (trfName' (unLoc name))
-  ViewPat expr pat _ -> AST.ViewPat <$> trfExpr expr <*> trfPattern pat
-  SplicePat splice -> AST.SplicePat <$> annCont (trfSplice' splice)
-  QuasiQuotePat qq -> AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)
-  LitPat lit -> AST.LitPat <$> annCont (trfLiteral' lit)
-  NPat (ol_val . unLoc -> lit) _ _ -> AST.LitPat <$> annCont (trfOverloadedLit lit)
-  SigPatIn pat (hswb_cts -> typ) -> AST.TypeSigPat <$> trfPattern pat <*> trfType typ
+trfPattern = trfLoc trfPattern'
+
+trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
+trfPattern' (WildPat _) = pure AST.WildPat
+trfPattern' (VarPat name) = AST.VarPat <$> annCont (trfName' name)
+trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
+trfPattern' (AsPat name pat) = AST.AsPat <$> trfName name <*> trfPattern pat
+trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat
+trfPattern' (BangPat pat) = AST.BangPat <$> trfPattern pat
+trfPattern' (ListPat pats _ _) = AST.ListPat <$> trfAnnList trfPattern' pats
+trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList trfPattern' pats
+trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList trfPattern' pats
+trfPattern' (ConPatIn name _) = AST.VarPat <$> annCont (trfName' (unLoc name))
+trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
+trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)
+trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)
+trfPattern' (LitPat lit) = AST.LitPat <$> annCont (trfLiteral' lit)
+trfPattern' (NPat (ol_val . unLoc -> lit) _ _) = AST.LitPat <$> annCont (trfOverloadedLit lit)
+trfPattern' (SigPatIn pat (hswb_cts -> typ)) = AST.TypeSigPat <$> trfPattern pat <*> trfType typ
   -- NPlusKPat, CoPat?

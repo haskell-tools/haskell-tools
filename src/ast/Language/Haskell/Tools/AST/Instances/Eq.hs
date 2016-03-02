@@ -19,8 +19,11 @@ import Language.Haskell.Tools.AST.Ann
 instance (Eq (e a)) => Eq (Ann e a) where
   Ann _ e1 == Ann _ e2 = e1 == e2
 
-deriving instance (Eq (e a)) => Eq (AnnMaybe e a)
-deriving instance (Eq (e a)) => Eq (AnnList e a)
+instance (Eq (e a)) => Eq (AnnMaybe e a) where
+  AnnMaybe _ e1 == AnnMaybe _ e2 = e1 == e2
+
+instance (Eq (e a)) => Eq (AnnList e a) where
+  AnnList _ e1 == AnnList _ e2 = e1 == e2
 
 -- Modules
 deriving instance Eq (Module a)

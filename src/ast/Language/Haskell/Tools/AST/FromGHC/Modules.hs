@@ -55,13 +55,16 @@ trfModuleHead (Just mn) exports
   = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                         (AST.ModuleHead <$> trfModuleName mn 
                                         <*> trfExportList exports))
-trfModuleHead Nothing _ = pure annNothing
+trfModuleHead Nothing _ = annNothing <$> startPos
 
 trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
-trfPragmas _ _ = pure $ AnnList []
+trfPragmas _ _ = pure $ AnnList undefined []
 
 trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
-trfExportList = trfMaybe $ trfLoc (\exps -> AST.ExportSpecList . AnnList . orderDefs . catMaybes <$> (mapM trfExport exps))
+trfExportList = trfMaybe $ trfLoc trfExportList'
+
+trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.ExportSpecList r)
+trfExportList' exps = AST.ExportSpecList <$> (AnnList <$> after AnnOpenP <*> (orderDefs . catMaybes <$> (mapM trfExport exps)))
   
 trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.ExportSpec r))
 trfExport = trfMaybeLoc $ \case 
@@ -69,43 +72,56 @@ trfExport = trfMaybeLoc $ \case
   other -> fmap AST.DeclExport <$> trfIESpec' other
   
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
-trfImports imps = AnnList <$> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
-
+trfImports imps 
+  = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
+  where importDefaultLoc = toRangeAnnot . srcLocSpan . srcSpanEnd 
+                             <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
+                                                  <*> tokenLoc AnnCloseP)
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
 trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
-  AST.ImportDecl 
-    <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) else pure annNothing)
-    -- if there is a source annotation the first open and close will mark its location
-    <*> (if isSrc then annJust <$> (annLoc (tokensLoc [AnnOpen, AnnClose]) 
-                                           (pure AST.ImportSource))
-                  else pure annNothing)
-    <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) else pure annNothing)
-    <*> maybe (pure annNothing) (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
-    <*> trfModuleName name 
-    <*> maybe (pure annNothing) (\mn -> annJust <$> (trfRenaming mn)) declAs
-    <*> trfImportSpecs declHiding
+  let -- default positions of optional parts of an import declaration
+      annBeforeQual = if isSrc then AnnClose else AnnImport
+      annBeforeSafe = if isQual then AnnQualified else annBeforeQual
+      annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
+      asPos :: RangeAnnot i => Trf i
+      asPos = if isJust declHiding then before AnnOpenP else endPos
+  in AST.ImportDecl 
+       <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) 
+                      else annNothing <$> after annBeforeQual)
+       -- if there is a source annotation the first open and close will mark its location
+       <*> (if isSrc then annJust <$> annLoc (tokensLoc [AnnOpen, AnnClose]) (pure AST.ImportSource)
+                     else annNothing <$> after AnnImport)
+       <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) 
+                      else annNothing <$> after annBeforeSafe)
+       <*> maybe (annNothing <$> after annBeforePkg) 
+                 (\str -> annJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
+       <*> trfModuleName name 
+       <*> maybe (annNothing <$> asPos) (\mn -> annJust <$> (trfRenaming mn)) declAs
+       <*> trfImportSpecs declHiding
   where trfRenaming mn
           = annLoc (tokensLoc [AnnAs,AnnVal])
                    (AST.ImportRenaming <$> (annLoc (tokenLoc AnnVal) 
                                            (trfModuleName' mn)))  
   
 trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec r)
-trfImportSpecs (Just (True, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecHiding . AnnList . catMaybes) . mapM trfIESpec) l
-trfImportSpecs (Just (False, l)) = annJust <$> trfLoc (fmap (AST.ImportSpecList . AnnList . catMaybes) . mapM trfIESpec) l
-trfImportSpecs Nothing = pure annNothing
+trfImportSpecs (Just (True, l)) 
+  = annJust <$> trfLoc (\specs -> AST.ImportSpecHiding <$> (AnnList <$> after AnnOpenP <*> (catMaybes <$> mapM trfIESpec specs))) l
+trfImportSpecs (Just (False, l)) 
+  = annJust <$> trfLoc (\specs -> AST.ImportSpecList <$> (AnnList <$> after AnnOpenP <*> (catMaybes <$> mapM trfIESpec specs))) l
+trfImportSpecs Nothing = annNothing <$> endPos
     
 trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.IESpec r)) 
 trfIESpec = trfMaybeLoc trfIESpec'
   
 trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.IESpec r))
-trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
-trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> pure annNothing)
+trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> (annNothing <$> endPos))
+trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> (annNothing <$> endPos))
 trfIESpec' (IEThingAll n) 
   = Just <$> (AST.IESpec <$> trfName n <*> (annJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
   = Just <$> (AST.IESpec <$> trfName n
                          <*> (annJust <$> annLoc (tokensLoc [AnnOpenP, AnnCloseP]) 
-                                                 (AST.SubSpecList . AnnList <$> mapM trfName ls)))
+                                                 (AST.SubSpecList <$> (AnnList <$> (before AnnCloseP) <*> mapM trfName ls))))
 trfIESpec' _ = pure Nothing
   
  

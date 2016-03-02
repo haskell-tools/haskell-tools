@@ -44,7 +44,7 @@ data Decl a
                          , _declInstance :: Ann InstanceRule a
                          , _declKind :: AnnMaybe KindConstraint a
                          , _declGadt :: Ann GadtDeclList a
-                         } -- ^ Data instance declaration (@ data instance T = Con1 | Con2 @)
+                         } -- ^ Gadt style data instance declaration (@ data instance Fam T where ... @)
   | ClassDecl            { _declCtx :: AnnMaybe Context a
                          , _declHead :: Ann DeclHead a
                          , _declFunDeps :: AnnMaybe FunDeps a
@@ -196,8 +196,8 @@ data FieldDecl a
   
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 data Deriving a
-  = DerivingOne { _oneDerived :: Ann InstanceRule a }
-  | Derivings { _allDerived :: AnnList InstanceRule a }
+  = DerivingOne { _oneDerived :: Ann InstanceHead a }
+  | Derivings { _allDerived :: AnnList InstanceHead a }
   
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
 data InstanceRule a

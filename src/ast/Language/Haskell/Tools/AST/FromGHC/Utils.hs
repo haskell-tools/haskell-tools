@@ -43,6 +43,9 @@ instance RangeAnnot RangeWithName where
   extractRange = view sourceInfo
   addImportData = addImportData'
 
+contRangeAnnot :: RangeAnnot a => Trf a
+contRangeAnnot = toRangeAnnot <$> asks contRange
+
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
 addImportData' imp = lift $ 
   do eps <- getSession >>= liftIO . readIORef . hsc_EPS
@@ -83,8 +86,9 @@ instance RangeAnnot RangeInfo where
 trfLoc :: RangeAnnot i => (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
 trfLoc = trfLocCorrect pure
 
-trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann b i)) -> Maybe (Located a) -> Trf (AnnMaybe b i)
-trfMaybe f = maybe (pure annNothing) (fmap annJust . f)
+trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
+trfMaybe f (Just e) = annJust <$> f e
+trfMaybe f Nothing = annNothing . toRangeAnnot <$> asks contRange
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
@@ -100,13 +104,43 @@ trfMaybeLoc f (L l e) = fmap (Ann (toRangeAnnot l)) <$> local (\s -> s { contRan
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfListLoc :: RangeAnnot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
-trfListLoc f (L l e) = fmap (Ann (toRangeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
+trfListLoc f (L l e) = fmap (Ann (toRangeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
+
+trfAnnList :: RangeAnnot i => (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)
+trfAnnList _ [] = AnnList <$> contRangeAnnot <*> pure []
+trfAnnList f ls = AnnList <$> pure (toRangeAnnot $ collectLocs ls) <*> mapM (trfLoc f) ls
+
+nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
+nonemptyAnnList = AnnList (toRangeAnnot noSrcSpan)
 
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)
 annLoc locm nodem = do loc <- locm
                        node <- local (\s -> s { contRange = loc }) nodem
                        return (Ann (toRangeAnnot loc) node)
 
+-- | Focuses the transformation to go between tokens
+between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
+between firstTok lastTok trf
+  = do firstToken <- tokenLoc firstTok
+       lastToken <- tokenLoc lastTok
+       local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanStart lastToken)}) trf
+       
+-- | Creates an annotation from an empty range before a given token
+before :: RangeAnnot i => AnnKeywordId -> Trf i
+before tok = toRangeAnnot . srcLocSpan . srcSpanStart <$> tokenLoc tok
+               
+-- | Creates an annotation from an empty range after a given token
+after :: RangeAnnot i => AnnKeywordId -> Trf i
+after tok = toRangeAnnot . srcLocSpan . srcSpanEnd <$> tokenLoc tok
+       
+-- | Annotating the last AST element in focus       
+endPos :: RangeAnnot i => Trf i
+endPos = asks (toRangeAnnot . srcLocSpan . srcSpanEnd . contRange)
+
+-- | Annotating the first AST element in focus       
+startPos :: RangeAnnot i => Trf i
+startPos = asks (toRangeAnnot . srcLocSpan . srcSpanStart . contRange)
+                       
 -- | Searches for a token inside the parent element and retrieves its location
 tokenLoc :: AnnKeywordId -> Trf SrcSpan
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)
@@ -144,7 +178,7 @@ orderDefs :: RangeAnnot i => [Ann e i] -> [Ann e i]
 orderDefs = sortBy (compare `on` ordSrcSpan . extractRange . _annotation)
 
 orderAnnList :: RangeAnnot i => AnnList e i -> AnnList e i
-orderAnnList (AnnList ls) = AnnList (orderDefs ls)
+orderAnnList (AnnList a ls) = AnnList a (orderDefs ls)
 
 advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
 advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str

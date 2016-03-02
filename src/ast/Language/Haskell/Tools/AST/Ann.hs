@@ -54,27 +54,31 @@ data SemanticInfo
 makeLenses ''SemanticInfo
 
 -- | A list of AST elements
-newtype AnnList e a = AnnList { _annList :: [Ann e a] }
+data AnnList e a = AnnList { _annListPos :: a 
+                           , _annList :: [Ann e a]
+                           }
 
 makeLenses ''AnnList
 
 -- | An optional AST element
-newtype AnnMaybe e a = AnnMaybe { _annMaybe :: (Maybe (Ann e a)) }
+data AnnMaybe e a = AnnMaybe { _annMaybePos :: a 
+                             , _annMaybe :: (Maybe (Ann e a))
+                             }
 
 makeLenses ''AnnMaybe
 
 -- | An empty list of AST elements
-annNil :: AnnList e a
-annNil = AnnList []
+annNil :: a -> AnnList e a
+annNil a = AnnList a []
 
 isAnnNothing :: AnnMaybe e a -> Bool
-isAnnNothing (AnnMaybe Nothing) = True
-isAnnNothing (AnnMaybe _) = False
+isAnnNothing (AnnMaybe _ Nothing) = True
+isAnnNothing (AnnMaybe _ _) = False
 
 -- | An existing AST element
 annJust :: Ann e a -> AnnMaybe e a
-annJust = AnnMaybe . Just
+annJust e = AnnMaybe (e ^. annotation) (Just e)
 
 -- | A non-existing AST part
-annNothing :: AnnMaybe e a
-annNothing = AnnMaybe Nothing
+annNothing :: a -> AnnMaybe e a
+annNothing a = AnnMaybe a Nothing

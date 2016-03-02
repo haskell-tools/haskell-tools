@@ -14,3 +14,4 @@ import qualified Language.Haskell.Tools.AST.Binds as AST
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind r)
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)
 trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard r)
+trfRhsGuard' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.RhsGuard r)

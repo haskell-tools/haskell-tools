@@ -10,6 +10,7 @@ import HsTypes as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
 
+import Control.Monad.Reader.Class
 import Control.Lens
 import Data.Maybe
 
@@ -37,8 +38,8 @@ trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ
 trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
-trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple . AnnList <$> mapM trfType typs
-trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple . AnnList <$> mapM trfType typs
+trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList trfType' typs
+trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList trfType' typs
 trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfName (snd op) <*> trfType t2
 trfType' (HsParTy typ) = AST.TyParen <$> trfType typ
 trfType' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
@@ -54,31 +55,37 @@ trfType' HsWildcardTy = pure AST.TyWildcard
 trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> annCont (trfName' name)
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
-trfBindings vars = AnnList <$> mapM trfTyVar vars
+trfBindings vars = trfAnnList trfTyVar' vars
   
 trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar r)
-trfTyVar var@(L l _) = trfLoc (\case
-  UserTyVar name -> AST.TyVarDecl <$> annLoc (pure l) (trfName' name) <*> pure annNothing
-  KindedTyVar name kind -> AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)) var
+trfTyVar = trfLoc trfTyVar' 
+  
+trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
+trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> annLoc (asks contRange) (trfName' name) 
+                                           <*> (annNothing <$> contRangeAnnot)
+trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
   
 trfCtx :: TransformName n r => Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
-trfCtx (L l []) = pure annNothing
+trfCtx (L l []) = annNothing <$> contRangeAnnot
 trfCtx (L l [L _ (HsParTy t)]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                       (AST.ContextMulti . AnnList . (:[]) <$> trfAssertion t)
+                       (AST.ContextMulti <$> trfAnnList trfAssertion' [t])
 trfCtx (L l [t]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                        (AST.ContextOne <$> trfAssertion t)
 trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                                      (AST.ContextMulti . AnnList <$> mapM trfAssertion ctx) 
+                                      (AST.ContextMulti <$> trfAnnList trfAssertion' ctx) 
   
-trfAssertion :: forall n r . TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
-trfAssertion t = annLoc (pure $ getLoc t) $ case base of 
-  L l (HsTyVar name) -> AST.ClassAssert <$> annLoc (pure l) (trfName' name) 
-                                        <*> (AnnList <$> mapM trfType args)
-  L l (HsOpTy left op right) -> AST.InfixAssert <$> trfType left <*> trfName (snd op) <*> trfType right
+trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
+trfAssertion = trfLoc trfAssertion'
+
+trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
+trfAssertion' t = case base of
+    HsTyVar name -> AST.ClassAssert <$> annLoc (asks contRange) (trfName' name) 
+                                    <*> trfAnnList trfType' args
+    HsOpTy left op right -> AST.InfixAssert <$> trfType left <*> trfName (snd op) <*> trfType right
   where (args, base) = getArgs t
-        getArgs :: LHsType n -> ([LHsType n], LHsType n)
-        getArgs (L l (HsAppTy ft at)) = case getArgs ft of (args, base) -> (args++[at], base)
+        getArgs :: HsType n -> ([LHsType n], HsType n)
+        getArgs (HsAppTy (L _ ft) at) = case getArgs ft of (args, base) -> (args++[at], base)
         getArgs t = ([], t)
   
