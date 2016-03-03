@@ -38,8 +38,14 @@ instance Show SourceTemplate where
 instance IsString SourceTemplate where
   fromString s = SourceTemplate noSrcSpan [TextElem s]
      
-(×) :: SourceTemplate
-(×) = SourceTemplate noSrcSpan [ChildElem]
+child :: SourceTemplate
+child = SourceTemplate noSrcSpan [ChildElem]
+
+opt :: SourceTemplate
+opt = SourceTemplate noSrcSpan [OptionalChildElem]
+
+list :: SourceTemplate
+list = SourceTemplate noSrcSpan [ChildListElem]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)

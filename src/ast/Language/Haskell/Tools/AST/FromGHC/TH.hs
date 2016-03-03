@@ -12,11 +12,11 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import qualified Language.Haskell.Tools.AST.TH as AST
 
 trfQuasiQuotation' :: TransformName n r => HsQuasiQuote n -> Trf (AST.QuasiQuote r)
-trfQuasiQuotation' = undefined
+trfQuasiQuotation' = error "trfQuasiQuotation'"
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice r)
-trfSplice' = undefined
+trfSplice' = error "trfSplice'"
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket r)
-trfBracket' = undefined
+trfBracket' = error "trfBracket'"
   

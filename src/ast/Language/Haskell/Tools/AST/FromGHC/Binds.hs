@@ -33,8 +33,8 @@ trfBind' :: TransformName n r => HsBind n -> Trf (AST.ValueBind r)
 trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) = AST.SimpleBind <$> (copyAnnot AST.VarPat (trfName id)) <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) <*> trfWhereLocalBinds locals
 trfBind' (FunBind id isInfix (MG matches _ _ _) _ _ _) = AST.FunBind <$> trfAnnList (trfMatch' id) matches
 trfBind' (PatBind pat (GRHSs rhs locals) _ _ _) = AST.SimpleBind <$> trfPattern pat <*> trfRhss rhs <*> trfWhereLocalBinds locals
-trfBind' (AbsBinds typeVars vars exports _ _) = undefined
-trfBind' (PatSynBind psb) = undefined
+trfBind' (AbsBinds typeVars vars exports _ _) = error "AbsBinds"
+trfBind' (PatSynBind psb) = error "PatSynBind"
   
 trfMatch :: TransformName n r => Located n -> Located (Match n (LHsExpr n)) -> Trf (Ann AST.Match r)
 trfMatch id = trfLoc (trfMatch' id)

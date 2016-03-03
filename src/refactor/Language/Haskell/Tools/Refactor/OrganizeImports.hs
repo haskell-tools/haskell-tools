@@ -53,7 +53,7 @@ narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames
 narrowImport usedNames otherModules imp
   = if null actuallyImported
       then if canBeRemoved then Nothing 
-                           else Just $ imp & element.importSpec .~ annJust (mkImportSpecList [])
+                           else Just $ imp & element.importSpec .~ just (mkImportSpecList [])
       else Just imp
   where actuallyImported = (imp ^. annotation.semanticInfo.importedNames) `intersect` usedNames
         canBeRemoved = any (== (imp ^?! annotation.semanticInfo.importedModule)) 
@@ -79,5 +79,7 @@ semantics = view (annotation.semanticInfo)
 -- * AST creation
     
 mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
-mkImportSpecList specs = Ann (fromTemplate "()") (ImportSpecList (AnnList specs))
+mkImportSpecList specs = Ann (fromTemplate $ "(" <> child <> ")") 
+                             (ImportSpecList (AnnList (fromTemplate list) specs))
 
+just e = AnnMaybe (fromTemplate "") (Just e)

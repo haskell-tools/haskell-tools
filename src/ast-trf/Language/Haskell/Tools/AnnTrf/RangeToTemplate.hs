@@ -40,28 +40,44 @@ instance Show RangeTemplate where
 
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
-cutUpRanges :: forall node sema . StructuralTraversable node => Ann node (NodeInfo sema SrcSpan) 
-                                                             -> Ann node (NodeInfo sema RangeTemplate)
+cutUpRanges :: forall node sema . StructuralTraversable node 
+                 => Ann node (NodeInfo sema SpanInfo) 
+                 -> Ann node (NodeInfo sema RangeTemplate)
 cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
-  where cutUpRanges' :: StructuralTraversable node => Ann node (NodeInfo sema SrcSpan) 
-                                                   -> State [[SrcSpan]] (Ann node (NodeInfo sema RangeTemplate))
+  where cutUpRanges' :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) 
+                                                   -> State [[SpanInfo]] (Ann node (NodeInfo sema RangeTemplate))
         cutUpRanges' = traverseUp desc asc f
         
         -- keep the stack to contain the children elements on the place of the parent element
-        desc = modify ([]:)
-        asc  = modify tail
+        desc = {- trace "desc" $ -} modify ([]:)
+        asc  = {- trace "asc" $ -} modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
         f ni = do (below : top : xs) <- get
-                  put ([] : (top ++ [ ni ^. sourceInfo ]) : xs)
-                  return (ni & sourceInfo %~ flip cutOutElem below)
+                  --trace (show below ++ " >> " ++ show (ni ^. sourceInfo)) $
+                  put ([] : (top ++ [ expandSourceInfo (ni ^. sourceInfo) below ]) : xs)
+                  return (ni & sourceInfo %~ cutOutElem below)
 
+expandSourceInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
+expandSourceInfo ns@(NodeSpan _) _ = ns
+expandSourceInfo (OptionalPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges "1" loc sps)
+expandSourceInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges "2" loc sps)
+                  
 -- | Cuts out a list of source ranges from a given range
-cutOutElem :: SrcSpan -> [SrcSpan] -> RangeTemplate
-cutOutElem (RealSrcSpan sp) 
-  = RangeTemplate sp . foldl (\temp spIn -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) 
-                             [RangeElem sp]
+cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate
+cutOutElem sps lp@(ListPos loc)
+  = RangeTemplate (collectSpanRanges "3" loc sps) [RangeListElem]
+cutOutElem sps op@(OptionalPos loc) 
+  = RangeTemplate (collectSpanRanges "4" loc sps) [RangeOptionalElem]
+cutOutElem sps (NodeSpan (RealSrcSpan sp))
+  = RangeTemplate sp $ foldl (\temp (NodeSpan spIn) -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) 
+                             [RangeElem sp] sps
 
+collectSpanRanges :: String -> SrcLoc -> [SpanInfo] -> RealSrcSpan
+collectSpanRanges errorMsg (RealSrcLoc loc) [] = realSrcLocSpan loc
+collectSpanRanges errorMsg _ [] = error ("No real src loc for empty element: " ++ errorMsg)
+collectSpanRanges errorMsg _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
+                             
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element.
 breakUpRangeElem :: RangeTemplateElem -> SrcSpan -> [RangeTemplateElem]

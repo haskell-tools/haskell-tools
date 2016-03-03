@@ -28,8 +28,9 @@ templateDebug :: TreeDebug e (NodeInfo sema RangeTemplate) => e (NodeInfo sema R
 templateDebug = treeDebug' (shortShowRangeTemplate . view sourceInfo) 0
 
 shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTemplateElem rngs
-showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan (RealSrcSpan sp) ++ "]"
-showRangeTemplateElem (RangeChildElem) = "×"
+  where showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan (RealSrcSpan sp) ++ "]"
+        showRangeTemplateElem (RangeChildElem) = "."
+        showRangeTemplateElem _ = ""
 
 sourceTemplateDebug :: TreeDebug e (NodeInfo sema SourceTemplate) => e (NodeInfo sema SourceTemplate) -> String
 sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . view sourceInfo) 0
@@ -47,7 +48,7 @@ class GTreeDebug f a where
   gTreeDebug :: (a -> String) -> Int -> f p -> String
   
 instance GTreeDebug V1 a where
-  gTreeDebug _ _ _ = undefined
+  gTreeDebug _ _ _ = error "GTreeDebug V1"
   
 instance GTreeDebug U1 a where
   gTreeDebug _ _ U1 = ""  

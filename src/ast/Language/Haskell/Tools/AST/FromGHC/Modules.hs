@@ -55,10 +55,12 @@ trfModuleHead (Just mn) exports
   = annJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                         (AST.ModuleHead <$> trfModuleName mn 
                                         <*> trfExportList exports))
-trfModuleHead Nothing _ = nothing atTheStart
+trfModuleHead Nothing _ = nothing moduleHeadPos
+  where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
+                                                 _ -> atTheStart
 
-trfPragmas :: Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
-trfPragmas _ _ = pure $ AnnList undefined []
+trfPragmas :: RangeAnnot a => Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
+trfPragmas _ _ = makeList atTheStart (pure [])
 
 trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
 trfExportList = trfMaybe $ trfLoc trfExportList'

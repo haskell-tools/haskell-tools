@@ -120,7 +120,11 @@ trfAnnList _ [] = AnnList <$> contRangeAnnot <*> pure []
 trfAnnList f ls = AnnList <$> pure (toNodeAnnot $ collectLocs ls) <*> mapM (trfLoc f) ls
 
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
-nonemptyAnnList = AnnList (toNodeAnnot noSrcSpan)
+nonemptyAnnList = AnnList (toListAnnot noSrcLoc)
+
+-- | An existing AST element
+annJust :: RangeAnnot a => Ann e a -> AnnMaybe e a
+annJust e = AnnMaybe (toOptAnnot noSrcLoc) (Just e)
 
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)
 annLoc locm nodem = do loc <- locm

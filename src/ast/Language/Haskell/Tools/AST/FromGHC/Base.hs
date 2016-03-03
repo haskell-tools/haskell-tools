@@ -87,13 +87,13 @@ trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
 trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
      
 trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv a)
-trfCallConv = undefined      
+trfCallConv = error "trfCallConv"      
    
 trfCallConv' :: CCallConv -> Trf (AST.CallConv a)
-trfCallConv' = undefined 
+trfCallConv' = error "trfCallConv'" 
 
 trfSafety :: Located Safety -> Trf (AnnMaybe AST.Safety a)
-trfSafety = undefined 
+trfSafety = error "trfSafety" 
 
 trfOverlap :: RangeAnnot a => Located OverlapMode -> Trf (Ann AST.OverlapPragma a)
 trfOverlap = trfLoc $ pure . \case

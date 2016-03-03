@@ -21,11 +21,10 @@ identLine :: Int -> String
 identLine i = "\n" ++ replicate (i*2) ' '
   
 instance (TreeDebug e a, Show (e a)) => TreeDebug (AnnList e) a where
-  treeDebug' f i (AnnList ls) = concatMap (treeDebug' f i) ls 
+  treeDebug' f i (AnnList a ls) = identLine i ++ f a ++ " <*>" ++ concatMap (treeDebug' f (i + 1)) ls 
   
 instance (TreeDebug e a, Show (e a)) => TreeDebug (AnnMaybe e) a where
-  treeDebug' f i (AnnMaybe (Just e)) = treeDebug' f i e
-  treeDebug' f i (AnnMaybe Nothing) = ""
+  treeDebug' f i (AnnMaybe a e) = identLine i ++ f a ++ " <?>" ++ maybe "" (\e -> treeDebug' f (i + 1) e) e
   
 -- Modules
 instance (Generic a, Show a) => TreeDebug Module a

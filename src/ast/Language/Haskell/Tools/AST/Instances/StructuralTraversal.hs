@@ -24,16 +24,18 @@ instance StructuralTraversable elem => StructuralTraversable (Ann elem) where
   
 instance StructuralTraversable elem => StructuralTraversable (AnnMaybe elem) where
   traverseUp desc asc f (AnnMaybe a (Just annotated)) 
-    = AnnMaybe <$> f a <*> (Just <$> (traverseUp desc asc f annotated))
+    = flip AnnMaybe <$> (Just <$> (desc *> traverseUp desc asc f annotated <* asc)) <*> f a
   traverseUp desc asc f (AnnMaybe a Nothing) = AnnMaybe <$> f a <*> pure Nothing
   
   traverseDown desc asc f (AnnMaybe a (Just annotated)) 
-    = AnnMaybe <$> f a <*> (Just <$> (traverseDown desc asc f annotated))
+    = AnnMaybe <$> f a <*> (Just <$> (desc *> traverseDown desc asc f annotated <* asc))
   traverseDown desc asc f (AnnMaybe a Nothing) = AnnMaybe <$> f a <*> pure Nothing
 
 instance StructuralTraversable elem => StructuralTraversable (AnnList elem) where
-  traverseUp desc asc f (AnnList a ls) = AnnList <$> f a <*> sequenceA (map (traverseUp desc asc f) ls)
-  traverseDown desc asc f (AnnList a ls) = AnnList <$> f a <*> sequenceA (map (traverseDown desc asc f) ls)
+  traverseUp desc asc f (AnnList a ls) 
+    = flip AnnList <$> (desc *> sequenceA (map (traverseUp desc asc f) ls) <* asc) <*> f a
+  traverseDown desc asc f (AnnList a ls) 
+    = AnnList <$> f a <*> (desc *> sequenceA (map (traverseDown desc asc f) ls) <* asc)
 
 -- Modules
 deriveStructTrav ''Module

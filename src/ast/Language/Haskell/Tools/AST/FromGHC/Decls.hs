@@ -167,7 +167,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
 trfFunDeps [] = nothing $ before AnnWhere
-trfFunDeps _ = pure undefined
+trfFunDeps _ = error "trfFunDeps"
   
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
 createDeclHead name vars

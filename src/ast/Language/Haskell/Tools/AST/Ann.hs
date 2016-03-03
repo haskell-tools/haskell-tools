@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances
            , TemplateHaskell
            , DeriveDataTypeable
+           , StandaloneDeriving
            #-}
 
 -- | Parts of AST representation for keeping extra data
@@ -37,6 +38,7 @@ data SpanInfo
   = NodeSpan SrcSpan
   | ListPos SrcLoc
   | OptionalPos SrcLoc
+  deriving (Eq, Show)
 
 spanRange :: SpanInfo -> SrcSpan
 spanRange (NodeSpan sp) = sp
@@ -84,10 +86,6 @@ annNil a = AnnList a []
 isAnnNothing :: AnnMaybe e a -> Bool
 isAnnNothing (AnnMaybe _ Nothing) = True
 isAnnNothing (AnnMaybe _ _) = False
-
--- | An existing AST element
-annJust :: Ann e a -> AnnMaybe e a
-annJust e = AnnMaybe (e ^. annotation) (Just e)
 
 -- | A non-existing AST part
 annNothing :: a -> AnnMaybe e a
