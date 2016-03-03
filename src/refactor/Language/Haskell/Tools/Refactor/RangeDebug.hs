@@ -37,7 +37,9 @@ sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . view sourceInfo) 0
 
 shortShowSourceTemplate = concatMap showSourceTemplateElem . view sourceTemplateElems
 showSourceTemplateElem (TextElem sp) = sp
-showSourceTemplateElem (ChildElem) = "×"
+showSourceTemplateElem (ChildElem) = "«.»"
+showSourceTemplateElem (OptionalChildElem) = "«?»"
+showSourceTemplateElem (ChildListElem) = "«*»"
       
 class TreeDebug e a where
   treeDebug' :: (a -> String) -> Int -> e a -> String

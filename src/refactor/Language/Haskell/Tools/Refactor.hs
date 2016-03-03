@@ -67,44 +67,18 @@ analyze workingDir moduleName =
         -- liftIO $ putStrLn $ prettyPrint res
         
         -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ putStrLn $ sourceTemplateDebug $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
         transformed <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="
         let cutUp = cutUpRanges transformed
         liftIO $ putStrLn $ templateDebug cutUp
         liftIO $ putStrLn "==========="
-        -- liftIO $ putStrLn $ show $ tm_renamed_source t
-        
-        
-        -- liftIO $ putStrLn $ showSDocUnsafe $ ppr $ pm_parsed_source $ tm_parsed_module t
-        -- liftIO $ print $ getLoc $ pm_parsed_source $ tm_parsed_module t
-        
+        let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
+        liftIO $ putStrLn $ sourceTemplateDebug sourced
         liftIO $ putStrLn "==========="
-        
-        -- liftIO $ mapM_ print $ Map.toList $ annotationsToSrcMap annots
-                
-        -- let mod = pm_parsed_source $ tm_parsed_module t
-            -- adtName = msum $ map ((\case TyClD (DataDecl {tcdLName = name}) -> Just (unLoc name); _ -> Nothing) . unLoc) (hsmodDecls (unLoc mod))
-        -- case adtName of 
-          -- Just name -> liftIO $ putStrLn $ showSDocUnsafe $ ppr $ lookupName name
-        
-        -- liftIO $ putStrLn $ showSDocUnsafe $ ppr $ tm_renamed_source t
-        
-        -- liftIO $ putStrLn "==========="
-        
-        -- case tm_renamed_source t of 
-          -- Just (renamedMod,_,_,_) -> do
-            -- let adtName = msum $ map ((\case DataDecl {tcdLName = name} -> Just (unLoc name); _ -> Nothing) . unLoc) (concatMap group_tyclds $ hs_tyclds renamedMod)
-            -- case adtName of 
-              -- Just name -> lookupName name >>= liftIO . putStrLn . showSDocUnsafe . ppr . fmap (\(ATyCon tc) -> map varType (tyConTyVars tc))
-              -- Nothing -> return ()
-        
-        -- liftIO $ putStrLn "==========="
-        -- liftIO $ putStrLn $ showSDocUnsafe $ ppr $ tm_typechecked_source t
-        -- liftIO $ putStrLn "==========="
-        -- g <- getModuleGraph
-        -- liftIO $ putStrLn $ showSDocUnsafe $ ppr g
+        let prettyPrinted = prettyPrint sourced
+        liftIO $ putStrLn prettyPrinted
+        liftIO $ putStrLn "==========="
       
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)

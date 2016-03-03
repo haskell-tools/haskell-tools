@@ -35,8 +35,8 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RangeInfo)
 trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
   \(HsModule name exports imports decls deprec haddock) -> 
-    AST.Module <$> trfModuleHead name exports
-               <*> trfPragmas deprec haddock
+    AST.Module <$> trfPragmas deprec haddock
+               <*> trfModuleHead name exports
                <*> trfImports imports
                <*> trfDecls decls
        
@@ -44,9 +44,9 @@ trfModuleRename :: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LH
 trfModuleRename (gr,imports,exps,_) 
   = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
       \(HsModule name exports _ decls deprec haddock) -> 
-        AST.Module <$> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+        AST.Module <$> trfPragmas deprec haddock
+                   <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
                                                                    _                       -> Nothing)
-                   <*> trfPragmas deprec haddock
                    <*> (orderAnnList <$> (trfImports imports))
                    <*> trfDeclsGroup gr
        
@@ -78,7 +78,7 @@ trfImports imps
   = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
   where importDefaultLoc = toNodeAnnot . srcLocSpan . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
-                                                  <*> tokenLoc AnnCloseP)
+                                                  <*> tokenLoc AnnWhere)
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
 trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   let -- default positions of optional parts of an import declaration

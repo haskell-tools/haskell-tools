@@ -52,4 +52,6 @@ applyFragments srcs = flip evalState srcs
                                        put rest
                                        return (TextElem src)
         getTextFor RangeChildElem = return ChildElem
+        getTextFor RangeOptionalElem = return OptionalChildElem
+        getTextFor RangeListElem = return ChildListElem
         

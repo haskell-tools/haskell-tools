@@ -9,6 +9,7 @@ module Language.Haskell.Tools.AnnTrf.RangeToTemplate where
 import Language.Haskell.Tools.AST
 
 import Data.Data
+import Data.List
 import Control.Lens
 import Data.StructuralTraversal
 import Control.Monad.State
@@ -49,34 +50,34 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         cutUpRanges' = traverseUp desc asc f
         
         -- keep the stack to contain the children elements on the place of the parent element
-        desc = {- trace "desc" $ -} modify ([]:)
-        asc  = {- trace "asc" $ -} modify tail
+        desc = modify ([]:)
+        asc  = modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
         f ni = do (below : top : xs) <- get
-                  --trace (show below ++ " >> " ++ show (ni ^. sourceInfo)) $
                   put ([] : (top ++ [ expandSourceInfo (ni ^. sourceInfo) below ]) : xs)
                   return (ni & sourceInfo %~ cutOutElem below)
 
 expandSourceInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandSourceInfo ns@(NodeSpan _) _ = ns
-expandSourceInfo (OptionalPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges "1" loc sps)
-expandSourceInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges "2" loc sps)
+expandSourceInfo (OptionalPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+expandSourceInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
                   
 -- | Cuts out a list of source ranges from a given range
 cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate
 cutOutElem sps lp@(ListPos loc)
-  = RangeTemplate (collectSpanRanges "3" loc sps) [RangeListElem]
+  = RangeTemplate (collectSpanRanges loc sps) [RangeListElem]
 cutOutElem sps op@(OptionalPos loc) 
-  = RangeTemplate (collectSpanRanges "4" loc sps) [RangeOptionalElem]
+  = RangeTemplate (collectSpanRanges loc sps) [RangeOptionalElem]
 cutOutElem sps (NodeSpan (RealSrcSpan sp))
-  = RangeTemplate sp $ foldl (\temp (NodeSpan spIn) -> (concatMap (\t -> breakUpRangeElem t spIn) temp)) 
-                             [RangeElem sp] sps
+  = RangeTemplate sp $ breakUpForEvery (breakUpForEvery [RangeElem sp] loc) span
+  where (loc,span) = partition (\sp -> srcSpanStart sp == srcSpanEnd sp) (map spanRange sps)
+        breakUpForEvery = foldl (\temp spIn -> (concatMap (\t -> breakUpRangeElem t spIn) temp))
 
-collectSpanRanges :: String -> SrcLoc -> [SpanInfo] -> RealSrcSpan
-collectSpanRanges errorMsg (RealSrcLoc loc) [] = realSrcLocSpan loc
-collectSpanRanges errorMsg _ [] = error ("No real src loc for empty element: " ++ errorMsg)
-collectSpanRanges errorMsg _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
+collectSpanRanges :: SrcLoc -> [SpanInfo] -> RealSrcSpan
+collectSpanRanges (RealSrcLoc loc) [] = realSrcLocSpan loc
+collectSpanRanges _ [] = error "collectSpanRanges: No real src loc for empty element"
+collectSpanRanges _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
                              
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element.
@@ -90,6 +91,6 @@ breakUpRangeElem (RangeElem outer) (RealSrcSpan inner)
     (if (realSrcSpanEnd inner) < (realSrcSpanEnd outer) 
        then [ RangeElem (mkRealSrcSpan (realSrcSpanEnd inner) (realSrcSpanEnd outer)) ]
        else [])
-breakUpRangeElem outer _ = [ outer ]
+breakUpRangeElem outer inner = [ outer ]
 
 

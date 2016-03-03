@@ -7,8 +7,8 @@ import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Decls
 
 data Module a 
-  = Module { _modHead :: AnnMaybe ModuleHead a
-           , _modPragmas :: AnnList ModulePragma a
+  = Module { _modPragmas :: AnnList ModulePragma a
+           , _modHead :: AnnMaybe ModuleHead a
            , _modImports :: AnnList ImportDecl a
            , _modDecl :: AnnList Decl a
            }
