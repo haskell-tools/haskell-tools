@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase 
            , FlexibleContexts
            #-}
-module Language.Haskell.Tools.AnnTrf.RangeToSource where
+module Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate where
 
 import SrcLoc
 import StringBuffer
@@ -12,7 +12,8 @@ import Control.Lens
 import Control.Monad.State
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
-import Language.Haskell.Tools.AnnTrf.RangeToTemplate
+import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
+import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 rangeToSource :: StructuralTraversable node => StringBuffer -> Ann node (NodeInfo sema RangeTemplate) 

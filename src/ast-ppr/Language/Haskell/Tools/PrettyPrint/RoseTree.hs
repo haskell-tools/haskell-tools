@@ -2,7 +2,7 @@
            , FlexibleContexts 
            , DeriveFunctor
            #-}
--- | A simpler representation of the original AST. Enables easy relative indexing of the nodes.
+-- | A simpler representation of the original AST.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
 
 import Control.Monad.State
@@ -19,8 +19,9 @@ instance Show a => Show (RoseTree a) where
              = "\n" ++ replicate (2*i) '#'
                     ++ show roseInfo 
                     ++ concatMap (show' (i+1)) roseChildren
-                                        
-toRoseTree :: (StructuralTraversable n, Show inf) => n inf -> RoseTree inf
+                          
+-- | Transforms the heterogeneous AST into a homogeneous representation for pretty printing                   
+toRoseTree :: (StructuralTraversable n) => n inf -> RoseTree inf
 toRoseTree = head . head . tail . flip execState [[],[]] . toSrcRoseSt
   where toSrcRoseSt = traverseUp desc asc f
   

@@ -1,0 +1,32 @@
+{-# LANGUAGE TemplateHaskell
+           , DeriveDataTypeable
+           #-}
+-- | The range template is an intermediate annotation level, where the children nodes of the tree
+-- had been cut from the parent nodes, but the annotations still contain ranges instead of text.
+module Language.Haskell.Tools.AnnTrf.RangeTemplate where
+
+import Data.Data
+import Control.Lens
+import SrcLoc
+
+data RangeTemplateElem = RangeElem RealSrcSpan
+                       | RangeChildElem
+                       | RangeOptionalElem
+                       | RangeListElem
+                       deriving Data
+
+instance Show RangeTemplateElem where
+  show (RangeElem sp) = show sp
+  show RangeChildElem = "«.»"
+  show RangeOptionalElem = "«?»"
+  show RangeListElem = "«*»"
+  
+-- | The intermediate annotation with ranges and children cut out from parents.
+data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan
+                                   , _rangeTemplateElems :: [RangeTemplateElem] 
+                                   } deriving Data
+                                   
+makeLenses ''RangeTemplate      
+
+instance Show RangeTemplate where
+  show (RangeTemplate rng rngs) = show rngs

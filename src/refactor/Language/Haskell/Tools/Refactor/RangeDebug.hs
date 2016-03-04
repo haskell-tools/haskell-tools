@@ -13,7 +13,8 @@ import Control.Lens hiding (from)
 import SrcLoc
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AnnTrf.RangeToTemplate
+import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
+import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 rangeDebug :: (a ~ NodeInfo sema SpanInfo, TreeDebug e a) => e a -> String

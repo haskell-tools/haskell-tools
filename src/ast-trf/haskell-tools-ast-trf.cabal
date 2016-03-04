@@ -17,9 +17,10 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Language.Haskell.Tools.AnnTrf.RangeToTemplate
+  exposed-modules:     Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
+                     , Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
+                     , Language.Haskell.Tools.AnnTrf.RangeTemplate
                      , Language.Haskell.Tools.AnnTrf.SourceTemplate
-                     , Language.Haskell.Tools.AnnTrf.RangeToSource
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
