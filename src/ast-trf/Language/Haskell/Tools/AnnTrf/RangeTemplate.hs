@@ -12,14 +12,18 @@ import SrcLoc
 data RangeTemplateElem = RangeElem RealSrcSpan
                        | RangeChildElem
                        | RangeOptionalElem
-                       | RangeListElem
+                       | RangeListElem [RealSrcSpan]
                        deriving Data
 
+getRangeElemSpan :: RangeTemplateElem -> Maybe RealSrcSpan
+getRangeElemSpan (RangeElem sp) = Just sp
+getRangeElemSpan _ = Nothing
+                       
 instance Show RangeTemplateElem where
   show (RangeElem sp) = show sp
   show RangeChildElem = "«.»"
   show RangeOptionalElem = "«?»"
-  show RangeListElem = "«*»"
+  show (RangeListElem _) = "«*»"
   
 -- | The intermediate annotation with ranges and children cut out from parents.
 data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan

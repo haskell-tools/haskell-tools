@@ -74,9 +74,12 @@ analyze workingDir moduleName =
         let cutUp = cutUpRanges transformed
         liftIO $ putStrLn $ templateDebug cutUp
         liftIO $ putStrLn "==========="
-        -- let locIndices = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
-        -- liftIO $ putStrLn $ show locIndices
-        -- liftIO $ putStrLn "==========="
+        let locIndices = getLocIndices cutUp
+        liftIO $ putStrLn $ show locIndices
+        liftIO $ putStrLn "==========="
+        let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
+        liftIO $ putStrLn $ show mappedLocs
+        liftIO $ putStrLn "==========="
         let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
         liftIO $ putStrLn $ sourceTemplateDebug sourced
         liftIO $ putStrLn "==========="

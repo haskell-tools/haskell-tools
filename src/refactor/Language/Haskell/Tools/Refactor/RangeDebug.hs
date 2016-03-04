@@ -37,7 +37,7 @@ shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol 
 templateDebug :: TreeDebug e (NodeInfo sema RangeTemplate) => e (NodeInfo sema RangeTemplate) -> String
 templateDebug = treeDebug' (shortShowRangeTemplate . view sourceInfo) 0
 
-shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTemplateElem rngs
+shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTemplateElem rngs ++ "ˇ"
   where showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan (RealSrcSpan sp) ++ "]"
         showRangeTemplateElem (RangeChildElem) = "."
         showRangeTemplateElem _ = ""
@@ -45,11 +45,12 @@ shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTempl
 sourceTemplateDebug :: TreeDebug e (NodeInfo sema SourceTemplate) => e (NodeInfo sema SourceTemplate) -> String
 sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . view sourceInfo) 0
 
-shortShowSourceTemplate = concatMap showSourceTemplateElem . view sourceTemplateElems
+shortShowSourceTemplate temp = "ˇ" ++ (concatMap showSourceTemplateElem $ temp ^. sourceTemplateElems) ++ "ˇ"
+
 showSourceTemplateElem (TextElem sp) = sp
 showSourceTemplateElem (ChildElem) = "«.»"
 showSourceTemplateElem (OptionalChildElem) = "«?»"
-showSourceTemplateElem (ChildListElem) = "«*»"
+showSourceTemplateElem (ChildListElem _) = "«*»"
       
 class TreeDebug e a where
   treeDebug' :: (a -> String) -> Int -> e a -> String

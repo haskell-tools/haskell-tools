@@ -10,6 +10,7 @@ import Language.Haskell.Tools.AST
 
 import Data.Data
 import Data.List
+import Data.Maybe
 import Control.Lens
 import Data.StructuralTraversal
 import Control.Monad.State
@@ -43,7 +44,8 @@ expandSourceInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges l
 -- | Cuts out a list of source ranges from a given range
 cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate
 cutOutElem sps lp@(ListPos loc)
-  = RangeTemplate (collectSpanRanges loc sps) [RangeListElem]
+  = let wholeRange = collectSpanRanges loc sps 
+     in RangeTemplate wholeRange [RangeListElem (getSeparators wholeRange sps)]
 cutOutElem sps op@(OptionalPos loc) 
   = RangeTemplate (collectSpanRanges loc sps) [RangeOptionalElem]
 cutOutElem sps (NodeSpan (RealSrcSpan sp))
@@ -60,7 +62,11 @@ collectSpanRanges :: SrcLoc -> [SpanInfo] -> RealSrcSpan
 collectSpanRanges (RealSrcLoc loc) [] = realSrcLocSpan loc
 collectSpanRanges _ [] = error "collectSpanRanges: No real src loc for empty element"
 collectSpanRanges _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
-                             
+                     
+getSeparators :: RealSrcSpan -> [SpanInfo] -> [RealSrcSpan]
+getSeparators sp infos 
+  = catMaybes $ map getRangeElemSpan (cutOutElem infos (NodeSpan (RealSrcSpan sp)) ^. rangeTemplateElems)
+                     
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element. Returns Nothing if the second argument is not inside.
 breakUpRangeElem :: RangeTemplateElem -> SrcSpan -> Maybe [RangeTemplateElem]

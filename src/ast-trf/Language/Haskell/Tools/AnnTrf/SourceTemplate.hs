@@ -12,7 +12,7 @@ import SrcLoc
 data SourceTemplateElem = TextElem String 
                         | ChildElem
                         | OptionalChildElem
-                        | ChildListElem
+                        | ChildListElem [String]
      deriving (Eq, Ord, Data)
 
 -- | A pattern that controls how the original source code can be
@@ -28,7 +28,7 @@ instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem) = "«.»"
   show (OptionalChildElem) = "«?»"
-  show (ChildListElem) = "«*»"
+  show (ChildListElem _) = "«*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp
@@ -45,7 +45,7 @@ opt :: SourceTemplate
 opt = SourceTemplate noSrcSpan [OptionalChildElem]
 
 list :: SourceTemplate
-list = SourceTemplate noSrcSpan [ChildListElem]
+list = SourceTemplate noSrcSpan [ChildListElem []]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)

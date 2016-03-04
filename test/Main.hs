@@ -13,9 +13,10 @@ import System.IO
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AnnTrf.RangeToSource
-import Language.Haskell.Tools.AnnTrf.RangeToTemplate
+import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
+import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.PrettyPrint
+import Language.Haskell.Tools.Refactor
 
 main :: IO Counts
 main = runTestTT $ TestList $ map makeReprintTest 
@@ -54,7 +55,7 @@ main = runTestTT $ TestList $ map makeReprintTest
         ]
        
 makeReprintTest :: String -> Test       
-makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "..\\examples" mod)
+makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)
 
 data TestMode = TypeChecked | Source
 
@@ -81,13 +82,13 @@ parseAndPrettyPrint mode workingDir moduleName =
     p <- parseModule modSum
     let annots = fst $ pm_annotations p
         srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-        transform :: Trf (Ann AST.Module (NodeInfo sema SrcSpan)) -> String
-        transform = prettyPrint . rangeToSource srcBuffer . cutUpRanges . runTrf annots 
+        transform :: Trf (Ann AST.Module (NodeInfo sema SpanInfo)) -> Ghc String
+        transform = fmap (prettyPrint . rangeToSource srcBuffer . cutUpRanges) . runTrf annots 
     case mode of 
-      Source -> return $ transform $ trfModule $ pm_parsed_source p
+      Source -> transform $ trfModule $ pm_parsed_source p
       TypeChecked -> do tc <- typecheckModule p
-                        return $ transform 
-                               $ trfModuleRename 
-                                   (fromJust $ tm_renamed_source tc) 
-                                   (pm_parsed_source $ tm_parsed_module tc)
+                        transform $ trfModuleRename 
+                                     (fromJust $ tm_renamed_source tc) 
+                                     (pm_parsed_source $ tm_parsed_module tc)
+                            
            
