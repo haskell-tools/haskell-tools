@@ -4,6 +4,7 @@
            , FlexibleContexts
            , FlexibleInstances
            , MultiParamTypeClasses
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor.RangeDebug where
 
@@ -15,14 +16,22 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
-rangeDebug :: (RangeAnnot a, TreeDebug e a) => e a -> String
-rangeDebug = treeDebug' (shortShowSpan . extractRange) 0
+rangeDebug :: (a ~ NodeInfo sema SpanInfo, TreeDebug e a) => e a -> String
+rangeDebug = treeDebug' (shortShowSpanInfo . view sourceInfo) 0
+      
+shortShowSpanInfo :: SpanInfo -> String
+shortShowSpanInfo (NodeSpan sp) = shortShowSpan sp
+shortShowSpanInfo (OptionalPos loc) = "?" ++ shortShowLoc loc
+shortShowSpanInfo (ListPos loc) = "*" ++ shortShowLoc loc
       
 shortShowSpan :: SrcSpan -> String
-shortShowSpan (UnhelpfulSpan _) = "???" 
-shortShowSpan (RealSrcSpan sp) 
-  = show (srcSpanStartLine sp) ++ ":" ++ show (srcSpanStartCol sp) 
-      ++ "-" ++ show (srcSpanEndLine sp) ++ ":" ++ show (srcSpanEndCol sp)
+shortShowSpan (UnhelpfulSpan _) = "??-??" 
+shortShowSpan sp@(RealSrcSpan _) 
+  = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
+      
+shortShowLoc :: SrcLoc -> String
+shortShowLoc (UnhelpfulLoc _) = "??"
+shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
       
 templateDebug :: TreeDebug e (NodeInfo sema RangeTemplate) => e (NodeInfo sema RangeTemplate) -> String
 templateDebug = treeDebug' (shortShowRangeTemplate . view sourceInfo) 0

@@ -23,6 +23,7 @@ rangeToSource srcInput tree = let locIndices = getLocIndices tree
 
 -- maps could be strict
 
+-- | Assigns an index (in the order they are used) for each range
 getLocIndices :: StructuralTraversable e => Ann e (NodeInfo sema RangeTemplate) -> Map OrdSrcSpan Int
 getLocIndices = snd . flip execState (0, empty) .
   traverseDown (return ()) 
@@ -30,6 +31,7 @@ getLocIndices = snd . flip execState (0, empty) .
                (mapM_ (\case (RangeElem sp) -> modify (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
                              _              -> return ()) . view (sourceInfo.rangeTemplateElems))
 
+-- | Partitions the source file in the order where the parts are used in the AST
 mapLocIndices :: Ord k => StringBuffer -> Map OrdSrcSpan k -> Map k String
 mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = takeSpan str sp
                                                              in (insert k (reverse val) new, rem)) (empty, inp)
@@ -41,6 +43,7 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
           = let (c,rem) = nextChar sb in takeSpan' (advanceSrcLoc start c) end (rem, c:taken)
         takeSpan' _ _ (rem, taken) = (rem, taken)
         
+-- | Replaces the ranges in the AST with the source file parts
 applyFragments :: StructuralTraversable node => [String] -> Ann node (NodeInfo sema RangeTemplate) 
                                                          -> Ann node (NodeInfo sema SourceTemplate)
 applyFragments srcs = flip evalState srcs

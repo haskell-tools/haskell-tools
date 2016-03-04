@@ -46,10 +46,7 @@ instance RangeAnnot RangeWithName where
   addSemanticInfo si ni = ni & semanticInfo .~ si
   extractRange = spanRange . view sourceInfo
   addImportData = addImportData'
-
-contRangeAnnot :: RangeAnnot a => Trf a
-contRangeAnnot = toNodeAnnot <$> asks contRange
-
+  
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
 addImportData' imp = lift $ 
   do eps <- getSession >>= liftIO . readIORef . hsc_EPS
@@ -97,7 +94,7 @@ trfLoc = trfLocCorrect pure
 
 trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
 trfMaybe f (Just e) = annJust <$> f e
-trfMaybe f Nothing = annNothing . toNodeAnnot <$> asks contRange
+trfMaybe f Nothing = annNothing . toOptAnnot <$> atTheEnd
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
@@ -116,8 +113,8 @@ trfListLoc :: RangeAnnot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
 trfListLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
 
 trfAnnList :: RangeAnnot i => (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)
-trfAnnList _ [] = AnnList <$> contRangeAnnot <*> pure []
-trfAnnList f ls = AnnList <$> pure (toNodeAnnot $ collectLocs ls) <*> mapM (trfLoc f) ls
+trfAnnList _ [] = makeList atTheEnd (pure [])
+trfAnnList f ls = makeList (pure $ noSrcLoc) (mapM (trfLoc f) ls)
 
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
 nonemptyAnnList = AnnList (toListAnnot noSrcLoc)

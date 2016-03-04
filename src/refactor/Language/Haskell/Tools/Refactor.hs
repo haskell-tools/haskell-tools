@@ -73,12 +73,20 @@ analyze workingDir moduleName =
         let cutUp = cutUpRanges transformed
         liftIO $ putStrLn $ templateDebug cutUp
         liftIO $ putStrLn "==========="
+        -- let locIndices = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
+        -- liftIO $ putStrLn $ show locIndices
+        -- liftIO $ putStrLn "==========="
         let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
         liftIO $ putStrLn $ sourceTemplateDebug sourced
         liftIO $ putStrLn "==========="
         let prettyPrinted = prettyPrint sourced
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="
+        -- liftIO $ flip runStateT (0 :: Int) 
+               -- $ traverseUp (modify (+1) >> get >>= lift . putStrLn . ("desc " ++) . show) 
+                            -- (modify (subtract 1) >> get >>= lift . putStrLn . ("asc " ++) . show) 
+                            -- (lift . putStrLn . show) sourced
+        -- liftIO $ putStrLn "==========="
       
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)

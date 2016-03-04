@@ -14,7 +14,7 @@ fromOrdSrcSpan (NoOrdSrcSpan fs) = UnhelpfulSpan fs
 data OrdSrcSpan 
   = OrdSrcSpan RealSrcSpan
   | NoOrdSrcSpan FastString
-  deriving Eq
+  deriving (Show, Eq)
 
 instance Ord OrdSrcSpan where
   compare (NoOrdSrcSpan _) (NoOrdSrcSpan _) = EQ

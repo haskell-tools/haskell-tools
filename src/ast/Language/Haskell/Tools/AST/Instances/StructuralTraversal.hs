@@ -33,9 +33,9 @@ instance StructuralTraversable elem => StructuralTraversable (AnnMaybe elem) whe
 
 instance StructuralTraversable elem => StructuralTraversable (AnnList elem) where
   traverseUp desc asc f (AnnList a ls) 
-    = flip AnnList <$> (desc *> sequenceA (map (traverseUp desc asc f) ls) <* asc) <*> f a
+    = flip AnnList <$> sequenceA (map (\e -> desc *> traverseUp desc asc f e <* asc) ls) <*> f a
   traverseDown desc asc f (AnnList a ls) 
-    = AnnList <$> f a <*> (desc *> sequenceA (map (traverseDown desc asc f) ls) <* asc)
+    = AnnList <$> f a <*> sequenceA (map (\e -> desc *> traverseDown desc asc f e <* asc) ls)
 
 -- Modules
 deriveStructTrav ''Module

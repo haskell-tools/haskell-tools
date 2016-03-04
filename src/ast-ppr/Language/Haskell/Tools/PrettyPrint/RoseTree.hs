@@ -19,10 +19,11 @@ instance Show a => Show (RoseTree a) where
              = "\n" ++ replicate (2*i) '#'
                     ++ show roseInfo 
                     ++ concatMap (show' (i+1)) roseChildren
-                    
-toRoseTree :: (StructuralTraversable n) => n inf -> RoseTree inf
-toRoseTree = head . head . flip execState [[]] . toSrcRoseSt
-  where toSrcRoseSt = traverseUp desc (return ()) f
+                                        
+toRoseTree :: (StructuralTraversable n, Show inf) => n inf -> RoseTree inf
+toRoseTree = head . head . tail . flip execState [[],[]] . toSrcRoseSt
+  where toSrcRoseSt = traverseUp desc asc f
   
         desc  = modify ([]:)
-        f inf = modify (\(y:x:xs) -> (RoseTree inf (reverse y) : x) : xs)
+        asc   = modify tail
+        f inf = modify (\(y : x : xs) -> [] : (RoseTree inf (reverse y) : x) : xs)

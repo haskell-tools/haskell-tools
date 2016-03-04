@@ -62,11 +62,11 @@ trfTyVar = trfLoc trfTyVar'
   
 trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
 trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> annLoc (asks contRange) (trfName' name) 
-                                           <*> (annNothing <$> contRangeAnnot)
+                                           <*> (nothing atTheEnd)
 trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
   
 trfCtx :: TransformName n r => Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
-trfCtx (L l []) = annNothing <$> contRangeAnnot
+trfCtx (L l []) = nothing atTheEnd
 trfCtx (L l [L _ (HsParTy t)]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                        (AST.ContextMulti <$> trfAnnList trfAssertion' [t])
