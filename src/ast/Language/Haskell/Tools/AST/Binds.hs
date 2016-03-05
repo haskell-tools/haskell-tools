@@ -22,7 +22,6 @@ data ValueBind a
 data Match a
   = Match { _matchName :: Ann Name a
           , _matchArgs :: AnnList Pattern a
-          , _matchType :: AnnMaybe Type a
           , _matchRhs :: Ann Rhs a
           , _matchBinds :: AnnMaybe LocalBinds a
           } 

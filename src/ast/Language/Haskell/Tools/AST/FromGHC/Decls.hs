@@ -72,15 +72,17 @@ trfDecl = trfLoc $ \case
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> createDeclHead name vars <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
-    -> let keywordAnn = case nd of DataType -> AnnData
-                                   NewType -> AnnNewtype
+    -> let ctxLoc = case nd of DataType -> after AnnData
+                               NewType -> after AnnNewtype
+           consLoc = case unLoc ctx of [] -> ctxLoc
+                                       _  -> after AnnDarrow
         in AST.DataDecl <$> trfDataKeyword nd
-                        <*> trfCtx ctx
+                        <*> trfCtx ctxLoc ctx
                         <*> createDeclHead name vars
-                        <*> makeList (after keywordAnn) (mapM trfConDecl cons)
+                        <*> makeList consLoc (mapM trfConDecl cons)
                         <*> trfMaybe trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
-    -> AST.ClassDecl <$> trfCtx ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
+    -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
     -> AST.InstDecl <$> trfMaybe trfOverlap overlap <*> trfInstanceRule typ 
@@ -108,7 +110,7 @@ trfConDecl = trfLoc trfConDecl'
 
 trfConDecl' :: TransformName n r => ConDecl n -> Trf (AST.ConDecl r)
 trfConDecl' (ConDecl { con_names = [name], con_details = PrefixCon args })
-  = AST.ConDecl <$> trfName name <*> makeList (before AnnVbar) (mapM trfType args)
+  = AST.ConDecl <$> trfName name <*> makeList atTheEnd (mapM trfType args)
 trfConDecl' (ConDecl { con_names = [name], con_details = RecCon (unLoc -> flds) })
   = AST.RecordDecl <$> trfName name <*> (between AnnOpenC AnnCloseC $ trfAnnList trfFieldDecl' flds)
 trfConDecl' (ConDecl { con_names = [name], con_details = InfixCon t1 t2 })
@@ -129,15 +131,15 @@ trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Insta
 trfInstanceRule = trfLoc $ \case
     (HsForAllTy Explicit _ bndrs ctx typ) 
       -> AST.InstanceRule <$> (annJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
-                          <*> trfCtx ctx
+                          <*> trfCtx (after AnnDot) ctx
                           <*> trfInstanceHead typ
-    (HsForAllTy Implicit _ _ _ typ) -> instanceHead $ trfInstanceHead typ
+    (HsForAllTy Implicit _ _ ctx typ) -> AST.InstanceRule <$> nothing atTheStart 
+                                                          <*> trfCtx atTheStart ctx
+                                                          <*> trfInstanceHead typ
     HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
     HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> annCont (trfName' tv))
     HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
-  where instanceHead hd = AST.InstanceRule <$> (nothing $ after AnnInstance) 
-                                           <*> (nothing $ after AnnInstance)
-                                           <*> hd
+  where instanceHead hd = AST.InstanceRule <$> (nothing atTheStart) <*> (nothing atTheStart) <*> hd
                                  
 trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead r)
 trfInstanceHead = trfLoc trfInstanceHead'
@@ -237,10 +239,11 @@ trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.InstBodyTypeDecl (
 trfInstDataFam :: TransformName n r => Located (DataFamInstDecl n) -> Trf (Ann AST.InstBodyDecl r)
 trfInstDataFam = trfLoc $ \case 
   (DataFamInstDecl tc (hswb_cts -> pats) (HsDataDefn dn ctx _ _ cons derivs) _) 
-    -> AST.InstBodyDataDecl <$> trfDataKeyword dn 
+    -> AST.InstBodyDataDecl 
+         <$> trfDataKeyword dn 
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
-                    (AST.InstanceRule <$> (nothing $ after AnnInstance) 
-                                      <*> trfCtx ctx 
+                    (AST.InstanceRule <$> nothing atTheStart
+                                      <*> trfCtx atTheStart ctx 
                                       <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractRange . _annotation <$> r) 
                                                                 (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                 (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)

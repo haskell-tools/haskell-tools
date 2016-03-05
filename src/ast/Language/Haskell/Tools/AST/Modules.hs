@@ -45,8 +45,8 @@ data ModulePragma a
   | AnnModulePragma { _ampExpr :: Ann Expr a } -- ^ ANN pragma with module scope
                       
 data ImportDecl a
-  = ImportDecl { _importQualified :: AnnMaybe ImportQualified a
-               , _importSource :: AnnMaybe ImportSource a
+  = ImportDecl { _importSource :: AnnMaybe ImportSource a
+               , _importQualified :: AnnMaybe ImportQualified a
                , _importSafe :: AnnMaybe ImportSafe a
                , _importPkg :: AnnMaybe StringNode a
                , _importModule :: Ann Name a

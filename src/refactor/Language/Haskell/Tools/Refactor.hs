@@ -66,20 +66,21 @@ analyze workingDir moduleName =
         -- let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges trfAst
         -- res <- organizeImports mod
         -- liftIO $ putStrLn $ prettyPrint res
-        
-        -- liftIO $ putStrLn $ prettyPrint $ rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges $ runTrf annots $ trfModule $ pm_parsed_source $ tm_parsed_module t
+ 
+        liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
+        liftIO $ putStrLn "==========="
         transformed <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="
         let cutUp = cutUpRanges transformed
         liftIO $ putStrLn $ templateDebug cutUp
         liftIO $ putStrLn "==========="
-        let locIndices = getLocIndices cutUp
-        liftIO $ putStrLn $ show locIndices
-        liftIO $ putStrLn "==========="
-        let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
-        liftIO $ putStrLn $ show mappedLocs
-        liftIO $ putStrLn "==========="
+        -- let locIndices = getLocIndices cutUp
+        -- liftIO $ putStrLn $ show locIndices
+        -- liftIO $ putStrLn "==========="
+        -- let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
+        -- liftIO $ putStrLn $ show mappedLocs
+        -- liftIO $ putStrLn "==========="
         let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
         liftIO $ putStrLn $ sourceTemplateDebug sourced
         liftIO $ putStrLn "==========="

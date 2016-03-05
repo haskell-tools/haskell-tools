@@ -11,6 +11,7 @@ import ApiAnnotation as GHC
 import FastString as GHC
 
 import Control.Monad.Reader.Class
+import Control.Applicative
 import Control.Lens
 import Data.Maybe
 
@@ -28,10 +29,10 @@ trfType = trfLoc trfType'
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
 trfType' (HsForAllTy Implicit _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
-trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . view annMaybe <$> trfCtx ctx) 
+trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . view annMaybe <$> trfCtx atTheStart ctx) 
                                                        <*> trfType typ
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
-                                                       <*> trfCtx ctx
+                                                       <*> trfCtx (after AnnDot) ctx
                                                        <*> trfType typ
 trfType' (HsTyVar name) = AST.TyVar <$> annCont (trfName' name)
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
@@ -65,27 +66,29 @@ trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> annLoc (asks contRange) (trfName'
                                            <*> (nothing atTheEnd)
 trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
   
-trfCtx :: TransformName n r => Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
-trfCtx (L l []) = nothing atTheEnd
-trfCtx (L l [L _ (HsParTy t)]) 
+trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
+trfCtx sp (L l []) = nothing sp
+trfCtx _ (L l [L _ (HsParTy t)]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                        (AST.ContextMulti <$> trfAnnList trfAssertion' [t])
-trfCtx (L l [t]) 
+trfCtx _ (L l [t]) 
   = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                        (AST.ContextOne <$> trfAssertion t)
-trfCtx (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                                      (AST.ContextMulti <$> trfAnnList trfAssertion' ctx) 
+trfCtx _ (L l ctx) = annJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                                        (AST.ContextMulti <$> trfAnnList trfAssertion' ctx) 
   
 trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
 trfAssertion = trfLoc trfAssertion'
 
 trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
+trfAssertion' (HsOpTy left op right) = AST.InfixAssert <$> trfType left 
+                                                       <*> trfName (snd op) 
+                                                       <*> trfType right
 trfAssertion' t = case base of
-    HsTyVar name -> AST.ClassAssert <$> annLoc (asks contRange) (trfName' name) 
-                                    <*> trfAnnList trfType' args
-    HsOpTy left op right -> AST.InfixAssert <$> trfType left <*> trfName (snd op) <*> trfType right
-  where (args, base) = getArgs t
-        getArgs :: HsType n -> ([LHsType n], HsType n)
-        getArgs (HsAppTy (L _ ft) at) = case getArgs ft of (args, base) -> (args++[at], base)
-        getArgs t = ([], t)
+   HsTyVar name -> AST.ClassAssert <$> annLoc (case sp of Just l -> pure l; _ -> asks contRange) (trfName' name) 
+                                   <*> trfAnnList trfType' args
+  where (args, sp, base) = getArgs t
+        getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
+        getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)
+        getArgs t = ([], Nothing, t)
   

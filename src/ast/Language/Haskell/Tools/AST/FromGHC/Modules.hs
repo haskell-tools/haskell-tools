@@ -87,11 +87,10 @@ trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc i
       annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
       atAsPos = if isJust declHiding then before AnnOpenP else atTheEnd
   in AST.ImportDecl 
-       <$> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) 
-                      else nothing (after annBeforeQual))
-       -- if there is a source annotation the first open and close will mark its location
-       <*> (if isSrc then annJust <$> annLoc (tokensLoc [AnnOpen, AnnClose]) (pure AST.ImportSource)
+       <$> (if isSrc then annJust <$> annLoc (tokensLoc [AnnOpen, AnnClose]) (pure AST.ImportSource)
                      else nothing (after AnnImport))
+       <*> (if isQual then annJust <$> (annLoc (tokenLoc AnnQualified) (pure AST.ImportQualified)) 
+                      else nothing (after annBeforeQual))
        <*> (if isSafe then annJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) 
                       else nothing (after annBeforeSafe))
        <*> maybe (nothing (after annBeforePkg)) 
