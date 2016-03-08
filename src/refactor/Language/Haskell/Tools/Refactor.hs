@@ -69,7 +69,10 @@ analyze workingDir moduleName =
  
         liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn "==========="
-        transformed <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        -- transformed <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        -- liftIO $ putStrLn $ rangeDebug transformed
+        -- liftIO $ putStrLn "==========="
+        transformed <- runTrf annots $ trfModule (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="
         let cutUp = cutUpRanges transformed

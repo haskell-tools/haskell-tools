@@ -145,6 +145,7 @@ trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Insta
 trfInstanceHead = trfLoc trfInstanceHead'
 
 trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead r)
+trfInstanceHead' (HsForAllTy Implicit Nothing (HsQTvs [] []) (unLoc -> []) (unLoc -> t)) = trfInstanceHead' t
 trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> annCont (trfName' tv)
 trfInstanceHead' (HsAppTy t1 t2) = AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
 trfInstanceHead' (HsParTy typ) = AST.InstanceHeadParen <$> trfInstanceHead typ
