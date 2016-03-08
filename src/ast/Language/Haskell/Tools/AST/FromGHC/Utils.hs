@@ -94,7 +94,11 @@ trfLoc = trfLocCorrect pure
 
 trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
 trfMaybe f (Just e) = annJust <$> f e
-trfMaybe f Nothing = annNothing . toOptAnnot <$> atTheEnd
+trfMaybe _ Nothing = nothing atTheEnd
+
+trfMaybeDefault :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybe e i)
+trfMaybeDefault f _ (Just e) = annJust <$> f e
+trfMaybeDefault _ loc Nothing = nothing loc
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.

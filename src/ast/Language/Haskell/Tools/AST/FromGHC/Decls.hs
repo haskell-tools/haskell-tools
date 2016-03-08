@@ -85,7 +85,7 @@ trfDecl = trfLoc $ \case
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
-    -> AST.InstDecl <$> trfMaybe trfOverlap overlap <*> trfInstanceRule typ 
+    -> AST.InstDecl <$> trfMaybeDefault trfOverlap (after AnnInstance) overlap <*> trfInstanceRule typ 
                     <*> trfInstBody binds sigs typefam datafam
   -- InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd ctx ct kind cons derivs) _))
     -- -> AST.DataInstDecl <$> trfDataKeyword nd
