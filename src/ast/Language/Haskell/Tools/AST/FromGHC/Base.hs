@@ -49,7 +49,8 @@ instance GHCName GHC.Name where
 instance GHCName Id where
   rdrName = nameRdrName . idName
   
-
+-- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
+-- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
 class (RangeAnnot res, GHCName name) => TransformName name res where
   trfName :: Located name -> Trf (Ann Name res)
   
@@ -68,13 +69,19 @@ trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (r
   
 trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)
 trfSimplName start n = (\srcLoc -> Ann (toNodeAnnot $ mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
+  where pprStr :: Outputable a => a -> String
+        pprStr = showSDocUnsafe . ppr
+                
 
 trfNameStr :: RangeAnnot a => String -> Trf (AnnList SimpleName a, SrcLoc)
 trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList (toListAnnot srcLoc) ls, loc))
   (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
                           in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)
-
+  where advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
+        advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
+        advanceAllSrcLoc oth _ = oth
+  
   
 trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann Name a)
 trfModuleName = trfLoc trfModuleName'

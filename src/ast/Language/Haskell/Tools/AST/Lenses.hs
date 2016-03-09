@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
+-- Generated lenses for handling the custom AST
 module Language.Haskell.Tools.AST.Lenses where
 
 import Control.Lens hiding (Context)

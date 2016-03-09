@@ -69,6 +69,7 @@ data ArrowAppl a
   | LeftHighApp
   | RightHighApp
   
+-- | Safety annotations for foreign calls
 data Safety a
   = Safe
   | ThreadSafe
@@ -91,6 +92,7 @@ data PhaseControl a
                  , _phaseNumber :: Ann PhaseNumber a
                  } 
 
+-- | Phase number for rewrite rules
 data PhaseNumber a 
   = PhaseNumber { _phaseNum :: Integer }
 

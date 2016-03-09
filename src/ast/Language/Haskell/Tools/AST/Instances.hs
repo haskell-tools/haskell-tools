@@ -1,3 +1,4 @@
+-- | All derived instances for AST elements
 module Language.Haskell.Tools.AST.Instances where
 
 import Language.Haskell.Tools.AST.Instances.Data

@@ -1,3 +1,4 @@
+-- | A custom AST representation for Haskell tools.
 module Language.Haskell.Tools.AST 
   ( module Language.Haskell.Tools.AST.Modules
   , module Language.Haskell.Tools.AST.TH

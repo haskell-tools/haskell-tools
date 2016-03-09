@@ -34,12 +34,15 @@ data NodeInfo sema src
              
 makeLenses ''NodeInfo
 
+-- | Location info for different types of nodes
 data SpanInfo 
   = NodeSpan SrcSpan
   | ListPos SrcLoc
   | OptionalPos SrcLoc
   deriving (Eq, Show)
 
+-- | Extracts the concrete range corresponding to a given span.
+-- In case of lists and optional elements, it may not contain the elements inside.
 spanRange :: SpanInfo -> SrcSpan
 spanRange (NodeSpan sp) = sp
 spanRange (ListPos pos) = srcLocSpan pos

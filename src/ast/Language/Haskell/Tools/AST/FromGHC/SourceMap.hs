@@ -1,4 +1,5 @@
-module Language.Haskell.Tools.AST.SourceMap where
+-- | A representation of the tokens that build up the source file.
+module Language.Haskell.Tools.AST.FromGHC.SourceMap where
 
 import ApiAnnotation
 import Data.Map as Map

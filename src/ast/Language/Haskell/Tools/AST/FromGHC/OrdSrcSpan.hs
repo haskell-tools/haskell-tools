@@ -1,16 +1,20 @@
+-- | A wrapper for SrcSpans that is ordered.
 module Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan where
 
 import SrcLoc
 import FastString
 
+-- | Wraps the SrcSpan into an ordered source span
 ordSrcSpan :: SrcSpan -> OrdSrcSpan
 ordSrcSpan (RealSrcSpan sp) = OrdSrcSpan sp
 ordSrcSpan (UnhelpfulSpan fs) = NoOrdSrcSpan fs
 
+-- | Unwrap the ordered source span
 fromOrdSrcSpan :: OrdSrcSpan -> SrcSpan 
 fromOrdSrcSpan (OrdSrcSpan sp) = RealSrcSpan sp
 fromOrdSrcSpan (NoOrdSrcSpan fs) = UnhelpfulSpan fs
 
+-- | A wrapper for SrcSpans that is ordered.
 data OrdSrcSpan 
   = OrdSrcSpan RealSrcSpan
   | NoOrdSrcSpan FastString
