@@ -90,11 +90,13 @@ analyze workingDir moduleName =
         let prettyPrinted = prettyPrint sourced
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="
-        -- liftIO $ flip runStateT (0 :: Int) 
-               -- $ traverseUp (modify (+1) >> get >>= lift . putStrLn . ("desc " ++) . show) 
-                            -- (modify (subtract 1) >> get >>= lift . putStrLn . ("asc " ++) . show) 
-                            -- (lift . putStrLn . show) sourced
-        -- liftIO $ putStrLn "==========="
+        let organized = organizeImports sourced
+        liftIO $ putStrLn $ sourceTemplateDebug organized
+        liftIO $ putStrLn "==========="
+        let prettyPrinted = prettyPrint organized
+        liftIO $ putStrLn prettyPrinted
+        liftIO $ putStrLn "==========="
+        
       
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)

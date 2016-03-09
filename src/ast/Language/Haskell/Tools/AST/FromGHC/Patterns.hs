@@ -27,7 +27,7 @@ trfPattern = trfLoc trfPattern'
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
-trfPattern' (VarPat name) = AST.VarPat <$> annCont (trfName' name)
+trfPattern' (VarPat name) = AST.VarPat <$> trfNameSp' name
 trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
 trfPattern' (AsPat name pat) = AST.AsPat <$> trfName name <*> trfPattern pat
 trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat
@@ -35,7 +35,7 @@ trfPattern' (BangPat pat) = AST.BangPat <$> trfPattern pat
 trfPattern' (ListPat pats _ _) = AST.ListPat <$> trfAnnList trfPattern' pats
 trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList trfPattern' pats
 trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList trfPattern' pats
-trfPattern' (ConPatIn name _) = AST.VarPat <$> annCont (trfName' (unLoc name))
+trfPattern' (ConPatIn name _) = AST.VarPat <$> trfNameSp' (unLoc name)
 trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
 trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)
 trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)

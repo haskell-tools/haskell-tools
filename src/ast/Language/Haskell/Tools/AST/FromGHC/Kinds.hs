@@ -31,7 +31,7 @@ trfKind' (HsTyVar (rdrName -> Exact n))
 trfKind' (HsParTy kind) = AST.KindParen <$> trfKind kind
 trfKind' (HsFunTy k1 k2) = AST.KindFn <$> trfKind k1 <*> trfKind k2
 trfKind' (HsAppTy k1 k2) = AST.KindApp <$> trfKind k1 <*> trfKind k2
-trfKind' (HsTyVar kv) = AST.KindVar <$> annCont (trfName' kv)
+trfKind' (HsTyVar kv) = AST.KindVar <$> trfNameSp' kv
 trfKind' (HsExplicitTupleTy _ kinds) = AST.KindTuple <$> trfAnnList trfKind' kinds
 trfKind' (HsExplicitListTy _ kinds) = AST.KindList <$> trfAnnList trfKind' kinds
   

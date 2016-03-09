@@ -15,8 +15,10 @@ import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
+import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.OrganizeImports
 
 main :: IO Counts
 main = runTestTT $ TestList $ map makeReprintTest 
@@ -52,43 +54,69 @@ main = runTestTT $ TestList $ map makeReprintTest
         , "Type.Ctx"
         , "Type.Forall"
         , "Type.Wildcard"
+        ] ++ map makeOrganizeImportsTest
+        [ "Refactor.OrganizeImports.Narrow"
+        , "Refactor.OrganizeImports.Reorder"
+        , "Refactor.OrganizeImports.Unused"
         ]
+       
+type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
+       
+makeOrganizeImportsTest :: String -> Test
+makeOrganizeImportsTest mod 
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports "examples" mod
+       
+checkCorrectlyTransformed :: (Ann AST.Module TemplateWithSema -> Ann AST.Module TemplateWithSema) -> String -> String -> IO ()
+checkCorrectlyTransformed transform workingDir moduleName
+  = do -- need to use binary or line endings will be translated
+       expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
+       expected <- hGetContents expectedHandle
+       loaded <- runGhc (Just libdir) (transformRenamed =<< parse workingDir moduleName)
+       let transformed = prettyPrint . transform $ loaded
+       assertEqual "The original and the transformed source differ" expected transformed
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)
-
-data TestMode = TypeChecked | Source
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
-       actual <- parseAndPrettyPrint TypeChecked workingDir moduleName
-       actual' <- parseAndPrettyPrint Source workingDir moduleName
+       (actual, actual') <- runGhc (Just libdir) $ do
+         parsed <- parse workingDir moduleName
+         actual <- prettyPrint <$> transformParsed parsed
+         actual' <- prettyPrint <$> transformRenamed parsed
+         return (actual, actual')
        assertEqual "The original and the transformed source differ" expected actual
        assertEqual "The original and the transformed source differ" expected actual'
+              
+transformParsed :: ModSummary -> Ghc (Ann AST.Module (NodeInfo () SourceTemplate))
+transformParsed modSum = do
+  p <- parseModule modSum
+  let annots = fst $ pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges <$> (runTrf annots $ trfModule $ pm_parsed_source p)
 
-parseAndPrettyPrint :: TestMode -> String -> String -> IO String
-parseAndPrettyPrint mode workingDir moduleName = 
-  runGhc (Just libdir) $ do
-    dflags <- getSessionDynFlags
-    -- don't generate any code
-    setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
-    target <- guessTarget moduleName Nothing
-    setTargets [target]
-    load LoadAllTargets
-    modSum <- getModSummary $ mkModuleName moduleName
-    p <- parseModule modSum
-    let annots = fst $ pm_annotations p
-        srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-        transform :: Trf (Ann AST.Module (NodeInfo sema SpanInfo)) -> Ghc String
-        transform = fmap (prettyPrint . rangeToSource srcBuffer . cutUpRanges) . runTrf annots 
-    case mode of 
-      Source -> transform $ trfModule $ pm_parsed_source p
-      TypeChecked -> do tc <- typecheckModule p
-                        transform $ trfModuleRename 
-                                     (fromJust $ tm_renamed_source tc) 
-                                     (pm_parsed_source $ tm_parsed_module tc)
+transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithSema)
+transformRenamed modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = fst $ pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges <$> 
+    (runTrf annots $ trfModuleRename 
+                       (fromJust $ tm_renamed_source tc) 
+                       (pm_parsed_source p))
+       
+parse :: String -> String -> Ghc ModSummary
+parse workingDir moduleName = do
+  dflags <- getSessionDynFlags
+  -- don't generate any code
+  setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
+  target <- guessTarget moduleName Nothing
+  setTargets [target]
+  load LoadAllTargets
+  getModSummary $ mkModuleName moduleName
                             
            

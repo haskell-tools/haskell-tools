@@ -70,17 +70,23 @@ makeLenses ''SemanticInfo
 
 -- | A list of AST elements
 data AnnList e a = AnnList { _annListPos :: a 
-                           , _annList :: [Ann e a]
+                           , _annListElems :: [Ann e a]
                            }
-
+                           
 makeLenses ''AnnList
+        
+annList :: Traversal (AnnList e a) (AnnList e' a) (Ann e a) (Ann e' a)                          
+annList = annListElems . traverse
 
 -- | An optional AST element
 data AnnMaybe e a = AnnMaybe { _annMaybePos :: a 
                              , _annMaybe :: (Maybe (Ann e a))
                              }
-
+                             
 makeLenses ''AnnMaybe
+                          
+annJust :: Traversal (AnnMaybe e a) (AnnMaybe e' a) (Ann e a) (Ann e' a)                          
+annJust = annMaybe . _Just
 
 -- | An empty list of AST elements
 annNil :: a -> AnnList e a

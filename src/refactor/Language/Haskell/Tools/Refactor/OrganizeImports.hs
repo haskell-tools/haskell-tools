@@ -31,44 +31,48 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.DebugGhcAST
+import Debug.Trace
 
 type STWithNames = NodeInfo SemanticInfo SourceTemplate
 
-organizeImports :: GhcMonad m => Ann Module STWithNames -> m (Ann Module STWithNames)
+organizeImports :: Ann Module STWithNames -> Ann Module STWithNames
 organizeImports mod
-  = return $ mod & element.modImports.annList %~ narrowImports usedNames . sortImports
+  = mod & element.modImports.annListElems %~ narrowImports usedNames . sortImports
   where usedNames :: [GHC.Name]
-        usedNames = catMaybes $ map (preview (annotation.semanticInfo.nameInfo)) (universeBi mod :: [Ann Name STWithNames])
-
+        usedNames = catMaybes $ map (preview (annotation.semanticInfo.nameInfo)) $ (universeBi (mod ^. element.modHead) ++ universeBi (mod ^. element.modDecl) :: [Ann Name STWithNames])
+        
 sortImports :: [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
 sortImports = sortBy (ordByOccurrence `on` view (element.importModule.element))
 
 narrowImports :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
 narrowImports usedNames imps 
-  = catMaybes $ map (\(imp,rest) -> narrowImport usedNames (map semantics rest) imp) 
-                    (listViews imps)
+  = map (\(imp,rest) -> narrowImport usedNames (map semantics rest) imp) 
+        (listViews imps)
         
 narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames 
-                           -> Maybe (Ann ImportDecl STWithNames)
+                           -> Ann ImportDecl STWithNames
 narrowImport usedNames otherModules imp
+  | importIsExact (imp ^. element) 
+  = imp & element.importSpec.annJust.element.importSpecList %~ replaceList (map (flip mkIeSpec noth . mkUnqualName . occNameString . occName) actuallyImported)
+  | otherwise 
   = if null actuallyImported
-      then if canBeRemoved then Nothing 
-                           else Just $ imp & element.importSpec .~ just (mkImportSpecList [])
-      else Just imp
+      then imp & element.importSpec .~ just (mkImportSpecList [])
+      else imp
   where actuallyImported = (imp ^. annotation.semanticInfo.importedNames) `intersect` usedNames
-        canBeRemoved = any (== (imp ^?! annotation.semanticInfo.importedModule)) 
-                           (otherModules ^.. traverse.importedModule)
     
 -- * General utilities
 
 class TemplateAnnot annot where
   fromTemplate :: SourceTemplate -> annot
+  getTemplate :: annot -> SourceTemplate
   
 instance TemplateAnnot (NodeInfo SemanticInfo SourceTemplate) where
   fromTemplate = NodeInfo NoSemanticInfo
+  getTemplate = view sourceInfo
   
 instance TemplateAnnot (NodeInfo () SourceTemplate) where
   fromTemplate = NodeInfo ()
+  getTemplate = view sourceInfo
     
 listViews :: Eq a => [a] -> [(a,[a])]
 listViews ls = map (\e -> (e, delete e ls)) ls  
@@ -82,4 +86,26 @@ mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
 mkImportSpecList specs = Ann (fromTemplate $ "(" <> child <> ")") 
                              (ImportSpecList (AnnList (fromTemplate list) specs))
 
-just e = AnnMaybe (fromTemplate "") (Just e)
+mkIeSpec :: TemplateAnnot a => Ann Name a -> AnnMaybe SubSpec a -> Ann IESpec a
+mkIeSpec name ss = Ann (fromTemplate $ child <> child) (IESpec name ss)
+                             
+replaceList :: TemplateAnnot a => [Ann e a] -> AnnList e a -> AnnList e a
+replaceList elems (AnnList a _)
+  = AnnList (fromTemplate (listSep mostCommonSeparator)) elems
+  where mostCommonSeparator  
+          = case getTemplate a ^. sourceTemplateElems of 
+              [ChildListElem seps] -> head $ maximumBy (compare `on` length) $ group $ sort seps
+              
+mkUnqualName :: TemplateAnnot a => String -> Ann Name a
+mkUnqualName n = Ann (fromTemplate $ child <> child) 
+                     (Name emptyList (Ann (fromTemplate (fromString n)) 
+                                          (SimpleName n)))
+              
+emptyList :: TemplateAnnot a => AnnList e a
+emptyList = AnnList (fromTemplate list) []
+              
+just :: TemplateAnnot a => Ann e a -> AnnMaybe e a            
+just e = AnnMaybe (fromTemplate opt) (Just e)
+
+noth :: TemplateAnnot a => AnnMaybe e a
+noth = AnnMaybe (fromTemplate opt) Nothing

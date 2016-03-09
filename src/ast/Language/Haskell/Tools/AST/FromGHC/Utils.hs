@@ -104,7 +104,7 @@ trfMaybe f = trfMaybeDefault f atTheEnd
 
 -- | Transforms a possibly-missing node with a default location
 trfMaybeDefault :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybe e i)
-trfMaybeDefault f _ (Just e) = annJust <$> f e
+trfMaybeDefault f _ (Just e) = makeJust <$> f e
 trfMaybeDefault _ loc Nothing = nothing loc
 
 -- | Transform a located part of the AST by automatically transforming the location
@@ -133,8 +133,8 @@ nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
 nonemptyAnnList = AnnList (toListAnnot noSrcLoc)
 
 -- | Creates an optional node from an existing element
-annJust :: RangeAnnot a => Ann e a -> AnnMaybe e a
-annJust e = AnnMaybe (toOptAnnot noSrcLoc) (Just e)
+makeJust :: RangeAnnot a => Ann e a -> AnnMaybe e a
+makeJust e = AnnMaybe (toOptAnnot noSrcLoc) (Just e)
 
 -- | Annotates a node with the given location and focuses on the given source span.
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)

@@ -130,14 +130,14 @@ trfDerivings = trfLoc $ \case
 trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceRule r)
 trfInstanceRule = trfLoc $ \case
     (HsForAllTy Explicit _ bndrs ctx typ) 
-      -> AST.InstanceRule <$> (annJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
+      -> AST.InstanceRule <$> (makeJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
                           <*> trfCtx (after AnnDot) ctx
                           <*> trfInstanceHead typ
     (HsForAllTy Implicit _ _ ctx typ) -> AST.InstanceRule <$> nothing atTheStart 
                                                           <*> trfCtx atTheStart ctx
                                                           <*> trfInstanceHead typ
     HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
-    HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> annCont (trfName' tv))
+    HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> trfNameSp' tv)
     HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
   where instanceHead hd = AST.InstanceRule <$> (nothing atTheStart) <*> (nothing atTheStart) <*> hd
                                  
@@ -146,7 +146,7 @@ trfInstanceHead = trfLoc trfInstanceHead'
 
 trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead r)
 trfInstanceHead' (HsForAllTy Implicit Nothing (HsQTvs [] []) (unLoc -> []) (unLoc -> t)) = trfInstanceHead' t
-trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> annCont (trfName' tv)
+trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> trfNameSp' tv
 trfInstanceHead' (HsAppTy t1 t2) = AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
 trfInstanceHead' (HsParTy typ) = AST.InstanceHeadParen <$> trfInstanceHead typ
 trfInstanceHead' (HsOpTy t1 (_,op) t2) 
@@ -165,7 +165,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
-                  (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
+                  (annLoc (pure $ getLoc name) (AST.TyVar <$> trfNameSp' (unLoc name))) 
                   (hswb_cts pats)
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
@@ -177,7 +177,7 @@ createDeclHead name vars
   = foldl (\t p -> do typ <- t
                       annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
-          (annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
+          (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfNameSp' (unLoc name))) 
           (hsq_tvs vars)
       
          
@@ -186,7 +186,7 @@ createClassBody :: TransformName n r => [LSig n] -> LHsBinds n -> [LFamilyDecl n
 createClassBody sigs binds typeFams typeFamDefs 
   = do isThereWhere <- isGoodSrcSpan <$> (tokenLoc AnnWhere)
        if isThereWhere 
-         then annJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
+         then makeJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
                                  (AST.ClassBody <$> makeList (after AnnWhere) 
                                                              (orderDefs . concat <$> sequenceA allDefs))
          else nothing atTheEnd
@@ -218,7 +218,7 @@ trfInstBody :: TransformName n r => LHsBinds n -> [LSig n] -> [LTyFamInstDecl n]
 trfInstBody binds sigs fams dats = do
     wh <- tokenLoc AnnWhere
     if isGoodSrcSpan wh then
-      annJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
+      makeJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
                          (AST.InstBody <$> (makeList (after AnnWhere) 
                                                      (orderDefs . concat <$> sequenceA allDefs)))
     else nothing atTheEnd

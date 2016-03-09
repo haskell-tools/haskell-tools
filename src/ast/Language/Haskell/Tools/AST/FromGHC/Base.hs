@@ -63,9 +63,14 @@ instance RangeAnnot r => TransformName GHC.Name r where
 instance TransformName GHC.Id RangeWithName where
   trfName name = (annotation.semanticInfo .~ (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
-  
-trfName' :: forall name res . TransformName name res => name -> Trf (Name res)
+trfName' :: TransformName name res => name -> Trf (Name res)
 trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))
+  
+trfNameSp :: TransformName name res => name -> SrcSpan -> Trf (Ann Name res)
+trfNameSp n l = trfName (L l n)
+
+trfNameSp' :: TransformName name res => name -> Trf (Ann Name res)
+trfNameSp' n = trfNameSp n =<< asks contRange
   
 trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann SimpleName a)
 trfSimplName start n = (\srcLoc -> Ann (toNodeAnnot $ mkSrcSpan start srcLoc) $ SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)

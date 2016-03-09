@@ -20,12 +20,12 @@ nameString = concat . intersperse "." . nameElements
 
 -- | The qualifiers and the unqualified name
 nameElements :: Name a -> [String]
-nameElements n = (n ^.. qualifiers.annList.traverse.element.simpleNameStr) 
+nameElements n = (n ^.. qualifiers.annList.element.simpleNameStr) 
                     ++ [n ^. unqualifiedName.element.simpleNameStr]
 
 -- | The qualifier of the name
 nameQualifier :: Name a -> [String]
-nameQualifier n = n ^.. qualifiers.annList.traverse.element.simpleNameStr
+nameQualifier n = n ^.. qualifiers.annList.element.simpleNameStr
          
 -- | Does the import declaration import only the explicitly listed elements?
 importIsExact :: ImportDecl a -> Bool
@@ -37,11 +37,11 @@ importIsHiding = isJust . preview (importSpec.annMaybe._Just.element.importSpecH
        
 -- | All elements that are explicitly listed to be imported in the import declaration
 importExacts :: Fold (ImportDecl a) (IESpec a)
-importExacts = importSpec.annMaybe._Just.element.importSpecList.annList.traverse.element
+importExacts = importSpec.annMaybe._Just.element.importSpecList.annList.element
 
 -- | All elements that are hidden in an import
 importHidings :: Fold (ImportDecl a) (IESpec a)
-importHidings = importSpec.annMaybe._Just.element.importSpecList.annList.traverse.element
+importHidings = importSpec.annMaybe._Just.element.importSpecList.annList.element
          
 -- | Possible qualifiers to use imported definitions         
 importQualifiers :: ImportDecl a -> [[String]]

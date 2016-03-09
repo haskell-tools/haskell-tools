@@ -35,7 +35,7 @@ trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr = trfLoc trfExpr'
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
-trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
+trfExpr' (HsVar name) = AST.Var <$> trfNameSp' name
 trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <$> trfNameStr (unpackFS ip))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
@@ -44,14 +44,14 @@ trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] ex
 trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase <$> trfAnnList trfAlt' matches
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
-  = AST.InfixApp <$> trfExpr e1 <*> annLoc (pure opLoc) (trfName' op) <*> trfExpr e2
+  = AST.InfixApp <$> trfExpr e1 <*> trfNameSp op opLoc <*> trfExpr e2
 trfExpr' (NegApp e _) = AST.PrefixApp <$> (annLoc (mkSrcSpan <$> (srcSpanStart <$> asks contRange) 
                                                              <*> (pure $ srcSpanStart (getLoc e))) 
                                                   (AST.nameFromList . fst <$> trfNameStr "-")) 
                                       <*> trfExpr e
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
-trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> annLoc (pure l) (trfName' op)
-trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> annLoc (pure l) (trfName' op) <*> trfExpr expr
+trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfNameSp op l
+trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> trfNameSp op l <*> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
   = wrap <$> between AnnOpenP AnnCloseP (trfAnnList (trfExpr' . unLoc . (\(Present e) -> e)) tupArgs)
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
@@ -83,16 +83,16 @@ trfExpr' (ExprWithTySig expr typ _) = AST.TypeSig <$> trfExpr expr <*> trfType t
 trfExpr' (ArithSeq _ _ (From from)) = AST.Enum <$> trfExpr from <*> nothing (before AnnDotdot)
                                                                 <*> nothing (before AnnCloseS)
 trfExpr' (ArithSeq _ _ (FromThen from step)) 
-  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> nothing (before AnnCloseS) 
+  = AST.Enum <$> trfExpr from <*> (makeJust <$> trfExpr step) <*> nothing (before AnnCloseS) 
 trfExpr' (ArithSeq _ _ (FromTo from to)) 
   = AST.Enum <$> trfExpr from <*> nothing (before AnnDotdot)
-                              <*> (annJust <$> trfExpr to)
+                              <*> (makeJust <$> trfExpr to)
 trfExpr' (ArithSeq _ _ (FromThenTo from step to)) 
-  = AST.Enum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> (annJust <$> trfExpr to)
+  = AST.Enum <$> trfExpr from <*> (makeJust <$> trfExpr step) <*> (makeJust <$> trfExpr to)
 trfExpr' (PArrSeq _ (FromTo from to)) 
   = AST.ParArrayEnum <$> trfExpr from <*> nothing (before AnnDotdot) <*> trfExpr to
 trfExpr' (PArrSeq _ (FromThenTo from step to)) 
-  = AST.ParArrayEnum <$> trfExpr from <*> (annJust <$> trfExpr step) <*> trfExpr to
+  = AST.ParArrayEnum <$> trfExpr from <*> (makeJust <$> trfExpr step) <*> trfExpr to
 -- TODO: SCC, CORE, GENERATED annotations
 trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsSpliceE _ splice) = AST.Splice <$> annCont (trfSplice' splice)
@@ -111,7 +111,7 @@ trfFieldUpdates (HsRecFields fields dotdot)
   
 trfFieldUpdate :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate r)
 trfFieldUpdate = trfLoc $ \case
-  HsRecField id _ True -> AST.FieldPun <$> annCont (trfName' (unLoc id))
+  HsRecField id _ True -> AST.FieldPun <$> trfNameSp' (unLoc id)
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
 trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt r)

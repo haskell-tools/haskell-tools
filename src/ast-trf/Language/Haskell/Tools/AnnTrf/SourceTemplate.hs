@@ -47,5 +47,8 @@ opt = SourceTemplate noSrcSpan [OptionalChildElem]
 list :: SourceTemplate
 list = SourceTemplate noSrcSpan [ChildListElem []]
 
+listSep :: String -> SourceTemplate
+listSep s = SourceTemplate noSrcSpan [ChildListElem [s]]
+
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)
