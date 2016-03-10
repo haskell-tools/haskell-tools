@@ -1,15 +1,17 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- | Helper functions for using the AST.
 module Language.Haskell.Tools.AST.Helpers where
 
-import Control.Lens hiding (element)
+import Control.Reference hiding (element)
 import Data.List
 import Data.Maybe
-import Data.Function
+import Data.Function hiding ((&))
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Modules
 import Language.Haskell.Tools.AST.Base
-import Language.Haskell.Tools.AST.Lenses
+import Language.Haskell.Tools.AST.References
 
 ordByOccurrence :: Name a -> Name a -> Ordering
 ordByOccurrence = compare `on` nameElements
@@ -20,35 +22,35 @@ nameString = concat . intersperse "." . nameElements
 
 -- | The qualifiers and the unqualified name
 nameElements :: Name a -> [String]
-nameElements n = (n ^.. qualifiers.annList.element.simpleNameStr) 
-                    ++ [n ^. unqualifiedName.element.simpleNameStr]
+nameElements n = (n ^? qualifiers&annList&element&simpleNameStr) 
+                    ++ [n ^. unqualifiedName&element&simpleNameStr]
 
 -- | The qualifier of the name
 nameQualifier :: Name a -> [String]
-nameQualifier n = n ^.. qualifiers.annList.element.simpleNameStr
+nameQualifier n = n ^? qualifiers&annList&element&simpleNameStr
          
 -- | Does the import declaration import only the explicitly listed elements?
 importIsExact :: ImportDecl a -> Bool
-importIsExact = isJust . preview (importSpec.annMaybe._Just.element.importSpecList)  
+importIsExact = isJust . (^? importSpec&annJust&element&importSpecList)  
   
 -- | Does the import declaration has a 'hiding' clause?
 importIsHiding :: ImportDecl a -> Bool
-importIsHiding = isJust . preview (importSpec.annMaybe._Just.element.importSpecHiding)
+importIsHiding = isJust . (^? importSpec&annJust&element&importSpecHiding)
        
 -- | All elements that are explicitly listed to be imported in the import declaration
-importExacts :: Fold (ImportDecl a) (IESpec a)
-importExacts = importSpec.annMaybe._Just.element.importSpecList.annList.element
+importExacts :: Simple Traversal (ImportDecl a) (IESpec a)
+importExacts = importSpec&annJust&element&importSpecList&annList&element
 
 -- | All elements that are hidden in an import
-importHidings :: Fold (ImportDecl a) (IESpec a)
-importHidings = importSpec.annMaybe._Just.element.importSpecList.annList.element
+importHidings :: Simple Traversal (ImportDecl a) (IESpec a)
+importHidings = importSpec&annJust&element&importSpecList&annList&element
          
 -- | Possible qualifiers to use imported definitions         
 importQualifiers :: ImportDecl a -> [[String]]
 importQualifiers imp 
   = (if isAnnNothing (imp ^. importQualified) then [[]] else [])
       ++ maybe [] (\n -> [nameElements n]) 
-               (imp ^? importAs.annMaybe._Just.element.importRename.element)
+               (imp ^? importAs&annJust&element&importRename&element)
 
 
                    

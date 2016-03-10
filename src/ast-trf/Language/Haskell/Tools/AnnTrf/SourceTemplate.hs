@@ -6,7 +6,7 @@ module Language.Haskell.Tools.AnnTrf.SourceTemplate where
 
 import Data.Data
 import Data.String
-import Control.Lens
+import Control.Reference
 import SrcLoc
 
 data SourceTemplateElem = TextElem String 
@@ -22,7 +22,7 @@ data SourceTemplate = SourceTemplate { _sourceTemplateRange :: SrcSpan
                                      , _sourceTemplateElems :: [SourceTemplateElem] 
                                      } deriving Data 
 
-makeLenses ''SourceTemplate
+makeReferences ''SourceTemplate
       
 instance Show SourceTemplateElem where
   show (TextElem s) = s

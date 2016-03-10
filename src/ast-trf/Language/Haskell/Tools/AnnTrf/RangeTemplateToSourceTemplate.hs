@@ -8,7 +8,7 @@ import StringBuffer
 import Data.StructuralTraversal
 import Data.Map
 import Data.Monoid
-import Control.Lens
+import Control.Reference
 import Control.Monad.State
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
@@ -31,7 +31,7 @@ getLocIndices = snd . flip execState (0, empty) .
                (mapM_ (\case RangeElem sp       -> modify (insertElem sp)
                              RangeListElem seps -> mapM_ (modify . insertElem) seps
                              _                  -> return ()
-                      ) . view (sourceInfo.rangeTemplateElems))
+                      ) . (^. sourceInfo&rangeTemplateElems))
   where insertElem sp = (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
                              
                              
@@ -53,8 +53,8 @@ applyFragments :: StructuralTraversable node => [String] -> Ann node (NodeInfo s
 applyFragments srcs = flip evalState srcs
   . traverseDown 
      (return ()) (return ())
-     (\ni -> do template <- mapM getTextFor (ni ^. sourceInfo.rangeTemplateElems)
-                return $ ni & sourceInfo .~ SourceTemplate (RealSrcSpan $ ni ^. sourceInfo.rangeTemplateSpan) template)
+     (\ni -> do template <- mapM getTextFor (ni ^. sourceInfo&rangeTemplateElems)
+                return $ sourceInfo .= SourceTemplate (RealSrcSpan $ ni ^. sourceInfo&rangeTemplateSpan) template $ ni)
   where getTextFor (RangeElem sp) = do (src:rest) <- get
                                        put rest
                                        return (TextElem src)

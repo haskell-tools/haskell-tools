@@ -6,7 +6,7 @@
 module Language.Haskell.Tools.AnnTrf.RangeTemplate where
 
 import Data.Data
-import Control.Lens
+import Control.Reference
 import SrcLoc
 
 data RangeTemplateElem = RangeElem RealSrcSpan
@@ -30,7 +30,7 @@ data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan
                                    , _rangeTemplateElems :: [RangeTemplateElem] 
                                    } deriving Data
                                    
-makeLenses ''RangeTemplate      
+makeReferences ''RangeTemplate      
 
 instance Show RangeTemplate where
   show (RangeTemplate rng rngs) = show rngs

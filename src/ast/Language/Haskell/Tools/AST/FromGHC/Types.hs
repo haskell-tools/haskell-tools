@@ -12,7 +12,7 @@ import FastString as GHC
 
 import Control.Monad.Reader.Class
 import Control.Applicative
-import Control.Lens
+import Control.Reference
 import Data.Maybe
 
 import Language.Haskell.Tools.AST.FromGHC.Base
@@ -29,7 +29,7 @@ trfType = trfLoc trfType'
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
 trfType' (HsForAllTy Implicit _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
-trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . view annMaybe <$> trfCtx atTheStart ctx) 
+trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
                                                        <*> trfType typ
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> trfBindings (hsq_tvs bndrs) 
                                                        <*> trfCtx (after AnnDot) ctx

@@ -13,7 +13,7 @@ import Control.Monad.Reader
 import Data.List.Split
 import qualified Data.ByteString.Char8 as BS
 
-import Control.Lens
+import Control.Reference hiding (element)
 
 import HsSyn as GHC
 import Module as GHC
@@ -29,7 +29,6 @@ import ApiAnnotation as GHC
 import ForeignCall as GHC
 
 import Language.Haskell.Tools.AST.Ann as AST
-import Language.Haskell.Tools.AST.Lenses as AST
 import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Literals as AST
 import Language.Haskell.Tools.AST.Base(Name(..), SimpleName(..))
@@ -58,10 +57,10 @@ instance TransformName RdrName RangeInfo where
   trfName = trfLoc trfName' 
 
 instance RangeAnnot r => TransformName GHC.Name r where
-  trfName name = (annotation %~ addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
+  trfName name = (annotation .- addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
   
 instance TransformName GHC.Id RangeWithName where
-  trfName name = (annotation.semanticInfo .~ (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
+  trfName name = (annotation&semanticInfo .= (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
 trfName' :: TransformName name res => name -> Trf (Name res)
 trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))

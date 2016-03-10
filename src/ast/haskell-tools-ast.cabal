@@ -37,7 +37,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.Data
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.StructuralTraversal
-                     , Language.Haskell.Tools.AST.Lenses
+                     , Language.Haskell.Tools.AST.References
                      , Language.Haskell.Tools.AST.Helpers
 
                      , Language.Haskell.Tools.AST.FromGHC.Modules
@@ -66,6 +66,7 @@ library
                      , UndecidableInstances
   build-depends:       base >=4.8 && <4.9
                      , ghc >=7.10 && <7.11
+                     , references >=0.3
                      , bytestring >=0.10 && <1.0
                      , safe >=0.3
                      , lens >=4.0 && <5.0

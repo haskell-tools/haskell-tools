@@ -11,7 +11,7 @@ import Language.Haskell.Tools.AST
 import Data.Data
 import Data.List
 import Data.Maybe
-import Control.Lens
+import Control.Reference hiding (element)
 import Data.StructuralTraversal
 import Control.Monad.State
 import SrcLoc
@@ -34,7 +34,7 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         -- combine the current node with its children, and add it to the list of current nodes
         f ni = do (below : top : xs) <- get
                   put ([] : (top ++ [ expandSourceInfo (ni ^. sourceInfo) below ]) : xs)
-                  return (ni & sourceInfo %~ cutOutElem below)
+                  return (sourceInfo .- cutOutElem below $ ni)
 
 expandSourceInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandSourceInfo ns@(NodeSpan _) _ = ns

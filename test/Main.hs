@@ -58,6 +58,8 @@ main = runTestTT $ TestList $ map makeReprintTest
         [ "Refactor.OrganizeImports.Narrow"
         , "Refactor.OrganizeImports.Reorder"
         , "Refactor.OrganizeImports.Unused"
+        , "Refactor.OrganizeImports.Ctor"
+        -- , "Refactor.OrganizeImports.Class"
         ]
        
 type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
@@ -66,13 +68,15 @@ makeOrganizeImportsTest :: String -> Test
 makeOrganizeImportsTest mod 
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports "examples" mod
        
-checkCorrectlyTransformed :: (Ann AST.Module TemplateWithSema -> Ann AST.Module TemplateWithSema) -> String -> String -> IO ()
+checkCorrectlyTransformed :: (Ann AST.Module TemplateWithSema -> Ghc (Ann AST.Module TemplateWithSema)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
        expected <- hGetContents expectedHandle
-       loaded <- runGhc (Just libdir) (transformRenamed =<< parse workingDir moduleName)
-       let transformed = prettyPrint . transform $ loaded
+       transformed <- runGhc (Just libdir) (return . prettyPrint 
+                                              =<< transform 
+                                              =<< transformRenamed 
+                                              =<< parse workingDir moduleName)
        assertEqual "The original and the transformed source differ" expected transformed
        
 makeReprintTest :: String -> Test       

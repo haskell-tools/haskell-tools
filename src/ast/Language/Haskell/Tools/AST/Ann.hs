@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances
+           , FlexibleContexts
            , TemplateHaskell
            , DeriveDataTypeable
            , StandaloneDeriving
@@ -8,7 +9,7 @@
 module Language.Haskell.Tools.AST.Ann where
 
 import Data.Data
-import Control.Lens
+import Control.Reference
 import SrcLoc
 import Name
 import Module
@@ -23,7 +24,7 @@ data Ann elem annot
         , _element    :: elem annot -- ^ The original AST part
         }
         
-makeLenses ''Ann
+makeReferences ''Ann
         
 -- | Semantic and source code related information for an AST node.
 data NodeInfo sema src 
@@ -32,7 +33,7 @@ data NodeInfo sema src
              }
   deriving (Eq, Show, Data)
              
-makeLenses ''NodeInfo
+makeReferences ''NodeInfo
 
 -- | Location info for different types of nodes
 data SpanInfo 
@@ -66,27 +67,27 @@ data SemanticInfo
   -- | ImplicitFieldUpdates [ImportDecl]
   deriving (Eq, Data)
     
-makeLenses ''SemanticInfo
+makeReferences ''SemanticInfo
 
 -- | A list of AST elements
 data AnnList e a = AnnList { _annListPos :: a 
                            , _annListElems :: [Ann e a]
                            }
                            
-makeLenses ''AnnList
+makeReferences ''AnnList
         
 annList :: Traversal (AnnList e a) (AnnList e' a) (Ann e a) (Ann e' a)                          
-annList = annListElems . traverse
+annList = annListElems & traversal
 
 -- | An optional AST element
 data AnnMaybe e a = AnnMaybe { _annMaybePos :: a 
                              , _annMaybe :: (Maybe (Ann e a))
                              }
                              
-makeLenses ''AnnMaybe
+makeReferences ''AnnMaybe
                           
-annJust :: Traversal (AnnMaybe e a) (AnnMaybe e' a) (Ann e a) (Ann e' a)                          
-annJust = annMaybe . _Just
+annJust :: Partial (AnnMaybe e a) (AnnMaybe e' a) (Ann e a) (Ann e' a)                          
+annJust = annMaybe & just
 
 -- | An empty list of AST elements
 annNil :: a -> AnnList e a

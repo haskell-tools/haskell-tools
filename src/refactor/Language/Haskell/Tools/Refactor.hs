@@ -90,7 +90,7 @@ analyze workingDir moduleName =
         let prettyPrinted = prettyPrint sourced
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="
-        let organized = organizeImports sourced
+        organized <- organizeImports sourced
         liftIO $ putStrLn $ sourceTemplateDebug organized
         liftIO $ putStrLn "==========="
         let prettyPrinted = prettyPrint organized

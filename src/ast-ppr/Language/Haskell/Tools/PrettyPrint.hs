@@ -7,7 +7,7 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
-import Control.Lens
+import Control.Reference
 import Data.Maybe
 import Data.Foldable
 import Data.StructuralTraversal
@@ -18,7 +18,7 @@ prettyPrint :: (StructuralTraversable node) => node (NodeInfo sema SourceTemplat
 prettyPrint = toList . printRose . toRoseTree
 
 printRose :: RoseTree (NodeInfo sema SourceTemplate) -> Seq Char      
-printRose = printRose' . fmap (view (sourceInfo.sourceTemplateElems))
+printRose = printRose' . fmap (^. sourceInfo&sourceTemplateElems)
       
 -- | Pretty prints a rose tree according to the source templates remaining from the original AST
 printRose' :: RoseTree [SourceTemplateElem] -> Seq Char

@@ -9,7 +9,7 @@
 module Language.Haskell.Tools.Refactor.RangeDebug where
 
 import GHC.Generics
-import Control.Lens hiding (from)
+import Control.Reference
 import SrcLoc
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -18,7 +18,7 @@ import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 rangeDebug :: (a ~ NodeInfo sema SpanInfo, TreeDebug e a) => e a -> String
-rangeDebug = treeDebug' (shortShowSpanInfo . view sourceInfo) 0
+rangeDebug = treeDebug' (shortShowSpanInfo . (^. sourceInfo)) 0
       
 shortShowSpanInfo :: SpanInfo -> String
 shortShowSpanInfo (NodeSpan sp) = shortShowSpan sp
@@ -35,7 +35,7 @@ shortShowLoc (UnhelpfulLoc _) = "??"
 shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
       
 templateDebug :: TreeDebug e (NodeInfo sema RangeTemplate) => e (NodeInfo sema RangeTemplate) -> String
-templateDebug = treeDebug' (shortShowRangeTemplate . view sourceInfo) 0
+templateDebug = treeDebug' (shortShowRangeTemplate . (^. sourceInfo)) 0
 
 shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTemplateElem rngs ++ "ˇ"
   where showRangeTemplateElem (RangeElem sp) = "[" ++ shortShowSpan (RealSrcSpan sp) ++ "]"
@@ -43,7 +43,7 @@ shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTempl
         showRangeTemplateElem _ = ""
 
 sourceTemplateDebug :: TreeDebug e (NodeInfo sema SourceTemplate) => e (NodeInfo sema SourceTemplate) -> String
-sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . view sourceInfo) 0
+sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . (^. sourceInfo)) 0
 
 shortShowSourceTemplate temp = "ˇ" ++ (concatMap showSourceTemplateElem $ temp ^. sourceTemplateElems) ++ "ˇ"
 

@@ -22,7 +22,6 @@ import HsSyn as GHC
 import HscTypes as GHC
 
 import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Lenses
 import qualified Language.Haskell.Tools.AST.Base as AST
 import qualified Language.Haskell.Tools.AST.Modules as AST
 

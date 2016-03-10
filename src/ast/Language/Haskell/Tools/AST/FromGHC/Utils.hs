@@ -18,14 +18,14 @@ import Outputable
 import FastString
 
 import Control.Monad.Reader
-import Control.Lens hiding (element)
+import Control.Reference hiding (element)
 import Data.Maybe
 import Data.IORef
-import Data.Function
+import Data.Function hiding ((&))
 import Data.List
-import Language.Haskell.Tools.AST.Lenses
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Helpers
+import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.Modules as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
@@ -44,32 +44,32 @@ instance RangeAnnot RangeWithName where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
   toListAnnot = NodeInfo NoSemanticInfo . ListPos
   toOptAnnot = NodeInfo NoSemanticInfo . OptionalPos
-  addSemanticInfo si ni = ni & semanticInfo .~ si
-  extractRange = spanRange . view sourceInfo
+  addSemanticInfo si = semanticInfo .= si
+  extractRange = spanRange . (^. sourceInfo)
   addImportData = addImportData'
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
 addImportData' imp = lift $ 
   do eps <- getSession >>= liftIO . readIORef . hsc_EPS
-     mod <- findModule (mkModuleName . nameString $ imp ^. element.importModule.element) 
-                       (fmap mkFastString $ imp ^? element.importPkg.annMaybe._Just.element.stringNodeStr)
+     mod <- findModule (mkModuleName . nameString $ imp ^. element&importModule&element) 
+                       (fmap mkFastString $ imp ^? element&importPkg&annJust&element&stringNodeStr)
      let importedNames = concatMap availNames $ maybe [] mi_exports 
                                               $ flip lookupModuleEnv mod 
                                               $ eps_PIT eps
      names <- filterM (checkImportVisible (imp ^. element)) importedNames
-     return $ (imp & annotation %~ addSemanticInfo (ImportInfo mod importedNames names))
+     return $ annotation .- addSemanticInfo (ImportInfo mod importedNames names) $ imp
        
 checkImportVisible :: GhcMonad m => AST.ImportDecl RangeWithName -> GHC.Name -> m Bool
 checkImportVisible imp name
   | importIsExact imp 
-  = or <$> mapM (`ieSpecMatches` name) (imp ^.. importExacts)
+  = or <$> mapM (`ieSpecMatches` name) (imp ^? importExacts :: [IESpec RangeWithName])
   | importIsHiding imp 
-  = not . or <$> mapM (`ieSpecMatches` name) (imp ^.. importHidings)
+  = not . or <$> mapM (`ieSpecMatches` name) (imp ^? importHidings :: [IESpec RangeWithName])
   | otherwise = return True
 
 ieSpecMatches :: GhcMonad m => AST.IESpec RangeWithName -> GHC.Name -> m Bool
-ieSpecMatches (AST.IESpec ((^?! annotation.semanticInfo.nameInfo) -> n) ss) name
+ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) name
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
@@ -82,7 +82,7 @@ instance RangeAnnot RangeInfo where
   toListAnnot = NodeInfo () . ListPos
   toOptAnnot = NodeInfo () . OptionalPos
   addSemanticInfo si = id
-  extractRange = spanRange . view sourceInfo
+  extractRange = spanRange . (^. sourceInfo)
   addImportData = pure
 
 -- | Creates a place for a missing node with a default location
