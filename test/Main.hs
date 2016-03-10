@@ -67,6 +67,7 @@ refactorTests =
   , "Refactor.OrganizeImports.Ctor"
   , "Refactor.OrganizeImports.Class"
   , "Refactor.OrganizeImports.Operator"
+  , "Refactor.OrganizeImports.SameName"
   ]
        
 type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
