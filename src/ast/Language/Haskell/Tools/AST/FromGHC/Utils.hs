@@ -30,6 +30,7 @@ import Language.Haskell.Tools.AST.Modules as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
+import Debug.Trace
 
 -- | Annotations that have ranges as source information.
 class RangeAnnot annot where
@@ -54,9 +55,13 @@ addImportData' imp = lift $
   do eps <- getSession >>= liftIO . readIORef . hsc_EPS
      mod <- findModule (mkModuleName . nameString $ imp ^. element&importModule&element) 
                        (fmap mkFastString $ imp ^? element&importPkg&annJust&element&stringNodeStr)
-     let importedNames = concatMap availNames $ maybe [] mi_exports 
-                                              $ flip lookupModuleEnv mod 
-                                              $ eps_PIT eps
+     -- load exported names from interface file
+     let ifaceNames = concatMap availNames $ maybe [] mi_exports 
+                                           $ flip lookupModuleEnv mod 
+                                           $ eps_PIT eps
+     -- todo: load it from the module graph
+     loadedNames <- maybe [] modInfoExports <$> getModuleInfo mod
+     let importedNames = ifaceNames ++ loadedNames
      names <- filterM (checkImportVisible (imp ^. element)) importedNames
      return $ annotation .- addSemanticInfo (ImportInfo mod importedNames names) $ imp
        
@@ -146,7 +151,7 @@ annLoc locm nodem = do loc <- locm
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok trf
   = do firstToken <- tokenLoc firstTok
-       lastToken <- tokenLoc lastTok
+       lastToken <- tokenLocBack lastTok
        local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanStart lastToken)}) trf
        
 -- | Gets the position before the given token

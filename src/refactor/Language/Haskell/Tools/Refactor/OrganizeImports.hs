@@ -71,9 +71,9 @@ narrowImportSpecs usedNames
         narrowSpecSubspec usedNames spec 
           = do let Just specName = spec ^? ieName&annotation&semanticInfo&nameInfo
                Just tt <- GHC.lookupName specName
-               let subspecsInScope = case tt of ATyCon tc -> map getName (tyConDataCons tc) 
-                                                               `intersect` usedNames
-                                                _ -> []
+               let subspecsInScope = case tt of ATyCon tc | not (isClassTyCon tc) 
+                                                  -> map getName (tyConDataCons tc) `intersect` usedNames
+                                                _ -> usedNames
                ieSubspec&annJust !- narrowImportSubspecs subspecsInScope $ spec
   
         isNeededSpec :: Ann IESpec STWithNames -> Bool

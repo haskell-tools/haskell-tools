@@ -119,8 +119,8 @@ trfIESpec' (IEThingAll n)
   = Just <$> (AST.IESpec <$> trfName n <*> (makeJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
   = Just <$> (AST.IESpec <$> trfName n
-                         <*> (makeJust <$> annLoc (tokensLoc [AnnOpenP, AnnCloseP]) 
-                                                  (AST.SubSpecList <$> makeList (before AnnCloseP) (mapM trfName ls))))
+                         <*> (makeJust <$> between AnnOpenP AnnCloseP 
+                                                  (annCont $ AST.SubSpecList <$> makeList (after AnnOpenP) (mapM trfName ls))))
 trfIESpec' _ = pure Nothing
   
  

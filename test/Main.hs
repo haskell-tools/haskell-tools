@@ -21,46 +21,53 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
 
 main :: IO Counts
-main = runTestTT $ TestList $ map makeReprintTest 
-        [ "CppHsPos"
-        , "Decl.ClosedTypeFamily"
-        , "Decl.DataFamily"
-        , "Decl.DataType"
-        , "Decl.DataTypeDerivings"
-        , "Decl.FunBind"
-        , "Decl.FunGuards"
-        , "Decl.LocalBindings"
-        , "Decl.ParamDataType"
-        , "Decl.PatternBind"
-        , "Decl.RecordType"
-        , "Decl.TypeClass"
-        , "Decl.TypeFamily"
-        , "Decl.TypeInstance"
-        , "Decl.TypeSynonym"
-        , "Decl.ValBind"
-        , "Expr.GeneralizedListComp"
-        , "Expr.If"
-        , "Expr.ListComp"
-        , "Expr.Negate"
-        , "Expr.Operator"
-        , "Expr.ParListComp"
-        , "Expr.RecordWildcards"
-        , "Expr.Sections"
-        , "Module.Simple"
-        , "Module.Export"
-        , "Module.Import"
-        , "Pattern.Constructor"
-        , "Type.Bang"
-        , "Type.Ctx"
-        , "Type.Forall"
-        , "Type.Wildcard"
-        ] ++ map makeOrganizeImportsTest
-        [ "Refactor.OrganizeImports.Narrow"
-        , "Refactor.OrganizeImports.Reorder"
-        , "Refactor.OrganizeImports.Unused"
-        , "Refactor.OrganizeImports.Ctor"
-        -- , "Refactor.OrganizeImports.Class"
-        ]
+main = runTestTT $ TestList $ map makeReprintTest (languageTests ++ refactorTests)
+                               ++ map makeOrganizeImportsTest refactorTests
+        
+languageTests =
+  [ "CppHsPos"
+  , "Decl.ClosedTypeFamily"
+  , "Decl.DataFamily"
+  , "Decl.DataType"
+  , "Decl.DataTypeDerivings"
+  , "Decl.FunBind"
+  , "Decl.FunGuards"
+  , "Decl.LocalBindings"
+  , "Decl.OperatorDecl"
+  , "Decl.ParamDataType"
+  , "Decl.PatternBind"
+  , "Decl.RecordType"
+  , "Decl.TypeClass"
+  , "Decl.TypeFamily"
+  , "Decl.TypeInstance"
+  , "Decl.TypeSynonym"
+  , "Decl.ValBind"
+  , "Expr.GeneralizedListComp"
+  , "Expr.If"
+  , "Expr.ListComp"
+  , "Expr.Negate"
+  , "Expr.Operator"
+  , "Expr.ParListComp"
+  , "Expr.RecordWildcards"
+  , "Expr.Sections"
+  , "Module.Simple"
+  , "Module.Export"
+  , "Module.Import"
+  , "Pattern.Constructor"
+  , "Type.Bang"
+  , "Type.Ctx"
+  , "Type.Forall"
+  , "Type.Wildcard"
+  ]
+        
+refactorTests = 
+  [ "Refactor.OrganizeImports.Narrow"
+  , "Refactor.OrganizeImports.Reorder"
+  , "Refactor.OrganizeImports.Unused"
+  , "Refactor.OrganizeImports.Ctor"
+  , "Refactor.OrganizeImports.Class"
+  , "Refactor.OrganizeImports.Operator"
+  ]
        
 type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
        
