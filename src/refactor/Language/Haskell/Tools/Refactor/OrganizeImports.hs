@@ -48,20 +48,25 @@ sortImports :: [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
 sortImports = sortBy (ordByOccurrence `on` (^. element&importModule&element))
 
 narrowImports :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> Ghc [Ann ImportDecl STWithNames]
-narrowImports usedNames imps 
-  = mapM (\(imp,rest) -> narrowImport usedNames (map semantics rest) imp) 
-         (listViews imps)
+narrowImports usedNames imps = foldM (narrowOneImport usedNames) imps imps 
+  where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> Ann ImportDecl STWithNames -> Ghc [Ann ImportDecl STWithNames]
+        narrowOneImport names all one =
+          (\case Just x -> map (\e -> if e == one then x else e) all
+                 Nothing -> delete one all) <$> narrowImport names (map semantics all) one 
         
 narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames 
-                           -> Ghc (Ann ImportDecl STWithNames)
+                           -> Ghc (Maybe (Ann ImportDecl STWithNames))
 narrowImport usedNames otherModules imp
   | importIsExact (imp ^. element) 
-  = element&importSpec&annJust&element&importSpecList !~ narrowImportSpecs usedNames $ imp
+  = Just <$> (element&importSpec&annJust&element&importSpecList !~ narrowImportSpecs usedNames $ imp)
   | otherwise 
   = if null actuallyImported
-      then element&importSpec != ajust (mkImportSpecList []) $ imp
-      else return imp
+      then if length (otherModules ^? traversal&importedModule&filtered (== importedMod) :: [GHC.Module]) > 1 
+              then pure Nothing
+              else Just <$> (element&importSpec != ajust (mkImportSpecList []) $ imp)
+      else pure (Just imp)
   where actuallyImported = fromJust (imp ^? annotation&semanticInfo&importedNames) `intersect` usedNames
+        Just importedMod = imp ^? annotation&semanticInfo&importedModule
     
 narrowImportSpecs :: [GHC.Name] -> AnnList IESpec STWithNames -> Ghc (AnnList IESpec STWithNames)
 narrowImportSpecs usedNames 
@@ -104,9 +109,6 @@ instance TemplateAnnot (NodeInfo () SourceTemplate) where
   fromTemplate = NodeInfo ()
   getTemplate = (^. sourceInfo)
     
-listViews :: Eq a => [a] -> [(a,[a])]
-listViews ls = map (\e -> (e, delete e ls)) ls  
-  
 semantics :: Ann a STWithNames -> SemanticInfo
 semantics = (^. annotation&semanticInfo)
 

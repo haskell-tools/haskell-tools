@@ -68,6 +68,7 @@ refactorTests =
   , "Refactor.OrganizeImports.Class"
   , "Refactor.OrganizeImports.Operator"
   , "Refactor.OrganizeImports.SameName"
+  , "Refactor.OrganizeImports.Removed"
   ]
        
 type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
@@ -85,7 +86,7 @@ checkCorrectlyTransformed transform workingDir moduleName
                                               =<< transform 
                                               =<< transformRenamed 
                                               =<< parse workingDir moduleName)
-       assertEqual "The original and the transformed source differ" expected transformed
+       assertEqual "The transformed result is not what is expected" expected transformed
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)
