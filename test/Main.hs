@@ -58,6 +58,10 @@ languageTests =
   , "Type.Ctx"
   , "Type.Forall"
   , "Type.Wildcard"
+  , "Refactor.CommentHandling.CommentTypes"
+  , "Refactor.CommentHandling.BlockComments"
+  , "Refactor.CommentHandling.Crosslinking"
+  , "Refactor.CommentHandling.FunctionArgs"
   ]
         
 refactorTests = 

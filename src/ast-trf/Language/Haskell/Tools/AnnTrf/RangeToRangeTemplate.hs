@@ -4,7 +4,7 @@
            , TemplateHaskell 
            , DeriveDataTypeable 
            #-}
-module Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate where
+module Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate (cutUpRanges, fixRanges) where
 
 import Language.Haskell.Tools.AST
 
@@ -33,13 +33,34 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         
         -- combine the current node with its children, and add it to the list of current nodes
         f ni = do (below : top : xs) <- get
-                  put ([] : (top ++ [ expandSourceInfo (ni ^. sourceInfo) below ]) : xs)
+                  put ([] : (top ++ [ expandAsNodeInfo (ni ^. sourceInfo) below ]) : xs)
                   return (sourceInfo .- cutOutElem below $ ni)
 
-expandSourceInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
-expandSourceInfo ns@(NodeSpan _) _ = ns
-expandSourceInfo (OptionalPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
-expandSourceInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+-- | Modifies ranges to contain their children
+fixRanges :: StructuralTraversable node 
+          => Ann node (NodeInfo sema SpanInfo) 
+          -> Ann node (NodeInfo sema SpanInfo)
+fixRanges node = evalState (traverseUp desc asc f node) [[],[]]
+  where -- keep the stack to contain the children elements on the place of the parent element
+        desc = modify ([]:)
+        asc  = modify tail
+        
+        f ni = do (below : top : xs) <- get
+                  put ([] : (top ++ [ expandAsNodeToContain (ni ^. sourceInfo) below ]) : xs)
+                  return (sourceInfo .- expandToContain below $ ni)
+                  
+expandAsNodeInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
+expandAsNodeInfo ns@(NodeSpan _) _ = ns
+expandAsNodeInfo (OptionalPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+expandAsNodeInfo (ListPos loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+
+expandToContain :: [SpanInfo] -> SpanInfo -> SpanInfo
+expandToContain cont (NodeSpan sp) = NodeSpan (foldl1 combineSrcSpans $ sp : map spanRange cont)
+expandToContain _ oth = oth
+
+expandAsNodeToContain :: SpanInfo -> [SpanInfo] -> SpanInfo
+expandAsNodeToContain ns@(NodeSpan _) ls = expandToContain ls ns
+expandAsNodeToContain oth ls = expandAsNodeInfo oth ls
                   
 -- | Cuts out a list of source ranges from a given range
 cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate

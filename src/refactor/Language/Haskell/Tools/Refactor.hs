@@ -65,7 +65,7 @@ analyze workingDir moduleName =
         transformed <- runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="
-        let commented = placeComments (snd annots) transformed
+        let commented = fixRanges $ placeComments (snd annots) transformed
         liftIO $ putStrLn $ rangeDebug commented
         liftIO $ putStrLn "==========="
         let cutUp = cutUpRanges commented
