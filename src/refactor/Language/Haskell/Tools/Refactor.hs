@@ -7,6 +7,7 @@ import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
+import Language.Haskell.Tools.AnnTrf.PlaceComments
 import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RangeDebug
@@ -40,13 +41,7 @@ import Language.Haskell.Tools.Refactor.OrganizeImports
  
 import DynFlags
 import StringBuffer
-
-instance Show (GenLocated SrcSpan AnnotationComment) where
-  show = show . unLoc
-  
--- instance Show SourceAndName where
-  -- show (SN name range) = maybe "" (showSDocUnsafe . ppr) name ++ shortShowSpan range
- 
+    
 analyze :: String -> String -> IO ()
 analyze workingDir moduleName = 
       runGhc (Just libdir) $ do
@@ -60,22 +55,20 @@ analyze workingDir moduleName =
         p <- parseModule modSum
         t <- typecheckModule p
         let r = tm_renamed_source t
-        let annots = fst $ pm_annotations $ tm_parsed_module t
+        let annots = pm_annotations $ tm_parsed_module t
 
-        -- trfAst <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
-        -- let mod = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ cutUpRanges trfAst
-        -- res <- organizeImports mod
-        -- liftIO $ putStrLn $ prettyPrint res
- 
+
+        -- liftIO $ putStrLn $ show annots
+        -- liftIO $ putStrLn "==========="
         liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn "==========="
-        transformed <- runTrf annots $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+        transformed <- runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="
-        -- transformed <- runTrf annots $ trfModule (pm_parsed_source $ tm_parsed_module t)
-        -- liftIO $ putStrLn $ rangeDebug transformed
-        -- liftIO $ putStrLn "==========="
-        let cutUp = cutUpRanges transformed
+        let commented = placeComments (snd annots) transformed
+        liftIO $ putStrLn $ rangeDebug commented
+        liftIO $ putStrLn "==========="
+        let cutUp = cutUpRanges commented
         liftIO $ putStrLn $ templateDebug cutUp
         liftIO $ putStrLn "==========="
         -- let locIndices = getLocIndices cutUp

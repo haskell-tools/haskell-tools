@@ -37,10 +37,12 @@ makeReferences ''NodeInfo
 
 -- | Location info for different types of nodes
 data SpanInfo 
-  = NodeSpan SrcSpan
-  | ListPos SrcLoc
-  | OptionalPos SrcLoc
+  = NodeSpan { _nodeSpan :: SrcSpan }
+  | ListPos { _listPos :: SrcLoc }
+  | OptionalPos { _optionalPos :: SrcLoc }
   deriving (Eq, Show)
+  
+makeReferences ''SpanInfo
 
 -- | Extracts the concrete range corresponding to a given span.
 -- In case of lists and optional elements, it may not contain the elements inside.
