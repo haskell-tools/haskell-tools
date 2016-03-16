@@ -1,12 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables
            , StandaloneDeriving
            , DeriveDataTypeable 
+           , FlexibleContexts 
+           , LambdaCase 
            #-}
 module Language.Haskell.Tools.AnnTrf.PlaceComments where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Maybe (listToMaybe)
+import Data.Maybe
+import Data.List
 import Data.Char (isSpace)
 import Data.Data
 import Data.Generics.Uniplate.Data
@@ -17,9 +20,6 @@ import Data.StructuralTraversal
 
 import SrcLoc
 import ApiAnnotation
-
-import Outputable
-import Debug.Trace
 
 import Language.Haskell.Tools.AST
 
@@ -38,6 +38,8 @@ ty_RealSrcLoc = mkDataType "SrcLoc.RealSrcLoc" [con_RealSrcLoc]
   
 deriving instance Data SpanInfo
 
+-- | Puts comments in the nodes they should be attached to. Leaves the AST in a state where parent nodes
+-- does not contain all of their children.
 placeComments :: (StructuralTraversable node, Data sema, Data (node (NodeInfo sema SpanInfo)), Typeable node)
               => Map.Map SrcSpan [Located AnnotationComment] 
               -> Ann node (NodeInfo sema SpanInfo) 
@@ -62,27 +64,38 @@ resizeAnnots :: forall node sema . (Data sema, Data (node (NodeInfo sema SpanInf
                   -> Ann node (NodeInfo sema SpanInfo) 
                   -> Ann node (NodeInfo sema SpanInfo) 
 resizeAnnots comments elem
-  = flip evalState comments $ transformBiM (expandAnnot :: ExpandType Module sema)
-                                >=> transformBiM (expandAnnot :: ExpandType ImportDecl sema)
-                                >=> transformBiM (expandAnnot :: ExpandType Decl sema)
-                                >=> transformBiM (expandAnnot :: ExpandType ClassElement sema)
-                                >=> transformBiM (expandAnnot :: ExpandType ConDecl sema)
-                                >=> transformBiM (expandAnnot :: ExpandType FieldDecl sema)
-                                >=> transformBiM (expandAnnot :: ExpandType LocalBind sema)
-                                -- >=> transformBiM expandAnnotToFunArgs
-                            $ elem
+  = flip evalState comments $ 
+        -- if a comment that could be attached to more than one documentable element (possibly nested) 
+        -- the order of different documentable elements here decide which will be chosen
+        transformBiM (expandAnnot :: ExpandType Module sema)
+          >=> transformBiM (expandAnnot :: ExpandType ImportDecl sema)
+          >=> transformBiM (expandAnnotToFunArgs :: ExpandType TypeSignature sema)
+          >=> transformBiM (expandAnnot :: ExpandType Decl sema)
+          >=> transformBiM (expandAnnot :: ExpandType ClassElement sema)
+          >=> transformBiM (expandAnnot :: ExpandType ConDecl sema)
+          >=> transformBiM (expandAnnot :: ExpandType FieldDecl sema)
+          >=> transformBiM (expandAnnot :: ExpandType LocalBind sema)
+      $ elem
 
 type ExpandType elem sema = Ann elem (NodeInfo sema SpanInfo) 
                               -> State [((SrcLoc, SrcLoc), Located AnnotationComment)]
                                        (Ann elem (NodeInfo sema SpanInfo))
 
-expandAnnot :: ExpandType elem sema
+expandAnnot :: forall elem sema . ExpandType elem sema
 expandAnnot elem
   = do let Just sp = elem ^? annotation&sourceInfo&nodeSpan
        applicable <- gets (applicableComments (srcSpanStart sp) (srcSpanEnd sp))
-       -- TODO: remove all comments covered by the combined src span
-       return $ foldl addCommentToNode elem (map snd applicable)
-  where addCommentToNode elem comm = annotation&sourceInfo&nodeSpan .- combineSrcSpans (getLoc comm) $ elem
+       -- this check is just for performance (quick return if no modification is needed)
+       if not (null applicable) then do
+         -- the new span is the original plus all the covered spans
+         let newSp@(RealSrcSpan newSpan) 
+               = foldl combineSrcSpans (fromJust $ elem ^? nodeSp) (map (getLoc . snd) applicable)
+         -- take out all comments that are now covered
+         modify (filter (not . (\case RealSrcSpan s -> newSpan `containsSpan` s; _ -> True) . getLoc . snd))
+         return $ nodeSp .= newSp $ elem
+       else return elem
+  where nodeSp :: Simple Partial (Ann elem (NodeInfo sema SpanInfo)) SrcSpan
+        nodeSp = annotation&sourceInfo&nodeSpan
         
 -- This classification does not prefer inline comments to previous line comments, this is implicitely done
 -- by the order in which the elements are traversed.
@@ -92,17 +105,17 @@ applicableComments :: SrcLoc -> SrcLoc
 applicableComments start end comments = filter applicableComment comments
   where -- A comment that starts with | binds to the next documented element
         applicableComment ((_, before), L _ comm) 
-          | isCommentOnNext comm = trace ("next: " ++ showSDocUnsafe (ppr (comm, before, start))) $ before == start
+          | isCommentOnNext comm = before == start
         -- A comment that starts with ^ binds to the previous documented element
         applicableComment ((after, _), L _ comm) 
-          | isCommentOnPrev comm = trace ("prev: " ++ showSDocUnsafe (ppr (comm, after, end))) $ after == end
+          | isCommentOnPrev comm = after == end
         -- All other comment binds to the previous definition if it is on the same line
         -- or the next one if that is on the next line
         applicableComment ((after, _), L (RealSrcSpan loc) _) 
-          | after == end && (srcLocLine $ realSrcSpanStart loc) == getLineLocDefault end = trace ("simple ONLINE") $ True
+          | after == end && (srcLocLine $ realSrcSpanStart loc) == getLineLocDefault end = True
         applicableComment ((_, before), L (RealSrcSpan loc) _) 
-          | before == start && (srcLocLine $ realSrcSpanEnd loc) + 1 == getLineLocDefault start = trace ("simple PREVLINE") $ True
-        applicableComment comm = trace ("simple: " ++ showSDocUnsafe (ppr (comm,start,end))) $ False
+          | before == start && (srcLocLine $ realSrcSpanEnd loc) + 1 == getLineLocDefault start = True
+        applicableComment _ = False
         
         getLineLocDefault (RealSrcLoc l) = srcLocLine l
         getLineLocDefault _              = -1
@@ -126,5 +139,5 @@ isCommentOnPrev _ = False
 firstNonspaceCharIs :: Char -> String -> Bool
 firstNonspaceCharIs c s = Just c == listToMaybe (dropWhile isSpace (drop 2 s))
 
--- expandAnnotToFunArgs :: ExpandType TypeSignature sema
--- expandAnnotToFunArgs ts = element&tsType&typeParams !~ expandAnnot ts
+expandAnnotToFunArgs :: ExpandType TypeSignature sema
+expandAnnotToFunArgs = element&tsType&typeParams !~ expandAnnot
