@@ -31,7 +31,7 @@ trfDoStmt' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.Stmt r)
 trfDoStmt' (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> trfExpr expr
 trfDoStmt' (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
 trfDoStmt' (LetStmt binds) = AST.LetStmt <$> trfLocalBinds binds
-trfDoStmt' (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList trfDoStmt' stmts
+trfDoStmt' (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," trfDoStmt' stmts
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
@@ -58,9 +58,9 @@ trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
 extractActualStmt :: TransformName n r => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt r)
 extractActualStmt = \case
   TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
-    -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe trfExpr by)
+    -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe "," "" trfExpr by)
   TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by } 
-    -> addAnnotation by using (AST.GroupStmt <$> (makeJust <$> trfExpr using) <*> trfMaybe trfExpr by)
+    -> addAnnotation by using (AST.GroupStmt <$> (makeJust <$> trfExpr using) <*> trfMaybe "," "" trfExpr by)
   where addAnnotation by using
           = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
                       <$> tokenLocBack AnnThen)

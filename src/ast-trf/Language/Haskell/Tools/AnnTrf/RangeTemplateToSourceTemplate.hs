@@ -28,9 +28,9 @@ rangeToSource srcInput tree = let locIndices = getLocIndices tree
 getLocIndices :: StructuralTraversable e => Ann e (NodeInfo sema RangeTemplate) -> Map OrdSrcSpan Int
 getLocIndices = snd . flip execState (0, empty) .
   traverseDown (return ()) (return ()) 
-               (mapM_ (\case RangeElem sp       -> modify (insertElem sp)
-                             RangeListElem seps -> mapM_ (modify . insertElem) seps
-                             _                  -> return ()
+               (mapM_ (\case RangeElem sp         -> modify (insertElem sp)
+                             RangeListElem _ seps -> mapM_ (modify . insertElem) seps
+                             _                    -> return ()
                       ) . (^. sourceInfo&rangeTemplateElems))
   where insertElem sp = (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
                              
@@ -59,8 +59,8 @@ applyFragments srcs = flip evalState srcs
                                        put rest
                                        return (TextElem src)
         getTextFor RangeChildElem = return ChildElem
-        getTextFor RangeOptionalElem = return OptionalChildElem
-        getTextFor (RangeListElem seps) = do (own, rest) <- splitAt (length seps) <$> get 
-                                             put rest
-                                             return (ChildListElem own)
+        getTextFor (RangeOptionalElem bef aft) = return (OptionalChildElem bef aft)
+        getTextFor (RangeListElem sep seps) = do (own, rest) <- splitAt (length seps) <$> get 
+                                                 put rest
+                                                 return (ChildListElem sep own)
         

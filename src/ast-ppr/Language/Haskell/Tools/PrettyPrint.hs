@@ -28,16 +28,18 @@ printRose' (RoseTree (TextElem txt : rest) children)
   = fromList txt >< printRose' (RoseTree rest children) 
 printRose' (RoseTree (ChildElem : rest) (child : children)) 
   = printRose' child >< printRose' (RoseTree rest children) 
-printRose' (RoseTree [ChildListElem _] []) = empty
-printRose' (RoseTree [ChildListElem []] (child : children)) 
-  = printRose' child >< printRose' (RoseTree [ChildListElem []] children)
-printRose' (RoseTree [ChildListElem (sep : rest)] (child : children)) 
-  = printRose' child 
-      >< (if null children then empty else fromList sep) 
-      >< printRose' (RoseTree [ChildListElem (if null rest then sep : rest else rest)] children)
-printRose' (RoseTree [OptionalChildElem] []) = empty
-printRose' (RoseTree [OptionalChildElem] (child : [])) = printRose' child
-printRose' (RoseTree [OptionalChildElem] _) = error ("More than one child element in an optional node.")
+  
+printRose' (RoseTree [ChildListElem _ _] []) = empty
+printRose' (RoseTree [ChildListElem _ _] [child]) = printRose' child
+printRose' (RoseTree [ChildListElem sep []] (child : children@(_:_))) 
+  = printRose' child >< fromList sep >< printRose' (RoseTree [ChildListElem sep []] children)
+printRose' (RoseTree [ChildListElem s (sep : rest)] (child : children@(_:_))) 
+  = printRose' child >< fromList sep
+      >< printRose' (RoseTree [ChildListElem s (if null rest then sep : rest else rest)] children)
+      
+printRose' (RoseTree [OptionalChildElem _ _] []) = empty
+printRose' (RoseTree [OptionalChildElem bef aft] [child]) = fromList bef >< printRose' child >< fromList aft
+printRose' (RoseTree [OptionalChildElem _ _] _) = error ("More than one child element in an optional node.")
 printRose' (RoseTree [] []) = empty 
 printRose' r@(RoseTree (ChildElem : rest) []) = error ("More child elem in template than actual children. In: " ++ show r)
 printRose' r@(RoseTree [] children) = error ("Not all children are used to pretty printing. In: " ++ show r) 

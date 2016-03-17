@@ -1,4 +1,4 @@
 module Refactor.OrganizeImports.Unused where
 
-import Control.Monad()
+import Control.Monad ()
 

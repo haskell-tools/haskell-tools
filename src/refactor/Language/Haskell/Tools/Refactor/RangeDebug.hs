@@ -22,8 +22,8 @@ rangeDebug = treeDebug' (shortShowSpanInfo . (^. sourceInfo)) 0
       
 shortShowSpanInfo :: SpanInfo -> String
 shortShowSpanInfo (NodeSpan sp) = shortShowSpan sp
-shortShowSpanInfo (OptionalPos loc) = "?" ++ shortShowLoc loc
-shortShowSpanInfo (ListPos loc) = "*" ++ shortShowLoc loc
+shortShowSpanInfo (OptionalPos _ _ loc) = "?" ++ shortShowLoc loc
+shortShowSpanInfo (ListPos _ loc) = "*" ++ shortShowLoc loc
       
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??" 
@@ -49,8 +49,8 @@ shortShowSourceTemplate temp = "ˇ" ++ (concatMap showSourceTemplateElem $ temp 
 
 showSourceTemplateElem (TextElem sp) = sp
 showSourceTemplateElem (ChildElem) = "«.»"
-showSourceTemplateElem (OptionalChildElem) = "«?»"
-showSourceTemplateElem (ChildListElem _) = "«*»"
+showSourceTemplateElem (OptionalChildElem _ _) = "«?»"
+showSourceTemplateElem (ChildListElem _ _) = "«*»"
       
 class TreeDebug e a where
   treeDebug' :: (a -> String) -> Int -> e a -> String

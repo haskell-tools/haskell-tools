@@ -35,16 +35,16 @@ import Debug.Trace
 -- | Annotations that have ranges as source information.
 class RangeAnnot annot where
   toNodeAnnot :: SrcSpan -> annot
-  toListAnnot :: SrcLoc -> annot
-  toOptAnnot :: SrcLoc -> annot
+  toListAnnot :: String -> SrcLoc -> annot
+  toOptAnnot :: String -> String -> SrcLoc -> annot
   addSemanticInfo :: SemanticInfo -> annot -> annot
   extractRange :: annot -> SrcSpan
   addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
 instance RangeAnnot RangeWithName where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
-  toListAnnot = NodeInfo NoSemanticInfo . ListPos
-  toOptAnnot = NodeInfo NoSemanticInfo . OptionalPos
+  toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep
+  toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
   addSemanticInfo si = semanticInfo .= si
   extractRange = spanRange . (^. sourceInfo)
   addImportData = addImportData'
@@ -84,19 +84,19 @@ ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) 
     
 instance RangeAnnot RangeInfo where
   toNodeAnnot = NodeInfo () . NodeSpan
-  toListAnnot = NodeInfo () . ListPos
-  toOptAnnot = NodeInfo () . OptionalPos
+  toListAnnot sep = NodeInfo () . ListPos sep
+  toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
   addSemanticInfo si = id
   extractRange = spanRange . (^. sourceInfo)
   addImportData = pure
 
 -- | Creates a place for a missing node with a default location
-nothing :: RangeAnnot a => Trf SrcLoc -> Trf (AnnMaybe e a)
-nothing pos = annNothing . toOptAnnot <$> pos 
+nothing :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf (AnnMaybe e a)
+nothing bef aft pos = annNothing . toOptAnnot bef aft <$> pos 
 
 -- | Creates a place for a list of nodes with a default place if the list is empty.
-makeList :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
-makeList ann ls = AnnList <$> (toListAnnot <$> ann) <*> ls
+makeList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeList sep ann ls = AnnList <$> (toListAnnot sep <$> ann) <*> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
@@ -104,13 +104,13 @@ trfLoc :: RangeAnnot i => (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
 trfLoc = trfLocCorrect pure
 
 -- | Transforms a possibly-missing node with the default location of the end of the focus.
-trfMaybe :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
-trfMaybe f = trfMaybeDefault f atTheEnd
+trfMaybe :: RangeAnnot i => String -> String -> (Located a -> Trf (Ann e i)) -> Maybe (Located a) -> Trf (AnnMaybe e i)
+trfMaybe bef aft f = trfMaybeDefault bef aft f atTheEnd
 
 -- | Transforms a possibly-missing node with a default location
-trfMaybeDefault :: RangeAnnot i => (Located a -> Trf (Ann e i)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybe e i)
-trfMaybeDefault f _ (Just e) = makeJust <$> f e
-trfMaybeDefault _ loc Nothing = nothing loc
+trfMaybeDefault :: RangeAnnot i => String -> String -> (Located a -> Trf (Ann e i)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybe e i)
+trfMaybeDefault _   _   f _   (Just e) = makeJust <$> f e
+trfMaybeDefault bef aft _ loc Nothing  = nothing bef aft loc
 
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
@@ -129,17 +129,17 @@ trfListLoc :: RangeAnnot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
 trfListLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
 
 -- | Creates a place for a list of nodes with the default place at the end of the focus if the list is empty.
-trfAnnList :: RangeAnnot i => (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)
-trfAnnList _ [] = makeList atTheEnd (pure [])
-trfAnnList f ls = makeList (pure $ noSrcLoc) (mapM (trfLoc f) ls)
+trfAnnList :: RangeAnnot i => String -> (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)
+trfAnnList sep _ [] = makeList sep atTheEnd (pure [])
+trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f) ls)
 
 -- | Creates a place for a list of nodes that cannot be empty.
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
-nonemptyAnnList = AnnList (toListAnnot noSrcLoc)
+nonemptyAnnList = AnnList (toListAnnot "" noSrcLoc)
 
 -- | Creates an optional node from an existing element
 makeJust :: RangeAnnot a => Ann e a -> AnnMaybe e a
-makeJust e = AnnMaybe (toOptAnnot noSrcLoc) (Just e)
+makeJust e = AnnMaybe (toOptAnnot "" "" noSrcLoc) (Just e)
 
 -- | Annotates a node with the given location and focuses on the given source span.
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)

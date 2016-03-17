@@ -78,7 +78,7 @@ trfSimplName start n = (\srcLoc -> Ann (toNodeAnnot $ mkSrcSpan start srcLoc) $ 
                 
 
 trfNameStr :: RangeAnnot a => String -> Trf (AnnList SimpleName a, SrcLoc)
-trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList (toListAnnot srcLoc) ls, loc))
+trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList (toListAnnot "." srcLoc) ls, loc))
   (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
                           in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)

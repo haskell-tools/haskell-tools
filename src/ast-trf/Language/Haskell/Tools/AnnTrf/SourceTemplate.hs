@@ -9,10 +9,15 @@ import Data.String
 import Control.Reference
 import SrcLoc
 
-data SourceTemplateElem = TextElem String 
-                        | ChildElem
-                        | OptionalChildElem
-                        | ChildListElem [String]
+data SourceTemplateElem 
+  = TextElem String 
+  | ChildElem
+  | OptionalChildElem { _srcTmpBefore :: String
+                      , _srcTmpAfter :: String
+                      }
+  | ChildListElem { _srcTmpDefaultSeparator :: String
+                  , _srcTmpSeparators :: [String] 
+                  }
      deriving (Eq, Ord, Data)
 
 -- | A pattern that controls how the original source code can be
@@ -27,8 +32,8 @@ makeReferences ''SourceTemplate
 instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem) = "«.»"
-  show (OptionalChildElem) = "«?»"
-  show (ChildListElem _) = "«*»"
+  show (OptionalChildElem _ _) = "«?»"
+  show (ChildListElem _ _) = "«*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp
@@ -42,13 +47,19 @@ child :: SourceTemplate
 child = SourceTemplate noSrcSpan [ChildElem]
 
 opt :: SourceTemplate
-opt = SourceTemplate noSrcSpan [OptionalChildElem]
+opt = SourceTemplate noSrcSpan [OptionalChildElem "" ""]
+
+optBefore :: String -> SourceTemplate
+optBefore s = SourceTemplate noSrcSpan [OptionalChildElem s ""]
+
+optAfter :: String -> SourceTemplate
+optAfter s = SourceTemplate noSrcSpan [OptionalChildElem "" s]
 
 list :: SourceTemplate
-list = SourceTemplate noSrcSpan [ChildListElem []]
+list = SourceTemplate noSrcSpan [ChildListElem "" []]
 
 listSep :: String -> SourceTemplate
-listSep s = SourceTemplate noSrcSpan [ChildListElem [s]]
+listSep s = SourceTemplate noSrcSpan [ChildListElem s []]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)

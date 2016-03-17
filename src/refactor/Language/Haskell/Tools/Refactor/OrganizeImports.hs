@@ -63,7 +63,7 @@ narrowImport usedNames otherModules imp
   = if null actuallyImported
       then if length (otherModules ^? traversal&importedModule&filtered (== importedMod) :: [GHC.Module]) > 1 
               then pure Nothing
-              else Just <$> (element&importSpec != ajust (mkImportSpecList []) $ imp)
+              else Just <$> (element&importSpec !- toJust (mkImportSpecList []) $ imp)
       else pure (Just imp)
   where actuallyImported = fromJust (imp ^? annotation&semanticInfo&importedNames) `intersect` usedNames
         Just importedMod = imp ^? annotation&semanticInfo&importedModule
@@ -133,8 +133,10 @@ replaceList elems (AnnList a _)
   = AnnList (fromTemplate (listSep mostCommonSeparator)) elems
   where mostCommonSeparator  
           = case getTemplate a ^. sourceTemplateElems of 
-              [ChildListElem seps] -> head $ maximumBy (compare `on` length) $ group $ sort seps
-              
+              [ChildListElem sep seps] -> case maximumBy (compare `on` length) $ group $ sort seps of 
+                                           [] -> sep
+                                           sep:_ -> sep
+
 mkUnqualName :: TemplateAnnot a => String -> Ann Name a
 mkUnqualName n = Ann (fromTemplate $ child <> child) 
                      (Name emptyList (Ann (fromTemplate (fromString n)) 
@@ -143,8 +145,8 @@ mkUnqualName n = Ann (fromTemplate $ child <> child)
 emptyList :: TemplateAnnot a => AnnList e a
 emptyList = AnnList (fromTemplate list) []
               
-ajust :: TemplateAnnot a => Ann e a -> AnnMaybe e a            
-ajust e = AnnMaybe (fromTemplate opt) (Just e)
+toJust :: TemplateAnnot a => Ann e a -> AnnMaybe e a -> AnnMaybe e a            
+toJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
 
 noth :: TemplateAnnot a => AnnMaybe e a
 noth = AnnMaybe (fromTemplate opt) Nothing

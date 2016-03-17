@@ -38,8 +38,13 @@ makeReferences ''NodeInfo
 -- | Location info for different types of nodes
 data SpanInfo 
   = NodeSpan { _nodeSpan :: SrcSpan }
-  | ListPos { _listPos :: SrcLoc }
-  | OptionalPos { _optionalPos :: SrcLoc }
+  | ListPos { _listDefaultSep :: String
+            , _listPos :: SrcLoc 
+            }
+  | OptionalPos { _optionalBefore :: String
+                , _optionalAfter :: String 
+                , _optionalPos :: SrcLoc 
+                }
   deriving (Eq, Show)
   
 makeReferences ''SpanInfo
@@ -48,8 +53,8 @@ makeReferences ''SpanInfo
 -- In case of lists and optional elements, it may not contain the elements inside.
 spanRange :: SpanInfo -> SrcSpan
 spanRange (NodeSpan sp) = sp
-spanRange (ListPos pos) = srcLocSpan pos
-spanRange (OptionalPos pos) = srcLocSpan pos
+spanRange (ListPos _ pos) = srcLocSpan pos
+spanRange (OptionalPos _ _ pos) = srcLocSpan pos
   
 type RangeInfo = NodeInfo () SpanInfo
 type RangeWithName = NodeInfo SemanticInfo SpanInfo

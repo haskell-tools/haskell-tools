@@ -39,8 +39,8 @@ trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ
 trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
-trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList trfType' typs
-trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList trfType' typs
+trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
+trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList ", " trfType' typs
 trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfName (snd op) <*> trfType t2
 trfType' (HsParTy typ) = AST.TyParen <$> trfType typ
 trfType' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
@@ -56,26 +56,26 @@ trfType' HsWildcardTy = pure AST.TyWildcard
 trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> trfNameSp' name
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
-trfBindings vars = trfAnnList trfTyVar' vars
+trfBindings vars = trfAnnList "\n" trfTyVar' vars
   
 trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar r)
 trfTyVar = trfLoc trfTyVar' 
   
 trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
 trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> trfNameSp' name
-                                           <*> (nothing atTheEnd)
+                                           <*> (nothing " " "" atTheEnd)
 trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
   
 trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
-trfCtx sp (L l []) = nothing sp
+trfCtx sp (L l []) = nothing " " "" sp
 trfCtx _ (L l [L _ (HsParTy t)]) 
   = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                        (AST.ContextMulti <$> trfAnnList trfAssertion' [t])
+                        (AST.ContextMulti <$> trfAnnList ", " trfAssertion' [t])
 trfCtx _ (L l [t]) 
   = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                         (AST.ContextOne <$> trfAssertion t)
 trfCtx _ (L l ctx) = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                                         (AST.ContextMulti <$> trfAnnList trfAssertion' ctx) 
+                                         (AST.ContextMulti <$> trfAnnList ", " trfAssertion' ctx) 
   
 trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
 trfAssertion = trfLoc trfAssertion'
@@ -86,7 +86,7 @@ trfAssertion' (HsOpTy left op right) = AST.InfixAssert <$> trfType left
                                                        <*> trfType right
 trfAssertion' t = case base of
    HsTyVar name -> AST.ClassAssert <$> (trfNameSp name =<< (case sp of Just l -> pure l; _ -> asks contRange))
-                                   <*> trfAnnList trfType' args
+                                   <*> trfAnnList " " trfType' args
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)

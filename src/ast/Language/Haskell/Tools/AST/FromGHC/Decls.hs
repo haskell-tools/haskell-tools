@@ -36,11 +36,11 @@ import qualified Language.Haskell.Tools.AST.Decls as AST
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments
-trfDecls decls = makeList atTheEnd (mapM trfDecl decls)
+trfDecls decls = makeList "\n" atTheEnd (mapM trfDecl decls)
 
 trfDeclsGroup :: HsGroup Name -> Trf (AnnList AST.Decl RangeWithName)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = makeList atTheEnd (fmap (orderDefs . concat) $ sequence $
+  = makeList "\n" atTheEnd (fmap (orderDefs . concat) $ sequence $
       [ trfBindOrSig vals
       , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
       , mapM (trfDecl . (fmap SpliceD)) splices
@@ -79,13 +79,13 @@ trfDecl = trfLoc $ \case
         in AST.DataDecl <$> trfDataKeyword nd
                         <*> trfCtx ctxLoc ctx
                         <*> createDeclHead name vars
-                        <*> makeList consLoc (mapM trfConDecl cons)
-                        <*> trfMaybe trfDerivings derivs
+                        <*> makeList " | " consLoc (mapM trfConDecl cons)
+                        <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
-    -> AST.InstDecl <$> trfMaybeDefault trfOverlap (after AnnInstance) overlap <*> trfInstanceRule typ 
+    -> AST.InstDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule typ 
                     <*> trfInstBody binds sigs typefam datafam
   -- InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd ctx ct kind cons derivs) _))
     -- -> AST.DataInstDecl <$> trfDataKeyword nd
@@ -110,9 +110,9 @@ trfConDecl = trfLoc trfConDecl'
 
 trfConDecl' :: TransformName n r => ConDecl n -> Trf (AST.ConDecl r)
 trfConDecl' (ConDecl { con_names = [name], con_details = PrefixCon args })
-  = AST.ConDecl <$> trfName name <*> makeList atTheEnd (mapM trfType args)
+  = AST.ConDecl <$> trfName name <*> makeList " " atTheEnd (mapM trfType args)
 trfConDecl' (ConDecl { con_names = [name], con_details = RecCon (unLoc -> flds) })
-  = AST.RecordDecl <$> trfName name <*> (between AnnOpenC AnnCloseC $ trfAnnList trfFieldDecl' flds)
+  = AST.RecordDecl <$> trfName name <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDecl { con_names = [name], con_details = InfixCon t1 t2 })
   = AST.InfixConDecl <$> trfName name <*> trfType t1 <*> trfType t2
 
@@ -125,7 +125,7 @@ trfFieldDecl' (ConDeclField names typ _) = AST.FieldDecl <$> (nonemptyAnnList <$
 trfDerivings :: TransformName n r => Located [LHsType n] -> Trf (Ann AST.Deriving r)
 trfDerivings = trfLoc $ \case
   [typ@(unLoc -> HsTyVar cls)] -> AST.DerivingOne <$> trfInstanceHead typ
-  derivs -> AST.Derivings <$> trfAnnList trfInstanceHead' derivs
+  derivs -> AST.Derivings <$> trfAnnList ", " trfInstanceHead' derivs
   
 trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceRule r)
 trfInstanceRule = trfLoc $ \case
@@ -133,13 +133,13 @@ trfInstanceRule = trfLoc $ \case
       -> AST.InstanceRule <$> (makeJust <$> annLoc (pure $ collectLocs (hsq_tvs bndrs)) (trfBindings (hsq_tvs bndrs))) 
                           <*> trfCtx (after AnnDot) ctx
                           <*> trfInstanceHead typ
-    (HsForAllTy Implicit _ _ ctx typ) -> AST.InstanceRule <$> nothing atTheStart 
+    (HsForAllTy Implicit _ _ ctx typ) -> AST.InstanceRule <$> nothing "" " . " atTheStart 
                                                           <*> trfCtx atTheStart ctx
                                                           <*> trfInstanceHead typ
     HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
     HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> trfNameSp' tv)
     HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
-  where instanceHead hd = AST.InstanceRule <$> (nothing atTheStart) <*> (nothing atTheStart) <*> hd
+  where instanceHead hd = AST.InstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
                                  
 trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead r)
 trfInstanceHead = trfLoc trfInstanceHead'
@@ -155,7 +155,7 @@ trfInstanceHead' (HsOpTy t1 (_,op) t2)
                         <*> trfType t2
  
 trfTypeEqs :: TransformName n r => [Located (TyFamInstEqn n)] -> Trf (AnnList AST.TypeEqn r)
-trfTypeEqs eqs = makeList (after AnnWhere) (mapM trfTypeEq eqs)
+trfTypeEqs eqs = makeList "\n" (after AnnWhere) (mapM trfTypeEq eqs)
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn r)
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
@@ -169,7 +169,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
                   (hswb_cts pats)
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
-trfFunDeps [] = nothing $ before AnnWhere
+trfFunDeps [] = nothing "|" "" $ before AnnWhere
 trfFunDeps _ = error "trfFunDeps"
   
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
@@ -187,9 +187,9 @@ createClassBody sigs binds typeFams typeFamDefs
   = do isThereWhere <- isGoodSrcSpan <$> (tokenLoc AnnWhere)
        if isThereWhere 
          then makeJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
-                                 (AST.ClassBody <$> makeList (after AnnWhere) 
-                                                             (orderDefs . concat <$> sequenceA allDefs))
-         else nothing atTheEnd
+                                  (AST.ClassBody <$> makeList "" (after AnnWhere) 
+                                                                 (orderDefs . concat <$> sequenceA allDefs))
+         else nothing " where " "" atTheEnd
   where combinedLoc wh = foldl combineSrcSpans wh allLocs
         allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc typeFams ++ map getLoc typeFamDefs
         allDefs = [getSigs, getBinds, getFams, getFamDefs]
@@ -219,9 +219,9 @@ trfInstBody binds sigs fams dats = do
     wh <- tokenLoc AnnWhere
     if isGoodSrcSpan wh then
       makeJust <$> annLoc (combinedLoc <$> tokenLoc AnnWhere) 
-                         (AST.InstBody <$> (makeList (after AnnWhere) 
-                                                     (orderDefs . concat <$> sequenceA allDefs)))
-    else nothing atTheEnd
+                          (AST.InstBody <$> (makeList "" (after AnnWhere) 
+                                                         (orderDefs . concat <$> sequenceA allDefs)))
+    else nothing " where " "" atTheEnd
   where combinedLoc wh = foldl combineSrcSpans wh allLocs
         allLocs = map getLoc sigs ++ map getLoc (bagToList binds) ++ map getLoc fams ++ map getLoc dats
         allDefs = [getSigs, getBinds, getFams, getDats]
@@ -243,11 +243,11 @@ trfInstDataFam = trfLoc $ \case
     -> AST.InstBodyDataDecl 
          <$> trfDataKeyword dn 
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
-                    (AST.InstanceRule <$> nothing atTheStart
+                    (AST.InstanceRule <$> nothing "" " . " atTheStart
                                       <*> trfCtx atTheStart ctx 
                                       <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractRange . _annotation <$> r) 
                                                                 (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                 (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)
-         <*> trfAnnList trfConDecl' cons
-         <*> trfMaybe trfDerivings derivs
+         <*> trfAnnList "" trfConDecl' cons
+         <*> trfMaybe " deriving " "" trfDerivings derivs
           
