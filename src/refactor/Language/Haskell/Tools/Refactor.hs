@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP, LambdaCase, FlexibleInstances, FlexibleContexts, ViewPatterns, TypeOperators, DefaultSignatures, StandaloneDeriving, DeriveGeneric #-}
-module Language.Haskell.Tools.Refactor where
+module Language.Haskell.Tools.Refactor (analyze, organizeImportsStr) where
 
 import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
@@ -25,15 +25,18 @@ import HscTypes
 import GHC.Paths ( libdir )
  
 import Data.List
-import GHC.Generics
+import GHC.Generics hiding (moduleName)
 import Data.StructuralTraversal
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Time.Clock
 import System.Directory
 import Data.IORef
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
+import System.Directory
+import System.FilePath
 
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.Refactor.OrganizeImports
@@ -41,6 +44,45 @@ import Language.Haskell.Tools.Refactor.OrganizeImports
  
 import DynFlags
 import StringBuffer
+    
+organizeImportsStr :: String -> String -> String -> IO String
+organizeImportsStr workingDir moduleName sourceText
+  = (runGhc (Just libdir) (return . prettyPrint 
+                             =<< organizeImports 
+                             =<< transformRenamed 
+                             =<< loadFile workingDir moduleName sourceText))
+     <* removeDirectoryRecursive workingDir
+   
+type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
+   
+transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithSema)
+transformRenamed modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+    <$> (runTrf (fst annots) $ trfModuleRename 
+                                 (fromJust $ tm_renamed_source tc) 
+                                 (pm_parsed_source p))
+       
+loadFile :: String -> String -> String -> Ghc ModSummary
+loadFile workingDir moduleNameStr sourceText = do
+  let moduleName = mkModuleName moduleNameStr
+  dflags <- getSessionDynFlags
+  -- don't generate any code
+  setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
+  time <- liftIO getCurrentTime
+  let target = Target (TargetModule moduleName) True (Just (stringToStringBuffer sourceText, time))
+  setTargets [target]
+  let newFile = workingDir ++ [pathSeparator] ++ moduleNameSlashes moduleName ++ ".hs"
+      newFileDir = dropWhileEnd (/= pathSeparator) newFile 
+  liftIO $ createDirectoryIfMissing True newFileDir
+  liftIO $ writeFile newFile sourceText
+  load LoadAllTargets 
+  getModSummary moduleName
+                            
+    
     
 analyze :: String -> String -> IO ()
 analyze workingDir moduleName = 
@@ -62,6 +104,7 @@ analyze workingDir moduleName =
         -- liftIO $ putStrLn "==========="
         liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn "==========="
+        -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
         transformed <- runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
         liftIO $ putStrLn $ rangeDebug transformed
         liftIO $ putStrLn "==========="

@@ -16,6 +16,7 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.AnnTrf.PlaceComments
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
@@ -111,20 +112,21 @@ checkCorrectlyPrinted workingDir moduleName
 transformParsed :: ModSummary -> Ghc (Ann AST.Module (NodeInfo () SourceTemplate))
 transformParsed modSum = do
   p <- parseModule modSum
-  let annots = fst $ pm_annotations p
+  let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges <$> (runTrf annots $ trfModule $ pm_parsed_source p)
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+     <$> (runTrf (fst annots) $ trfModule $ pm_parsed_source p)
 
 transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithSema)
 transformRenamed modSum = do
   p <- parseModule modSum
   tc <- typecheckModule p
-  let annots = fst $ pm_annotations p
+  let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges <$> 
-    (runTrf annots $ trfModuleRename 
-                       (fromJust $ tm_renamed_source tc) 
-                       (pm_parsed_source p))
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+    <$> (runTrf (fst annots) $ trfModuleRename 
+                                 (fromJust $ tm_renamed_source tc) 
+                                 (pm_parsed_source p))
        
 parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do
