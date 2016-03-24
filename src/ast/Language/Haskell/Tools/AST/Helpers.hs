@@ -65,4 +65,5 @@ typeParams = fromTraversal typeParamsTrav
         
 semantics :: Ann a (NodeInfo SemanticInfo src) -> SemanticInfo
 semantics = (^. annotation&semanticInfo)
+                    
                    

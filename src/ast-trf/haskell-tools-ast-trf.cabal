@@ -21,6 +21,7 @@ library
                      , Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
                      , Language.Haskell.Tools.AnnTrf.RangeTemplate
                      , Language.Haskell.Tools.AnnTrf.SourceTemplate
+                     , Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
                      , Language.Haskell.Tools.AnnTrf.PlaceComments
   -- other-modules:       
   -- other-extensions:    

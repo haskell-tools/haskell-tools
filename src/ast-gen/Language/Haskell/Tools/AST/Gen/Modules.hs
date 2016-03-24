@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Language.Haskell.Tools.AST.Gen.Modules where
 
 import Data.List
@@ -9,6 +8,7 @@ import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
 mkImportSpecList specs = Ann (fromTemplate $ "(" <> child <> ")") 
@@ -20,18 +20,6 @@ mkIeSpec name ss = Ann (fromTemplate $ child <> child) (IESpec name ss)
 mkSubList :: TemplateAnnot a => [Ann Name a] -> Ann SubSpec a
 mkSubList names = Ann (fromTemplate $ "(" <> child <> ")") 
                       (SubSpecList (AnnList (fromTemplate list) names))
-                      
-filterList :: TemplateAnnot a => (Ann e a -> Bool) -> AnnList e a -> AnnList e a
-filterList pred ls = replaceList (filter pred (ls ^. annListElems)) ls   
-       
-replaceList :: TemplateAnnot a => [Ann e a] -> AnnList e a -> AnnList e a
-replaceList elems (AnnList a _)
-  = AnnList (fromTemplate (listSep mostCommonSeparator)) elems
-  where mostCommonSeparator  
-          = case getTemplate a ^. sourceTemplateElems of 
-              [ChildListElem sep seps] -> case maximumBy (compare `on` length) $ group $ sort seps of 
-                                           [] -> sep
-                                           sep:_ -> sep
 
 mkUnqualName :: TemplateAnnot a => String -> Ann Name a
 mkUnqualName n = Ann (fromTemplate $ child <> child) 

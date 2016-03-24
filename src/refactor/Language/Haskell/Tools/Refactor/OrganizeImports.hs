@@ -1,13 +1,4 @@
-{-# LANGUAGE OverloadedStrings
-           , ScopedTypeVariables
-           , FlexibleInstances
-           , FlexibleContexts
-           , StandaloneDeriving
-           , DeriveDataTypeable
-           , TypeSynonymInstances
-           , LambdaCase
-           , ViewPatterns
-           #-}
+{-# LANGUAGE LambdaCase #-}
 module Language.Haskell.Tools.Refactor.OrganizeImports where
 
 import SrcLoc
@@ -31,6 +22,7 @@ import Data.Generics.Uniplate.Data
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.AST.Gen

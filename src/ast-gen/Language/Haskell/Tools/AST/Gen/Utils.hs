@@ -4,6 +4,7 @@ module Language.Haskell.Tools.AST.Gen.Utils where
 import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 emptyList :: TemplateAnnot a => AnnList e a
 emptyList = AnnList (fromTemplate list) []
