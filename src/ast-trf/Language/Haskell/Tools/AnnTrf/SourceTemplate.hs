@@ -40,6 +40,10 @@ instance Show SourceTemplate where
   
 -- * Creating source templates
   
+class TemplateAnnot annot where
+  fromTemplate :: SourceTemplate -> annot
+  getTemplate :: annot -> SourceTemplate
+  
 instance IsString SourceTemplate where
   fromString s = SourceTemplate noSrcSpan [TextElem s]
      
@@ -63,3 +67,4 @@ listSep s = SourceTemplate noSrcSpan [ChildListElem s []]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)
+

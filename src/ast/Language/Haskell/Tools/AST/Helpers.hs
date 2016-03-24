@@ -62,4 +62,7 @@ typeParams = fromTraversal typeParamsTrav
         typeParamsTrav f (Ann a (TyCtx ctx t)) = Ann a <$> (TyCtx ctx <$> typeParamsTrav f t)
         typeParamsTrav f (Ann a (TyParen t)) = Ann a <$> (TyParen <$> typeParamsTrav f t)
         typeParamsTrav f t = f t
+        
+semantics :: Ann a (NodeInfo SemanticInfo src) -> SemanticInfo
+semantics = (^. annotation&semanticInfo)
                    

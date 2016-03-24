@@ -33,6 +33,7 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.DebugGhcAST
+import Language.Haskell.Tools.AST.Gen
 import Debug.Trace
 
 type STWithNames = NodeInfo SemanticInfo SourceTemplate
@@ -94,59 +95,3 @@ narrowImportSubspecs [] (Ann _ SubSpecAll) = mkSubList []
 narrowImportSubspecs _ ss@(Ann _ SubSpecAll) = ss
 narrowImportSubspecs usedNames ss@(Ann _ (SubSpecList _)) 
   = element&essList .- filterList (\n -> (n ^? annotation&semanticInfo&nameInfo) `elem` map Just usedNames) $ ss
-    
--- * General utilities
-
-class TemplateAnnot annot where
-  fromTemplate :: SourceTemplate -> annot
-  getTemplate :: annot -> SourceTemplate
-  
-instance TemplateAnnot (NodeInfo SemanticInfo SourceTemplate) where
-  fromTemplate = NodeInfo NoSemanticInfo
-  getTemplate = (^. sourceInfo)
-  
-instance TemplateAnnot (NodeInfo () SourceTemplate) where
-  fromTemplate = NodeInfo ()
-  getTemplate = (^. sourceInfo)
-    
-semantics :: Ann a STWithNames -> SemanticInfo
-semantics = (^. annotation&semanticInfo)
-
--- * AST creation
-    
-mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
-mkImportSpecList specs = Ann (fromTemplate $ "(" <> child <> ")") 
-                             (ImportSpecList (AnnList (fromTemplate list) specs))
-
-mkIeSpec :: TemplateAnnot a => Ann Name a -> AnnMaybe SubSpec a -> Ann IESpec a
-mkIeSpec name ss = Ann (fromTemplate $ child <> child) (IESpec name ss)
-        
-mkSubList :: TemplateAnnot a => [Ann Name a] -> Ann SubSpec a
-mkSubList names = Ann (fromTemplate $ "(" <> child <> ")") 
-                      (SubSpecList (AnnList (fromTemplate list) names))
-                      
-filterList :: TemplateAnnot a => (Ann e a -> Bool) -> AnnList e a -> AnnList e a
-filterList pred ls = replaceList (filter pred (ls ^. annListElems)) ls   
-       
-replaceList :: TemplateAnnot a => [Ann e a] -> AnnList e a -> AnnList e a
-replaceList elems (AnnList a _)
-  = AnnList (fromTemplate (listSep mostCommonSeparator)) elems
-  where mostCommonSeparator  
-          = case getTemplate a ^. sourceTemplateElems of 
-              [ChildListElem sep seps] -> case maximumBy (compare `on` length) $ group $ sort seps of 
-                                           [] -> sep
-                                           sep:_ -> sep
-
-mkUnqualName :: TemplateAnnot a => String -> Ann Name a
-mkUnqualName n = Ann (fromTemplate $ child <> child) 
-                     (Name emptyList (Ann (fromTemplate (fromString n)) 
-                                          (SimpleName n)))
-              
-emptyList :: TemplateAnnot a => AnnList e a
-emptyList = AnnList (fromTemplate list) []
-              
-toJust :: TemplateAnnot a => Ann e a -> AnnMaybe e a -> AnnMaybe e a            
-toJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
-
-noth :: TemplateAnnot a => AnnMaybe e a
-noth = AnnMaybe (fromTemplate opt) Nothing
