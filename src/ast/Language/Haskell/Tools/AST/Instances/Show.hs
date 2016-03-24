@@ -1,3 +1,4 @@
+-- | Show instance for Haskell AST representation ignoring source and semantic information
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
 module Language.Haskell.Tools.AST.Instances.Show where
 

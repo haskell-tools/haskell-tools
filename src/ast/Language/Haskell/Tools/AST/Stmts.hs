@@ -1,3 +1,4 @@
+-- | Representation of Haskell statements (both do-notation and comprehensions)
 module Language.Haskell.Tools.AST.Stmts where
 
 import Language.Haskell.Tools.AST.Ann

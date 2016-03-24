@@ -1,3 +1,4 @@
+-- | Representation of Haskell patterns
 module Language.Haskell.Tools.AST.Patterns where
           
 import Language.Haskell.Tools.AST.Ann
@@ -10,8 +11,10 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
         
 -- | Representation of patterns for pattern bindings
 data Pattern a
-  = VarPat        { _patternVar :: Ann Name a } -- ^ Pattern name binding
-  | LitPat        { _patternLiteral :: Ann Literal a } -- ^ Literal pattern
+  = VarPat        { _patternVar :: Ann Name a 
+                  } -- ^ Pattern name binding
+  | LitPat        { _patternLiteral :: Ann Literal a 
+                  } -- ^ Literal pattern
   | InfixPat      { _patternLhs :: Ann Pattern a
                   , _patternOp :: Ann Name a
                   , _patternRhs :: Ann Pattern a
@@ -49,9 +52,9 @@ data Pattern a
   -- regular list pattern omitted
   -- xml patterns omitted
   | SplicePat     { _patternSplice :: Ann Splice a 
-                  }
+                  } -- ^ Splice patterns: @$(generateX inp)@
   | QuasiQuotePat { _patQQ :: Ann QuasiQuote a 
-                  }
+                  } -- ^ Quasi-quoted patterns: @[| 1 + 2 |]@
                   
 -- Field specification of a record pattern
 data PatternField a 

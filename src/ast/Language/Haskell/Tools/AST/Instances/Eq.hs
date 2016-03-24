@@ -1,5 +1,5 @@
+-- | Equality check of AST nodes that ignore the source and semantic information.
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
--- | Equality check of AST nodes ignore the source and semantic information.
 module Language.Haskell.Tools.AST.Instances.Eq where
 
 import Language.Haskell.Tools.AST.Modules

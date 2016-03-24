@@ -1,3 +1,4 @@
+-- | Representation of Haskell types
 module Language.Haskell.Tools.AST.Types where
 
 import Language.Haskell.Tools.AST.Ann

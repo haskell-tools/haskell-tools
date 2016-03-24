@@ -1,3 +1,4 @@
+-- | Representation of Haskell Kinds
 module Language.Haskell.Tools.AST.Kinds where
 
 import Language.Haskell.Tools.AST.Ann

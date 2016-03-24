@@ -4,7 +4,6 @@
            , DeriveDataTypeable
            , StandaloneDeriving
            #-}
-
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
 

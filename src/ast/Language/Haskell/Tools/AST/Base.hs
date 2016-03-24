@@ -64,10 +64,10 @@ data CallConv a
   | CApi
   
 data ArrowAppl a
-  = LeftAppl
-  | RightAppl
-  | LeftHighApp
-  | RightHighApp
+  = LeftAppl -- ^ Left arrow application: @-<@
+  | RightAppl -- ^ Right arrow application: @>-@
+  | LeftHighApp -- ^ Left arrow high application: @-<<@
+  | RightHighApp -- ^ Right arrow high application: @>>-@
   
 -- | Safety annotations for foreign calls
 data Safety a

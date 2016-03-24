@@ -1,3 +1,4 @@
+-- | Representation of Haskell AST value and function bindings (both local and top-level)
 module Language.Haskell.Tools.AST.Binds where
 
 import Language.Haskell.Tools.AST.Ann

@@ -1,3 +1,4 @@
+-- | Representation of Haskell expressions
 module Language.Haskell.Tools.AST.Exprs where
 
 import Language.Haskell.Tools.AST.Ann
@@ -96,22 +97,22 @@ data Expr a
   | Splice         { _innerExpr :: Ann Splice a 
                    } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
   | QuasiQuoteExpr { _exprQQ :: Ann QuasiQuote a 
-                   } -- ^ template haskell quasi-quotation: @[$quoter|str]@
+                   } -- ^ Template haskell quasi-quotation: @[$quoter|str]@
   | ExprPragma     { _exprPragma :: Ann ExprPragma a
                    }
   -- Arrows
   | Proc           { _procPattern :: Ann Pattern a
                    , _procExpr :: Ann Expr a
-                   }
+                   } -- ^ Arrow definition: @proc a -> f -< a+1@
   | ArrowApp       { _exprLhs :: Ann Expr a
                    , _arrowAppl :: Ann ArrowAppl a
                    , _exprRhs :: Ann Expr a
-                   }
+                   } -- ^ Arrow application: @f -< a+1@
   | LamCase        { _exprAlts :: AnnList Alt a
                    } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
   -- XML expressions omitted
                    
--- Field update expressions
+-- | Field update expressions
 data FieldUpdate a 
   = NormalFieldUpdate { _fieldName :: Ann Name a
                       , _fieldValue :: Ann Expr a
@@ -120,7 +121,7 @@ data FieldUpdate a
                       } -- ^ Update the field to the value of the same name (@ x @)
   | FieldWildcard     -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last update. Cannot be used in a record update expression.
       
-        
+-- | An element of a tuple section that can be an expression or missing (indicating a value from a parameter)
 data TupSecElem a
   = Present { _tupSecExpr :: Ann Expr a 
             } -- ^ An existing element in a tuple section
@@ -156,6 +157,7 @@ data ExprPragma a
   | GeneratedPragma { _pragmaSrcRange :: Ann SourceRange a 
                     }
 
+-- | In-AST source ranges (for generated pragmas)
 data SourceRange a
   = SourceRange { _srFileName :: Ann StringNode a
                 , _srFromLine :: Ann Number a

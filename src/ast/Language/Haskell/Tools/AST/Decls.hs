@@ -1,3 +1,4 @@
+-- | Representation of Haskell AST definitions
 module Language.Haskell.Tools.AST.Decls where
 
 import Language.Haskell.Tools.AST.Binds

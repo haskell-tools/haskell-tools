@@ -1,3 +1,4 @@
+-- | Representation of Template Haskell AST elements
 module Language.Haskell.Tools.AST.TH where
               
 import Language.Haskell.Tools.AST.Decls
@@ -11,9 +12,9 @@ import Language.Haskell.Tools.AST.Ann
 -- | A template haskell splice          
 data Splice a
   = IdSplice    { _spliceId :: Ann Name a 
-                } -- ^ A simple name splice
+                } -- ^ A simple name splice: @$generateX@
   | ParenSplice { _spliceExpr :: Ann Expr a
-                }
+                } -- ^ A splice with parentheses: @$(generate input)@
   
 -- | Template haskell quasi-quotation: @[quoter|str]@  
 data QuasiQuote a 

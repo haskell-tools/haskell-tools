@@ -1,3 +1,4 @@
+-- | Generating StructuralTraversal instances for Haskell Representation
 {-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
 module Language.Haskell.Tools.AST.Instances.StructuralTraversal where
 

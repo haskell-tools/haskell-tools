@@ -1,4 +1,6 @@
 -- | A custom AST representation for Haskell tools.
+-- Different layers of the AST are recursive, to separate them into modules
+-- we introduced source imports.
 module Language.Haskell.Tools.AST 
   ( module Language.Haskell.Tools.AST.Modules
   , module Language.Haskell.Tools.AST.TH

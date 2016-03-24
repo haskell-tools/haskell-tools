@@ -1,3 +1,4 @@
+-- | Utility methods for generating parts of the ADT for refactorings
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Tools.AST.Gen.Utils where
 

@@ -1,3 +1,4 @@
+-- | Generation of Module-level AST fragments for refactorings
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Haskell.Tools.AST.Gen.Modules where
 
