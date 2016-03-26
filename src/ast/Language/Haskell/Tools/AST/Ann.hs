@@ -55,6 +55,12 @@ spanRange (NodeSpan sp) = sp
 spanRange (ListPos _ pos) = srcLocSpan pos
 spanRange (OptionalPos _ _ pos) = srcLocSpan pos
   
+class HasRange annot where
+  getRange :: annot -> SrcSpan
+  
+instance HasRange (NodeInfo sema SpanInfo) where 
+  getRange = spanRange . (^. sourceInfo)
+  
 type RangeInfo = NodeInfo () SpanInfo
 type RangeWithName = NodeInfo SemanticInfo SpanInfo
 
@@ -76,7 +82,7 @@ data SemanticInfo
 makeReferences ''SemanticInfo
 
 -- | A list of AST elements
-data AnnList e a = AnnList { _annListPos :: a 
+data AnnList e a = AnnList { _annListAnnot :: a 
                            , _annListElems :: [Ann e a]
                            }
                            
@@ -86,7 +92,7 @@ annList :: Traversal (AnnList e a) (AnnList e' a) (Ann e a) (Ann e' a)
 annList = annListElems & traversal
 
 -- | An optional AST element
-data AnnMaybe e a = AnnMaybe { _annMaybePos :: a 
+data AnnMaybe e a = AnnMaybe { _annMaybeAnnot :: a 
                              , _annMaybe :: (Maybe (Ann e a))
                              }
                              
@@ -106,3 +112,16 @@ isAnnNothing (AnnMaybe _ _) = False
 -- | A non-existing AST part
 annNothing :: a -> AnnMaybe e a
 annNothing a = AnnMaybe a Nothing
+
+  
+class HasAnnot node where
+  getAnnot :: node a -> a
+
+instance HasAnnot (Ann e) where
+  getAnnot = (^. annotation)
+  
+instance HasAnnot (AnnList e) where
+  getAnnot = (^. annListAnnot)
+  
+instance HasAnnot (AnnMaybe e) where
+  getAnnot = (^. annMaybeAnnot)

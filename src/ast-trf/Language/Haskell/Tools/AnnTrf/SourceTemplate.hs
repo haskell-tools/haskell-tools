@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances
+           , FlexibleContexts
            , DeriveDataTypeable
            , TemplateHaskell
            #-}
@@ -8,6 +9,7 @@ import Data.Data
 import Data.String
 import Control.Reference
 import SrcLoc
+import Language.Haskell.Tools.AST
 
 data SourceTemplateElem 
   = TextElem String 
@@ -19,6 +21,8 @@ data SourceTemplateElem
                   , _srcTmpSeparators :: [String] 
                   }
      deriving (Eq, Ord, Data)
+     
+makeReferences ''SourceTemplateElem
 
 -- | A pattern that controls how the original source code can be
 -- retrieved from the AST. A source template is assigned to each node.
@@ -28,6 +32,9 @@ data SourceTemplate = SourceTemplate { _sourceTemplateRange :: SrcSpan
                                      } deriving Data 
 
 makeReferences ''SourceTemplate
+      
+instance HasRange (NodeInfo sema SourceTemplate) where 
+  getRange = (^. sourceInfo&sourceTemplateRange)
       
 instance Show SourceTemplateElem where
   show (TextElem s) = s

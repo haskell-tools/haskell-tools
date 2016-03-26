@@ -15,6 +15,15 @@ toJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
 
 noth :: TemplateAnnot a => AnnMaybe e a
 noth = AnnMaybe (fromTemplate opt) Nothing
+
+mkAnn :: TemplateAnnot a => SourceTemplate -> e a -> Ann e a
+mkAnn temp e = Ann (fromTemplate temp) e
+
+wrapperAnn :: TemplateAnnot a => e a -> Ann e a
+wrapperAnn = mkAnn child
+
+mkAnnList :: TemplateAnnot a => SourceTemplate -> [Ann e a] -> AnnList e a
+mkAnnList temp ls = AnnList (fromTemplate temp) ls
   
 instance TemplateAnnot (NodeInfo SemanticInfo SourceTemplate) where
   fromTemplate = NodeInfo NoSemanticInfo

@@ -163,7 +163,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
   where combineTypes :: TransformName n r => Located n -> HsTyPats n -> Trf (Ann AST.Type r)
         combineTypes name pats 
           = foldl (\t p -> do typ <- t
-                              annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
+                              annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
                   (annLoc (pure $ getLoc name) (AST.TyVar <$> trfNameSp' (unLoc name))) 
                   (hswb_cts pats)
@@ -175,7 +175,7 @@ trfFunDeps _ = error "trfFunDeps"
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
 createDeclHead name vars
   = foldl (\t p -> do typ <- t
-                      annLoc (pure $ combineSrcSpans (extractRange $ _annotation typ) (getLoc p)) 
+                      annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
           (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfNameSp' (unLoc name))) 
           (hsq_tvs vars)
@@ -245,7 +245,7 @@ trfInstDataFam = trfLoc $ \case
          <*> annLoc (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
                     (AST.InstanceRule <$> nothing "" " . " atTheStart
                                       <*> trfCtx atTheStart ctx 
-                                      <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . extractRange . _annotation <$> r) 
+                                      <*> foldr (\t r -> annLoc (combineSrcSpans (getLoc t) . getRange . _annotation <$> r) 
                                                                 (AST.InstanceHeadApp <$> r <*> (trfType t))) 
                                                 (copyAnnot AST.InstanceHeadCon (trfName tc)) pats)
          <*> trfAnnList "" trfConDecl' cons

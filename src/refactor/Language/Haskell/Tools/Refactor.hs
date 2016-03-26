@@ -1,5 +1,16 @@
-{-# LANGUAGE CPP, LambdaCase, FlexibleInstances, FlexibleContexts, ViewPatterns, TypeOperators, DefaultSignatures, StandaloneDeriving, DeriveGeneric #-}
-module Language.Haskell.Tools.Refactor (analyze, organizeImportsStr) where
+{-# LANGUAGE CPP
+           , LambdaCase
+           , FlexibleInstances
+           , FlexibleContexts
+           , ViewPatterns
+           , TypeOperators
+           , DefaultSignatures
+           , StandaloneDeriving
+           , DeriveGeneric
+           , RankNTypes 
+           , ImpredicativeTypes 
+           #-}
+module Language.Haskell.Tools.Refactor (performRefactor, organizeImportsStr) where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST
@@ -25,6 +36,7 @@ import HscTypes
 import GHC.Paths ( libdir )
  
 import Data.List
+import Data.List.Split
 import GHC.Generics hiding (moduleName)
 import Data.StructuralTraversal
 import qualified Data.Map as Map
@@ -35,11 +47,14 @@ import Data.IORef
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
+import Control.Reference
 import System.Directory
 import System.FilePath
+import Data.Generics.Uniplate.Operations
 
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.Refactor.OrganizeImports
+import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 -- import Language.Haskell.Tools.Refactor.IfToCase
  
 import DynFlags
@@ -83,56 +98,83 @@ loadFile workingDir moduleNameStr sourceText = do
   getModSummary moduleName
                             
     
+data RefactorCommand = OrganizeImports
+                     | GenerateSignature RealSrcSpan
     
-analyze :: String -> String -> IO ()
-analyze workingDir moduleName = 
-      runGhc (Just libdir) $ do
-        dflags <- getSessionDynFlags
-        -- don't generate any code
-        setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
-        target <- guessTarget moduleName Nothing
-        setTargets [target]
-        load LoadAllTargets
-        modSum <- getModSummary $ mkModuleName moduleName
-        p <- parseModule modSum
-        t <- typecheckModule p
-        let r = tm_renamed_source t
-        let annots = pm_annotations $ tm_parsed_module t
+readCommand :: String -> String -> RefactorCommand
+readCommand fileName s = case splitOn " " s of 
+  ["OrganizeImports"] -> OrganizeImports
+  ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
+  
+readSrcSpan :: String -> String -> RealSrcSpan
+readSrcSpan fileName s = case splitOn "-" s of
+  [from,to] -> mkRealSrcSpan (readSrcLoc fileName from) (readSrcLoc fileName to)
+  
+readSrcLoc :: String -> String -> RealSrcLoc
+readSrcLoc fileName s = case splitOn ":" s of
+  [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
+    
+performRefactor :: String -> String -> String -> IO ()
+performRefactor workingDir moduleName command = 
+  
+  runGhc (Just libdir) $ do
+    dflags <- getSessionDynFlags
+    -- don't generate any code
+    setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
+    target <- guessTarget moduleName Nothing
+    setTargets [target]
+    load LoadAllTargets
+    modSum <- getModSummary $ mkModuleName moduleName
+    p <- parseModule modSum
+    t <- typecheckModule p
+    let r = tm_renamed_source t
+    let annots = pm_annotations $ tm_parsed_module t
 
 
-        -- liftIO $ putStrLn $ show annots
-        -- liftIO $ putStrLn "==========="
-        liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
-        liftIO $ putStrLn "==========="
-        -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-        transformed <- runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
-        liftIO $ putStrLn $ rangeDebug transformed
-        liftIO $ putStrLn "==========="
-        let commented = fixRanges $ placeComments (snd annots) transformed
-        liftIO $ putStrLn $ rangeDebug commented
-        liftIO $ putStrLn "==========="
-        let cutUp = cutUpRanges commented
-        liftIO $ putStrLn $ templateDebug cutUp
-        liftIO $ putStrLn "==========="
-        -- let locIndices = getLocIndices cutUp
-        -- liftIO $ putStrLn $ show locIndices
-        -- liftIO $ putStrLn "==========="
-        -- let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
-        -- liftIO $ putStrLn $ show mappedLocs
-        -- liftIO $ putStrLn "==========="
-        let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
-        liftIO $ putStrLn $ sourceTemplateDebug sourced
-        liftIO $ putStrLn "==========="
-        let prettyPrinted = prettyPrint sourced
-        liftIO $ putStrLn prettyPrinted
+    -- liftIO $ putStrLn $ show annots
+    -- liftIO $ putStrLn "==========="
+    liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
+    liftIO $ putStrLn "==========="
+    -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
+    transformed <- runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t)
+    liftIO $ putStrLn $ rangeDebug transformed
+    liftIO $ putStrLn "==========="
+    let commented = fixRanges $ placeComments (snd annots) transformed
+    liftIO $ putStrLn $ rangeDebug commented
+    liftIO $ putStrLn "==========="
+    let cutUp = cutUpRanges commented
+    liftIO $ putStrLn $ templateDebug cutUp
+    liftIO $ putStrLn "==========="
+    -- let locIndices = getLocIndices cutUp
+    -- liftIO $ putStrLn $ show locIndices
+    -- liftIO $ putStrLn "==========="
+    -- let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
+    -- liftIO $ putStrLn $ show mappedLocs
+    -- liftIO $ putStrLn "==========="
+    let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
+    liftIO $ putStrLn $ sourceTemplateDebug sourced
+    liftIO $ putStrLn "==========="
+    let prettyPrinted = prettyPrint sourced
+    liftIO $ putStrLn prettyPrinted
+    transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
+      OrganizeImports -> do
         liftIO $ putStrLn "==========="
         organized <- organizeImports sourced
         liftIO $ putStrLn $ sourceTemplateDebug organized
+        return organized
+      GenerateSignature sp -> do
         liftIO $ putStrLn "==========="
-        let prettyPrinted = prettyPrint organized
-        liftIO $ putStrLn prettyPrinted
-        liftIO $ putStrLn "==========="
-        
+        modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
+                                          (nodesInside sp) -- local declarations
+                                          (getNode sp) 
+                                          sourced
+        liftIO $ putStrLn $ sourceTemplateDebug modified
+        return modified
+    liftIO $ putStrLn "==========="
+    let prettyPrinted = prettyPrint transformed
+    liftIO $ putStrLn prettyPrinted
+    liftIO $ putStrLn "==========="
+    
       
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
@@ -141,12 +183,3 @@ deriving instance Show SemanticInfo
 deriving instance Generic SemanticInfo
 deriving instance Generic SourceTemplate
 deriving instance Generic SpanInfo
-
-getIndices :: StructuralTraversable e => Ann e RangeTemplate -> IO (Ann e ())
-getIndices = traverseDown (return ()) (return ()) print
-                             
-bottomUp :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
-bottomUp = traverseUp (putStrLn "desc") (putStrLn "asc") print
-
-topDown :: (StructuralTraversable e, Show a) => Ann e a -> IO (Ann e ())
-topDown = traverseDown (putStrLn "desc") (putStrLn "asc") print

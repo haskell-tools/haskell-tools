@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Language.Haskell.Tools.Refactor.OrganizeImports where
+module Language.Haskell.Tools.Refactor.OrganizeImports (organizeImports) where
 
 import SrcLoc
 import Name hiding (Name)
@@ -45,7 +45,7 @@ narrowImports usedNames imps = foldM (narrowOneImport usedNames) imps imps
   where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> Ann ImportDecl STWithNames -> Ghc [Ann ImportDecl STWithNames]
         narrowOneImport names all one =
           (\case Just x -> map (\e -> if e == one then x else e) all
-                 Nothing -> delete one all) <$> narrowImport names (map semantics all) one 
+                 Nothing -> delete one all) <$> narrowImport names (map (^. semantics) all) one 
         
 narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames 
                            -> Ghc (Maybe (Ann ImportDecl STWithNames))

@@ -32,13 +32,13 @@ import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Debug.Trace
 
--- | Annotations that have ranges as source information.
-class RangeAnnot annot where
+-- | Annotations that is made up from ranges
+class HasRange annot => RangeAnnot annot where
   toNodeAnnot :: SrcSpan -> annot
   toListAnnot :: String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
   addSemanticInfo :: SemanticInfo -> annot -> annot
-  extractRange :: annot -> SrcSpan
+  -- TODO: put this into a HasSemantics class
   addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
 instance RangeAnnot RangeWithName where
@@ -46,7 +46,6 @@ instance RangeAnnot RangeWithName where
   toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
   addSemanticInfo si = semanticInfo .= si
-  extractRange = spanRange . (^. sourceInfo)
   addImportData = addImportData'
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
@@ -87,7 +86,6 @@ instance RangeAnnot RangeInfo where
   toListAnnot sep = NodeInfo () . ListPos sep
   toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
   addSemanticInfo si = id
-  extractRange = spanRange . (^. sourceInfo)
   addImportData = pure
 
 -- | Creates a place for a missing node with a default location
@@ -210,7 +208,7 @@ collectLocs = foldLocs . map getLoc
 
 -- | Rearrange definitions to appear in the order they are defined in the source file.
 orderDefs :: RangeAnnot i => [Ann e i] -> [Ann e i]
-orderDefs = sortBy (compare `on` ordSrcSpan . extractRange . _annotation)
+orderDefs = sortBy (compare `on` ordSrcSpan . getRange . _annotation)
 
 -- | Orders a list of elements to the order they are defined in the source file.
 orderAnnList :: RangeAnnot i => AnnList e i -> AnnList e i
