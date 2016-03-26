@@ -46,12 +46,21 @@ mkTyFun at rt = mkAnn (child <> " -> " <> child) (TyFun at rt)
 
 mkTyApp :: TemplateAnnot a => Ann Type a -> Ann Type a -> Ann Type a
 mkTyApp ft at = mkAnn (child <> " " <> child) (TyApp ft at)
+
+mkTupleType :: TemplateAnnot a => [Ann Type a] -> Ann Type a
+mkTupleType args = mkAnn ("(" <> child <> ")") (TyTuple (mkAnnList (listSep ", ") args))
+
+mkTyInfix :: TemplateAnnot a => Ann Type a -> Ann Name a -> Ann Type a -> Ann Type a
+mkTyInfix left op right = mkAnn (child <> " " <> child <> " " <> child) (TyInfix left op right)
              
 mkTypeVarList :: TemplateAnnot a => [GHC.Name] -> AnnList TyVar a
 mkTypeVarList ls = mkAnnList (listSep " ") (map (mkTypeVar . mkUnqualName') ls)
            
 mkTypeVar' :: TemplateAnnot a => GHC.Name -> Ann TyVar a
-mkTypeVar' = mkTypeVar . mkUnqualName'
+mkTypeVar' = mkTypeVar . mkUnqualName'           
+
+mkParenType :: TemplateAnnot a => Ann Type a -> Ann Type a
+mkParenType = mkAnn ("(" <> child <> ")") . TyParen
            
 mkTypeVar :: TemplateAnnot a => Ann Name a -> Ann TyVar a
 mkTypeVar n = mkAnn (child <> optBefore " ") (TyVarDecl n noth)

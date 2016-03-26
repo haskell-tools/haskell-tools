@@ -115,7 +115,7 @@ readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
     
 performRefactor :: String -> String -> String -> IO ()
-performRefactor workingDir moduleName command = 
+performRefactor command workingDir moduleName = 
   
   runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
