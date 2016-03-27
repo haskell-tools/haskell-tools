@@ -24,6 +24,9 @@ wrapperAnn = mkAnn child
 
 mkAnnList :: TemplateAnnot a => SourceTemplate -> [Ann e a] -> AnnList e a
 mkAnnList temp ls = AnnList (fromTemplate temp) ls
+
+mkAnnMaybe :: TemplateAnnot a => SourceTemplate -> Maybe (Ann e a) -> AnnMaybe e a
+mkAnnMaybe temp mb = AnnMaybe (fromTemplate temp) mb
   
 instance TemplateAnnot (NodeInfo SemanticInfo SourceTemplate) where
   fromTemplate = NodeInfo NoSemanticInfo

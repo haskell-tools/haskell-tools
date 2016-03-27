@@ -18,8 +18,7 @@ import Control.Monad
 import Control.Reference hiding (element)
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
-import Language.Haskell.Tools.AST.Gen.Modules
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AST as AST
 
 type STWithNames = NodeInfo SemanticInfo SourceTemplate
@@ -66,22 +65,22 @@ generateTypeFor prec t
   -- tuple types
   | Just (tc, tas) <- splitTyConApp_maybe t
   , isTupleTyCon tc
-  = mkTupleType (map (generateTypeFor (-1)) tas)
+  = mkTyTuple (map (generateTypeFor (-1)) tas)
   -- type application
   | Just (tf, ta) <- splitAppTy_maybe t
   = wrapParen 10 $ mkTyApp (generateTypeFor 10 tf) (generateTypeFor 11 ta)
   -- type constructor
   | Just tc <- tyConAppTyCon_maybe t
-  = mkTypeVarType' (getName tc)
+  = mkTyVar $ mkUnqualName' (getName tc)
   -- type variable
   | Just tv <- getTyVar_maybe t
-  = mkTypeVarType' (getName tv)
+  = mkTyVar $ mkUnqualName' (getName tv)
   -- forall type
   | (tvs@(_:_), t') <- splitForAllTys t
   = wrapParen (-1) $ mkTyForall (mkTypeVarList (map getName tvs)) noth (generateTypeFor 0 t')
   | otherwise = error ("Cannot represent type: " ++ showSDocUnsafe (ppr t))
   where wrapParen :: Int -> Ann AST.Type STWithNames -> Ann AST.Type STWithNames 
-        wrapParen prec' node = if prec' < prec then mkParenType node else node
+        wrapParen prec' node = if prec' < prec then mkTyParen node else node
     
 typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithNames -> Ann ValueBind STWithNames -> Bool
 typeSignatureAlreadyExist ls vb = 
