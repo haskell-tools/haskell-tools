@@ -3,7 +3,7 @@
            , ScopedTypeVariables
            , RankNTypes 
            #-}
-module Language.Haskell.Tools.Refactor.GenerateTypeSignature where
+module Language.Haskell.Tools.Refactor.GenerateTypeSignature (generateTypeSignature) where
 
 import GHC as GHC hiding (Module)
 import Type as GHC

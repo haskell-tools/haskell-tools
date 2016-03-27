@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase
+           , ViewPatterns
+           #-}
 module Main where
 
 import GHC
@@ -20,10 +22,12 @@ import Language.Haskell.Tools.AnnTrf.PlaceComments
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
+import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 
 main :: IO Counts
-main = runTestTT $ TestList $ map makeReprintTest (languageTests ++ refactorTests)
-                               ++ map makeOrganizeImportsTest refactorTests
+main = runTestTT $ TestList $ map makeReprintTest (languageTests ++ organizeImportTests ++ map fst generateSignatureTests)
+                               ++ map makeOrganizeImportsTest organizeImportTests
+                               ++ map makeGenerateSignatureTest generateSignatureTests
         
 languageTests =
   [ "CppHsPos"
@@ -65,7 +69,7 @@ languageTests =
   , "Refactor.CommentHandling.FunctionArgs"
   ]
         
-refactorTests = 
+organizeImportTests = 
   [ "Refactor.OrganizeImports.Narrow"
   , "Refactor.OrganizeImports.Reorder"
   , "Refactor.OrganizeImports.Unused"
@@ -75,13 +79,26 @@ refactorTests =
   , "Refactor.OrganizeImports.SameName"
   , "Refactor.OrganizeImports.Removed"
   ]
-       
-type TemplateWithSema = NodeInfo SemanticInfo SourceTemplate
-       
+  
+generateSignatureTests = 
+  [ ("Refactor.GenerateTypeSignature.Simple", "3:1-3:10")
+  , ("Refactor.GenerateTypeSignature.Function", "3:1-3:15")
+  , ("Refactor.GenerateTypeSignature.HigherOrder", "3:1-3:14")
+  , ("Refactor.GenerateTypeSignature.Polymorph", "3:1-3:10")
+  , ("Refactor.GenerateTypeSignature.Placement", "4:1-4:10")
+  , ("Refactor.GenerateTypeSignature.Tuple", "3:1-3:18")
+  , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
+  ]
+   
 makeOrganizeImportsTest :: String -> Test
 makeOrganizeImportsTest mod 
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports "examples" mod
-       
+
+makeGenerateSignatureTest :: (String, String) -> Test
+makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng) 
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
+  where trf = generateTypeSignature (nodesInside rng) (nodesInside rng) (getNode rng)
+  
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithSema -> Ghc (Ann AST.Module TemplateWithSema)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
@@ -91,7 +108,12 @@ checkCorrectlyTransformed transform workingDir moduleName
                                               =<< transform 
                                               =<< transformRenamed 
                                               =<< parse workingDir moduleName)
-       assertEqual "The transformed result is not what is expected" expected transformed
+       assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected) 
+                                                                    (standardizeLineEndings transformed)
+       
+standardizeLineEndings = filter (/= '\r')
+       
+toFileName mod = "examples\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)

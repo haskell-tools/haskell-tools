@@ -10,7 +10,7 @@
            , RankNTypes 
            , ImpredicativeTypes 
            #-}
-module Language.Haskell.Tools.Refactor (performRefactor, organizeImportsStr) where
+module Language.Haskell.Tools.Refactor (TemplateWithSema, performRefactor, readCommand, readSrcSpan) where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST
@@ -156,6 +156,8 @@ performRefactor command workingDir moduleName =
     liftIO $ putStrLn "==========="
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
+    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
     transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
       OrganizeImports -> do
         liftIO $ putStrLn "==========="
