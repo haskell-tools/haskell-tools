@@ -89,6 +89,7 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Tuple", "3:1-3:18")
   , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
   , ("Refactor.GenerateTypeSignature.Local", "4:3-4:12")
+  , ("Refactor.GenerateTypeSignature.Let", "3:9-3:18")
   ]
    
 makeOrganizeImportsTest :: String -> Test
