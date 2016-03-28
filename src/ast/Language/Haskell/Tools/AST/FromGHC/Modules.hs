@@ -31,6 +31,7 @@ import TyCon as GHC
 import ConLike as GHC
 import DataCon as GHC
 import Bag as GHC
+import Var as GHC
 
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Base as AST
@@ -49,13 +50,14 @@ addTypeInfos bnds = traverseUp (return ()) (return ()) replaceNodeInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
         replaceSemanticInfo (NameInfo ni) = NameInfo <$> getType ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType access <*> mapM getType used
-        getType name = case Map.lookup name mapping of 
-                         Just x -> return x
-                         Nothing -> lookupName name >>= \case
-                                      Just (AnId id) -> return id
-                                      Just (AConLike (RealDataCon dc)) -> return (dataConWrapId dc)
-                                      Just (ATyCon tc) -> return $ mkVanillaGlobal name (tyConKind tc)
-                                      _ -> error $ "Type of name " ++ showSDocUnsafe (ppr name) ++ " cannot be found"
+        getType name 
+          = lookupName name >>= \case
+              Just (AnId id) -> return $ mkVanillaGlobal name (varType id)
+              Just (AConLike (RealDataCon dc)) -> return $ mkVanillaGlobal name (dataConUserType dc)
+              Just (ATyCon tc) -> return $ mkVanillaGlobal name (tyConKind tc)
+              Nothing -> case Map.lookup name mapping of 
+                           Just x -> return x
+                           Nothing -> error $ "Type of name " ++ showSDocUnsafe (ppr name) ++ " cannot be found"
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
 
 extractTypes :: LHsBinds Id -> [Id]

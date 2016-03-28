@@ -88,6 +88,7 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Placement", "4:1-4:10")
   , ("Refactor.GenerateTypeSignature.Tuple", "3:1-3:18")
   , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
+  , ("Refactor.GenerateTypeSignature.Local", "4:3-4:12")
   ]
    
 makeOrganizeImportsTest :: String -> Test
@@ -99,14 +100,17 @@ makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng)
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
   where trf = generateTypeSignature (nodesInside rng) (nodesInside rng) (getNode rng)
   
-checkCorrectlyTransformed :: (Ann AST.Module TemplateWithSema -> Ghc (Ann AST.Module TemplateWithSema)) -> String -> String -> IO ()
+type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
+type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
+  
+checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
        expected <- hGetContents expectedHandle
        transformed <- runGhc (Just libdir) (return . prettyPrint 
                                               =<< transform 
-                                              =<< transformRenamed 
+                                              =<< transformTyped 
                                               =<< parse workingDir moduleName)
        assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected) 
                                                                     (standardizeLineEndings transformed)
@@ -139,7 +143,7 @@ transformParsed modSum = do
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
      <$> (runTrf (fst annots) $ trfModule $ pm_parsed_source p)
 
-transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithSema)
+transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
 transformRenamed modSum = do
   p <- parseModule modSum
   tc <- typecheckModule p
@@ -149,6 +153,18 @@ transformRenamed modSum = do
     <$> (runTrf (fst annots) $ trfModuleRename 
                                  (fromJust $ tm_renamed_source tc) 
                                  (pm_parsed_source p))
+                                 
+transformTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
+transformTyped modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+    <$> (addTypeInfos (typecheckedSource tc) 
+           =<< (runTrf (fst annots) $ trfModuleRename 
+                                        (fromJust $ tm_renamed_source tc) 
+                                        (pm_parsed_source p)))
        
 parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do
