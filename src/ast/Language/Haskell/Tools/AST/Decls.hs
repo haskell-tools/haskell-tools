@@ -123,8 +123,8 @@ data DeclHead a
   | DHApp    { _dhAppFun :: Ann DeclHead a
              , _dhAppOperand :: Ann TyVar a
              } -- ^ Type application
-  | DHInfix  { _dhInfixName :: Ann Name a 
-             , _dhInfixLeft :: Ann TyVar a
+  | DHInfix  { _dhName :: Ann Name a 
+             , _dhLeft :: Ann TyVar a
              } -- ^ Infix application of the type/class name to the left operand
        
 -- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)

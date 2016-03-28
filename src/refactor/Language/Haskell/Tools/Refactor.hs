@@ -60,11 +60,13 @@ import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import DynFlags
 import StringBuffer            
     
-data RefactorCommand = OrganizeImports
+data RefactorCommand = NoRefactor 
+                     | OrganizeImports
                      | GenerateSignature RealSrcSpan
     
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
+  [""] -> NoRefactor
   ["OrganizeImports"] -> OrganizeImports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
   
@@ -122,6 +124,7 @@ performRefactor command workingDir moduleName =
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
     transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
+      NoRefactor -> return sourced
       OrganizeImports -> do
         liftIO $ putStrLn "==========="
         organized <- organizeImports sourced

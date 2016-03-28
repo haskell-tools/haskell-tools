@@ -65,7 +65,11 @@ importQualifiers imp
                
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
 bindingName = element&(valBindPat&element&patternVar &+& funBindMatches&annList&element&matchName)
-                     &annotation&semanticInfo&nameInfo
+                     &semantics&nameInfo
+                     
+declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann Name a)
+declHeadNames = element & (dhName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames)
+
                
 typeParams :: Simple Traversal (Ann Type a) (Ann Type a)
 typeParams = fromTraversal typeParamsTrav
