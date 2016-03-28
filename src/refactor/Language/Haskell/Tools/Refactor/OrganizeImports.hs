@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase 
+           , ScopedTypeVariables
+           #-}
 module Language.Haskell.Tools.Refactor.OrganizeImports (organizeImports) where
 
 import SrcLoc
@@ -28,27 +30,27 @@ import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.AST.Gen
 import Debug.Trace
 
-type STWithNames = NodeInfo SemanticInfo SourceTemplate
+type STWithNames n = NodeInfo (SemanticInfo n) SourceTemplate
 
-organizeImports :: Ann Module STWithNames -> Ghc (Ann Module STWithNames)
+organizeImports :: forall n . (NamedThing n, Data n) => Ann Module (STWithNames n) -> Ghc (Ann Module (STWithNames n))
 organizeImports mod
   = element&modImports&annListElems !~ narrowImports usedNames . sortImports $ mod
-  where usedNames :: [GHC.Name]
-        usedNames = catMaybes $ map (^? (annotation&semanticInfo&nameInfo)) 
-                              $ (universeBi (mod ^. element&modHead) ++ universeBi (mod ^. element&modDecl) :: [Ann Name STWithNames])
+  where usedNames = map getName $ catMaybes
+                                $ map (^? (annotation&semanticInfo&nameInfo))
+                                $ (universeBi (mod ^. element&modHead) ++ universeBi (mod ^. element&modDecl) :: [Ann Name (STWithNames n)])
         
-sortImports :: [Ann ImportDecl STWithNames] -> [Ann ImportDecl STWithNames]
+sortImports :: [Ann ImportDecl (STWithNames n)] -> [Ann ImportDecl (STWithNames n)]
 sortImports = sortBy (ordByOccurrence `on` (^. element&importModule&element))
 
-narrowImports :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> Ghc [Ann ImportDecl STWithNames]
+narrowImports :: forall n . NamedThing n => [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ghc [Ann ImportDecl (STWithNames n)]
 narrowImports usedNames imps = foldM (narrowOneImport usedNames) imps imps 
-  where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl STWithNames] -> Ann ImportDecl STWithNames -> Ghc [Ann ImportDecl STWithNames]
+  where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ann ImportDecl (STWithNames n) -> Ghc [Ann ImportDecl (STWithNames n)]
         narrowOneImport names all one =
           (\case Just x -> map (\e -> if e == one then x else e) all
                  Nothing -> delete one all) <$> narrowImport names (map (^. semantics) all) one 
         
-narrowImport :: [GHC.Name] -> [SemanticInfo] -> Ann ImportDecl STWithNames 
-                           -> Ghc (Maybe (Ann ImportDecl STWithNames))
+narrowImport :: NamedThing n => [GHC.Name] -> [SemanticInfo n] -> Ann ImportDecl (STWithNames n) 
+                             -> Ghc (Maybe (Ann ImportDecl (STWithNames n)))
 narrowImport usedNames otherModules imp
   | importIsExact (imp ^. element) 
   = Just <$> (element&importSpec&annJust&element&importSpecList !~ narrowImportSpecs usedNames $ imp)
@@ -58,32 +60,32 @@ narrowImport usedNames otherModules imp
               then pure Nothing
               else Just <$> (element&importSpec !- toJust (mkImportSpecList []) $ imp)
       else pure (Just imp)
-  where actuallyImported = fromJust (imp ^? annotation&semanticInfo&importedNames) `intersect` usedNames
+  where actuallyImported = map getName (fromJust (imp ^? annotation&semanticInfo&importedNames)) `intersect` usedNames
         Just importedMod = imp ^? annotation&semanticInfo&importedModule
     
-narrowImportSpecs :: [GHC.Name] -> AnnList IESpec STWithNames -> Ghc (AnnList IESpec STWithNames)
+narrowImportSpecs :: forall n . NamedThing n => [GHC.Name] -> AnnList IESpec (STWithNames n) -> Ghc (AnnList IESpec (STWithNames n))
 narrowImportSpecs usedNames 
   = (annList&element !~ narrowSpecSubspec usedNames) 
        >=> return . filterList isNeededSpec
-  where narrowSpecSubspec :: [GHC.Name] -> IESpec STWithNames -> Ghc (IESpec STWithNames)
+  where narrowSpecSubspec :: [GHC.Name] -> IESpec (STWithNames n) -> Ghc (IESpec (STWithNames n))
         narrowSpecSubspec usedNames spec 
           = do let Just specName = spec ^? ieName&annotation&semanticInfo&nameInfo
-               Just tt <- GHC.lookupName specName
+               Just tt <- GHC.lookupName (getName specName)
                let subspecsInScope = case tt of ATyCon tc | not (isClassTyCon tc) 
                                                   -> map getName (tyConDataCons tc) `intersect` usedNames
                                                 _ -> usedNames
                ieSubspec&annJust !- narrowImportSubspecs subspecsInScope $ spec
   
-        isNeededSpec :: Ann IESpec STWithNames -> Bool
+        isNeededSpec :: Ann IESpec (STWithNames n) -> Bool
         isNeededSpec ie = 
           -- if the name is used, it is needed
-          (ie ^? element&ieName&annotation&semanticInfo&nameInfo) `elem` map Just usedNames
+          fmap getName (ie ^? element&ieName&annotation&semanticInfo&nameInfo) `elem` map Just usedNames
           -- if the name is not used, but some of its constructors are used, it is needed
             || ((ie ^? element&ieSubspec&annJust&element&essList&annList) /= [])
             || (case ie ^? element&ieSubspec&annJust&element of Just SubSpecAll -> True; _ -> False)     
   
-narrowImportSubspecs :: [GHC.Name] -> Ann SubSpec STWithNames -> Ann SubSpec STWithNames
+narrowImportSubspecs :: NamedThing n => [GHC.Name] -> Ann SubSpec (STWithNames n) -> Ann SubSpec (STWithNames n)
 narrowImportSubspecs [] (Ann _ SubSpecAll) = mkSubList []
 narrowImportSubspecs _ ss@(Ann _ SubSpecAll) = ss
 narrowImportSubspecs usedNames ss@(Ann _ (SubSpecList _)) 
-  = element&essList .- filterList (\n -> (n ^? annotation&semanticInfo&nameInfo) `elem` map Just usedNames) $ ss
+  = element&essList .- filterList (\n -> fmap getName (n ^? annotation&semanticInfo&nameInfo) `elem` map Just usedNames) $ ss

@@ -62,18 +62,19 @@ instance HasRange (NodeInfo sema SpanInfo) where
   getRange = spanRange . (^. sourceInfo)
   
 type RangeInfo = NodeInfo () SpanInfo
-type RangeWithName = NodeInfo SemanticInfo SpanInfo
+type RangeWithName = NodeInfo (SemanticInfo Name) SpanInfo
+type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo
 
 -- | Semantic information for an AST node. Semantic information is
 -- currently heterogeneous.
-data SemanticInfo 
+data SemanticInfo n
   = NoSemanticInfo -- ^ Semantic info type for any node not 
                    -- carrying additional semantic information
-  | NameInfo { _nameInfo :: Name 
+  | NameInfo { _nameInfo :: n 
              } -- ^ Info corresponding to a name
   | ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module
-               , _availableNames :: [Name] -- ^ Names available from the imported module
-               , _importedNames :: [Name] -- ^ Names actually imported from the module.
+               , _availableNames :: [n] -- ^ Names available from the imported module
+               , _importedNames :: [n] -- ^ Names actually imported from the module.
                } -- ^ Info corresponding to an import declaration
   -- | ImplicitImports [ImportDecl]
   -- | ImplicitFieldUpdates [ImportDecl]

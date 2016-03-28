@@ -63,7 +63,7 @@ importQualifiers imp
       ++ maybe [] (\n -> [nameElements n]) 
                (imp ^? importAs&annJust&element&importRename&element)
                
-bindingName :: Simple Traversal (Ann ValueBind (NodeInfo SemanticInfo s)) GHC.Name
+bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
 bindingName = element&(valBindPat&element&patternVar &+& funBindMatches&annList&element&matchName)
                      &annotation&semanticInfo&nameInfo
                
@@ -77,12 +77,12 @@ typeParams = fromTraversal typeParamsTrav
         
 
         
-semantics :: Simple Lens (Ann a (NodeInfo SemanticInfo src)) SemanticInfo
+semantics :: Simple Lens (Ann a (NodeInfo sema src)) sema
 semantics = annotation&semanticInfo
 
 -- | A type class for transformations that work on both top-level and local definitions
 class BindingElem d where
-  bindName :: Simple Traversal (d (NodeInfo SemanticInfo src)) GHC.Name
+  bindName :: Simple Traversal (d (NodeInfo (SemanticInfo n) src)) n
   createTypeSig :: Ann TypeSignature a -> d a
   createBinding :: Ann ValueBind a -> d a
   isTypeSig :: d a -> Bool

@@ -26,9 +26,11 @@ replaceList elems (AnnList a _)
 insertWhere :: (TemplateAnnot a) => Ann e a -> (Maybe (Ann e a) -> Bool) -> (Maybe (Ann e a) -> Bool) -> AnnList e a -> AnnList e a
 insertWhere e before after al 
   = let index = insertIndex before after (al ^? annList)
-     in annListElems .- insertAt index e 
-          $ (if isEmptyAnnList then id else addDefaultSeparator index)
-          $ al 
+     in case index of 
+          Nothing -> al
+          Just ind -> annListElems .- insertAt ind e 
+                        $ (if isEmptyAnnList then id else addDefaultSeparator ind)
+                        $ al 
   where addDefaultSeparator i al 
           = srcTemplateElems&srcTmpSeparators 
                .- insertAt i (head $ al ^? srcTemplateElems&srcTmpDefaultSeparator) $ al
@@ -37,19 +39,19 @@ insertWhere e before after al
         insertAt n e ls = let (bef,aft) = splitAt n ls in bef ++ [e] ++ aft
         isEmptyAnnList = (null :: [x] -> Bool) $ (al ^? annList)
 
-insertIndex :: (Maybe (Ann e a) -> Bool) -> (Maybe (Ann e a) -> Bool) -> [Ann e a] -> Int
+insertIndex :: (Maybe (Ann e a) -> Bool) -> (Maybe (Ann e a) -> Bool) -> [Ann e a] -> Maybe Int
 insertIndex before after []
-  | before Nothing && after Nothing = 0
-  | otherwise = error "insertIndex: Could not insert"
+  | before Nothing && after Nothing = Just 0
+  | otherwise = Nothing
 insertIndex before after list@(first:_)
-  | before Nothing && after (Just first) = 0
-  | otherwise = 1 + insertIndex' before after list 
+  | before Nothing && after (Just first) = Just 0
+  | otherwise = (+1) <$> insertIndex' before after list 
   where insertIndex' before after (curr:rest@(next:_)) 
-          | before (Just curr) && after (Just next) = 0
-          | otherwise = 1 + insertIndex' before after rest
+          | before (Just curr) && after (Just next) = Just 0
+          | otherwise = (+1) <$> insertIndex' before after rest
         insertIndex' before after (curr:[]) 
-          | before (Just curr) && after Nothing = 0
-          | otherwise = error "insertIndex: Could not insert"
+          | before (Just curr) && after Nothing = Just 0
+          | otherwise = Nothing
                                      
 class TemplateAnnot annot where
   template :: Simple Lens annot SourceTemplate

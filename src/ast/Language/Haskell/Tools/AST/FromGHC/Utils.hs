@@ -37,7 +37,7 @@ class HasRange annot => RangeAnnot annot where
   toNodeAnnot :: SrcSpan -> annot
   toListAnnot :: String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
-  addSemanticInfo :: SemanticInfo -> annot -> annot
+  addSemanticInfo :: SemanticInfo GHC.Name -> annot -> annot
   -- TODO: put this into a HasSemantics class
   addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
@@ -58,7 +58,6 @@ addImportData' imp = lift $
      let ifaceNames = concatMap availNames $ maybe [] mi_exports 
                                            $ flip lookupModuleEnv mod 
                                            $ eps_PIT eps
-     -- todo: load it from the module graph
      loadedNames <- maybe [] modInfoExports <$> getModuleInfo mod
      let importedNames = ifaceNames ++ loadedNames
      names <- filterM (checkImportVisible (imp ^. element)) importedNames

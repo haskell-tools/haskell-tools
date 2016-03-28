@@ -21,7 +21,7 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AST as AST
 
-type STWithNames = NodeInfo SemanticInfo SourceTemplate
+type STWithNames = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
 
 generateTypeSignature :: Simple Traversal (Ann Module STWithNames) (AnnList Decl STWithNames)
                            -> Simple Traversal (Ann Module STWithNames) (AnnList LocalBind STWithNames)
@@ -37,14 +37,13 @@ genTypeSig :: BindingElem d => (AnnList d STWithNames -> Ann ValueBind STWithNam
 genTypeSig vbAccess ls 
   | typeSignatureAlreadyExist ls vb = fail "Type signature already exists"
   | otherwise 
-  = do let name = getBindingName vb
-       Just (AnId id) <- lookupName name
-       let typeSig = generateTSFor name (idType id)
+  = do let id = getBindingName vb
+       let typeSig = generateTSFor (getName id) (idType id)
        return $ insertWhere (wrapperAnn $ createTypeSig typeSig) (const True) isTheBind ls
   where vb = vbAccess ls
         isTheBind :: BindingElem d => Maybe (Ann d STWithNames) -> Bool
         isTheBind (Just ((^.element) -> decl)) 
-          = isBinding decl && (decl ^? bindName) == (vb ^? bindingName :: [GHC.Name])
+          = isBinding decl && (decl ^? bindName) == (vb ^? bindingName :: [GHC.Id])
         isTheBind _ = False
 
 generateTSFor :: GHC.Name -> GHC.Type -> Ann TypeSignature STWithNames 
@@ -86,7 +85,7 @@ typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithNames -
 typeSignatureAlreadyExist ls vb = 
   getBindingName vb `elem` concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element)
   
-getBindingName :: Ann ValueBind STWithNames -> GHC.Name
+getBindingName :: Ann ValueBind STWithNames -> GHC.Id
 getBindingName vb = case nub $ vb ^? bindingName of 
   [n] -> n
   [] -> error "Trying to generate a signature for a binding with no name"

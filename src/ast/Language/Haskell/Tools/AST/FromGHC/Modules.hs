@@ -1,11 +1,17 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
+           , FlexibleContexts
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
-import Control.Lens hiding (element)
+import Control.Reference hiding (element)
 import Data.Maybe
+import Data.List
+import Data.Map as Map hiding (map, filter)
 import Data.IORef
+import Data.Generics.Uniplate.Operations
+import Data.Generics.Uniplate.Data
+import Data.StructuralTraversal
 import Control.Monad.Reader
 
 import Avail as GHC
@@ -20,6 +26,11 @@ import Module as GHC
 import BasicTypes as GHC
 import HsSyn as GHC
 import HscTypes as GHC
+import Outputable as GHC
+import TyCon as GHC
+import ConLike as GHC
+import DataCon as GHC
+import Bag as GHC
 
 import Language.Haskell.Tools.AST.Ann
 import qualified Language.Haskell.Tools.AST.Base as AST
@@ -30,6 +41,26 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+
+addTypeInfos :: LHsBinds Id -> Ann AST.Module RangeWithName -> Ghc (Ann AST.Module RangeWithType)
+addTypeInfos bnds = traverseUp (return ()) (return ()) replaceNodeInfo
+  where replaceNodeInfo :: RangeWithName -> Ghc RangeWithType
+        replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
+        replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
+        replaceSemanticInfo (NameInfo ni) = NameInfo <$> getType ni
+        replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType access <*> mapM getType used
+        getType name = case Map.lookup name mapping of 
+                         Just x -> return x
+                         Nothing -> lookupName name >>= \case
+                                      Just (AnId id) -> return id
+                                      Just (AConLike (RealDataCon dc)) -> return (dataConWrapId dc)
+                                      Just (ATyCon tc) -> return $ mkVanillaGlobal name (tyConKind tc)
+                                      _ -> error $ "Type of name " ++ showSDocUnsafe (ppr name) ++ " cannot be found"
+        mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
+
+extractTypes :: LHsBinds Id -> [Id]
+extractTypes = concatMap universeBi . bagToList
+
 
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RangeInfo)
 trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
