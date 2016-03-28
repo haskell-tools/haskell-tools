@@ -128,13 +128,15 @@ checkCorrectlyPrinted workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
-       (actual, actual') <- runGhc (Just libdir) $ do
+       (actual, actual', actual'') <- runGhc (Just libdir) $ do
          parsed <- parse workingDir moduleName
          actual <- prettyPrint <$> transformParsed parsed
          actual' <- prettyPrint <$> transformRenamed parsed
-         return (actual, actual')
+         actual'' <- prettyPrint <$> transformTyped parsed
+         return (actual, actual', actual'')
        assertEqual "The original and the transformed source differ" expected actual
        assertEqual "The original and the transformed source differ" expected actual'
+       assertEqual "The original and the transformed source differ" expected actual''
               
 transformParsed :: ModSummary -> Ghc (Ann AST.Module (NodeInfo () SourceTemplate))
 transformParsed modSum = do
