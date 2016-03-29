@@ -18,7 +18,7 @@ mkModule :: TemplateAnnot a => [Ann ModulePragma a] -> Maybe (Ann ModuleHead a)
 mkModule pragmas head imps decls 
   = mkAnn (child <> "\n" <> child <> "\n" <> child <> "\n" <> child) 
       $ Module (mkAnnList (listSep "\n") pragmas) (mkAnnMaybe opt head)
-               (mkAnnList (listSep "\n") imps) (mkAnnList (listSep "\n") decls)
+               (mkAnnList indentedList imps) (mkAnnList indentedList decls)
                
 mkModuleHead :: TemplateAnnot a => Ann Name a -> Maybe (Ann ExportSpecList a) -> Ann ModuleHead a
 mkModuleHead n es = mkAnn (child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es)

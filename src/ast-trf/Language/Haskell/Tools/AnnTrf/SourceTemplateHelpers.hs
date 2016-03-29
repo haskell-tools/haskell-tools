@@ -78,7 +78,7 @@ list :: SourceTemplate
 list = SourceTemplate noSrcSpan [ChildListElem "" False []]
 
 indentedList :: SourceTemplate
-indentedList = SourceTemplate noSrcSpan [ChildListElem "" True []]
+indentedList = SourceTemplate noSrcSpan [ChildListElem "\n" True []]
 
 listSep :: String -> SourceTemplate
 listSep s = SourceTemplate noSrcSpan [ChildListElem s False []]
