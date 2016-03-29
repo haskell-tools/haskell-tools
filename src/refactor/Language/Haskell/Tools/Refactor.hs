@@ -10,7 +10,7 @@
            , RankNTypes 
            , ImpredicativeTypes 
            #-}
-module Language.Haskell.Tools.Refactor (performRefactor, onlineRefactor, readCommand, readSrcSpan) where
+module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan) where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST

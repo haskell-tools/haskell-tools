@@ -63,13 +63,13 @@ advanceStr s loc = foldl advanceSrcLoc loc s
 untilReaches :: String -> RealSrcLoc -> RealSrcLoc -> (String, Int)
 untilReaches s start end 
   = let ls = splitOn "\n" s 
-     in case ls of [oneLine] -> untilReaches' oneLine start end 
-                   _ -> (concatMap (++"\n") (init ls) ++) 
-                           `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end 
+     in case ls of _:_:_ -> (concatMap (++"\n") (init ls) ++) 
+                              `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end 
+                   _ -> (s, srcLocCol start)
   where
     untilReaches' [] curr _ = ([], srcLocCol curr)
     untilReaches' (c:rest) curr until | srcLocCol advancedLoc <= srcLocCol until
-      = (c:) `mapFst` untilReaches rest advancedLoc until
+      = (c:) `mapFst` untilReaches' rest advancedLoc until
       where advancedLoc = advanceSrcLoc curr c
     untilReaches' _ curr _ = ([], srcLocCol curr)
     

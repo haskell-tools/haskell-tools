@@ -24,6 +24,9 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 
+type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
+type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
+
 main :: IO Counts
 main = runTestTT $ TestList $ map makeReprintTest (languageTests ++ organizeImportTests ++ map fst generateSignatureTests)
                                ++ map makeOrganizeImportsTest organizeImportTests
