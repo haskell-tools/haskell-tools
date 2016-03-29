@@ -95,8 +95,11 @@ makeList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnLis
 makeList sep ann ls = AnnList <$> (toListAnnot sep <$> ann) <*> ls
 
 -- | Creates a place for an indented list of nodes with a default place if the list is empty.
-makeIndentedList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
-makeIndentedList sep ann ls = AnnList <$> (toIndentedListAnnot sep <$> ann) <*> ls
+makeIndentedList :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeIndentedList ann ls = AnnList <$> (toIndentedListAnnot "\n" <$> ann) <*> ls
+
+makeNonemptyIndentedList :: RangeAnnot a => Trf [Ann e a] -> Trf (AnnList e a)
+makeNonemptyIndentedList ls = AnnList (toIndentedListAnnot "\n" noSrcLoc) <$> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.

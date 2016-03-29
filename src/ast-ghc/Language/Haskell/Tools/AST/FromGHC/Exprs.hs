@@ -60,14 +60,14 @@ trfExpr' (ExplicitTuple tupArgs box)
                                        (Missing _) -> pure AST.Missing
                                 ) tupArgs)
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
-trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (trfAnnList "; " trfAlt' cases)
+trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeNonemptyIndentedList (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
 trfExpr' (HsLet binds expr) = AST.Let <$> trfLocalBinds binds <*> trfExpr expr
 trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
-                                        <*> trfAnnList "; " trfDoStmt' stmts
+                                        <*> makeNonemptyIndentedList (mapM trfDoStmt stmts)
 trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
-                                         <*> trfAnnList "; " trfDoStmt' stmts
+                                         <*> makeNonemptyIndentedList (mapM trfDoStmt stmts)
 trfExpr' (HsDo ListComp stmts _)
   = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
 trfExpr' (HsDo MonadComp stmts _)
