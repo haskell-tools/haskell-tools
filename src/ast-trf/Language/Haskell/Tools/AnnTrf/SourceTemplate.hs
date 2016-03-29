@@ -18,6 +18,7 @@ data SourceTemplateElem
                       , _srcTmpAfter :: String
                       }
   | ChildListElem { _srcTmpDefaultSeparator :: String
+                  , _srcTmpIndented :: Bool
                   , _srcTmpSeparators :: [String] 
                   }
      deriving (Eq, Ord, Data)
@@ -40,7 +41,7 @@ instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem) = "«.»"
   show (OptionalChildElem _ _) = "«?»"
-  show (ChildListElem _ _) = "«*»"
+  show (ChildListElem _ _ _) = "«*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp

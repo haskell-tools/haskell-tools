@@ -80,11 +80,11 @@ getBindLocs (HsValBinds (ValBindsOut binds sigs)) = foldLocs $ map getLoc (conca
   
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind r)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
-  = makeList "; " (after AnnWhere)
+  = makeIndentedList "\n" (after AnnWhere)
       (orderDefs <$> ((++) <$> mapM (copyAnnot AST.LocalValBind . trfBind) (bagToList binds) 
                            <*> mapM trfLocalSig sigs))
 trfLocalBinds (HsValBinds (ValBindsOut binds sigs)) 
-  = makeList "; " (after AnnWhere)
+  = makeIndentedList "\n" (after AnnWhere)
       (orderDefs <$> ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.LocalValBind . trfBind) . bagToList . snd) binds)
                            <*> mapM trfLocalSig sigs))
              

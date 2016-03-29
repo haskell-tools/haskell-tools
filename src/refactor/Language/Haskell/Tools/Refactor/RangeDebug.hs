@@ -23,7 +23,7 @@ rangeDebug = treeDebug' (shortShowSpanInfo . (^. sourceInfo)) 0
 shortShowSpanInfo :: SpanInfo -> String
 shortShowSpanInfo (NodeSpan sp) = shortShowSpan sp
 shortShowSpanInfo (OptionalPos _ _ loc) = "?" ++ shortShowLoc loc
-shortShowSpanInfo (ListPos _ loc) = "*" ++ shortShowLoc loc
+shortShowSpanInfo (ListPos _ _ loc) = "*" ++ shortShowLoc loc
       
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??" 
@@ -45,12 +45,7 @@ shortShowRangeTemplate (RangeTemplate _ rngs) = "ˇ" ++ concatMap showRangeTempl
 sourceTemplateDebug :: TreeDebug e (NodeInfo sema SourceTemplate) => e (NodeInfo sema SourceTemplate) -> String
 sourceTemplateDebug = treeDebug' (shortShowSourceTemplate . (^. sourceInfo)) 0
 
-shortShowSourceTemplate temp = "ˇ" ++ (concatMap showSourceTemplateElem $ temp ^. sourceTemplateElems) ++ "ˇ"
-
-showSourceTemplateElem (TextElem sp) = sp
-showSourceTemplateElem (ChildElem) = "«.»"
-showSourceTemplateElem (OptionalChildElem _ _) = "«?»"
-showSourceTemplateElem (ChildListElem _ _) = "«*»"
+shortShowSourceTemplate temp = "ˇ" ++ (concatMap show $ temp ^. sourceTemplateElems) ++ "ˇ"
       
 class TreeDebug e a where
   treeDebug' :: (a -> String) -> Int -> e a -> String

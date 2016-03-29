@@ -38,6 +38,7 @@ makeReferences ''NodeInfo
 data SpanInfo 
   = NodeSpan { _nodeSpan :: SrcSpan }
   | ListPos { _listDefaultSep :: String
+            , _listIndented :: Bool
             , _listPos :: SrcLoc 
             }
   | OptionalPos { _optionalBefore :: String
@@ -52,7 +53,7 @@ makeReferences ''SpanInfo
 -- In case of lists and optional elements, it may not contain the elements inside.
 spanRange :: SpanInfo -> SrcSpan
 spanRange (NodeSpan sp) = sp
-spanRange (ListPos _ pos) = srcLocSpan pos
+spanRange (ListPos _ _ pos) = srcLocSpan pos
 spanRange (OptionalPos _ _ pos) = srcLocSpan pos
   
 class HasRange annot where

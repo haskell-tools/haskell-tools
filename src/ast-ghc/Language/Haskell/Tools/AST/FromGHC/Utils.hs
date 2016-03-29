@@ -32,6 +32,7 @@ import Debug.Trace
 class HasRange annot => RangeAnnot annot where
   toNodeAnnot :: SrcSpan -> annot
   toListAnnot :: String -> SrcLoc -> annot
+  toIndentedListAnnot :: String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
   addSemanticInfo :: SemanticInfo GHC.Name -> annot -> annot
   -- TODO: put this into a HasSemantics class
@@ -39,7 +40,8 @@ class HasRange annot => RangeAnnot annot where
   
 instance RangeAnnot RangeWithName where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
-  toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep
+  toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep False
+  toIndentedListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep True
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
   addSemanticInfo si = semanticInfo .= si
   addImportData = addImportData'
@@ -78,7 +80,8 @@ ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) 
     
 instance RangeAnnot RangeInfo where
   toNodeAnnot = NodeInfo () . NodeSpan
-  toListAnnot sep = NodeInfo () . ListPos sep
+  toListAnnot sep = NodeInfo () . ListPos sep False
+  toIndentedListAnnot sep = NodeInfo () . ListPos sep True
   toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
   addSemanticInfo si = id
   addImportData = pure
@@ -90,6 +93,10 @@ nothing bef aft pos = annNothing . toOptAnnot bef aft <$> pos
 -- | Creates a place for a list of nodes with a default place if the list is empty.
 makeList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
 makeList sep ann ls = AnnList <$> (toListAnnot sep <$> ann) <*> ls
+
+-- | Creates a place for an indented list of nodes with a default place if the list is empty.
+makeIndentedList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeIndentedList sep ann ls = AnnList <$> (toIndentedListAnnot sep <$> ann) <*> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.

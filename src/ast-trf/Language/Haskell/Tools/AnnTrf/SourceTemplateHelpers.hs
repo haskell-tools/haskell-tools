@@ -19,9 +19,9 @@ replaceList elems (AnnList a _)
   = AnnList (fromTemplate (listSep mostCommonSeparator)) elems
   where mostCommonSeparator  
           = case getTemplate a ^. sourceTemplateElems of 
-              [ChildListElem sep seps] -> case maximumBy (compare `on` length) $ group $ sort seps of 
-                                           [] -> sep
-                                           sep:_ -> sep
+              [ChildListElem sep _ seps] -> case maximumBy (compare `on` length) $ group $ sort seps of 
+                                             [] -> sep
+                                             sep:_ -> sep
                                      
 insertWhere :: (TemplateAnnot a) => Ann e a -> (Maybe (Ann e a) -> Bool) -> (Maybe (Ann e a) -> Bool) -> AnnList e a -> AnnList e a
 insertWhere e before after al 
@@ -75,10 +75,13 @@ optAfter :: String -> SourceTemplate
 optAfter s = SourceTemplate noSrcSpan [OptionalChildElem "" s]
 
 list :: SourceTemplate
-list = SourceTemplate noSrcSpan [ChildListElem "" []]
+list = SourceTemplate noSrcSpan [ChildListElem "" False []]
+
+indentedList :: SourceTemplate
+indentedList = SourceTemplate noSrcSpan [ChildListElem "" True []]
 
 listSep :: String -> SourceTemplate
-listSep s = SourceTemplate noSrcSpan [ChildListElem s []]
+listSep s = SourceTemplate noSrcSpan [ChildListElem s False []]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)
