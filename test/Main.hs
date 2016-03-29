@@ -101,9 +101,6 @@ makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng)
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
   where trf = generateTypeSignature (nodesInside rng) (nodesInside rng) (getNode rng)
   
-type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
-type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
-  
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated

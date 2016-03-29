@@ -24,7 +24,7 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
-import GHC
+import GHC hiding (loadModule)
 import Outputable
 import BasicTypes
 import Bag
@@ -48,6 +48,7 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
 import Control.Reference
+import Control.Exception
 import System.Directory
 import System.FilePath
 import Data.Generics.Uniplate.Operations
@@ -77,9 +78,51 @@ readSrcSpan fileName s = case splitOn "-" s of
 readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
+       
+onlineRefactor :: String -> String -> IO String
+onlineRefactor command moduleStr
+  = do writeFile "Test.hs" moduleStr
+       performRefactor command "." "Test" 
+         `finally` removeFile "Test.hs"
     
-performRefactor :: String -> String -> String -> IO ()
-performRefactor command workingDir moduleName = 
+type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
+type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
+    
+performRefactor :: String -> String -> String -> IO String
+performRefactor command workingDir target = 
+  runGhc (Just libdir) $
+    prettyPrint <$> (organizeImports =<< parseRenamed =<< loadModule workingDir target)
+  
+loadModule :: String -> String -> Ghc ModSummary
+loadModule workingDir moduleName = do
+  dflags <- getSessionDynFlags
+  -- don't generate any code
+  setSessionDynFlags 
+    $ flip gopt_set Opt_KeepRawTokenStream
+    $ flip gopt_set Opt_NoHsMain
+    $ dflags { importPaths = [workingDir]
+             , hscTarget = HscNothing
+             , ghcLink = NoLink
+             , ghcMode = OneShot 
+             }
+  target <- guessTarget moduleName Nothing
+  setTargets [target]
+  load LoadAllTargets
+  getModSummary $ mkModuleName moduleName
+    
+parseRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
+parseRenamed modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+    <$> (runTrf (fst annots) $ trfModuleRename 
+                                 (fromJust $ tm_renamed_source tc) 
+                                 (pm_parsed_source p))
+    
+demoRefactor :: String -> String -> String -> IO ()
+demoRefactor command workingDir moduleName = 
   
   runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
