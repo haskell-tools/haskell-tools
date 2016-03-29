@@ -19,8 +19,8 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Patterns as AST
+import Language.Haskell.Tools.AST (Ann(..))
+import qualified Language.Haskell.Tools.AST as AST
 
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern r)
 trfPattern = trfLoc trfPattern'

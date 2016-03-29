@@ -33,11 +33,9 @@ import DataCon as GHC
 import Bag as GHC
 import Var as GHC
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Base as AST
-import qualified Language.Haskell.Tools.AST.Modules as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo, SemanticInfo(..), semanticInfo)
+import qualified Language.Haskell.Tools.AST as AST
 
-import Language.Haskell.Tools.AST.Helpers
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad

@@ -21,8 +21,7 @@ import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST
-import qualified Language.Haskell.Tools.AST.Types as AST
+import Language.Haskell.Tools.AST as AST
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
 trfType = trfLoc trfType'

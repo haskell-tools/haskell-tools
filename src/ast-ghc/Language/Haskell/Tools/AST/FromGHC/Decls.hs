@@ -28,11 +28,8 @@ import Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Base as AST
-import qualified Language.Haskell.Tools.AST.Binds as AST
-import qualified Language.Haskell.Tools.AST.Types as AST
-import qualified Language.Haskell.Tools.AST.Decls as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, getRange)
+import qualified Language.Haskell.Tools.AST as AST
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments

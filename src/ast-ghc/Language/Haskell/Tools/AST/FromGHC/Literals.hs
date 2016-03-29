@@ -11,8 +11,7 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Literals as AST
+import qualified Language.Haskell.Tools.AST as AST
 
 trfLiteral' :: HsLit -> Trf (AST.Literal a)
 trfLiteral' (HsChar _ ch) = pure $ AST.CharLit ch

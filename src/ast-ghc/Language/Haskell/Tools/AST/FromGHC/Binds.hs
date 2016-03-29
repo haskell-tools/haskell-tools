@@ -21,10 +21,8 @@ import Language.Haskell.Tools.AST.FromGHC.Types
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Base as AST
-import qualified Language.Haskell.Tools.AST.Patterns as AST
-import qualified Language.Haskell.Tools.AST.Binds as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..))
+import qualified Language.Haskell.Tools.AST as AST
 
 trfBind :: TransformName n r => Located (HsBind n) -> Trf (Ann AST.ValueBind r)
 trfBind = trfLoc trfBind'

@@ -16,6 +16,7 @@ module Language.Haskell.Tools.AST
   , module Language.Haskell.Tools.AST.Ann
   , module Language.Haskell.Tools.AST.References
   , module Language.Haskell.Tools.AST.Helpers
+  , module Language.Haskell.Tools.AST.Utils.OrdSrcSpan
   ) where
 
 import Language.Haskell.Tools.AST.Instances
@@ -34,3 +35,4 @@ import Language.Haskell.Tools.AST.Kinds
 import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Utils.OrdSrcSpan

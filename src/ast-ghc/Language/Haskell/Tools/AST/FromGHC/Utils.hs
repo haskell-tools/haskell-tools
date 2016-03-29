@@ -23,13 +23,9 @@ import Data.Maybe
 import Data.IORef
 import Data.Function hiding ((&))
 import Data.List
-import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Helpers
-import Language.Haskell.Tools.AST.References
-import Language.Haskell.Tools.AST.Modules as AST
+import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
-import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Debug.Trace
 
 -- | Annotations that is made up from ranges
@@ -207,7 +203,7 @@ collectLocs = foldLocs . map getLoc
 
 -- | Rearrange definitions to appear in the order they are defined in the source file.
 orderDefs :: RangeAnnot i => [Ann e i] -> [Ann e i]
-orderDefs = sortBy (compare `on` ordSrcSpan . getRange . _annotation)
+orderDefs = sortBy (compare `on` AST.ordSrcSpan . getRange . _annotation)
 
 -- | Orders a list of elements to the order they are defined in the source file.
 orderAnnList :: RangeAnnot i => AnnList e i -> AnnList e i

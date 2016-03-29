@@ -21,8 +21,8 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Stmts as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..))
+import qualified Language.Haskell.Tools.AST as AST
  
 trfDoStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.Stmt r)
 trfDoStmt = trfLoc trfDoStmt'

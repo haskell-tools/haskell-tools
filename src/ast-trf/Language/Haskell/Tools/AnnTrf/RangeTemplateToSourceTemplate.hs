@@ -11,7 +11,6 @@ import Data.Monoid
 import Control.Reference
 import Control.Monad.State
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate

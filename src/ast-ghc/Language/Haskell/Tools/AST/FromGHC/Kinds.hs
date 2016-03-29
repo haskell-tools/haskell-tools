@@ -12,8 +12,8 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann as AST
-import qualified Language.Haskell.Tools.AST.Kinds as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..))
+import qualified Language.Haskell.Tools.AST as AST
 
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
 trfKindSig = trfMaybe "" "" (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 

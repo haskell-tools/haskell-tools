@@ -1,5 +1,5 @@
 -- | A wrapper for SrcSpans that is ordered.
-module Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan where
+module Language.Haskell.Tools.AST.Utils.OrdSrcSpan where
 
 import SrcLoc
 import FastString

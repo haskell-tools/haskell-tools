@@ -9,7 +9,7 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.Base
 
-import qualified Language.Haskell.Tools.AST.TH as AST
+import qualified Language.Haskell.Tools.AST as AST
 
 trfQuasiQuotation' :: TransformName n r => HsQuasiQuote n -> Trf (AST.QuasiQuote r)
 trfQuasiQuotation' = error "trfQuasiQuotation'"

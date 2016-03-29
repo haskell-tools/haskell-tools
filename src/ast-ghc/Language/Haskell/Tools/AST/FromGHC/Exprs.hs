@@ -27,9 +27,8 @@ import Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Base as AST
-import qualified Language.Haskell.Tools.AST.Exprs as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnList(..))
+import qualified Language.Haskell.Tools.AST as AST
 
 trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr = trfLoc trfExpr'

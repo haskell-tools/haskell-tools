@@ -14,9 +14,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Language.Haskell.Tools.AST.FromGHC
-                     , Language.Haskell.Tools.AST.FromGHC.OrdSrcSpan
-                     
+  exposed-modules:     Language.Haskell.Tools.AST.FromGHC                     
   other-modules:       Language.Haskell.Tools.AST.FromGHC.Modules
                      , Language.Haskell.Tools.AST.FromGHC.TH
                      , Language.Haskell.Tools.AST.FromGHC.Decls
@@ -31,29 +29,20 @@ library
                      , Language.Haskell.Tools.AST.FromGHC.Monad
                      , Language.Haskell.Tools.AST.FromGHC.Utils
                      , Language.Haskell.Tools.AST.FromGHC.SourceMap
-                     
-  other-extensions:    CPP
-                     , LambdaCase
-                     , FlexibleInstances
-                     , FlexibleContexts
-                     , StandaloneDeriving
-                     , TypeFamilies
-                     , KindSignatures
-                     , MultiParamTypeClasses
-                     , UndecidableInstances
-  build-depends:       base >=4.8 && <4.9
+
+  build-depends:       base              >=4.8 && <4.9
                      , haskell-tools-ast >=0.1 && <0.2
-                     , ghc >=7.10 && <7.11
-                     , references >=0.3
-                     , bytestring >=0.10 && <1.0
-                     , safe >=0.3
-                     , lens >=4.0 && <5.0
-                     , ghc-paths >=0.1 && <0.2
-                     , containers >=0.5 && <0.6
-                     , directory >=1.2 && <1.3
-                     , transformers >=0.4 && <0.5
-                     , mtl >=2.2 && <2.3
-                     , split >=0.2 && <0.3
+                     , ghc               >=7.10 && <7.11
+                     , references        >=0.3
+                     , bytestring        >=0.10 && <1.0
+                     , safe              >=0.3
+                     , uniplate          >=1.6  && <2.0
+                   --  , ghc-paths >=0.1 && <0.2
+                     , containers        >=0.5 && <0.6
+                   --  , directory >=1.2 && <1.3
+                   --  , transformers >=0.4 && <0.5
+                     , mtl               >=2.2 && <2.3
+                     , split             >=0.2 && <0.3
                      , structural-traversal >=0.1 && <0.2
   -- hs-source-dirs:      
   default-language:    Haskell2010

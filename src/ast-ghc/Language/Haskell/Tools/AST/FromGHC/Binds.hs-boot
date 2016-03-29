@@ -8,8 +8,8 @@ import HsExpr as GHC
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.Base
-import Language.Haskell.Tools.AST.Ann
-import qualified Language.Haskell.Tools.AST.Binds as AST
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..))
+import qualified Language.Haskell.Tools.AST as AST
 
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind r)
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)

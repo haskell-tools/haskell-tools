@@ -16,22 +16,12 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Language.Haskell.Tools.PrettyPrint
                      , Language.Haskell.Tools.PrettyPrint.RoseTree
-  -- other-modules:       
-  other-extensions:    LambdaCase
-                     , MultiParamTypeClasses
-                     , FlexibleContexts
-                     , FlexibleInstances
-                     , ScopedTypeVariables
-                     , NamedFieldPuns
-                     , DeriveFunctor
-                     , DeriveDataTypeable
-  build-depends:       base >=4.8 && <4.9
-                     , lens >=4.0 && <5.0
-                     , ghc >=7.10 && < 7.11
-                     , mtl >=2.2 && <2.3
-                     , containers >=0.5 && <0.6
-                     , structural-traversal >=0.1 && <0.2
-                     , haskell-tools-ast ==0.1.*
-                     , haskell-tools-ast-trf ==0.1.*
+  build-depends:       base                  >=4.8  && <4.9
+                     , mtl                   >=2.2  && <2.3
+                     , containers            >=0.5  && <0.6
+                     , references            >=0.3  && <1.0
+                     , structural-traversal  >=0.1  && <0.2
+                     , haskell-tools-ast     >=0.1  && <1.0
+                     , haskell-tools-ast-trf >=0.1  && <1.0
   -- hs-source-dirs:      
   default-language:    Haskell2010
