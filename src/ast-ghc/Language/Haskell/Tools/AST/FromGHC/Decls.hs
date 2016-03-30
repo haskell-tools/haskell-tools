@@ -92,8 +92,8 @@ trfDecl = trfLoc $ \case
                         <*> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats)
                         <*> makeList " | " (after AnnEqual) (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
-  -- InstD (TyFamInstD (TyFamInstDecl eq _))
-    -- -> AST.DataInstDecl <$> --
+  InstD (TyFamInstD (TyFamInstDecl (L l (TyFamEqn con pats rhs)) _))
+    -> AST.TypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
   SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
   SigD (FixSig fs) -> AST.FixityDecl <$> (annCont $ trfFixitySig fs)
