@@ -79,15 +79,19 @@ trfDecl = trfLoc $ \case
                         <*> makeList " | " consLoc (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
-    -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx <*> createDeclHead name vars <*> trfFunDeps funDeps 
+    -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
+                     <*> createDeclHead name vars 
+                     <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
-    -> AST.InstDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule typ 
+    -> AST.InstDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap 
+                    <*> trfInstanceRule typ 
                     <*> trfInstBody binds sigs typefam datafam
-  -- InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd ctx ct kind cons derivs) _))
-    -- -> AST.DataInstDecl <$> trfDataKeyword nd
-                        -- <$> trfInstanceRule typ 
-                        -- <*> (AnnList <$> mapM trfConDecl cons)
+  InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd _ _ _ cons derivs) _))
+    -> AST.DataInstDecl <$> trfDataKeyword nd
+                        <*> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats)
+                        <*> makeList " | " (after AnnEqual) (mapM trfConDecl cons)
+                        <*> trfMaybe "" "" trfDerivings derivs
   -- InstD (TyFamInstD (TyFamInstDecl eq _))
     -- -> AST.DataInstDecl <$> --
   ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
@@ -138,7 +142,15 @@ trfInstanceRule = trfLoc $ \case
     HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> trfNameSp' tv)
     HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
   where instanceHead hd = AST.InstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
-                                 
+                            
+makeInstanceRuleTyVars :: TransformName n r => Located n -> HsWithBndrs n [LHsType n] -> Trf (Ann AST.InstanceRule r)
+makeInstanceRuleTyVars n vars = annCont
+  $ AST.InstanceRule <$> nothing "" " . " atTheStart
+                     <*> nothing " " "" atTheStart
+                     <*> foldl (\c t -> annLoc (pure $ combineSrcSpans (getLoc n) (getLoc t)) $ AST.InstanceHeadApp <$> c <*> (trfType t))
+                               (copyAnnot AST.InstanceHeadCon (trfName n))
+                               (hswb_cts vars)
+
 trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead r)
 trfInstanceHead = trfLoc trfInstanceHead'
 

@@ -40,6 +40,7 @@ data Decl a
   | DataInstDecl         { _declNewtype :: Ann DataOrNewtypeKeyword a
                          , _declInstance :: Ann InstanceRule a
                          , _declCons :: AnnList ConDecl a
+                         , _declDeriving :: AnnMaybe Deriving a
                          } -- ^ Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
   | GDataInstDecl        { _declNewtype :: Ann DataOrNewtypeKeyword a
                          , _declInstance :: Ann InstanceRule a
