@@ -15,7 +15,12 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.Refactor
-  -- other-modules:       
+  other-modules:       Language.Haskell.Tools.Refactor.GenerateTypeSignature
+                     , Language.Haskell.Tools.Refactor.IfToCase
+                     , Language.Haskell.Tools.Refactor.OrganizeImports
+                     , Language.Haskell.Tools.Refactor.RangeDebug
+                     , Language.Haskell.Tools.Refactor.RangeDebug.Instances
+                     , Language.Haskell.Tools.Refactor.DebugGhcAST
   build-depends:       base                      >=4.8  && <4.9
                      , ghc                       >=7.10 && < 7.11
                      , mtl                       >=2.2  && <2.3
