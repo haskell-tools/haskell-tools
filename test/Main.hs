@@ -45,6 +45,7 @@ languageTests =
   , "Decl.ParamDataType"
   , "Decl.PatternBind"
   , "Decl.RecordType"
+  , "Decl.StandaloneDeriving"
   , "Decl.TypeClass"
   , "Decl.TypeFamily"
   , "Decl.TypeInstance"

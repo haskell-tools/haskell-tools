@@ -93,6 +93,7 @@ trfDecl = trfLoc $ \case
   ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
   SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
   SigD (FixSig fs) -> AST.FixityDecl <$> (annCont $ trfFixitySig fs)
+  DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybe "" "" trfOverlap overlap <*> trfInstanceRule t
   -- TODO: pattern synonym type signature
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types

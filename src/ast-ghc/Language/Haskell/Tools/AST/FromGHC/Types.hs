@@ -50,10 +50,7 @@ trfType' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
 trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
 trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
 trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
--- HsRecTy
-trfType' (HsCoreTy t) | Just tc <- tyConAppTyCon_maybe t
-                      = AST.TyVar <$> trfNameSp' (tyConName tc)
-trfType' (HsCoreTy t) = error $ "Unknown core type: " ++ (showSDocUnsafe (ppr t))
+-- HsRecTy only appears as part of GADT constructor declarations, so it is omitted
 trfType' (HsTyLit (HsNumTy _ int)) = pure $ AST.TyNumLit int
 trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
 trfType' (HsWrapTy _ typ) = trfType' typ
