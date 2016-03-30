@@ -56,7 +56,6 @@ import Data.Generics.Uniplate.Operations
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
--- import Language.Haskell.Tools.Refactor.IfToCase
  
 import DynFlags
 import StringBuffer            
