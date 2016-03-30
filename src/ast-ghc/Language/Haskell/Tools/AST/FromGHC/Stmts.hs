@@ -32,6 +32,7 @@ trfDoStmt' (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> trfExpr
 trfDoStmt' (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
 trfDoStmt' (LetStmt binds) = AST.LetStmt <$> trfLocalBinds binds
 trfDoStmt' (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," trfDoStmt' stmts
+trfDoStmt' (LastStmt body _) = AST.ExprStmt <$> annCont (trfExpr' (unLoc body))
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]

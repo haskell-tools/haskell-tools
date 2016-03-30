@@ -9,6 +9,9 @@ import RdrName as GHC
 import HsTypes as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
+import Type as GHC
+import TyCon as GHC
+import Outputable as GHC
 
 import Control.Monad.Reader.Class
 import Control.Applicative
@@ -38,6 +41,7 @@ trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ
 trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
+trfType' (HsTupleTy HsBoxedOrConstraintTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
 trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
 trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList ", " trfType' typs
 trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfName (snd op) <*> trfType t2
@@ -47,12 +51,16 @@ trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
 trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
 trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
 -- HsRecTy
+trfType' (HsCoreTy t) | Just tc <- tyConAppTyCon_maybe t
+                      = AST.TyVar <$> trfNameSp' (tyConName tc)
+trfType' (HsCoreTy t) = error $ "Unknown core type: " ++ (showSDocUnsafe (ppr t))
 trfType' (HsTyLit (HsNumTy _ int)) = pure $ AST.TyNumLit int
 trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
 trfType' (HsWrapTy _ typ) = trfType' typ
 trfType' HsWildcardTy = pure AST.TyWildcard
 -- not implemented as ghc 7.10.3
 trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> trfNameSp' name
+trfType' t = error $ "Unknown type: " ++ (showSDocUnsafe (ppr t))
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
 trfBindings vars = trfAnnList "\n" trfTyVar' vars

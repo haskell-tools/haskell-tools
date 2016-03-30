@@ -35,7 +35,7 @@ import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-class GHCName name where 
+class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
   
 instance GHCName RdrName where
