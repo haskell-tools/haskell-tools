@@ -6,6 +6,7 @@
            , TypeSynonymInstances
            , ScopedTypeVariables
            , MultiParamTypeClasses
+           , UndecidableInstances
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
@@ -48,17 +49,17 @@ instance GHCName Id where
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, GHCName name) => TransformName name res where
+class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name) => TransformName name res where
   trfName :: Located name -> Trf (Ann AST.Name res)
   
 instance TransformName RdrName AST.RangeInfo where
   trfName = trfLoc trfName' 
 
-instance RangeAnnot r => TransformName GHC.Name r where
+instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
   trfName name = (annotation .- addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
   
-instance TransformName GHC.Id AST.RangeWithName where
-  trfName name = (annotation&semanticInfo .= (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
+--instance TransformName GHC.Id AST.RangeWithName where
+--  trfName name = (annotation&semanticInfo .= (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
 trfName' :: TransformName name res => name -> Trf (AST.Name res)
 trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))

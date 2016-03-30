@@ -101,7 +101,7 @@ trfDecl = trfLoc $ \case
   ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
-  
+
 trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.ConDecl r)
 trfConDecl = trfLoc trfConDecl'
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
            , FlexibleContexts
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
@@ -13,6 +14,7 @@ import Data.Generics.Uniplate.Operations
 import Data.Generics.Uniplate.Data
 import Data.StructuralTraversal
 import Control.Monad.Reader
+import Control.Monad.Writer
 
 import Avail as GHC
 import GHC as GHC
@@ -56,7 +58,7 @@ addTypeInfos bnds mod = traverseUp (return ()) (return ()) replaceNodeInfo mod
               Just (ATyCon tc) -> return $ Just $ mkVanillaGlobal name (tyConKind tc)
               Nothing -> case Map.lookup name mapping of 
                            Just x -> return (Just x)
-                           Nothing -> return Nothing
+                           Nothing -> {- error $ "No type found for name: " ++ showSDocUnsafe (ppr name) -} return Nothing
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
 
 extractTypes :: LHsBinds Id -> [Id]
@@ -109,8 +111,8 @@ trfImports imps
   where importDefaultLoc = toListAnnot "\n" . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> tokenLoc AnnWhere)
-trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
-trfImport = (addImportData <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
+trfImport :: forall n r . TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
+trfImport = (addImportData (SemanticsPhantom :: SemanticsPhantom n) <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   let -- default positions of optional parts of an import declaration
       annBeforeQual = if isSrc then AnnClose else AnnImport
       annBeforeSafe = if isQual then AnnQualified else annBeforeQual

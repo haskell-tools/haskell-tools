@@ -3,6 +3,8 @@
            , FlexibleInstances
            , LambdaCase
            , ViewPatterns
+           , MultiParamTypeClasses
+           , FlexibleContexts
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
@@ -34,17 +36,33 @@ class HasRange annot => RangeAnnot annot where
   toListAnnot :: String -> SrcLoc -> annot
   toIndentedListAnnot :: String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
-  addSemanticInfo :: SemanticInfo GHC.Name -> annot -> annot
-  -- TODO: put this into a HasSemantics class
-  addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
-  
+
 instance RangeAnnot RangeWithName where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
   toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep False
   toIndentedListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep True
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
+
+instance RangeAnnot RangeInfo where
+  toNodeAnnot = NodeInfo () . NodeSpan
+  toListAnnot sep = NodeInfo () . ListPos sep False
+  toIndentedListAnnot sep = NodeInfo () . ListPos sep True
+  toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
+
+data SemanticsPhantom n = SemanticsPhantom
+
+-- | Annotations that carry semantic information
+class SemanticAnnot annot n where
+  addSemanticInfo :: SemanticInfo n -> annot -> annot
+  addImportData :: SemanticsPhantom n -> Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
+  
+instance SemanticAnnot RangeWithName GHC.Name where
   addSemanticInfo si = semanticInfo .= si
-  addImportData = addImportData'
+  addImportData _ = addImportData'
+
+instance SemanticAnnot RangeInfo n where
+  addSemanticInfo si = id
+  addImportData _ = pure
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
@@ -60,7 +78,7 @@ addImportData' imp = lift $
      let importedNames = ifaceNames ++ loadedNames
      names <- filterM (checkImportVisible (imp ^. element)) importedNames
      return $ annotation .- addSemanticInfo (ImportInfo mod importedNames names) $ imp
-       
+
 checkImportVisible :: GhcMonad m => AST.ImportDecl RangeWithName -> GHC.Name -> m Bool
 checkImportVisible imp name
   | importIsExact imp 
@@ -74,17 +92,9 @@ ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) 
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
-             <$> lookupGlobalName n
+             <$> lookupGlobalName n -- lookupName would be better?
   | otherwise = return False
-  
-    
-instance RangeAnnot RangeInfo where
-  toNodeAnnot = NodeInfo () . NodeSpan
-  toListAnnot sep = NodeInfo () . ListPos sep False
-  toIndentedListAnnot sep = NodeInfo () . ListPos sep True
-  toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
-  addSemanticInfo si = id
-  addImportData = pure
+
 
 -- | Creates a place for a missing node with a default location
 nothing :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf (AnnMaybe e a)
