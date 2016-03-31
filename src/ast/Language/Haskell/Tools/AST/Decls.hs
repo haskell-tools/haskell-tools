@@ -3,6 +3,7 @@ module Language.Haskell.Tools.AST.Decls where
 
 import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Types
+import Language.Haskell.Tools.AST.Patterns
 import Language.Haskell.Tools.AST.Kinds
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Literals
@@ -56,6 +57,8 @@ data Decl a
                          , _declInstRule :: Ann InstanceRule a
                          , _declInstDecl :: AnnMaybe InstBody a
                          } -- ^ Instance declaration (@ instance X T [where f = ...] @)
+  | PatternSynonymDecl   { _declPatSyn :: Ann PatternSynonym a
+                         } -- ^ Pattern synonyms (@ pattern Arrow t1 t2 = App "->" [t1, t2] @)
   | DerivDecl            { _declOverlap :: AnnMaybe OverlapPragma a
                          , _declInstRule :: Ann InstanceRule a
                          } -- ^ Standalone deriving declaration (@ deriving instance X T @)
@@ -64,6 +67,8 @@ data Decl a
   | DefaultDecl          { _declTypes :: AnnList Type a
                          } -- ^ Default types (@ default (T1, T2) @)
   | TypeSigDecl          { _declTypeSig :: Ann TypeSignature a 
+                         } -- ^ Type signature declaration (@ _f :: Int -> Int @)
+  | PatTypeSigDecl       { _declPatTypeSig :: Ann PatternTypeSignature a 
                          } -- ^ Type signature declaration (@ _f :: Int -> Int @)
   | ValueBinding         { _declValBind :: Ann ValueBind a
                          } -- ^ Function binding (@ f x = 12 @)
@@ -114,6 +119,9 @@ data ClassElement a
   | ClsDefSig  { _ceName :: Ann Name a
                , _ceType :: Ann Type a
                } -- ^ Default signature (by using @DefaultSignatures@): @ default _enum :: (Generic a, GEnum (Rep a)) => [a] @
+  -- not supported yet
+  | ClsPatSig  { _cePatSig :: Ann PatternTypeSignature a 
+               } -- ^ Pattern signature in a class declaration (by using @PatternSynonyms@)
        
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
 data DeclHead a
@@ -152,6 +160,9 @@ data InstBodyDecl a
                          , _instBodyGadtCons :: AnnList GadtDecl a
                          , _instBodyDerivings :: AnnMaybe Deriving a
                          } -- ^ An associated data type implemented using GADT style
+  -- not supported yet
+  | InstBodyPatSyn       { _instBodyPatSyn :: Ann PatternSynonym a 
+                         } -- ^ A pattern synonym in a class instance
 
 -- | GADT constructor declaration (@ _D1 :: { _val :: Int } -> T String @)
 data GadtDecl a
@@ -228,4 +239,28 @@ data TypeEqn a
   = TypeEqn { _teLhs :: Ann Type a
             , _teRhs :: Ann Type a
             }
-                  
+
+-- | A pattern type signature (@ pattern p :: Int -> T @)
+data PatternTypeSignature a 
+  = PatternTypeSignature { _patSigName :: Ann Name a
+                         , _patSigType :: Ann Type a
+                         }   
+
+-- | Pattern synonyms: @ pattern Arrow t1 t2 = App "->" [t1, t2] @
+data PatternSynonym a 
+  = PatternSynonym { _patName :: Ann Name a
+                   , _patArgs :: AnnList Name a
+                   , _patRhs :: Ann PatSynRhs a
+                   }
+
+-- | Right-hand side of pattern synonym
+data PatSynRhs a
+  = BidirectionalPatSyn { _patRhsPat :: Ann Pattern a
+                        , _patRhsOpposite :: AnnMaybe PatSynWhere a
+                        } -- ^ @ pattern Int = App "Int" [] @ or @ pattern Int <- App "Int" [] where Int = App "Int" [] @
+  | OneDirectionalPatSyn { _patRhsPat :: Ann Pattern a
+                         } -- ^ @ pattern Int <- App "Int" [] @
+
+-- | Where clause of pattern synonym (explicit expression direction)
+data PatSynWhere a
+  = PatSynWhere { _patOpposite :: AnnList Match a }

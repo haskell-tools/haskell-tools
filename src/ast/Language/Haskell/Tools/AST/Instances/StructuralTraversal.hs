@@ -110,6 +110,11 @@ deriveStructTrav ''TupSecElem
 deriveStructTrav ''TypeFamily
 deriveStructTrav ''CaseRhs
 deriveStructTrav ''GuardedCaseRhs
+deriveStructTrav ''PatternSynonym
+deriveStructTrav ''PatSynRhs
+deriveStructTrav ''PatSynWhere
+deriveStructTrav ''PatternTypeSignature
+
 
 -- Literal
 deriveStructTrav ''Literal

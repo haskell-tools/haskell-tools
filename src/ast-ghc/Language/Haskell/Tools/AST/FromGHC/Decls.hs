@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase 
            , ViewPatterns
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
@@ -18,11 +19,13 @@ import ForeignCall as GHC
 import Outputable as GHC
 
 import Control.Monad.Reader
+import Control.Reference
 import Data.Maybe
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Types
+import Language.Haskell.Tools.AST.FromGHC.Patterns
 import Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Monad
@@ -54,8 +57,8 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
       ])
   where trfBindOrSig :: HsValBinds Name -> Trf [Ann AST.Decl RangeWithName]
         trfBindOrSig (ValBindsOut vals sigs) 
-          = (++) <$> (concat <$> mapM (mapM (copyAnnot AST.ValueBinding . trfBind) . bagToList . snd) vals)
-                 <*> (mapM (copyAnnot AST.TypeSigDecl . trfTypeSig) sigs)
+          = (++) <$> (concat <$> mapM (mapM (trfLoc trfVal) . bagToList . snd) vals)
+                 <*> (mapM (trfLoc trfSig) sigs)
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)
@@ -94,11 +97,9 @@ trfDecl = trfLoc $ \case
                         <*> trfMaybe "" "" trfDerivings derivs
   InstD (TyFamInstD (TyFamInstDecl (L l (TyFamEqn con pats rhs)) _))
     -> AST.TypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
-  ValD bind -> AST.ValueBinding <$> (annCont $ trfBind' bind)
-  SigD (ts @ (TypeSig {})) -> AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
-  SigD (FixSig fs) -> AST.FixityDecl <$> (annCont $ trfFixitySig fs)
+  ValD bind -> trfVal bind
+  SigD sig -> trfSig sig
   DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybe "" "" trfOverlap overlap <*> trfInstanceRule t
-  -- TODO: pattern synonym type signature
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name typ _ (CImport ccall safe _ _ _)) 
@@ -106,6 +107,21 @@ trfDecl = trfLoc $ \case
   ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
+
+trfVal :: TransformName n r => HsBindLR n n -> Trf (AST.Decl r)
+trfVal (PatSynBind psb) = AST.PatternSynonymDecl <$> annCont (trfPatternSynonym psb)
+trfVal bind = AST.ValueBinding <$> (annCont $ trfBind' bind)
+
+trfSig :: TransformName n r => Sig n -> Trf (AST.Decl r)
+trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
+trfSig (FixSig fs) = AST.FixityDecl <$> (annCont $ trfFixitySig fs)
+trfSig (PatSynSig id (expl, args) ctx1 ctx2 typ) 
+  = AST.PatTypeSigDecl <$> annCont (AST.PatternTypeSignature <$> trfName id <*> addForall expl (hsq_tvs args) (addCtx ctx1 (addCtx ctx2 (trfType typ))))
+  where addForall Implicit _ t = t
+        addForall _ args t = annFrom AnnForall (AST.TyForall <$> trfBindings args <*> nothing "" " => " (after AnnDot) <*> t)
+        addCtx (L _ []) t = t
+        addCtx ctx t = annLoc (pure $ combineSrcSpans (getLoc ctx) (getLoc typ)) 
+                              (AST.TyCtx <$> (fromJust . (^. AST.annMaybe) <$> trfCtx atTheStart ctx) <*> t)
 
 trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.ConDecl r)
 trfConDecl = trfLoc trfConDecl'
@@ -261,3 +277,17 @@ trfInstDataFam = trfLoc $ \case
          <*> trfAnnList "" trfConDecl' cons
          <*> trfMaybe " deriving " "" trfDerivings derivs
           
+trfPatternSynonym :: forall n r . TransformName n r => PatSynBind n n -> Trf (AST.PatternSynonym r)
+trfPatternSynonym (PSB id _ (PrefixPatSyn args) def dir)
+  = let sep = case dir of ImplicitBidirectional -> AnnEqual
+                          _ -> AnnLarrow
+        rhsLoc = combineSrcSpans (getLoc def) <$> tokenLoc sep
+     in AST.PatternSynonym <$> trfName id
+                           <*> makeList " " (before sep) (mapM trfName args) 
+                           <*> annLoc rhsLoc (trfPatSynRhs dir def)
+  where trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.PatSynRhs r)
+        trfPatSynRhs ImplicitBidirectional pat = AST.BidirectionalPatSyn <$> trfPattern pat <*> nothing " where " "" atTheEnd
+        trfPatSynRhs (ExplicitBidirectional mg) pat = AST.BidirectionalPatSyn <$> trfPattern pat <*> (makeJust <$> trfPatSynWhere mg)
+        trfPatSynRhs Unidirectional pat = AST.OneDirectionalPatSyn <$> trfPattern pat
+        trfPatSynWhere :: TransformName n r => MatchGroup n (LHsExpr n) -> Trf (Ann AST.PatSynWhere r)
+        trfPatSynWhere (MG { mg_alts = alts }) = annLoc (pure $ collectLocs alts) (AST.PatSynWhere <$> makeIndentedList (after AnnWhere) (mapM (trfMatch (unLoc id)) alts))

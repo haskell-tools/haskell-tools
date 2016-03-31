@@ -97,6 +97,10 @@ deriving instance Eq (TupSecElem a)
 deriving instance Eq (TypeFamily a)
 deriving instance Eq (CaseRhs a)
 deriving instance Eq (GuardedCaseRhs a)
+deriving instance Eq (PatternSynonym a)
+deriving instance Eq (PatSynRhs a)
+deriving instance Eq (PatSynWhere a)
+deriving instance Eq (PatternTypeSignature a)
 
 -- Literal
 deriving instance Eq (Literal a)

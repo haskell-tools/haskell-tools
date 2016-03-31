@@ -94,6 +94,11 @@ deriving instance Generic a => Generic (TupSecElem a)
 deriving instance Generic a => Generic (TypeFamily a)
 deriving instance Generic a => Generic (CaseRhs a)
 deriving instance Generic a => Generic (GuardedCaseRhs a)
+deriving instance Generic a => Generic (PatternSynonym a)
+deriving instance Generic a => Generic (PatSynRhs a)
+deriving instance Generic a => Generic (PatSynWhere a)
+deriving instance Generic a => Generic (PatternTypeSignature a)
+
 
 -- Literal
 deriving instance Generic a => Generic (Literal a)

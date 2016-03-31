@@ -94,6 +94,10 @@ deriving instance Data a => Data (TupSecElem a)
 deriving instance Data a => Data (TypeFamily a)
 deriving instance Data a => Data (CaseRhs a)
 deriving instance Data a => Data (GuardedCaseRhs a)
+deriving instance Data a => Data (PatternSynonym a)
+deriving instance Data a => Data (PatSynRhs a)
+deriving instance Data a => Data (PatSynWhere a)
+deriving instance Data a => Data (PatternTypeSignature a)
 
 -- Literal
 deriving instance Data a => Data (Literal a)

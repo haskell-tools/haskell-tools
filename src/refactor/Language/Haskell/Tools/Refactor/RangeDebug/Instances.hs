@@ -98,6 +98,10 @@ instance (Generic a, Show a) => TreeDebug TupSecElem a
 instance (Generic a, Show a) => TreeDebug TypeFamily a
 instance (Generic a, Show a) => TreeDebug CaseRhs a
 instance (Generic a, Show a) => TreeDebug GuardedCaseRhs a
+instance (Generic a, Show a) => TreeDebug PatternSynonym a
+instance (Generic a, Show a) => TreeDebug PatSynRhs a
+instance (Generic a, Show a) => TreeDebug PatSynWhere a
+instance (Generic a, Show a) => TreeDebug PatternTypeSignature a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a

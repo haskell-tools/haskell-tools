@@ -97,6 +97,11 @@ deriving instance Show (TupSecElem a)
 deriving instance Show (TypeFamily a)
 deriving instance Show (CaseRhs a)
 deriving instance Show (GuardedCaseRhs a)
+deriving instance Show (PatternSynonym a)
+deriving instance Show (PatSynRhs a)
+deriving instance Show (PatSynWhere a)
+deriving instance Show (PatternTypeSignature a)
+
 
 -- Literal
 deriving instance Show (Literal a)

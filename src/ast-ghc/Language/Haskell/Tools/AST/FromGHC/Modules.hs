@@ -34,6 +34,7 @@ import ConLike as GHC
 import DataCon as GHC
 import Bag as GHC
 import Var as GHC
+import PatSyn as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo, SemanticInfo(..), semanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
@@ -55,6 +56,7 @@ addTypeInfos bnds mod = traverseUp (return ()) (return ()) replaceNodeInfo mod
           = lookupName name >>= \case
               Just (AnId id) -> return (Just id)
               Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
+              Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (patSynType ps)
               Just (ATyCon tc) -> return $ Just $ mkVanillaGlobal name (tyConKind tc)
               Nothing -> case Map.lookup name mapping of 
                            Just x -> return (Just x)

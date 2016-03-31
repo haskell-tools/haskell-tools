@@ -175,6 +175,10 @@ before tok = srcSpanStart <$> tokenLoc tok
 after :: AnnKeywordId -> Trf SrcLoc
 after tok = srcSpanEnd <$> tokenLoc tok
 
+-- | The element should span from the given token to the end of focus
+annFrom :: RangeAnnot a => AnnKeywordId -> Trf (e a) -> Trf (Ann e a)
+annFrom kw = annLoc (combineSrcSpans <$> tokenLoc kw <*> asks (srcLocSpan . srcSpanEnd . contRange))
+
 -- | Gets the position at the beginning of the focus       
 atTheStart :: Trf SrcLoc
 atTheStart = asks (srcSpanStart . contRange)
