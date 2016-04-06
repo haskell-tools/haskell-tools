@@ -88,7 +88,7 @@ data Precedence a
      
 -- | Controls the activation of a rewrite rule (@ [1] @)
 data PhaseControl a
-  = PhaseControl { _phaseInvert :: AnnMaybe PhaseInvert a
+  = PhaseControl { _phaseUntil :: AnnMaybe PhaseInvert a
                  , _phaseNumber :: Ann PhaseNumber a
                  } 
 

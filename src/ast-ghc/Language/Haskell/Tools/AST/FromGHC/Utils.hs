@@ -100,9 +100,15 @@ ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) 
 nothing :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf (AnnMaybe e a)
 nothing bef aft pos = annNothing . toOptAnnot bef aft <$> pos 
 
+emptyList :: RangeAnnot a => String -> Trf SrcLoc -> Trf (AnnList e a)
+emptyList sep ann = AnnList <$> (toListAnnot sep <$> ann) <*> pure []
+
 -- | Creates a place for a list of nodes with a default place if the list is empty.
 makeList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
 makeList sep ann ls = AnnList <$> (toListAnnot sep <$> ann) <*> ls
+
+makeNonemptyList :: RangeAnnot a => String -> Trf [Ann e a] -> Trf (AnnList e a)
+makeNonemptyList sep ls = AnnList (toListAnnot sep noSrcLoc) <$> ls
 
 -- | Creates a place for an indented list of nodes with a default place if the list is empty.
 makeIndentedList :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
@@ -160,13 +166,27 @@ annLoc locm nodem = do loc <- locm
                        node <- local (\s -> s { contRange = loc }) nodem
                        return (Ann (toNodeAnnot loc) node)
 
+-- * Focus manipulation
+
 -- | Focuses the transformation to go between tokens
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok trf
   = do firstToken <- tokenLoc firstTok
        lastToken <- tokenLocBack lastTok
        local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanStart lastToken)}) trf
-       
+
+-- | Focuses the transformation to be performed after the given token
+focusAfter :: AnnKeywordId -> Trf a -> Trf a
+focusAfter firstTok trf
+  = do firstToken <- tokenLoc firstTok
+       local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf
+
+-- | Focuses the transformation to be performed after the given token
+focusBefore :: AnnKeywordId -> Trf a -> Trf a
+focusBefore lastTok trf
+  = do lastToken <- tokenLoc lastTok
+       local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf
+
 -- | Gets the position before the given token
 before :: AnnKeywordId -> Trf SrcLoc
 before tok = srcSpanStart <$> tokenLoc tok

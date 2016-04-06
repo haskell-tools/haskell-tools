@@ -14,11 +14,14 @@ import ApiAnnotation as GHC
 import Bag as GHC
 import Outputable as GHC
 import HsPat as GHC
+import HsDecls as GHC
+import HsTypes as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Exprs
 import Language.Haskell.Tools.AST.FromGHC.Patterns
 import Language.Haskell.Tools.AST.FromGHC.Types
+import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
@@ -113,3 +116,14 @@ trfFixitySig (FixitySig names (Fixity prec dir))
         moveBackOneCol (RealSrcLoc rl) = mkSrcLoc (srcLocFile rl) (srcLocLine rl) (srcLocCol rl - 1)
         moveBackOneCol (UnhelpfulLoc fs) = UnhelpfulLoc fs
    
+trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.Rule r)
+trfRewriteRule = trfLoc $ \(HsRule name act bndrs left _ right _) ->
+  AST.Rule <$> trfFastString name 
+           <*> focusBefore AnnForall (trfPhase act)
+           <*> makeNonemptyList " " (mapM trfRuleBndr bndrs)
+           <*> trfExpr left
+           <*> trfExpr right
+
+trfRuleBndr :: TransformName n r =>  Located (RuleBndr n) -> Trf (Ann AST.TyVar r)
+trfRuleBndr = trfLoc $ \case (RuleBndr n) -> AST.TyVarDecl <$> trfName n <*> nothing " " "" atTheEnd
+                             (RuleBndrSig n k) -> AST.TyVarDecl <$> trfName n <*> (makeJust <$> (trfKindSig' (hswb_cts k)))

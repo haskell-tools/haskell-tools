@@ -5,6 +5,7 @@ import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Types
 import Language.Haskell.Tools.AST.Patterns
 import Language.Haskell.Tools.AST.Kinds
+import Language.Haskell.Tools.AST.Exprs
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Ann
@@ -81,7 +82,7 @@ data Decl a
                          , _declName :: Ann Name a
                          , _declType :: Ann Type a
                          } -- ^ foreign export (@ foreign export ccall _foo :: Int -> IO Int @)
-  | Pragma               { _declPragma :: Ann TopLevelPragma a 
+  | PragmaDecl           { _declPragma :: Ann TopLevelPragma a 
                          } -- ^ top level pragmas
   | SpliceDecl           { _declSplice :: Ann Splice a 
                          } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)

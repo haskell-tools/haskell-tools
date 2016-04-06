@@ -101,6 +101,7 @@ trfDecl = trfLoc $ \case
   SigD sig -> trfSig sig
   DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybe "" "" trfOverlap overlap <*> trfInstanceRule t
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
+  RuleD (HsRules _ rules) -> AST.PragmaDecl <$> annCont (AST.RulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name typ _ (CImport ccall safe _ _ _)) 
     -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety safe <*> trfName name <*> trfType typ

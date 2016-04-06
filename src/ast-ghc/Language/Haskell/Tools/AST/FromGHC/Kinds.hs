@@ -19,6 +19,10 @@ trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindCo
 trfKindSig = trfMaybe "" "" (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
                                          (fmap AST.KindConstraint $ trfLoc trfKind' k))
 
+trfKindSig' :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.KindConstraint r)
+trfKindSig' k = annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
+                       (AST.KindConstraint <$> trfLoc trfKind' k)
+
 trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind r)
 trfKind = trfLoc trfKind'
 

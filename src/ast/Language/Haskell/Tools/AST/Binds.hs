@@ -98,11 +98,10 @@ data TopLevelPragma a
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 data Rule a
   = Rule { _ruleName :: Ann StringNode a -- ^ User name of the rule
-         , _rulePhase :: AnnMaybe PhaseControl a
-         , _ruleBounded :: AnnList Name a
-         , _ruleTopLevel :: Ann Name a
-         , _ruleApplied :: AnnList Expr a
-         , _ruleRhs :: Ann Expr a
+         , _rulePhase :: AnnMaybe PhaseControl a -- ^ The compilation phases in which the rule can be applied
+         , _ruleBounded :: AnnList TyVar a -- ^ Variables bound in the rule
+         , _ruleLhs :: Ann Expr a -- ^ The transformed expression
+         , _ruleRhs :: Ann Expr a -- ^ The resulting expression
          }
  
 -- | Annotation allows you to connect an expression to any declaration. 

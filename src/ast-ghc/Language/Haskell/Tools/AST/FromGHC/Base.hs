@@ -12,6 +12,7 @@ module Language.Haskell.Tools.AST.FromGHC.Base where
 
 import Control.Monad.Reader
 import Data.List.Split
+import Data.Char
 import qualified Data.ByteString.Char8 as BS
 
 import Control.Reference hiding (element)
@@ -62,8 +63,13 @@ instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r wh
 --  trfName name = (annotation&semanticInfo .= (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
   
 trfName' :: TransformName name res => name -> Trf (AST.Name res)
-trfName' n = AST.nameFromList . fst <$> trfNameStr (occNameString (rdrNameOcc (rdrName n)))
+trfName' n = let str = occNameString (rdrNameOcc (rdrName n)) 
+              in (if isOperatorName str then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
+                                        else AST.nameFromList . fst <$> trfNameStr str)
   
+isOperatorName :: String -> Bool
+isOperatorName n = all isPunctuation n
+
 trfNameSp :: TransformName name res => name -> SrcSpan -> Trf (Ann AST.Name res)
 trfNameSp n l = trfName (L l n)
 
@@ -91,6 +97,9 @@ trfModuleName = trfLoc trfModuleName'
 
 trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.Name a)
 trfModuleName' = (AST.nameFromList . fst <$>) . trfNameStr . moduleNameString
+
+trfFastString :: RangeAnnot a => Located FastString -> Trf (Ann AST.StringNode a)
+trfFastString = trfLoc $ pure . AST.StringNode . unpackFS
   
 trfDataKeyword :: RangeAnnot a => NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword a)
 trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
@@ -113,5 +122,10 @@ trfOverlap = trfLoc $ pure . \case
   Overlaps _ -> AST.Overlaps
   Incoherent _ -> AST.IncoherentOverlap
          
+trfPhase :: RangeAnnot a => Activation -> Trf (AnnMaybe AST.PhaseControl a)
+trfPhase AlwaysActive = nothing "" "" atTheEnd
+trfPhase (ActiveAfter pn) = makeJust <$> annCont (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase (ActiveBefore pn) = makeJust <$> annCont (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
 
-          
+trfPhaseNum :: RangeAnnot a => PhaseNum -> Trf (Ann AST.PhaseNumber a)
+trfPhaseNum i = annLoc (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 
