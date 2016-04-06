@@ -98,6 +98,7 @@ deriving instance Generic a => Generic (PatternSynonym a)
 deriving instance Generic a => Generic (PatSynRhs a)
 deriving instance Generic a => Generic (PatSynWhere a)
 deriving instance Generic a => Generic (PatternTypeSignature a)
+deriving instance Generic a => Generic (Role a)
 
 
 -- Literal

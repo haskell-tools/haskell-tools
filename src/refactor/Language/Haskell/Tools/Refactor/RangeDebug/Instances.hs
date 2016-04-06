@@ -102,6 +102,7 @@ instance (Generic a, Show a) => TreeDebug PatternSynonym a
 instance (Generic a, Show a) => TreeDebug PatSynRhs a
 instance (Generic a, Show a) => TreeDebug PatSynWhere a
 instance (Generic a, Show a) => TreeDebug PatternTypeSignature a
+instance (Generic a, Show a) => TreeDebug Role a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a

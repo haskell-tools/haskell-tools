@@ -101,6 +101,7 @@ deriving instance Show (PatternSynonym a)
 deriving instance Show (PatSynRhs a)
 deriving instance Show (PatSynWhere a)
 deriving instance Show (PatternTypeSignature a)
+deriving instance Show (Role a)
 
 
 -- Literal

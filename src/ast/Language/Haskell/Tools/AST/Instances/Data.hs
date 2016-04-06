@@ -98,6 +98,7 @@ deriving instance Data a => Data (PatternSynonym a)
 deriving instance Data a => Data (PatSynRhs a)
 deriving instance Data a => Data (PatSynWhere a)
 deriving instance Data a => Data (PatternTypeSignature a)
+deriving instance Data a => Data (Role a)
 
 -- Literal
 deriving instance Data a => Data (Literal a)

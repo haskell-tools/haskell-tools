@@ -81,6 +81,11 @@ data Assoc a
   = AssocNone  -- ^ non-associative operator (declared with @infix@)
   | AssocLeft  -- ^ left-associative operator (declared with @infixl@)
   | AssocRight -- ^ right-associative operator (declared with @infixr@)
+
+data Role a
+  = Nominal
+  | Representational
+  | Phantom
   
 -- | Numeric precedence of an operator
 data Precedence a

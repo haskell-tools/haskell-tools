@@ -84,6 +84,9 @@ data Decl a
                          } -- ^ foreign export (@ foreign export ccall _foo :: Int -> IO Int @)
   | PragmaDecl           { _declPragma :: Ann TopLevelPragma a 
                          } -- ^ top level pragmas
+  | RoleDecl             { _declRoleType :: Ann Name a 
+                         , _declRoles :: AnnList Role a
+                         } -- ^ role annotations (@ type role Ptr representational @)
   | SpliceDecl           { _declSplice :: Ann Splice a 
                          } -- ^ A Template Haskell splice declaration (@ $(generateDecls) @)
     

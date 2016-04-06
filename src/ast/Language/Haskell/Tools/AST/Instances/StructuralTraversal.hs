@@ -114,6 +114,7 @@ deriveStructTrav ''PatternSynonym
 deriveStructTrav ''PatSynRhs
 deriveStructTrav ''PatSynWhere
 deriveStructTrav ''PatternTypeSignature
+deriveStructTrav ''Role
 
 
 -- Literal

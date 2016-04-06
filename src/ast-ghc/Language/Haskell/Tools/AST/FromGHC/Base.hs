@@ -29,6 +29,7 @@ import BasicTypes as GHC
 import FastString as GHC
 import ApiAnnotation as GHC
 import ForeignCall as GHC
+import CoAxiom as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..), SemanticInfo(..), annotation, semanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
@@ -121,6 +122,11 @@ trfOverlap = trfLoc $ pure . \case
   Overlapping _ -> AST.Overlapping
   Overlaps _ -> AST.Overlaps
   Incoherent _ -> AST.IncoherentOverlap
+
+trfRole :: RangeAnnot a => Located (Maybe Role) -> Trf (Ann AST.Role a)
+trfRole = trfLoc $ \case Just Nominal -> pure AST.Nominal
+                         Just Representational -> pure AST.Representational
+                         Just Phantom -> pure AST.Phantom
          
 trfPhase :: RangeAnnot a => Activation -> Trf (AnnMaybe AST.PhaseControl a)
 trfPhase AlwaysActive = nothing "" "" atTheEnd

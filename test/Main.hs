@@ -51,6 +51,7 @@ languageTests =
   , "Decl.TypeClass"
   , "Decl.TypeFamily"
   , "Decl.TypeInstance"
+  , "Decl.TypeRole"
   , "Decl.TypeSynonym"
   , "Decl.ValBind"
   , "Expr.DoNotation"

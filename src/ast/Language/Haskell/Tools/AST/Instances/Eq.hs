@@ -101,6 +101,7 @@ deriving instance Eq (PatternSynonym a)
 deriving instance Eq (PatSynRhs a)
 deriving instance Eq (PatSynWhere a)
 deriving instance Eq (PatternTypeSignature a)
+deriving instance Eq (Role a)
 
 -- Literal
 deriving instance Eq (Literal a)
