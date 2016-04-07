@@ -15,4 +15,4 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 
 mkTypeSignature :: TemplateAnnot a => Ann Name a -> Ann Type a -> Ann TypeSignature a
-mkTypeSignature n t = mkAnn (child <> " :: " <> child) (TypeSignature n t)
+mkTypeSignature n t = mkAnn (child <> " :: " <> child) (TypeSignature (mkAnnList (listSep ", ") [n]) t)

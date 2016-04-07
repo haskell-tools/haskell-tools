@@ -97,6 +97,7 @@ trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsSpliceE _ splice) = AST.Splice <$> annCont (trfSplice' splice)
 trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
+trfExpr' (HsStatic expr) = AST.StaticPtr <$> trfExpr expr
 -- TODO: static
 
 trfFieldUpdates :: TransformName n r => HsRecordBinds n -> Trf (AnnList AST.FieldUpdate r)

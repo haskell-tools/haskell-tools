@@ -110,6 +110,8 @@ data Expr a
                    } -- ^ Arrow application: @f -< a+1@
   | LamCase        { _exprAlts :: AnnList Alt a
                    } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
+  | StaticPtr      { _exprStatic :: Ann Expr a
+                   } -- ^ Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
   -- XML expressions omitted
                    
 -- | Field update expressions

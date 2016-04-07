@@ -228,7 +228,7 @@ createClassBody sigs binds typeFams typeFamDefs
        
 trfClassElemSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.ClassElement r)
 trfClassElemSig = trfLoc $ \case
-  TypeSig [name] typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
+  TypeSig names typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType typ)
   GenericSig [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType typ
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
@@ -260,7 +260,7 @@ trfInstBody binds sigs fams dats = do
           
 trfClassInstSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.InstBodyDecl r)
 trfClassInstSig = trfLoc $ \case
-  TypeSig [name] typ _ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> trfName name <*> trfType typ)
+  TypeSig names typ _ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType typ)
           
 trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl r)
 trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)

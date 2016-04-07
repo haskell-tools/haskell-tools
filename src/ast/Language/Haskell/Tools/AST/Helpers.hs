@@ -93,7 +93,7 @@ class BindingElem d where
   isBinding :: d a -> Bool
   
 instance BindingElem Decl where
-  bindName = declValBind&bindingName &+& declTypeSig&element&tsName&semantics&nameInfo
+  bindName = declValBind&bindingName &+& declTypeSig&element&tsName&annList&semantics&nameInfo
   createTypeSig = TypeSigDecl
   createBinding = ValueBinding
   isTypeSig (TypeSigDecl _) = True
@@ -102,7 +102,7 @@ instance BindingElem Decl where
   isBinding _ = False
 
 instance BindingElem LocalBind where
-  bindName = localVal&bindingName &+& localSig&element&tsName&semantics&nameInfo
+  bindName = localVal&bindingName &+& localSig&element&tsName&annList&semantics&nameInfo
   createTypeSig = LocalSignature
   createBinding = LocalValBind
   isTypeSig (LocalSignature _) = True

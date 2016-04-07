@@ -44,7 +44,7 @@ data LocalBind a
                    
 -- | A type signature (@ _f :: Int -> Int @)
 data TypeSignature a 
-  = TypeSignature { _tsName :: Ann Name a
+  = TypeSignature { _tsName :: AnnList Name a
                   , _tsType :: Ann Type a
                   }     
                    
