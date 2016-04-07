@@ -58,7 +58,7 @@ makeReferences ''Kind
 makeReferences ''Context
 makeReferences ''Assertion
 makeReferences ''Expr
-makeReferences ''Stmt
+makeReferences ''Stmt'
 makeReferences ''CompStmt
 makeReferences ''ValueBind
 makeReferences ''Pattern
@@ -66,7 +66,7 @@ makeReferences ''PatternField
 makeReferences ''Splice
 makeReferences ''QQString
 makeReferences ''Match
-makeReferences ''Alt
+makeReferences ''Alt'
 makeReferences ''Rhs
 makeReferences ''GuardedRhs
 makeReferences ''FieldUpdate
@@ -87,8 +87,13 @@ makeReferences ''TypeSignature
 makeReferences ''ListCompBody
 makeReferences ''TupSecElem
 makeReferences ''TypeFamily
-makeReferences ''CaseRhs
-makeReferences ''GuardedCaseRhs
+makeReferences ''CaseRhs'
+makeReferences ''GuardedCaseRhs'
+makeReferences ''PatternSynonym
+makeReferences ''PatSynRhs
+makeReferences ''PatSynWhere
+makeReferences ''PatternTypeSignature
+makeReferences ''Role
 
 -- Literal
 makeReferences ''Literal

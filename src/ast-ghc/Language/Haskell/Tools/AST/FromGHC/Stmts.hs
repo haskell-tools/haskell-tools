@@ -27,12 +27,18 @@ import qualified Language.Haskell.Tools.AST as AST
 trfDoStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.Stmt r)
 trfDoStmt = trfLoc trfDoStmt'
 
-trfDoStmt' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.Stmt r)
-trfDoStmt' (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> trfExpr expr
-trfDoStmt' (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (trfExpr' (unLoc expr))
-trfDoStmt' (LetStmt binds) = AST.LetStmt <$> trfLocalBinds binds
-trfDoStmt' (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," trfDoStmt' stmts
-trfDoStmt' (LastStmt body _) = AST.ExprStmt <$> annCont (trfExpr' (unLoc body))
+trfDoStmt' :: TransformName n r => Stmt n (Located (HsExpr n)) -> Trf (AST.Stmt' AST.Expr r)
+trfDoStmt' = gTrfDoStmt' trfExpr'
+
+trfCmdDoStmt' :: TransformName n r => Stmt n (Located (HsCmd n)) -> Trf (AST.CmdStmt r)
+trfCmdDoStmt' (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," trfCmdDoStmt' stmts
+trfCmdDoStmt' stmt = AST.NonRecStmt <$> annCont (gTrfDoStmt' trfCmd' stmt)
+
+gTrfDoStmt' :: TransformName n r => (ge n -> Trf (ae r)) -> Stmt n (Located (ge n)) -> Trf (AST.Stmt' ae r)
+gTrfDoStmt' et (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> (trfLoc et) expr
+gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (et (unLoc expr))
+gTrfDoStmt' et (LetStmt binds) = AST.LetStmt <$> trfLocalBinds binds
+gTrfDoStmt' et (LastStmt body _) = AST.ExprStmt <$> annCont (et (unLoc body))
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]

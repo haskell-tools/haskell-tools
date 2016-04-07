@@ -12,3 +12,5 @@ import qualified Language.Haskell.Tools.AST as AST
 
 trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
+
+trfCmd' :: TransformName n r => HsCmd n -> Trf (AST.Cmd r)

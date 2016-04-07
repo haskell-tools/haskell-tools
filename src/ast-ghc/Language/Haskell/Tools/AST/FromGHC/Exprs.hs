@@ -96,7 +96,7 @@ trfExpr' (PArrSeq _ (FromThenTo from step to))
 trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsSpliceE _ splice) = AST.Splice <$> annCont (trfSplice' splice)
 trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
--- TODO: arrows
+trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
 -- TODO: static
 
 trfFieldUpdates :: TransformName n r => HsRecordBinds n -> Trf (AnnList AST.FieldUpdate r)
@@ -117,17 +117,49 @@ trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt
 trfAlt = trfLoc trfAlt'
 
 trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.Alt r)
-trfAlt' (Match _ [pat] typ (GRHSs rhss locBinds))
-  = AST.Alt <$> trfPattern pat <*> trfCaseRhss rhss <*> trfWhereLocalBinds locBinds
+trfAlt' = gTrfAlt' trfExpr'
+
+gTrfAlt' :: TransformName n r => (ge n -> Trf (ae r)) -> Match n (Located (ge n)) -> Trf (AST.Alt' ae r)
+gTrfAlt' te (Match _ [pat] typ (GRHSs rhss locBinds))
+  = AST.Alt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds locBinds
   
 trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.CaseRhs r)
-trfCaseRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
-                                             (AST.UnguardedCaseRhs <$> trfExpr body)
-trfCaseRhss rhss = annLoc (pure $ collectLocs rhss) 
-                          (AST.GuardedCaseRhss <$> trfAnnList ";" trfGuardedCaseRhs' rhss)
+trfCaseRhss = gTrfCaseRhss trfExpr'
+
+gTrfCaseRhss :: TransformName n r => (ge n -> Trf (ae r)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) r)
+gTrfCaseRhss te [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
+                                                 (AST.UnguardedCaseRhs <$> trfLoc te body)
+gTrfCaseRhss te rhss = annLoc (pure $ collectLocs rhss) 
+                              (AST.GuardedCaseRhss <$> trfAnnList ";" (gTrfGuardedCaseRhs' te) rhss)
   
 trfGuardedCaseRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedCaseRhs r)
 trfGuardedCaseRhs = trfLoc trfGuardedCaseRhs' 
 
 trfGuardedCaseRhs' :: TransformName n r => GRHS n (LHsExpr n) -> Trf (AST.GuardedCaseRhs r)
-trfGuardedCaseRhs' (GRHS guards body) = AST.GuardedCaseRhs <$> trfAnnList " " trfRhsGuard' guards <*> trfExpr body
+trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr'
+
+gTrfGuardedCaseRhs' :: TransformName n r => (ge n -> Trf (ae r)) -> GRHS n (Located (ge n)) -> Trf (AST.GuardedCaseRhs' ae r)
+gTrfGuardedCaseRhs' te (GRHS guards body) = AST.GuardedCaseRhs <$> trfAnnList " " trfRhsGuard' guards <*> trfLoc te body
+
+trfCmdTop :: TransformName n r => Located (HsCmdTop n) -> Trf (Ann AST.Cmd r)
+trfCmdTop (L _ (HsCmdTop cmd _ _ _)) = trfCmd cmd
+
+trfCmd :: TransformName n r => Located (HsCmd n) -> Trf (Ann AST.Cmd r)
+trfCmd = trfLoc trfCmd'
+
+trfCmd' :: TransformName n r => HsCmd n -> Trf (AST.Cmd r)
+trfCmd' (HsCmdArrApp left right _ typ dir) = AST.ArrowAppCmd <$> trfExpr left <*> op <*> trfExpr right 
+  where op = case (typ, dir) of (HsFirstOrderApp, False) -> annLoc (tokenLoc Annrarrowtail) (pure AST.RightAppl)
+                                (HsFirstOrderApp, True) -> annLoc (tokenLoc Annlarrowtail) (pure AST.LeftAppl)
+                                (HsHigherOrderApp, False) -> annLoc (tokenLoc AnnRarrowtail) (pure AST.RightHighApp)
+                                (HsHigherOrderApp, True) -> annLoc (tokenLoc AnnLarrowtail) (pure AST.LeftHighApp)
+                                                                       -- FIXME: needs a before 
+trfCmd' (HsCmdArrForm expr _ cmds) = AST.ArrowFormCmd <$> trfExpr expr <*> makeList " " (before AnnClose) (mapM trfCmdTop cmds)
+trfCmd' (HsCmdApp cmd expr) = AST.AppCmd <$> trfCmd cmd <*> trfExpr expr
+trfCmd' (HsCmdLam (MG [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] body] _)] _ _ _)) 
+  = AST.LambdaCmd <$> trfAnnList " " trfPattern' pats <*> trfCmd body
+trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
+trfCmd' (HsCmdCase expr (MG alts _ _ _)) = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd')) alts) 
+trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
+trfCmd' (HsCmdLet binds cmd) = AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd
+trfCmd' (HsCmdDo stmts _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc trfCmdDoStmt') stmts)

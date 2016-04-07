@@ -102,7 +102,7 @@ data Expr a
                    }
   -- Arrows
   | Proc           { _procPattern :: Ann Pattern a
-                   , _procExpr :: Ann Expr a
+                   , _procExpr :: Ann Cmd a
                    } -- ^ Arrow definition: @proc a -> f -< a+1@
   | ArrowApp       { _exprLhs :: Ann Expr a
                    , _arrowAppl :: Ann ArrowAppl a
@@ -128,25 +128,31 @@ data TupSecElem a
   | Missing -- ^ A missing element in a tuple section
   
 -- | Clause of case expression          
-data Alt a
+data Alt' expr a
   = Alt { _altPattern :: Ann Pattern a
-        , _altRhs :: Ann CaseRhs a
+        , _altRhs :: Ann (CaseRhs' expr) a
         , _altBinds :: AnnMaybe LocalBinds a
         }
+type Alt = Alt' Expr
+type CmdAlt = Alt' Cmd
 
   
 -- | Right hand side of a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
-data CaseRhs a
-  = UnguardedCaseRhs { _rhsCaseExpr :: Ann Expr a 
+data CaseRhs' expr a
+  = UnguardedCaseRhs { _rhsCaseExpr :: Ann expr a 
                      }
-  | GuardedCaseRhss  { _rhsCaseGuards :: AnnList GuardedCaseRhs a 
+  | GuardedCaseRhss  { _rhsCaseGuards :: AnnList (GuardedCaseRhs' expr) a 
                      }
+type CaseRhs = CaseRhs' Expr
+type CmdCaseRhs = CaseRhs' Cmd
                      
 -- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
-data GuardedCaseRhs a
+data GuardedCaseRhs' expr a
   = GuardedCaseRhs { _caseGuardStmts :: AnnList RhsGuard a -- ^ Cannot be empty.
-                   , _caseGuardExpr :: Ann Expr a
+                   , _caseGuardExpr :: Ann expr a
                    } 
+type GuardedCaseRhs = GuardedCaseRhs' Expr
+type CmdGuardedCaseRhs = GuardedCaseRhs' Cmd
                
 -- | Pragmas that can be applied to expressions
 data ExprPragma a
@@ -170,3 +176,36 @@ data Number a
   = Number { _numberInteger :: Integer 
            }
         
+data Cmd a
+  = ArrowAppCmd   { _cmdLhs :: Ann Expr a
+                  , _cmdArrowOp :: Ann ArrowAppl a
+                  , _cmdRhs :: Ann Expr a
+                  }
+  | ArrowFormCmd  { _cmdExpr :: Ann Expr a
+                  , _cmdInnerCmds :: AnnList Cmd a
+                  }
+  | AppCmd        { _cmdInnerCmd :: Ann Cmd a
+                  , _cmdApplied :: Ann Expr a
+                  }
+  | InfixCmd      { _cmdLeftCmd :: Ann Cmd a
+                  , _cmdOperator :: Ann Name a
+                  , _cmdRightCmd :: Ann Cmd a
+                  }
+  | LambdaCmd     { _cmdBindings :: AnnList Pattern a -- ^ at least one
+                  , _cmdInner :: Ann Cmd a
+                  }
+  | ParenCmd      { _cmdInner :: Ann Cmd a
+                  }
+  | CaseCmd       { _cmdExpr :: Ann Expr a 
+                  , _cmdAlts :: AnnList CmdAlt a
+                  }
+  | IfCmd         { _cmdExpr :: Ann Expr a 
+                  , _cmdThen :: Ann Cmd a
+                  , _cmdElse :: Ann Cmd a
+                  }
+  | LetCmd        { _cmdBinds :: AnnList LocalBind a -- ^ nonempty
+                  , _cmdInner :: Ann Cmd a
+                  }
+  | DoCmd         { _cmdStmts :: AnnList CmdStmt a
+                  }
+ 

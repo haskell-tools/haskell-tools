@@ -79,7 +79,6 @@ deriveStructTrav ''Kind
 deriveStructTrav ''Context
 deriveStructTrav ''Assertion
 deriveStructTrav ''Expr
-deriveStructTrav ''Stmt
 deriveStructTrav ''CompStmt
 deriveStructTrav ''ValueBind
 deriveStructTrav ''Pattern
@@ -87,7 +86,6 @@ deriveStructTrav ''PatternField
 deriveStructTrav ''Splice
 deriveStructTrav ''QQString
 deriveStructTrav ''Match
-deriveStructTrav ''Alt
 deriveStructTrav ''Rhs
 deriveStructTrav ''GuardedRhs
 deriveStructTrav ''FieldUpdate
@@ -108,14 +106,38 @@ deriveStructTrav ''TypeSignature
 deriveStructTrav ''ListCompBody
 deriveStructTrav ''TupSecElem
 deriveStructTrav ''TypeFamily
-deriveStructTrav ''CaseRhs
-deriveStructTrav ''GuardedCaseRhs
 deriveStructTrav ''PatternSynonym
 deriveStructTrav ''PatSynRhs
 deriveStructTrav ''PatSynWhere
 deriveStructTrav ''PatternTypeSignature
 deriveStructTrav ''Role
+deriveStructTrav ''Cmd
+deriveStructTrav ''CmdStmt
 
+
+-- FIXME: structural traversal deriving does not respect the instance requirements for type like Ann expr a
+instance StructuralTraversable expr => StructuralTraversable (Stmt' expr) where
+  traverseUp desc asc f (BindStmt p e) = BindStmt <$> traverseUp desc asc f p <*> traverseUp desc asc f e
+  traverseUp desc asc f (ExprStmt e) = ExprStmt <$> traverseUp desc asc f e
+  traverseUp desc asc f (LetStmt bs) = LetStmt <$> traverseUp desc asc f bs
+  traverseDown desc asc f (BindStmt p e) = BindStmt <$> traverseDown desc asc f p <*> traverseDown desc asc f e
+  traverseDown desc asc f (ExprStmt e) = ExprStmt <$> traverseDown desc asc f e
+  traverseDown desc asc f (LetStmt bs) = LetStmt <$> traverseDown desc asc f bs
+
+instance StructuralTraversable expr => StructuralTraversable (Alt' expr) where
+  traverseUp desc asc f (Alt p r b) = Alt <$> traverseUp desc asc f p <*> traverseUp desc asc f r <*> traverseUp desc asc f b
+  traverseDown desc asc f (Alt p r b) = Alt <$> traverseDown desc asc f p <*> traverseDown desc asc f r <*> traverseDown desc asc f b
+
+-- FIXME: structural traversal deriving does not respect the instance requirements for type like Ann expr a
+instance StructuralTraversable expr => StructuralTraversable (CaseRhs' expr) where
+  traverseUp desc asc f (UnguardedCaseRhs e) = UnguardedCaseRhs <$> traverseUp desc asc f e
+  traverseUp desc asc f (GuardedCaseRhss g) = GuardedCaseRhss <$> traverseUp desc asc f g
+  traverseDown desc asc f (UnguardedCaseRhs e) = UnguardedCaseRhs <$> traverseDown desc asc f e
+  traverseDown desc asc f (GuardedCaseRhss g) = GuardedCaseRhss <$> traverseDown desc asc f g
+
+instance StructuralTraversable expr => StructuralTraversable (GuardedCaseRhs' expr) where
+  traverseUp desc asc f (GuardedCaseRhs g e) = GuardedCaseRhs <$> traverseUp desc asc f g <*> traverseUp desc asc f e
+  traverseDown desc asc f (GuardedCaseRhs g e) = GuardedCaseRhs <$> traverseDown desc asc f g <*> traverseDown desc asc f e
 
 -- Literal
 deriveStructTrav ''Literal
