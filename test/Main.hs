@@ -69,6 +69,7 @@ languageTests =
   , "Module.Export"
   , "Module.Import"
   , "Pattern.Constructor"
+  , "Pattern.NPlusK"
   , "Type.Bang"
   , "Type.Builtin"
   , "Type.Ctx"

@@ -42,4 +42,5 @@ trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotatio
 trfPattern' (LitPat lit) = AST.LitPat <$> annCont (trfLiteral' lit)
 trfPattern' (NPat (ol_val . unLoc -> lit) _ _) = AST.LitPat <$> annCont (trfOverloadedLit lit)
 trfPattern' (SigPatIn pat (hswb_cts -> typ)) = AST.TypeSigPat <$> trfPattern pat <*> trfType typ
+trfPattern' (NPlusKPat id (L l lit) _ _) = AST.NPlusKPat <$> trfName id <*> annLoc (pure l) (trfOverloadedLit (ol_val lit))
   -- NPlusKPat, CoPat?

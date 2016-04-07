@@ -55,6 +55,9 @@ data Pattern a
                   } -- ^ Splice patterns: @$(generateX inp)@
   | QuasiQuotePat { _patQQ :: Ann QuasiQuote a 
                   } -- ^ Quasi-quoted patterns: @[| 1 + 2 |]@
+  | NPlusKPat     { _patternVar :: Ann Name a
+                  , _patternLit :: Ann Literal a
+                  }
                   
 -- Field specification of a record pattern
 data PatternField a 
