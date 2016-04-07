@@ -40,7 +40,8 @@ trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern p
 trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)
 trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)
 trfPattern' (LitPat lit) = AST.LitPat <$> annCont (trfLiteral' lit)
-trfPattern' (NPat (ol_val . unLoc -> lit) _ _) = AST.LitPat <$> annCont (trfOverloadedLit lit)
 trfPattern' (SigPatIn pat (hswb_cts -> typ)) = AST.TypeSigPat <$> trfPattern pat <*> trfType typ
+trfPattern' (NPat (ol_val . unLoc -> lit) _ _) = AST.LitPat <$> annCont (trfOverloadedLit lit)
 trfPattern' (NPlusKPat id (L l lit) _ _) = AST.NPlusKPat <$> trfName id <*> annLoc (pure l) (trfOverloadedLit (ol_val lit))
-  -- NPlusKPat, CoPat?
+-- coercion pattern introduced by GHC
+trfPattern' (CoPat _ pat _) = trfPattern' pat
