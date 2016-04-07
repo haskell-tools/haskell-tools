@@ -241,6 +241,11 @@ copyAnnot f at = (\(Ann i a) -> Ann i (f (Ann i a))) <$> at
 foldLocs :: [SrcSpan] -> SrcSpan
 foldLocs = foldl combineSrcSpans noSrcSpan
 
+-- | Update column information in a source location
+updateCol :: (Int -> Int) -> SrcLoc -> SrcLoc
+updateCol f loc@(UnhelpfulLoc _) = loc
+updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)
+
 -- | Combine source spans of elements into one that contains them all
 collectLocs :: [Located e] -> SrcSpan
 collectLocs = foldLocs . map getLoc

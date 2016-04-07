@@ -142,8 +142,8 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
-    -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
+    transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
+    -- transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
     let commented = fixRanges $ placeComments (snd annots) transformed
@@ -165,25 +165,25 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
-    transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
-      NoRefactor -> return sourced
-      OrganizeImports -> do
-        liftIO $ putStrLn "==========="
-        organized <- organizeImports sourced
-        liftIO $ putStrLn $ sourceTemplateDebug organized
-        return organized
-      GenerateSignature sp -> do
-        liftIO $ putStrLn "==========="
-        modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
-                                          (nodesInside sp) -- local declarations
-                                          (getNode sp) 
-                                          sourced
-        liftIO $ putStrLn $ sourceTemplateDebug modified
-        return modified
-    liftIO $ putStrLn "==========="
-    let prettyPrinted = prettyPrint transformed
-    liftIO $ putStrLn prettyPrinted
-    liftIO $ putStrLn "==========="
+    -- transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
+    --   NoRefactor -> return sourced
+    --   OrganizeImports -> do
+    --     liftIO $ putStrLn "==========="
+    --     organized <- organizeImports sourced
+    --     liftIO $ putStrLn $ sourceTemplateDebug organized
+    --     return organized
+    --   GenerateSignature sp -> do
+    --     liftIO $ putStrLn "==========="
+    --     modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
+    --                                       (nodesInside sp) -- local declarations
+    --                                       (getNode sp) 
+    --                                       sourced
+    --     liftIO $ putStrLn $ sourceTemplateDebug modified
+    --     return modified
+    -- liftIO $ putStrLn "==========="
+    -- let prettyPrinted = prettyPrint transformed
+    -- liftIO $ putStrLn prettyPrinted
+    -- liftIO $ putStrLn "==========="
     
       
 deriving instance Generic SrcSpan
