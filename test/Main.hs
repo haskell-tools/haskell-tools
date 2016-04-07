@@ -70,6 +70,8 @@ languageTests =
   , "Module.Import"
   , "Pattern.Constructor"
   , "Pattern.NPlusK"
+  , "TH.QuasiQuote.Use"
+  , "TH.Brackets"
   , "Type.Bang"
   , "Type.Builtin"
   , "Type.Ctx"
@@ -182,7 +184,11 @@ parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do
   dflags <- getSessionDynFlags
   -- don't generate any code
-  setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
+  setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir]
+                                        , hscTarget = HscAsm -- needed for static pointers
+                                        , ghcLink = LinkInMemory
+                                        , ghcMode = CompManager 
+                                        }) Opt_KeepRawTokenStream
   target <- guessTarget moduleName Nothing
   setTargets [target]
   load LoadAllTargets
