@@ -12,7 +12,7 @@ import ApiAnnotation as GHC
 import BasicTypes as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
-import Language.Haskell.Tools.AST.FromGHC.TH
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Literals
 import Language.Haskell.Tools.AST.FromGHC.Types
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs

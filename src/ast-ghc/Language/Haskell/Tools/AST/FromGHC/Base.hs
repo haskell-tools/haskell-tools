@@ -30,6 +30,7 @@ import FastString as GHC
 import ApiAnnotation as GHC
 import ForeignCall as GHC
 import CoAxiom as GHC
+import Bag as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..), SemanticInfo(..), annotation, semanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
@@ -39,15 +40,15 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
+  getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
   
 instance GHCName RdrName where
   rdrName = id
+  getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
     
 instance GHCName GHC.Name where
   rdrName = nameRdrName
-  
-instance GHCName Id where
-  rdrName = nameRdrName . idName
+  getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
@@ -68,6 +69,8 @@ trfName' n = let str = occNameString (rdrNameOcc (rdrName n))
               in (if isOperatorName str then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
                                         else AST.nameFromList . fst <$> trfNameStr str)
   
+
+
 isOperatorName :: String -> Bool
 isOperatorName n = all isPunctuation n
 

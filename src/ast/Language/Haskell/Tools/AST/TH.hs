@@ -36,6 +36,6 @@ data Bracket a
                    } -- ^ Pattern bracket (@ [| Point x y |] @)
   | TypeBracket    { _bracketType :: Ann Type a 
                    } -- ^ Pattern bracket (@ [| (Int,Int) |] @)
-  | DeclBracket    { _bracketDecl :: Ann Decl a 
+  | DeclsBracket   { _bracketDecl :: AnnList Decl a 
                    } -- ^ Declaration bracket (@ [| _f :: Int -> Int; f x = x*x |] @)
             

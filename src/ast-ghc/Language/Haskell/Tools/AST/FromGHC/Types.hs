@@ -19,7 +19,7 @@ import Control.Reference
 import Data.Maybe
 
 import Language.Haskell.Tools.AST.FromGHC.Base
-import Language.Haskell.Tools.AST.FromGHC.TH
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils

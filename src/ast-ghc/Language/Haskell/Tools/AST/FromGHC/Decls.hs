@@ -26,7 +26,7 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Types
 import Language.Haskell.Tools.AST.FromGHC.Patterns
-import Language.Haskell.Tools.AST.FromGHC.TH
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
@@ -36,11 +36,11 @@ import qualified Language.Haskell.Tools.AST as AST
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments
-trfDecls decls = makeList "\n" atTheEnd (mapM trfDecl decls)
+trfDecls decls = makeIndentedList atTheEnd (mapM trfDecl decls)
 
-trfDeclsGroup :: HsGroup Name -> Trf (AnnList AST.Decl RangeWithName)
+trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl r)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = makeList "\n" atTheEnd (fmap (orderDefs . concat) $ sequence $
+  = makeIndentedList atTheEnd (fmap (orderDefs . concat) $ sequence $
       [ trfBindOrSig vals
       , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
       , mapM (trfDecl . (fmap SpliceD)) splices
@@ -55,10 +55,10 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
       , mapM (trfDecl . (fmap VectD)) vects
       -- , mapM (trfDecl . (fmap DocD)) docs
       ])
-  where trfBindOrSig :: HsValBinds Name -> Trf [Ann AST.Decl RangeWithName]
-        trfBindOrSig (ValBindsOut vals sigs) 
-          = (++) <$> (concat <$> mapM (mapM (trfLoc trfVal) . bagToList . snd) vals)
-                 <*> (mapM (trfLoc trfSig) sigs)
+  where trfBindOrSig :: HsValBinds n -> Trf [Ann AST.Decl r]
+        trfBindOrSig (getBindsAndSigs -> (sigs, binds))
+          = (++) <$> mapM (trfLoc trfVal) (bagToList binds)
+                 <*> mapM (trfLoc trfSig) sigs
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)

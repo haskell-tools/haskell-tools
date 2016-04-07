@@ -23,7 +23,7 @@ import Language.Haskell.Tools.AST.FromGHC.Literals
 import Language.Haskell.Tools.AST.FromGHC.Patterns
 import Language.Haskell.Tools.AST.FromGHC.Stmts
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds
-import Language.Haskell.Tools.AST.FromGHC.TH
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
@@ -94,6 +94,8 @@ trfExpr' (PArrSeq _ (FromThenTo from step to))
   = AST.ParArrayEnum <$> trfExpr from <*> (makeJust <$> trfExpr step) <*> trfExpr to
 -- TODO: SCC, CORE, GENERATED annotations
 trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
+trfExpr' (HsRnBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
+trfExpr' (HsTcBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsSpliceE _ splice) = AST.Splice <$> annCont (trfSplice' splice)
 trfExpr' (HsQuasiQuoteE qq) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop

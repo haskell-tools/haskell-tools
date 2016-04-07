@@ -100,9 +100,9 @@ loadModule workingDir moduleName = do
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ dflags { importPaths = [workingDir]
-             , hscTarget = HscNothing
-             , ghcLink = NoLink
-             , ghcMode = OneShot 
+             , hscTarget = HscInterpreted
+             , ghcLink = LinkInMemory
+             , ghcMode = CompManager 
              }
   target <- guessTarget moduleName Nothing
   setTargets [target]
@@ -126,7 +126,7 @@ demoRefactor command workingDir moduleName =
   runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     -- don't generate any code
-    setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscNothing, ghcLink = NoLink }) Opt_KeepRawTokenStream
+    setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscInterpreted, ghcLink = LinkInMemory, ghcMode = CompManager }) Opt_KeepRawTokenStream
     target <- guessTarget moduleName Nothing
     setTargets [target]
     load LoadAllTargets
@@ -140,7 +140,7 @@ demoRefactor command workingDir moduleName =
 
     -- liftIO $ putStrLn $ show annots
     -- liftIO $ putStrLn "==========="
-    liftIO $ putStrLn $ show (pm_parsed_source $ tm_parsed_module t)
+    liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
     -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
     transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
