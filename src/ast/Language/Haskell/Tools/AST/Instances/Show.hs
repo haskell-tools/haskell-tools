@@ -104,6 +104,7 @@ deriving instance Show (PatternTypeSignature a)
 deriving instance Show (Role a)
 deriving instance Show (Cmd a)
 deriving instance Show (CmdStmt a)
+deriving instance Show (LanguageExtension a)
 
 
 -- Literal

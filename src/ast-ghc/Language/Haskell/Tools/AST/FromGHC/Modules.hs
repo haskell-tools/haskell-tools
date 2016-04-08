@@ -8,6 +8,7 @@ module Language.Haskell.Tools.AST.FromGHC.Modules where
 import Control.Reference hiding (element)
 import Data.Maybe
 import Data.List
+import Data.Char
 import Data.Map as Map hiding (map, filter)
 import Data.IORef
 import Data.Generics.Uniplate.Operations
@@ -94,7 +95,25 @@ trfModuleHead Nothing _ = nothing "" "" moduleHeadPos
                                                  _ -> atTheStart
 
 trfPragmas :: RangeAnnot a => Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
-trfPragmas _ _ = makeList "\n" atTheStart (pure [])
+trfPragmas _ _ = do languagePragmas <- asks (fromMaybe [] . (Map.lookup "LANGUAGE") . pragmaComms)
+                    makeList "" atTheStart (mapM trfLanguagePragma languagePragmas)
+
+trfLanguagePragma :: RangeAnnot a => Located String -> Trf (Ann AST.ModulePragma a)
+trfLanguagePragma lstr@(L l str) = annLoc (pure l) (AST.LanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems) 
+                                                                                         (mapM (trfLoc (pure . AST.LanguageExtension)) extensions))
+  where pragmaElems = splitLocated lstr
+        extensions = init $ drop 2 pragmaElems
+
+splitLocated :: Located String -> [Located String]
+splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing
+  where splitLocated' :: String -> RealSrcLoc -> Maybe (RealSrcLoc, String) -> [Located String]
+        splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c 
+          = L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing
+        splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing
+        splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))
+        splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))
+        splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
+        splitLocated' [] currLoc Nothing = []
 
 trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
 trfExportList = trfMaybe " " "" $ trfLoc trfExportList'

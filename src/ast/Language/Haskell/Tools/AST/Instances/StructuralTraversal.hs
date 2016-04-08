@@ -113,6 +113,7 @@ deriveStructTrav ''PatternTypeSignature
 deriveStructTrav ''Role
 deriveStructTrav ''Cmd
 deriveStructTrav ''CmdStmt
+deriveStructTrav ''LanguageExtension
 
 
 -- FIXME: structural traversal deriving does not respect the instance requirements for type like Ann expr a

@@ -10,7 +10,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
 import Data.List
-import Data.Char (isSpace)
+import Data.String.Utils
+import Data.Char (isSpace, isAlphaNum)
 import Data.Data
 import Data.Generics.Uniplate.Data
 import Control.Reference hiding (element)
@@ -37,6 +38,18 @@ con_RealSrcLoc = mkConstr ty_RealSrcLoc "RealSrcLoc" [] Prefix
 ty_RealSrcLoc = mkDataType "SrcLoc.RealSrcLoc" [con_RealSrcLoc]
   
 deriving instance Data SpanInfo
+
+getNormalComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map SrcSpan [Located AnnotationComment] 
+getNormalComments = Map.map (filter (isPragma . unLoc))
+
+getPragmaComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map String [Located String]
+getPragmaComments comms = Map.fromListWith (++) $ map (\(L l (AnnBlockComment str)) -> (getPragmaCommand str, [L l str])) 
+                                                $ filter (isPragma . unLoc) $ concat $ map snd $ Map.toList comms 
+  where getPragmaCommand = takeWhile isAlphaNum . dropWhile isSpace . drop 3
+
+isPragma :: AnnotationComment -> Bool
+isPragma (AnnBlockComment str) = startswith "{-#" str && endswith "#-}" str
+isPragma _ = False
 
 -- | Puts comments in the nodes they should be attached to. Leaves the AST in a state where parent nodes
 -- does not contain all of their children.

@@ -116,9 +116,8 @@ parseRenamed modSum = do
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-    <$> (runTrf (fst annots) $ trfModuleRename 
-                                 (fromJust $ tm_renamed_source tc) 
-                                 (pm_parsed_source p))
+    <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
+         $ trfModuleRename (fromJust $ tm_renamed_source tc) (pm_parsed_source p))
     
 demoRefactor :: String -> String -> String -> IO ()
 demoRefactor command workingDir moduleName = 
@@ -138,26 +137,21 @@ demoRefactor command workingDir moduleName =
     let annots = pm_annotations $ tm_parsed_module t
 
 
+
     -- liftIO $ putStrLn $ show annots
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
-    transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    -- transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
+    -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
-    let commented = fixRanges $ placeComments (snd annots) transformed
+    let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
     liftIO $ putStrLn $ rangeDebug commented
     liftIO $ putStrLn "==========="
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ templateDebug cutUp
     liftIO $ putStrLn "==========="
-    -- let locIndices = getLocIndices cutUp
-    -- liftIO $ putStrLn $ show locIndices
-    -- liftIO $ putStrLn "==========="
-    -- let mappedLocs = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) $ getLocIndices cutUp
-    -- liftIO $ putStrLn $ show mappedLocs
-    -- liftIO $ putStrLn "==========="
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced
     liftIO $ putStrLn "==========="
@@ -165,25 +159,25 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
-    -- transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
-    --   NoRefactor -> return sourced
-    --   OrganizeImports -> do
-    --     liftIO $ putStrLn "==========="
-    --     organized <- organizeImports sourced
-    --     liftIO $ putStrLn $ sourceTemplateDebug organized
-    --     return organized
-    --   GenerateSignature sp -> do
-    --     liftIO $ putStrLn "==========="
-    --     modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
-    --                                       (nodesInside sp) -- local declarations
-    --                                       (getNode sp) 
-    --                                       sourced
-    --     liftIO $ putStrLn $ sourceTemplateDebug modified
-    --     return modified
-    -- liftIO $ putStrLn "==========="
-    -- let prettyPrinted = prettyPrint transformed
-    -- liftIO $ putStrLn prettyPrinted
-    -- liftIO $ putStrLn "==========="
+    transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
+      NoRefactor -> return sourced
+      OrganizeImports -> do
+        liftIO $ putStrLn "==========="
+        organized <- organizeImports sourced
+        liftIO $ putStrLn $ sourceTemplateDebug organized
+        return organized
+      GenerateSignature sp -> do
+        liftIO $ putStrLn "==========="
+        modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
+                                          (nodesInside sp) -- local declarations
+                                          (getNode sp) 
+                                          sourced
+        liftIO $ putStrLn $ sourceTemplateDebug modified
+        return modified
+    liftIO $ putStrLn "==========="
+    let prettyPrinted = prettyPrint transformed
+    liftIO $ putStrLn prettyPrinted
+    liftIO $ putStrLn "==========="
     
       
 deriving instance Generic SrcSpan

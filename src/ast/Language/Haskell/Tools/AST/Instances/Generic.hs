@@ -101,6 +101,7 @@ deriving instance Generic a => Generic (PatternTypeSignature a)
 deriving instance Generic a => Generic (Role a)
 deriving instance Generic a => Generic (Cmd a)
 deriving instance Generic a => Generic (CmdStmt a)
+deriving instance Generic a => Generic (LanguageExtension a)
 
 
 -- Literal

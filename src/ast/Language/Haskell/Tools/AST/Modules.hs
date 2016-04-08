@@ -44,7 +44,7 @@ data SubSpec a
            
 -- | Pragmas that affect the whole module           
 data ModulePragma a
-  = LanguagePragma { _lpPragmas :: AnnList Name a 
+  = LanguagePragma { _lpPragmas :: AnnList LanguageExtension a 
                    }  -- ^ LANGUAGE pragma
   | OptionsPragma { _opTool :: AnnMaybe Name a
                   , _opStr :: Ann StringNode a
@@ -52,6 +52,8 @@ data ModulePragma a
   | AnnModulePragma { _ampExpr :: Ann Expr a 
                     } -- ^ ANN pragma with module scope
              
+data LanguageExtension a = LanguageExtension { _langExt :: String }
+
 -- | An import declaration: @import Module.Name@         
 data ImportDecl a
   = ImportDecl { _importSource :: AnnMaybe ImportSource a

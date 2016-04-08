@@ -12,16 +12,19 @@ import Data.Map
 -- | The (immutable) data for the transformation
 data TrfInput 
   = TrfInput { srcMap :: SourceMap -- ^ The lexical tokens of the source file
+             , pragmaComms :: Map String [Located String] -- ^ Pragma comments
              , contRange :: SrcSpan -- ^ The focus of the transformation
              }
       
-trfInit :: Map ApiAnnKey [SrcSpan] -> TrfInput 
-trfInit annots = TrfInput { srcMap = annotationsToSrcMap annots
-                          , contRange = noSrcSpan
-                          }
+trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput 
+trfInit annots comments 
+  = TrfInput { srcMap = annotationsToSrcMap annots
+             , pragmaComms = comments
+             , contRange = noSrcSpan
+             }
 
 -- | Performs the transformation given the tokens of the source file
-runTrf :: Map ApiAnnKey [SrcSpan] -> Trf a -> Ghc a
-runTrf annots trf = runReaderT trf (trfInit annots)
+runTrf :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> Trf a -> Ghc a
+runTrf annots comments trf = runReaderT trf (trfInit annots comments)
                           
 type Trf = ReaderT TrfInput Ghc

@@ -105,6 +105,7 @@ instance (Generic a, Show a) => TreeDebug PatternTypeSignature a
 instance (Generic a, Show a) => TreeDebug Role a
 instance (Generic a, Show a) => TreeDebug Cmd a
 instance (Generic a, Show a) => TreeDebug CmdStmt a
+instance (Generic a, Show a) => TreeDebug LanguageExtension a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a

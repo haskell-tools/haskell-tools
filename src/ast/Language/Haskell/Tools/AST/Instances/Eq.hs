@@ -104,6 +104,7 @@ deriving instance Eq (PatternTypeSignature a)
 deriving instance Eq (Role a)
 deriving instance Eq (Cmd a)
 deriving instance Eq (CmdStmt a)
+deriving instance Eq (LanguageExtension a)
 
 -- Literal
 deriving instance Eq (Literal a)

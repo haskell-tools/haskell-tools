@@ -101,6 +101,7 @@ deriving instance Data a => Data (PatternTypeSignature a)
 deriving instance Data a => Data (Role a)
 deriving instance Data a => Data (Cmd a)
 deriving instance Data a => Data (CmdStmt a)
+deriving instance Data a => Data (LanguageExtension a)
 
 -- Literal
 deriving instance Data a => Data (Literal a)

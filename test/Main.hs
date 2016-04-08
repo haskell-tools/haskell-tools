@@ -155,7 +155,7 @@ transformParsed modSum = do
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-     <$> (runTrf (fst annots) $ trfModule $ pm_parsed_source p)
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule $ pm_parsed_source p)
 
 transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
 transformRenamed modSum = do
@@ -164,9 +164,9 @@ transformRenamed modSum = do
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-    <$> (runTrf (fst annots) $ trfModuleRename 
-                                 (fromJust $ tm_renamed_source tc) 
-                                 (pm_parsed_source p))
+    <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
+         $ trfModuleRename (fromJust $ tm_renamed_source tc) 
+                           (pm_parsed_source p))
                                  
 transformTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
 transformTyped modSum = do
@@ -176,9 +176,10 @@ transformTyped modSum = do
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (runTrf (fst annots) $ trfModuleRename 
-                                        (fromJust $ tm_renamed_source tc) 
-                                        (pm_parsed_source p)))
+           =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
+              $ trfModuleRename 
+                  (fromJust $ tm_renamed_source tc) 
+                  (pm_parsed_source p)))
        
 parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do
