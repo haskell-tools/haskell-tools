@@ -1,14 +1,5 @@
-{-# LANGUAGE CPP
-           , LambdaCase
-           , FlexibleInstances
-           , FlexibleContexts
-           , ViewPatterns
-           , TypeOperators
-           , DefaultSignatures
-           , StandaloneDeriving
+{-# LANGUAGE StandaloneDeriving
            , DeriveGeneric
-           , RankNTypes 
-           , ImpredicativeTypes 
            #-}
 module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan) where
 
@@ -80,7 +71,7 @@ readSrcLoc fileName s = case splitOn ":" s of
        
 onlineRefactor :: String -> String -> IO String
 onlineRefactor command moduleStr
-  = do withBinaryFile "Test.hs" WriteMode (flip hPutStr moduleStr)
+  = do withBinaryFile "Test.hs" WriteMode (`hPutStr` moduleStr)
        performRefactor command "." "Test" 
          `finally` removeFile "Test.hs"
     
@@ -119,24 +110,16 @@ parseRenamed modSum = do
     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
          $ trfModuleRename (fromJust $ tm_renamed_source tc) (pm_parsed_source p))
     
+-- | Should be only used for testing
 demoRefactor :: String -> String -> String -> IO ()
 demoRefactor command workingDir moduleName = 
-  
   runGhc (Just libdir) $ do
-    dflags <- getSessionDynFlags
-    -- don't generate any code
-    setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir], hscTarget = HscInterpreted, ghcLink = LinkInMemory, ghcMode = CompManager }) Opt_KeepRawTokenStream
-    target <- guessTarget moduleName Nothing
-    setTargets [target]
-    load LoadAllTargets
-    modSum <- getModSummary $ mkModuleName moduleName
+    modSum <- loadModule workingDir moduleName
     p <- parseModule modSum
     t <- typecheckModule p
         
     let r = tm_renamed_source t
     let annots = pm_annotations $ tm_parsed_module t
-
-
 
     -- liftIO $ putStrLn $ show annots
     -- liftIO $ putStrLn "==========="
