@@ -42,7 +42,6 @@ import Data.StructuralTraversal
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Time.Clock
-import System.Directory
 import Data.IORef
 import Control.Monad
 import Control.Monad.State
@@ -50,6 +49,7 @@ import Control.Monad.IO.Class
 import Control.Reference
 import Control.Exception
 import System.Directory
+import System.IO
 import System.FilePath
 import Data.Generics.Uniplate.Operations
 
@@ -80,7 +80,7 @@ readSrcLoc fileName s = case splitOn ":" s of
        
 onlineRefactor :: String -> String -> IO String
 onlineRefactor command moduleStr
-  = do writeFile "Test.hs" moduleStr
+  = do withBinaryFile "Test.hs" WriteMode (flip hPutStr moduleStr)
        performRefactor command "." "Test" 
          `finally` removeFile "Test.hs"
     
