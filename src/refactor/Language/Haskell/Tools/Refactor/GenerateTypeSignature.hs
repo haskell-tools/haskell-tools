@@ -5,7 +5,7 @@
            #-}
 module Language.Haskell.Tools.Refactor.GenerateTypeSignature (generateTypeSignature) where
 
-import GHC as GHC hiding (Module)
+import GHC hiding (Module)
 import Type as GHC
 import TyCon as GHC
 import OccName as GHC
@@ -15,6 +15,7 @@ import Data.List
 import Data.Maybe
 import Data.Data
 import Control.Monad
+import Control.Monad.State
 import Control.Reference hiding (element)
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
@@ -25,36 +26,43 @@ type STWithNames = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
 
 generateTypeSignature :: Simple Traversal (Ann Module STWithNames) (AnnList Decl STWithNames)
                            -> Simple Traversal (Ann Module STWithNames) (AnnList LocalBind STWithNames)
-                           -> (forall d . (Data (d STWithNames), Typeable d) => AnnList d STWithNames -> Ann ValueBind STWithNames)
+                           -> (forall d . (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), Data (d STWithNames), Typeable d, BindingElem d) => AnnList d STWithNames -> Maybe (Ann ValueBind STWithNames))
                            -> Ann Module STWithNames -> Ghc (Ann Module STWithNames)
-generateTypeSignature topLevelRef localRef vbRef mod
-  = topLevelRef !~ genTypeSig vbRef
-      <=< localRef !~ genTypeSig vbRef 
-            $ mod
+generateTypeSignature topLevelRef localRef vbAccess
+  = flip evalStateT False .
+      (topLevelRef !~ genTypeSig vbAccess
+         <=< localRef !~ genTypeSig vbAccess)
   
-genTypeSig :: BindingElem d => (AnnList d STWithNames -> Ann ValueBind STWithNames)  
-                -> AnnList d STWithNames -> Ghc (AnnList d STWithNames)
+genTypeSig :: (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), BindingElem d) => (AnnList d STWithNames -> Maybe (Ann ValueBind STWithNames))  
+                -> AnnList d STWithNames -> StateT Bool Ghc (AnnList d STWithNames)
 genTypeSig vbAccess ls 
-  | typeSignatureAlreadyExist ls vb = fail "Type signature already exists"
-  | otherwise 
-  = do let id = getBindingName vb
-       let typeSig = generateTSFor (getName id) (idType id)
-       return $ insertWhere (wrapperAnn $ createTypeSig typeSig) (const True) isTheBind ls
-  where vb = vbAccess ls
-        isTheBind :: BindingElem d => Maybe (Ann d STWithNames) -> Bool
-        isTheBind (Just ((^.element) -> decl)) 
-          = isBinding decl && (decl ^? bindName) == (vb ^? bindingName :: [GHC.Id])
-        isTheBind _ = False
+  | Just vb <- vbAccess ls 
+  , not (typeSignatureAlreadyExist ls vb)
+    = do let id = getBindingName vb
+             isTheBind (Just ((^.element) -> decl)) 
+               = isBinding decl && (decl ^? bindName) == (vb ^? bindingName :: [GHC.Id])
+             isTheBind _ = False
+             typeSig = generateTSFor (getName id) (idType id)
+         alreadyGenerated <- get
+         if alreadyGenerated 
+           then return ls
+           else do put True
+                   return $ insertWhere (wrapperAnn $ createTypeSig typeSig) (const True) isTheBind ls
+  | otherwise = return ls
 
 generateTSFor :: GHC.Name -> GHC.Type -> Ann TypeSignature STWithNames 
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) (generateTypeFor (-1) (dropForAlls t))
 
 generateTypeFor :: Int -> GHC.Type -> Ann AST.Type STWithNames 
 generateTypeFor prec t 
+  -- context
+  | (break (not . isPredTy) -> (preds, other), rt) <- splitFunTys t
+  , not (null preds)
+  = let ctx = case preds of [pred] -> mkContextOne (generateAssertionFor pred)
+                            _ -> mkContextMulti (map generateAssertionFor preds) 
+     in wrapParen 0 $ mkTyCtx ctx (generateTypeFor 0 (mkFunTys other rt))
   -- function
-  | (op, [at,rt]) <- splitAppTys t
-  , Just tc <- tyConAppTyCon_maybe op
-  , isFunTyCon tc 
+  | Just (at, rt) <- splitFunTy_maybe t
   = wrapParen 0 $ mkTyFun (generateTypeFor 10 at) (generateTypeFor 0 rt)
   -- type operator (we don't know the precedences, so always use parentheses)
   | (op, [at,rt]) <- splitAppTys t
@@ -80,6 +88,11 @@ generateTypeFor prec t
   | otherwise = error ("Cannot represent type: " ++ showSDocUnsafe (ppr t))
   where wrapParen :: Int -> Ann AST.Type STWithNames -> Ann AST.Type STWithNames 
         wrapParen prec' node = if prec' < prec then mkTyParen node else node
+        generateAssertionFor :: GHC.Type -> Ann AST.Assertion STWithNames
+        generateAssertionFor t 
+          | Just (tc, types) <- splitTyConApp_maybe t
+          = mkClassAssert (mkUnqualName' (getName tc)) (map (generateTypeFor 0) types)
+        -- TODO: infix things
     
 typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithNames -> Ann ValueBind STWithNames -> Bool
 typeSignatureAlreadyExist ls vb = 

@@ -151,9 +151,9 @@ demoRefactor command workingDir moduleName =
         return organized
       GenerateSignature sp -> do
         liftIO $ putStrLn "==========="
-        modified <- generateTypeSignature (nodesInside sp) -- top-level declarations
-                                          (nodesInside sp) -- local declarations
-                                          (getNode sp) 
+        modified <- generateTypeSignature (nodesContaining sp) -- top-level declarations
+                                          (nodesContaining sp) -- local declarations
+                                          (getValBindInList sp) 
                                           sourced
         liftIO $ putStrLn $ sourceTemplateDebug modified
         return modified

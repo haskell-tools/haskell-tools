@@ -99,6 +99,8 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Function", "3:1-3:15")
   , ("Refactor.GenerateTypeSignature.HigherOrder", "3:1-3:14")
   , ("Refactor.GenerateTypeSignature.Polymorph", "3:1-3:10")
+  , ("Refactor.GenerateTypeSignature.PolymorphSub", "5:3-5:4")
+  , ("Refactor.GenerateTypeSignature.PolymorphSubMulti", "5:3-5:4")
   , ("Refactor.GenerateTypeSignature.Placement", "4:1-4:10")
   , ("Refactor.GenerateTypeSignature.Tuple", "3:1-3:18")
   , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
@@ -113,7 +115,7 @@ makeOrganizeImportsTest mod
 makeGenerateSignatureTest :: (String, String) -> Test
 makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng) 
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
-  where trf = generateTypeSignature (nodesInside rng) (nodesInside rng) (getNode rng)
+  where trf = generateTypeSignature (nodesContaining rng) (nodesContaining rng) (getValBindInList rng)
   
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName

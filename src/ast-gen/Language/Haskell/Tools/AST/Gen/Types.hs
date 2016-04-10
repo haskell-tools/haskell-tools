@@ -22,7 +22,7 @@ mkTypeVarList :: TemplateAnnot a => [GHC.Name] -> AnnList TyVar a
 mkTypeVarList ls = mkAnnList (listSep " ") (map (mkTypeVar . mkUnqualName') ls)
 
 mkTyCtx :: TemplateAnnot a => Ann Context a -> Ann Type a -> Ann Type a
-mkTyCtx ctx t = mkAnn (child <> " ." <> child <> " " <> child) (TyCtx ctx t)
+mkTyCtx ctx t = mkAnn (child <> " " <> child) (TyCtx ctx t)
 
 mkTyFun :: TemplateAnnot a => Ann Type a -> Ann Type a -> Ann Type a
 mkTyFun at rt = mkAnn (child <> " -> " <> child) (TyFun at rt)

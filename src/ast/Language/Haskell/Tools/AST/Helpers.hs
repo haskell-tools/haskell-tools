@@ -7,7 +7,7 @@
 -- | Helper functions for using the AST.
 module Language.Haskell.Tools.AST.Helpers where
 
-import qualified SrcLoc as GHC
+import SrcLoc
 import qualified Name as GHC
 
 import Control.Reference hiding (element)
@@ -24,12 +24,14 @@ import Language.Haskell.Tools.AST.Types
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.References
 
+import Debug.Trace
+
 ordByOccurrence :: Name a -> Name a -> Ordering
 ordByOccurrence = compare `on` nameElements
 
 -- | The occurrence of the name.
 nameString :: Name a -> String
-nameString = concat . intersperse "." . nameElements
+nameString = intercalate "." . nameElements
 
 -- | The qualifiers and the unqualified name
 nameElements :: Name a -> [String]
@@ -86,14 +88,16 @@ semantics = annotation&semanticInfo
 
 -- | A type class for transformations that work on both top-level and local definitions
 class BindingElem d where
-  bindName :: Simple Traversal (d (NodeInfo (SemanticInfo n) src)) n
+  sigBind :: Simple Partial (d a) (Ann TypeSignature a)
+  valBind :: Simple Partial (d a) (Ann ValueBind a)
   createTypeSig :: Ann TypeSignature a -> d a
   createBinding :: Ann ValueBind a -> d a
   isTypeSig :: d a -> Bool
   isBinding :: d a -> Bool
   
 instance BindingElem Decl where
-  bindName = declValBind&bindingName &+& declTypeSig&element&tsName&annList&semantics&nameInfo
+  sigBind = declTypeSig
+  valBind = declValBind
   createTypeSig = TypeSigDecl
   createBinding = ValueBinding
   isTypeSig (TypeSigDecl _) = True
@@ -102,34 +106,57 @@ instance BindingElem Decl where
   isBinding _ = False
 
 instance BindingElem LocalBind where
-  bindName = localVal&bindingName &+& localSig&element&tsName&annList&semantics&nameInfo
+  sigBind = localSig
+  valBind = localVal
   createTypeSig = LocalSignature
   createBinding = LocalValBind
   isTypeSig (LocalSignature _) = True
   isTypeSig _ = False
   isBinding (LocalValBind _) = True
   isBinding _ = False
-              
+
+bindName :: BindingElem d => Simple Traversal (d (NodeInfo (SemanticInfo n) src)) n
+bindName = valBind&bindingName &+& sigBind&element&tsName&annList&semantics&nameInfo
+
+valBindsInList :: BindingElem d => Simple Traversal (AnnList d a) (Ann ValueBind a)
+valBindsInList = annList & element & valBind
      
-nodesInside :: forall node inner a . (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-            => GHC.RealSrcSpan -> Simple Traversal (node a) (inner a)
-nodesInside rng = biplateRef & filtered (isInside rng) 
+getValBindInList :: (BindingElem d, HasRange a) => RealSrcSpan -> AnnList d a -> Maybe (Ann ValueBind a)
+getValBindInList sp ls = case ls ^? valBindsInList & filtered (isInside sp) of
+  [] -> Nothing
+  [n] -> Just n
+  _ -> error "getValBindInList: Multiple nodes"
+
+nodesContaining :: forall node inner a . (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
+                => RealSrcSpan -> Simple Traversal (node a) (inner a)
+nodesContaining rng = biplateRef & filtered (isInside rng) 
               
-isInside :: (HasAnnot node, HasRange a) => GHC.RealSrcSpan -> node a -> Bool
-isInside rng nd = case getRange (getAnnot nd) of GHC.RealSrcSpan sp -> sp `GHC.containsSpan` rng
+isInside :: (HasAnnot node, HasRange a) => RealSrcSpan -> node a -> Bool
+isInside rng nd = case getRange (getAnnot nd) of RealSrcSpan sp -> sp `containsSpan` rng
                                                  _ -> False
              
 nodesWithRange :: forall node inner a . (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-               => GHC.RealSrcSpan -> Simple Traversal (node a) (inner a)
+               => RealSrcSpan -> Simple Traversal (node a) (inner a)
 nodesWithRange rng = biplateRef & filtered (hasRange rng) 
                                          
-hasRange :: (HasAnnot node, HasRange a) => GHC.RealSrcSpan -> node a -> Bool
-hasRange rng node = case getRange (getAnnot node) of GHC.RealSrcSpan sp -> sp == rng
+hasRange :: (HasAnnot node, HasRange a) => RealSrcSpan -> node a -> Bool
+hasRange rng node = case getRange (getAnnot node) of RealSrcSpan sp -> sp == rng
                                                      _ -> False
 
+getNodeContaining :: (Biplate (node a) (Ann inner a), HasAnnot node, HasRange a) 
+                  => RealSrcSpan -> node a -> Ann inner a
+getNodeContaining sp node = case node ^? nodesContaining sp of
+  [] -> error "getNodeContaining: The node cannot be found"
+  results -> minimumBy (compareRangeLength `on` (getRange . (^. annotation))) results
+
+compareRangeLength :: SrcSpan -> SrcSpan -> Ordering
+compareRangeLength (RealSrcSpan sp1) (RealSrcSpan sp2)
+  = (lineDiff sp1 `compare` lineDiff sp2) `mappend` (colDiff sp1 `compare` colDiff sp2)
+  where lineDiff sp = srcLocLine (realSrcSpanStart sp) - srcLocLine (realSrcSpanEnd sp)
+        colDiff sp = srcLocCol (realSrcSpanStart sp) - srcLocCol (realSrcSpanEnd sp)
 
 getNode :: (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-        => GHC.RealSrcSpan -> node a -> inner a
+        => RealSrcSpan -> node a -> inner a
 getNode sp node = case node ^? nodesWithRange sp of
   [] -> error "getNode: The node cannot be found"
   [n] -> n
