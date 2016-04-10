@@ -1,5 +1,6 @@
 {-# LANGUAGE StandaloneDeriving
            , DeriveGeneric
+           , LambdaCase
            #-}
 module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan) where
 
@@ -51,14 +52,26 @@ import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import DynFlags
 import StringBuffer            
     
+
+type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
+type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
+
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
                      | GenerateSignature RealSrcSpan
     
+performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)
+performCommand NoRefactor = return
+performCommand OrganizeImports = organizeImports
+performCommand (GenerateSignature sp) 
+  = generateTypeSignature (nodesContaining sp)
+                          (nodesContaining sp)
+                          (getValBindInList sp) 
+
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
   [""] -> NoRefactor
-  ["OrganizeImports"] -> OrganizeImports
+  ("OrganizeImports":_) -> OrganizeImports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
   
 readSrcSpan :: String -> String -> RealSrcSpan
@@ -75,13 +88,11 @@ onlineRefactor command moduleStr
        performRefactor command "." "Test" 
          `finally` removeFile "Test.hs"
     
-type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
-type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
-    
 performRefactor :: String -> String -> String -> IO String
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    prettyPrint <$> (organizeImports =<< parseRenamed =<< loadModule workingDir target)
+    prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target)
+  where refact = performCommand (readCommand (map (\case '.' -> '\\'; c -> c) target ++ ".hs") command)
   
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName = do
@@ -100,15 +111,18 @@ loadModule workingDir moduleName = do
   load LoadAllTargets
   getModSummary $ mkModuleName moduleName
     
-parseRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
-parseRenamed modSum = do
+parseTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
+parseTyped modSum = do
   p <- parseModule modSum
   tc <- typecheckModule p
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-    <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
-         $ trfModuleRename (fromJust $ tm_renamed_source tc) (pm_parsed_source p))
+    <$> (addTypeInfos (typecheckedSource tc) 
+           =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
+              $ trfModuleRename 
+                  (fromJust $ tm_renamed_source tc) 
+                  (pm_parsed_source p)))
     
 -- | Should be only used for testing
 demoRefactor :: String -> String -> String -> IO ()
@@ -142,21 +156,7 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
-    transformed <- case readCommand (fromJust $ ml_hs_file $ ms_location modSum) command of
-      NoRefactor -> return sourced
-      OrganizeImports -> do
-        liftIO $ putStrLn "==========="
-        organized <- organizeImports sourced
-        liftIO $ putStrLn $ sourceTemplateDebug organized
-        return organized
-      GenerateSignature sp -> do
-        liftIO $ putStrLn "==========="
-        modified <- generateTypeSignature (nodesContaining sp) -- top-level declarations
-                                          (nodesContaining sp) -- local declarations
-                                          (getValBindInList sp) 
-                                          sourced
-        liftIO $ putStrLn $ sourceTemplateDebug modified
-        return modified
+    transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
     liftIO $ putStrLn "==========="
     let prettyPrinted = prettyPrint transformed
     liftIO $ putStrLn prettyPrinted
