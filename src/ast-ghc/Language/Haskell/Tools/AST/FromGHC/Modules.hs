@@ -89,7 +89,7 @@ trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Locat
 trfModuleHead (Just mn) exports 
   = makeJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                          (AST.ModuleHead <$> trfModuleName mn 
-                                         <*> trfExportList exports))
+                                         <*> trfExportList (srcSpanEnd $ getLoc mn) exports))
 trfModuleHead Nothing _ = nothing "" "" moduleHeadPos
   where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
                                                  _ -> atTheStart
@@ -115,8 +115,8 @@ splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) No
         splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
         splitLocated' [] currLoc Nothing = []
 
-trfExportList :: TransformName n r => Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
-trfExportList = trfMaybe " " "" $ trfLoc trfExportList'
+trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
+trfExportList loc = trfMaybeDefault "" "" (trfLoc trfExportList') (pure loc)
 
 trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.ExportSpecList r)
 trfExportList' exps = AST.ExportSpecList <$> (makeList ", " (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))
@@ -124,8 +124,9 @@ trfExportList' exps = AST.ExportSpecList <$> (makeList ", " (after AnnOpenP) (or
 trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.ExportSpec r))
 trfExport = trfMaybeLoc $ \case 
   IEModuleContents n -> Just . AST.ModuleExport <$> (trfModuleName n)
-  other -> fmap AST.DeclExport <$> trfIESpec' other
-  
+  other -> do trf <- trfIESpec' other
+              fmap AST.DeclExport <$> (sequence $ fmap (annCont . return) trf)
+
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
 trfImports imps 
   = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)

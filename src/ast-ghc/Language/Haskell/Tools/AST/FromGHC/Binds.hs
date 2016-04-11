@@ -75,8 +75,7 @@ trfRhsGuard' (LetStmt binds) = AST.GuardLet <$> trfLocalBinds binds
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)
 trfWhereLocalBinds EmptyLocalBinds = nothing "" "" atTheEnd
 trfWhereLocalBinds binds
--- TODO: add the where keyword
-  = makeJust <$> annLoc (pure $ getBindLocs binds) (AST.LocalBinds <$> trfLocalBinds binds)
+  = makeJust <$> annLoc (combineSrcSpans (getBindLocs binds) <$> tokenLoc AnnWhere) (AST.LocalBinds <$> trfLocalBinds binds)
 
 getBindLocs :: HsLocalBinds n -> SrcSpan
 getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs

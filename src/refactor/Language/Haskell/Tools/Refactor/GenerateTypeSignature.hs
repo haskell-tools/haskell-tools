@@ -10,6 +10,7 @@ import Type as GHC
 import TyCon as GHC
 import OccName as GHC
 import Outputable as GHC
+import TysWiredIn as GHC
 
 import Data.List
 import Data.Maybe
@@ -73,6 +74,16 @@ generateTypeFor prec t
   | Just (tc, tas) <- splitTyConApp_maybe t
   , isTupleTyCon tc
   = mkTyTuple (map (generateTypeFor (-1)) tas)
+  -- string type
+  | Just (ls, [et]) <- splitTyConApp_maybe t
+  , Just ch <- tyConAppTyCon_maybe et
+  , listTyCon == ls
+  , charTyCon == ch
+  = mkTyVar (mkUnqualName "String")
+  -- list types
+  | Just (tc, [et]) <- splitTyConApp_maybe t
+  , listTyCon == tc
+  = mkTyList (generateTypeFor (-1) et)
   -- type application
   | Just (tf, ta) <- splitAppTy_maybe t
   = wrapParen 10 $ mkTyApp (generateTypeFor 10 tf) (generateTypeFor 11 ta)

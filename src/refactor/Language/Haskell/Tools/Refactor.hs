@@ -48,6 +48,7 @@ import Data.Generics.Uniplate.Operations
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
+import Language.Haskell.Tools.Refactor.GenerateExports
  
 import DynFlags
 import StringBuffer            
@@ -58,11 +59,13 @@ type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
 
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
+                     | GenerateExports
                      | GenerateSignature RealSrcSpan
     
 performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)
 performCommand NoRefactor = return
 performCommand OrganizeImports = organizeImports
+performCommand GenerateExports = generateExports 
 performCommand (GenerateSignature sp) 
   = generateTypeSignature (nodesContaining sp)
                           (nodesContaining sp)
@@ -72,6 +75,7 @@ readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
   [""] -> NoRefactor
   ("OrganizeImports":_) -> OrganizeImports
+  ("GenerateExports":_) -> GenerateExports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
   
 readSrcSpan :: String -> String -> RealSrcSpan

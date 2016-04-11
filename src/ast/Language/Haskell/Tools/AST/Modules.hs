@@ -26,7 +26,7 @@ data ExportSpecList a
   
 -- | Export specifier
 data ExportSpec a
-  = DeclExport { _exportDecl :: IESpec a 
+  = DeclExport { _exportDecl :: Ann IESpec a 
                } -- ^ Export a name and related names
   | ModuleExport { _exportModuleName :: Ann Name a 
                  } -- ^ The export of an imported module (@ module A @)

@@ -64,7 +64,7 @@ importQualifiers imp
   = (if isAnnNothing (imp ^. importQualified) then [[]] else [])
       ++ maybe [] (\n -> [nameElements n]) 
                (imp ^? importAs&annJust&element&importRename&element)
-               
+        
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
 bindingName = element&(valBindPat&element&patternVar &+& funBindMatches&annList&element&matchName)
                      &semantics&nameInfo

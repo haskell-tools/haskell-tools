@@ -123,15 +123,20 @@ applicableComments start end comments = filter applicableComment comments
         applicableComment ((after, _), L _ comm) 
           | isCommentOnPrev comm = after == end
         -- All other comment binds to the previous definition if it is on the same line
-        -- or the next one if that is on the next line
         applicableComment ((after, _), L (RealSrcSpan loc) _) 
           | after == end && (srcLocLine $ realSrcSpanStart loc) == getLineLocDefault end = True
+        -- or the next one if that is on the next line and the columns line up
         applicableComment ((_, before), L (RealSrcSpan loc) _) 
-          | before == start && (srcLocLine $ realSrcSpanEnd loc) + 1 == getLineLocDefault start = True
+          | before == start && (srcLocLine $ realSrcSpanEnd loc) + 1 == getLineLocDefault start
+                            && (srcLocCol $ realSrcSpanStart loc) == getLineColDefault start
+          = True
         applicableComment _ = False
         
         getLineLocDefault (RealSrcLoc l) = srcLocLine l
         getLineLocDefault _              = -1
+
+        getLineColDefault (RealSrcLoc l) = srcLocCol l
+        getLineColDefault _              = -1
 
 -- * GHC mistakenly parses -- ^ and -- | comments as simple line comments.
 -- These functions check if a given comment is attached to the previous or next comment.
