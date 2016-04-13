@@ -36,11 +36,11 @@ import qualified Language.Haskell.Tools.AST as AST
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments
-trfDecls decls = makeIndentedList atTheEnd (mapM trfDecl decls)
+trfDecls decls = makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl r)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = makeIndentedList atTheEnd (fmap (orderDefs . concat) $ sequence $
+  = makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
       [ trfBindOrSig vals
       , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
       , mapM (trfDecl . (fmap SpliceD)) splices

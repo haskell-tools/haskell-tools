@@ -33,20 +33,20 @@ import Debug.Trace
 -- | Annotations that is made up from ranges
 class HasRange annot => RangeAnnot annot where
   toNodeAnnot :: SrcSpan -> annot
-  toListAnnot :: String -> SrcLoc -> annot
-  toIndentedListAnnot :: String -> SrcLoc -> annot
+  toListAnnot :: String -> String -> String -> SrcLoc -> annot
+  toIndentedListAnnot :: String -> String -> String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
 
 instance RangeAnnot RangeWithName where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
-  toListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep False
-  toIndentedListAnnot sep = NodeInfo NoSemanticInfo . ListPos sep True
+  toListAnnot bef aft sep = NodeInfo NoSemanticInfo . ListPos bef aft sep False
+  toIndentedListAnnot bef aft sep = NodeInfo NoSemanticInfo . ListPos bef aft sep True
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
 
 instance RangeAnnot RangeInfo where
   toNodeAnnot = NodeInfo () . NodeSpan
-  toListAnnot sep = NodeInfo () . ListPos sep False
-  toIndentedListAnnot sep = NodeInfo () . ListPos sep True
+  toListAnnot bef aft sep = NodeInfo () . ListPos bef aft sep False
+  toIndentedListAnnot bef aft sep = NodeInfo () . ListPos bef aft sep True
   toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
 
 data SemanticsPhantom n = SemanticsPhantom
@@ -101,21 +101,33 @@ nothing :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf (AnnMaybe e a)
 nothing bef aft pos = annNothing . toOptAnnot bef aft <$> pos 
 
 emptyList :: RangeAnnot a => String -> Trf SrcLoc -> Trf (AnnList e a)
-emptyList sep ann = AnnList <$> (toListAnnot sep <$> ann) <*> pure []
+emptyList sep ann = AnnList <$> (toListAnnot "" "" sep <$> ann) <*> pure []
 
 -- | Creates a place for a list of nodes with a default place if the list is empty.
 makeList :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
-makeList sep ann ls = AnnList <$> (toListAnnot sep <$> ann) <*> ls
+makeList sep ann ls = AnnList <$> (toListAnnot "" "" sep <$> ann) <*> ls
+
+makeListBefore :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeListBefore bef sep ann ls = do isEmpty <- null <$> ls 
+                                   AnnList <$> (toListAnnot (if isEmpty then bef else "") "" sep <$> ann) <*> ls
+
+makeListAfter :: RangeAnnot a => String -> String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeListAfter aft sep ann ls = do isEmpty <- null <$> ls 
+                                  AnnList <$> (toListAnnot "" (if isEmpty then aft else "") sep <$> ann) <*> ls
 
 makeNonemptyList :: RangeAnnot a => String -> Trf [Ann e a] -> Trf (AnnList e a)
-makeNonemptyList sep ls = AnnList (toListAnnot sep noSrcLoc) <$> ls
+makeNonemptyList sep ls = AnnList (toListAnnot "" "" sep noSrcLoc) <$> ls
 
 -- | Creates a place for an indented list of nodes with a default place if the list is empty.
 makeIndentedList :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
-makeIndentedList ann ls = AnnList <$> (toIndentedListAnnot "\n" <$> ann) <*> ls
+makeIndentedList ann ls = AnnList <$> (toIndentedListAnnot "" "" "\n" <$> ann) <*> ls
+
+makeIndentedListNewlineBefore :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeIndentedListNewlineBefore ann ls = do isEmpty <- null <$> ls 
+                                          AnnList <$> (toIndentedListAnnot (if isEmpty then "\n" else "") "" "\n" <$> ann) <*> ls
 
 makeNonemptyIndentedList :: RangeAnnot a => Trf [Ann e a] -> Trf (AnnList e a)
-makeNonemptyIndentedList ls = AnnList (toIndentedListAnnot "\n" noSrcLoc) <$> ls
+makeNonemptyIndentedList ls = AnnList (toIndentedListAnnot "" "" "\n" noSrcLoc) <$> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
@@ -154,7 +166,7 @@ trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f) ls)
 
 -- | Creates a place for a list of nodes that cannot be empty.
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
-nonemptyAnnList = AnnList (toListAnnot "" noSrcLoc)
+nonemptyAnnList = AnnList (toListAnnot "" "" "" noSrcLoc)
 
 -- | Creates an optional node from an existing element
 makeJust :: RangeAnnot a => Ann e a -> AnnMaybe e a

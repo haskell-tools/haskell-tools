@@ -40,10 +40,11 @@ printRose' (RoseTree (TextElem txt : rest) children)
 printRose' (RoseTree (ChildElem : rest) (child : children)) 
   = printRose' child >+< printRose' (RoseTree rest children) 
   
-printRose' (RoseTree [ChildListElem defSep indented []] children) 
-  = (if indented then printListWithSepsIndented else printListWithSeps) (repeat defSep) children
-printRose' (RoseTree [ChildListElem _ indented seps] children) 
-  = (if indented then printListWithSepsIndented else printListWithSeps) (seps ++ repeat (last seps)) children
+printRose' (RoseTree [ChildListElem _ _ _ _ _] []) = return empty
+printRose' (RoseTree [ChildListElem bef aft defSep indented []] children) 
+  = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (repeat defSep) children >+< putString aft
+printRose' (RoseTree [ChildListElem bef aft _ indented seps] children) 
+  = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (seps ++ repeat (last seps)) children >+< putString aft
       
 printRose' (RoseTree [OptionalChildElem _ _] []) = return empty
 printRose' (RoseTree [OptionalChildElem bef aft] [child]) = putString bef >+< printRose' child >+< putString aft

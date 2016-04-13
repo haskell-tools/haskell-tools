@@ -134,7 +134,7 @@ trfExport = trfMaybeLoc $ \case
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
 trfImports imps 
   = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
-  where importDefaultLoc = toListAnnot "\n" . srcSpanEnd 
+  where importDefaultLoc = toListAnnot (if Data.List.null imps then "\n" else "") "" "\n" . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> tokenLoc AnnWhere)
 trfImport :: forall n r . TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)

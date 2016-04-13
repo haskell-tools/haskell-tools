@@ -22,8 +22,8 @@ rangeDebug = treeDebug' (shortShowSpanInfo . (^. sourceInfo)) 0
       
 shortShowSpanInfo :: SpanInfo -> String
 shortShowSpanInfo (NodeSpan sp) = shortShowSpan sp
-shortShowSpanInfo (OptionalPos _ _ loc) = "?" ++ shortShowLoc loc
-shortShowSpanInfo (ListPos _ _ loc) = "*" ++ shortShowLoc loc
+shortShowSpanInfo (OptionalPos {_optionalPos = loc}) = "?" ++ shortShowLoc loc
+shortShowSpanInfo (ListPos {_listPos = loc}) = "*" ++ shortShowLoc loc
       
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??" 

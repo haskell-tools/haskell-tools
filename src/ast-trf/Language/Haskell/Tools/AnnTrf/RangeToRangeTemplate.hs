@@ -51,8 +51,8 @@ fixRanges node = evalState (traverseUp desc asc f node) [[],[]]
                   
 expandAsNodeInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandAsNodeInfo ns@(NodeSpan _) _ = ns
-expandAsNodeInfo (OptionalPos _ _ loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
-expandAsNodeInfo (ListPos _ _ loc) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+expandAsNodeInfo (OptionalPos {_optionalPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+expandAsNodeInfo (ListPos {_listPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
 
 expandToContain :: [SpanInfo] -> SpanInfo -> SpanInfo
 expandToContain cont (NodeSpan sp) = NodeSpan (foldl1 combineSrcSpans $ sp : map spanRange cont)
@@ -64,9 +64,9 @@ expandAsNodeToContain oth ls = expandAsNodeInfo oth ls
                   
 -- | Cuts out a list of source ranges from a given range
 cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate
-cutOutElem sps lp@(ListPos sep indented loc)
+cutOutElem sps lp@(ListPos bef aft sep indented loc)
   = let wholeRange = collectSpanRanges loc sps 
-     in RangeTemplate wholeRange [RangeListElem sep indented (getSeparators wholeRange sps)]
+     in RangeTemplate wholeRange [RangeListElem bef aft sep indented (getSeparators wholeRange sps)]
 cutOutElem sps op@(OptionalPos bef aft loc) 
   = RangeTemplate (collectSpanRanges loc sps) [RangeOptionalElem bef aft]
 cutOutElem sps (NodeSpan (RealSrcSpan sp))

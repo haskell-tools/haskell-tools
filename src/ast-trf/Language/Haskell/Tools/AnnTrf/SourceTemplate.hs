@@ -17,7 +17,9 @@ data SourceTemplateElem
   | OptionalChildElem { _srcTmpBefore :: String
                       , _srcTmpAfter :: String
                       }
-  | ChildListElem { _srcTmpDefaultSeparator :: String
+  | ChildListElem { _srcTmpBefore :: String
+                  , _srcTmpAfter :: String
+                  , _srcTmpDefaultSeparator :: String
                   , _srcTmpIndented :: Bool
                   , _srcTmpSeparators :: [String] 
                   }
@@ -40,8 +42,8 @@ instance HasRange (NodeInfo sema SourceTemplate) where
 instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem) = "«.»"
-  show (OptionalChildElem _ _) = "«?»"
-  show (ChildListElem _ _ _) = "«*»"
+  show (OptionalChildElem {}) = "«?»"
+  show (ChildListElem {}) = "«*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp
