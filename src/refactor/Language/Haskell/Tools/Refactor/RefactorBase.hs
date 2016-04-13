@@ -32,7 +32,7 @@ addGeneratedImports :: TemplateAnnot a => ReaderT (RefactorCtx a) Ghc (Ann Modul
 addGeneratedImports = 
   fmap (\(m,names) -> element&modImports&annListElems .- (++ addImports names) $ m)
   where addImports :: TemplateAnnot a => [GHC.Name] -> [Ann ImportDecl a]
-        addImports names = map createImport $ groupBy ((==) `on` GHC.nameModule) names
+        addImports names = map createImport $ groupBy ((==) `on` GHC.nameModule) $ nub $ sort names
 
         -- TODO: group names like constructors into correct IESpecs
         createImport :: TemplateAnnot a => [GHC.Name] -> Ann ImportDecl a

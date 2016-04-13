@@ -33,13 +33,13 @@ mkExportSpec :: TemplateAnnot a => Ann IESpec a -> Ann ExportSpec a
 mkExportSpec = mkAnn child . DeclExport
 
 mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
-mkImportSpecList = mkAnn ("(" <> child <> ")") . ImportSpecList . mkAnnList list
+mkImportSpecList = mkAnn (" (" <> child <> ")") . ImportSpecList . mkAnnList (listSep ", ")
 
 mkIeSpec :: TemplateAnnot a => Ann Name a -> Maybe (Ann SubSpec a) -> Ann IESpec a
 mkIeSpec name ss = mkAnn (child <> child) (IESpec name (mkAnnMaybe opt ss))
         
 mkSubList :: TemplateAnnot a => [Ann Name a] -> Ann SubSpec a
-mkSubList = mkAnn ("(" <> child <> ")") . SubSpecList . mkAnnList list
+mkSubList = mkAnn ("(" <> child <> ")") . SubSpecList . mkAnnList (listSep ", ")
 
 mkSubAll :: TemplateAnnot a => Ann SubSpec a
 mkSubAll = mkAnn "(..)" SubSpecAll
