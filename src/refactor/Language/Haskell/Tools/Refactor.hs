@@ -1,8 +1,10 @@
 {-# LANGUAGE StandaloneDeriving
            , DeriveGeneric
            , LambdaCase
+           , ScopedTypeVariables
+           , BangPatterns
            #-}
-module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan) where
+module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan, WrongInputException(..)) where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST
@@ -33,6 +35,7 @@ import GHC.Generics hiding (moduleName)
 import Data.StructuralTraversal
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Typeable
 import Data.Time.Clock
 import Data.IORef
 import Control.Monad
@@ -85,19 +88,25 @@ readSrcSpan fileName s = case splitOn "-" s of
 readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
-       
+
 onlineRefactor :: String -> String -> IO String
 onlineRefactor command moduleStr
   = do withBinaryFile "Test.hs" WriteMode (`hPutStr` moduleStr)
-       performRefactor command "." "Test" 
-         `finally` removeFile "Test.hs"
-    
+       res <- performRefactor command "." "Test"
+       removeFile "Test.hs"
+       return res
+
+data WrongInputException = WrongInputException SourceError
+  deriving (Show, Typeable)
+
+instance Exception WrongInputException
+
 performRefactor :: String -> String -> String -> IO String
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target)
+    handleSourceError (throw . WrongInputException) (prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact = performCommand (readCommand (map (\case '.' -> '\\'; c -> c) target ++ ".hs") command)
-  
+
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName = do
   dflags <- getSessionDynFlags
@@ -124,7 +133,7 @@ parseTyped modSum = do
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
            =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename 
+              $ trfModuleRename (ms_mod $ modSum)
                   (fromJust $ tm_renamed_source tc) 
                   (pm_parsed_source p)))
     
@@ -144,7 +153,7 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
     -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed

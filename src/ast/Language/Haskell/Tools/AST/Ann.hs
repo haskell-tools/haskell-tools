@@ -73,6 +73,8 @@ data SemanticInfo n
                    -- carrying additional semantic information
   | NameInfo { _nameInfo :: n 
              } -- ^ Info corresponding to a name
+  | ModuleInfo { _defModuleName :: Module 
+               } -- ^ Info for the module element
   | OnlyNameInfo { _onlyNameInfo :: Name 
                  } -- ^ Info of a name that has no accessible type
   | ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module

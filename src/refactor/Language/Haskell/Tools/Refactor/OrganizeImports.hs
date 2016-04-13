@@ -58,7 +58,7 @@ narrowImport usedNames otherModules imp
   = if null actuallyImported
       then if length (otherModules ^? traversal&importedModule&filtered (== importedMod) :: [GHC.Module]) > 1 
               then pure Nothing
-              else Just <$> (element&importSpec !- toJust (mkImportSpecList []) $ imp)
+              else Just <$> (element&importSpec !- replaceWithJust (mkImportSpecList []) $ imp)
       else pure (Just imp)
   where actuallyImported = map getName (fromJust (imp ^? annotation&semanticInfo&importedNames)) `intersect` usedNames
         Just importedMod = imp ^? annotation&semanticInfo&importedModule

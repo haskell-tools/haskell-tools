@@ -50,6 +50,7 @@ addTypeInfos bnds mod = traverseUp (return ()) (return ()) replaceNodeInfo mod
   where replaceNodeInfo :: RangeWithName -> Ghc RangeWithType
         replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
+        replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
         replaceSemanticInfo (NameInfo ni) = maybe (OnlyNameInfo ni) NameInfo <$> getType ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType' access <*> mapM getType' used
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found") <$> getType name
@@ -67,6 +68,7 @@ addTypeInfos bnds mod = traverseUp (return ()) (return ()) replaceNodeInfo mod
 extractTypes :: LHsBinds Id -> [Id]
 extractTypes = concatMap universeBi . bagToList
 
+
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RangeInfo)
 trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
   \(HsModule name exports imports decls deprec haddock) -> 
@@ -75,15 +77,17 @@ trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere An
                <*> trfImports imports
                <*> trfDecls decls
        
-trfModuleRename :: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
-trfModuleRename (gr,imports,exps,_) 
-  = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
+trfModuleRename :: Module -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
+trfModuleRename mod (gr,imports,exps,_) 
+  = addModuleInfo mod <=< (trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
       \(HsModule name exports _ decls deprec haddock) -> 
         AST.Module <$> trfPragmas deprec haddock
                    <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
                                                                    _                       -> Nothing)
                    <*> (orderAnnList <$> (trfImports imports))
-                   <*> trfDeclsGroup gr
+                   <*> trfDeclsGroup gr)
+  where addModuleInfo :: Module -> Ann AST.Module RangeWithName -> Trf (Ann AST.Module RangeWithName)
+        addModuleInfo m = AST.semantics != ModuleInfo m
        
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ModuleHead r) 
 trfModuleHead (Just mn) exports 

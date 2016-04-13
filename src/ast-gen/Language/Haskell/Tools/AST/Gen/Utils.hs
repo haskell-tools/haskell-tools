@@ -10,8 +10,11 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 emptyList :: TemplateAnnot a => AnnList e a
 emptyList = AnnList (fromTemplate list) []
               
-toJust :: TemplateAnnot a => Ann e a -> AnnMaybe e a -> AnnMaybe e a            
-toJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
+replaceWithJust :: TemplateAnnot a => Ann e a -> AnnMaybe e a -> AnnMaybe e a            
+replaceWithJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
+
+justVal :: TemplateAnnot a => Ann e a -> AnnMaybe e a
+justVal e = AnnMaybe (fromTemplate opt) (Just e)
 
 noth :: TemplateAnnot a => AnnMaybe e a
 noth = AnnMaybe (fromTemplate opt) Nothing

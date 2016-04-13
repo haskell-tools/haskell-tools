@@ -21,6 +21,7 @@ library
                      , Language.Haskell.Tools.Refactor.RangeDebug
                      , Language.Haskell.Tools.Refactor.RangeDebug.Instances
                      , Language.Haskell.Tools.Refactor.DebugGhcAST
+                     , Language.Haskell.Tools.Refactor.RefactorBase
   build-depends:       base                      >=4.8  && <4.9
                      , ghc                       >=7.10 && < 7.11
                      , mtl                       >=2.2  && <2.3

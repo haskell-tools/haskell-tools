@@ -46,5 +46,11 @@ mkSubAll = mkAnn "(..)" SubSpecAll
 
 -- TODO: mk pragmas
 
--- TODO: mk import decl
-              
+mkImportDecl :: TemplateAnnot a => Bool -> Bool -> Bool -> Maybe String -> Ann Name a -> Maybe (Ann ImportRenaming a) -> Maybe (Ann ImportSpec a) -> Ann ImportDecl a       
+mkImportDecl source qualified safe pkg name rename spec
+  = mkAnn ("import " <> child <> child <> child <> child <> child <> child <> child) $
+      ImportDecl (if source then justVal (mkAnn "{-# SOURCE #-} " ImportSource) else noth)
+                 (if qualified then justVal (mkAnn "qualified " ImportQualified) else noth)
+                 (if safe then justVal (mkAnn "safe " ImportSafe) else noth)
+                 (case pkg of Just str -> justVal (mkAnn (fromString $ str ++ " ") (StringNode str)); _ -> noth)
+                 name (mkAnnMaybe opt rename) (mkAnnMaybe opt spec)

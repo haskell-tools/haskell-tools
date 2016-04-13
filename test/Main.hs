@@ -167,7 +167,7 @@ transformRenamed modSum = do
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
-         $ trfModuleRename (fromJust $ tm_renamed_source tc) 
+         $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source tc) 
                            (pm_parsed_source p))
                                  
 transformTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
@@ -179,7 +179,7 @@ transformTyped modSum = do
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
            =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename 
+              $ trfModuleRename (ms_mod $ modSum)
                   (fromJust $ tm_renamed_source tc) 
                   (pm_parsed_source p)))
        
