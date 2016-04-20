@@ -18,6 +18,7 @@ library
   other-modules:       Language.Haskell.Tools.Refactor.GenerateTypeSignature
                      , Language.Haskell.Tools.Refactor.OrganizeImports
                      , Language.Haskell.Tools.Refactor.GenerateExports
+                     , Language.Haskell.Tools.Refactor.RenameDefinition
                      , Language.Haskell.Tools.Refactor.RangeDebug
                      , Language.Haskell.Tools.Refactor.RangeDebug.Instances
                      , Language.Haskell.Tools.Refactor.DebugGhcAST
