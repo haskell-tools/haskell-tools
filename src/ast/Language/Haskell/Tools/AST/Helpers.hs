@@ -86,6 +86,21 @@ typeParams = fromTraversal typeParamsTrav
 semantics :: Simple Lens (Ann a (NodeInfo sema src)) sema
 semantics = annotation&semanticInfo
 
+getTopLevelDeclName :: Decl (NodeInfo (SemanticInfo n) src) -> Maybe n
+getTopLevelDeclName (d @ TypeDecl {}) = Just (head (d ^? declHead & dhNames))
+getTopLevelDeclName (d @ TypeFamilyDecl {}) = Just (head (d ^? declTypeFamily & element & tfHead & dhNames))
+getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = Just (head (d ^? declHead & dhNames))
+getTopLevelDeclName (d @ DataDecl {}) = Just (head (d ^? declHead & dhNames))
+getTopLevelDeclName (d @ GDataDecl {}) = Just (head (d ^? declHead & dhNames))
+getTopLevelDeclName (d @ ClassDecl {}) = Just (head (d ^? declHead & dhNames))
+getTopLevelDeclName (d @ PatternSynonymDecl {}) = Just (fromJust (d ^? declPatSyn & element & patName & semantics & nameInfo))
+getTopLevelDeclName (d @ ValueBinding {}) = Just (head (d ^? declValBind & bindingName))
+getTopLevelDeclName _ = Nothing
+
+dhNames :: Simple Traversal (Ann DeclHead (NodeInfo (SemanticInfo n) src)) n
+dhNames = declHeadNames & semantics & nameInfo
+
+
 -- | A type class for transformations that work on both top-level and local definitions
 class BindingElem d where
   sigBind :: Simple Partial (d a) (Ann TypeSignature a)

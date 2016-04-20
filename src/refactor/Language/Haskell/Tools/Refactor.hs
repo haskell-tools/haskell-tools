@@ -52,6 +52,7 @@ import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.GenerateExports
+import Language.Haskell.Tools.Refactor.RenameDefinition
  
 import DynFlags
 import StringBuffer            
@@ -64,6 +65,7 @@ data RefactorCommand = NoRefactor
                      | OrganizeImports
                      | GenerateExports
                      | GenerateSignature RealSrcSpan
+                     | RenameDefinition RealSrcSpan String
     
 performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)
 performCommand NoRefactor = return
@@ -73,6 +75,10 @@ performCommand (GenerateSignature sp)
   = generateTypeSignature (nodesContaining sp)
                           (nodesContaining sp)
                           (getValBindInList sp) 
+performCommand (RenameDefinition sp str) 
+  = \mod -> renameDefinition (getGHCName $ getNodeContaining sp mod) str mod
+  where getGHCName :: Ann AST.Name TemplateWithTypes -> GHC.Name
+        getGHCName = getName . fromMaybe (error "No name is selected") . (^? semantics&nameInfo)
 
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
@@ -80,6 +86,7 @@ readCommand fileName s = case splitOn " " s of
   ("OrganizeImports":_) -> OrganizeImports
   ("GenerateExports":_) -> GenerateExports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
+  ["RenameDefinition", sp, name] -> RenameDefinition (readSrcSpan fileName sp) name
   
 readSrcSpan :: String -> String -> RealSrcSpan
 readSrcSpan fileName s = case splitOn "-" s of

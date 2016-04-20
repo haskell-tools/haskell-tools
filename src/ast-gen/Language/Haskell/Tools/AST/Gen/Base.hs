@@ -14,6 +14,9 @@ import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
+mkSimpleName :: TemplateAnnot a => String -> Ann SimpleName a
+mkSimpleName s = mkAnn (fromString s) (SimpleName s)
+
 mkUnqualName' :: TemplateAnnot a => GHC.Name -> Ann Name a
 mkUnqualName' = mkUnqualName . GHC.occNameString . GHC.getOccName
                       

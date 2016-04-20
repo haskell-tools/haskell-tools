@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Language.Haskell.Tools.Refactor.GenerateExports where
 
 import Control.Reference hiding (element)
@@ -16,18 +17,12 @@ generateExports :: GHC.NamedThing n => Ann Module (STWithNames n) -> GHC.Ghc (An
 generateExports mod = return (element & modHead & annJust & element & mhExports & annMaybe .= Just (createExports (getTopLevels mod)) $ mod)
 
 getTopLevels :: Ann Module (STWithNames n) -> [(n, Bool)]
-getTopLevels mod = catMaybes $ map getDeclExport (mod ^? element & modDecl & annList & element)
-  where getDeclExport :: Decl (STWithNames n) -> Maybe (n, Bool)
-        getDeclExport (d @ TypeDecl {}) = Just (head (d ^? declHead & dhNames), False)
-        getDeclExport (d @ TypeFamilyDecl {}) = Just (head (d ^? declTypeFamily & element & tfHead & dhNames), True)
-        getDeclExport (d @ ClosedTypeFamilyDecl {}) = Just (head (d ^? declHead & dhNames), True)
-        getDeclExport (d @ DataDecl {}) = Just (head (d ^? declHead & dhNames), True)
-        getDeclExport (d @ GDataDecl {}) = Just (head (d ^? declHead & dhNames), True)
-        getDeclExport (d @ ClassDecl {}) = Just (head (d ^? declHead & dhNames), True)
-        getDeclExport (d @ PatternSynonymDecl {}) = Just (fromJust (d ^? declPatSyn & element & patName & semantics & nameInfo), False)
-        getDeclExport (d @ ValueBinding {}) = Just (head (d ^? declValBind & bindingName), False)
-        getDeclExport _ = Nothing
-        dhNames = declHeadNames & semantics & nameInfo
+getTopLevels mod = catMaybes $ map (\d -> fmap (,exportContainOthers d) (getTopLevelDeclName d)) (mod ^? element & modDecl & annList & element)
+  where exportContainOthers :: Decl (STWithNames n) -> Bool
+        exportContainOthers (TypeDecl {}) = False
+        exportContainOthers (PatternSynonymDecl {}) = False
+        exportContainOthers (ValueBinding {}) = False
+        exportContainOthers _ = True
 
 createExports :: GHC.NamedThing n => [(n, Bool)] -> Ann ExportSpecList (STWithNames n)
 createExports elems = mkExportSpecList $ map (mkExportSpec . createExport) elems
