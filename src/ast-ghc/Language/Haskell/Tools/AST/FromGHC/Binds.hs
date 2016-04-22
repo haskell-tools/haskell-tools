@@ -34,7 +34,7 @@ trfBind = trfLoc trfBind'
 trfBind' :: TransformName n r => HsBind n -> Trf (AST.ValueBind r)
 -- a value binding (not a function)
 trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = [L matchLoc (Match { m_pats = [], m_grhss = GRHSs [L rhsLoc (GRHS [] expr)] locals })]} }) 
-  = AST.SimpleBind <$> (copyAnnot AST.VarPat (trfName id)) 
+  = AST.SimpleBind <$> (copyAnnot AST.VarPat (define $ trfName id)) 
                    <*> annLoc (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UnguardedRhs <$> trfExpr expr) 
                    <*> trfWhereLocalBinds locals
 trfBind' (FunBind id _ (MG matches _ _ _) _ _ _) = AST.FunBind <$> makeNonemptyIndentedList (mapM (trfMatch (unLoc id)) matches)
@@ -48,10 +48,10 @@ trfMatch id = trfLoc (trfMatch' id)
 trfMatch' :: TransformName n r => n -> Match n (LHsExpr n) -> Trf (AST.Match r)
 trfMatch' name (Match funid pats typ (GRHSs rhss locBinds))
   -- TODO: add the optional typ to pats
-  = AST.Match <$> maybe (annLoc (mkSrcSpan <$> atTheStart <*> atTheStart) (trfName' name)) (trfName . fst) funid
+  = AST.Match <$> define (maybe (annLoc (mkSrcSpan <$> atTheStart <*> atTheStart) (trfName' name)) (trfName . fst) funid)
               <*> makeList " " (before AnnEqual) (mapM trfPattern pats)
-              <*> trfRhss rhss 
-              <*> trfWhereLocalBinds locBinds
+              <*> addToScope pats (trfRhss rhss)
+              <*> addToScope pats (trfWhereLocalBinds locBinds)
   
 trfRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.Rhs r)
 -- the original location on the GRHS misleadingly contains the local bindings
@@ -62,7 +62,7 @@ trfRhss rhss = annLoc (pure $ collectLocs rhss)
                       
 trfGuardedRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedRhs r)
 trfGuardedRhs = trfLoc $ \(GRHS guards body) 
-  -> AST.GuardedRhs . nonemptyAnnList <$> mapM trfRhsGuard guards <*> trfExpr body
+  -> AST.GuardedRhs . nonemptyAnnList <$> trfScopedSequence trfRhsGuard guards <*> trfExpr body
   
 trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard r)
 trfRhsGuard = trfLoc trfRhsGuard'

@@ -66,7 +66,7 @@ importQualifiers imp
                (imp ^? importAs&annJust&element&importRename&element)
         
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
-bindingName = element&(valBindPat&element&patternVar &+& funBindMatches&annList&element&matchName)
+bindingName = element&(valBindPat&element&patternName &+& funBindMatches&annList&element&matchName)
                      &semantics&nameInfo
                      
 declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann Name a)
@@ -86,16 +86,112 @@ typeParams = fromTraversal typeParamsTrav
 semantics :: Simple Lens (Ann a (NodeInfo sema src)) sema
 semantics = annotation&semanticInfo
 
+-- | A class for accessing names that identify the declared program element.
+-- This is implemented for performance, it could be done with generics.
+-- class HasDeclaredNames d where
+--   allDeclaredNames :: Simple Traversal (d a) (Ann Name a)
+--   allDeclaredNames = mainDeclaredName &+& subDeclaredNames
+
+--   mainDeclaredName :: Simple Partial (d a) (Ann Name a)
+--   subDeclaredNames :: Simple Traversal (d a) (Ann Name a)
+
+-- instance HasDeclaredNames a => HasDeclaredNames (Ann a) where
+--   mainDeclaredName = element & mainDeclaredName
+--   subDeclaredNames = element & subDeclaredNames
+
+-- instance HasDeclaredNames Decl where
+--   mainDeclaredName = declHead & declHeadNames 
+--                        &+& declTypeFamily & element & tfHead & declHeadNames
+--                        &+& declPatSyn & element & patName
+--                        &+& declValBind & bindingName
+--   subDeclaredNames = declCons & annList & allDeclaredNames
+
+-- instance HasDeclaredNames ConDecl where
+--   mainDeclaredName = conDeclName
+--   subDeclaredNames = conDeclFields & annList & allDeclaredNames
+
+-- instance HasDeclaredNames FieldDecl where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = fieldNames & annList
+
+-- instance HasDeclaredNames ValueBind where
+--   mainDeclaredName = valBindPat & element & patternVar &+& funBindMatches & annList & mainDeclaredName
+--   subDeclaredNames = valBindLocals & annList & allDeclaredNames
+--                        &+& valBindRhs & allDeclaredNames
+--                        &+& funBindMatches & annList & subDeclaredNames
+
+-- instance HasDeclaredNames Match where
+--   mainDeclaredName = matchName
+--   subDeclaredNames = matchArgs & allDeclaredNames 
+--                        &+& matchRhs & allDeclaredNames 
+--                        &+& matchBinds & allDeclaredNames
+
+-- instance HasDeclaredNames Rhs where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = rhsExpr & subDeclaredNames &+& rhsGuards & annList & subDeclaredNames
+
+-- instance HasDeclaredNames Expr where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = exprBindings & annList & allDeclaredNames
+--                        &+& procPattern & allDeclaredNames
+--                        &+& exprFunBind & annList & allDeclaredNames
+--                        &+& exprAlts & annList & allDeclaredNames
+--                        &+& innerExprs & subDeclaredNames
+--                        &+& tupleSectionElems & annList
+--                        &+& compBody & annList
+--     where innerExprs = exprLhs &+& exprRhs &+& exprFun &+& exprArg &+& exprInner &+& exprCond &+& exprThen &+& exprElse &+& exprCase
+--                          &+& tupleElems & annList &+& listElems & annList &+& enumFrom &+& enumTo & annJust &+& enumThen & annJust
+--                          &+& compExpr
+
+-- instance HasDeclaredNames (Stmt' expr) where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = stmtPattern & allDeclaredNames 
+--                        &+& stmtExpr & subDeclaredNames
+--                        &+& stmtBinds & annList & allDeclaredNames
+
+-- instance HasDeclaredNames (Alt' expr) where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = altPattern & allDeclaredNames
+--                        &+& altRhs & allDeclaredNames
+--                        &+& altBinds & annJust & localBinds & annList & allDeclaredNames
+
+-- instance HasDeclaredNames ListCompBody where
+--   mainDeclaredName = emptyRef
+--   subDeclaredNames = compStmts & annList & allDeclaredNames
+
+
+-- instance HasDeclaredNames Pattern where
+--   mainDeclaredName = patternVar
+--   subDeclaredNames = (patternLhs &+& patternRhs &+& patternArg &+& patternElems & annList &+& patternInner) & allDeclaredNames
+--                        &+& patternFields & allDeclaredNames
+
+-- instance HasDeclaredNames PatternFields where
+--   mainDeclaredName = fieldPatternName
+--   subDeclaredNames = emptyRef
+
+
 getTopLevelDeclName :: Decl (NodeInfo (SemanticInfo n) src) -> Maybe n
-getTopLevelDeclName (d @ TypeDecl {}) = Just (head (d ^? declHead & dhNames))
-getTopLevelDeclName (d @ TypeFamilyDecl {}) = Just (head (d ^? declTypeFamily & element & tfHead & dhNames))
-getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = Just (head (d ^? declHead & dhNames))
-getTopLevelDeclName (d @ DataDecl {}) = Just (head (d ^? declHead & dhNames))
-getTopLevelDeclName (d @ GDataDecl {}) = Just (head (d ^? declHead & dhNames))
-getTopLevelDeclName (d @ ClassDecl {}) = Just (head (d ^? declHead & dhNames))
-getTopLevelDeclName (d @ PatternSynonymDecl {}) = Just (fromJust (d ^? declPatSyn & element & patName & semantics & nameInfo))
-getTopLevelDeclName (d @ ValueBinding {}) = Just (head (d ^? declValBind & bindingName))
+getTopLevelDeclName (d @ TypeDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ TypeFamilyDecl {}) = listToMaybe (d ^? declTypeFamily & element & tfHead & dhNames)
+getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ DataDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ GDataDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ ClassDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ PatternSynonymDecl {}) = d ^? declPatSyn & element & patName & semantics & nameInfo
+getTopLevelDeclName (d @ ValueBinding {}) = listToMaybe (d ^? declValBind & bindingName)
 getTopLevelDeclName _ = Nothing
+
+-- getAllDeclNames :: Decl (NodeInfo (SemanticInfo n) src) -> [n]
+
+-- getClassElementDeclName :: ClassElement (NodeInfo (SemanticInfo n) src) -> [n]
+-- getClassElementDeclName (d @ ClsSig {}) = d ^? ceTypeSig & element & tsName & annList & semantics & nameInfo
+-- getClassElementDeclName (d @ ClsTypeFam {}) = d ^? ceTypeFam & element & tfHead & dhNames
+-- getClassElementDeclName (d @ ClsPatSig {}) = d ^? cePatSig & element & patSigName & semantics & nameInfo
+-- getClassElementDeclName _ = []
+
+-- getLocalDeclName :: LocalBind (NodeInfo (SemanticInfo n) src) -> Maybe n
+-- getLocalDeclName (d @ LocalValBind {}) = listToMaybe (d ^? localVal & bindingName)
+-- getLocalDeclName _ = Nothing
 
 dhNames :: Simple Traversal (Ann DeclHead (NodeInfo (SemanticInfo n) src)) n
 dhNames = declHeadNames & semantics & nameInfo

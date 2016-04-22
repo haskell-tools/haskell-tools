@@ -123,7 +123,7 @@ data ClassElement a
   | ClsDefSig  { _ceName :: Ann Name a
                , _ceType :: Ann Type a
                } -- ^ Default signature (by using @DefaultSignatures@): @ default _enum :: (Generic a, GEnum (Rep a)) => [a] @
-  -- not supported yet
+  -- not supported yet (GHC 7.10.3)
   | ClsPatSig  { _cePatSig :: Ann PatternTypeSignature a 
                } -- ^ Pattern signature in a class declaration (by using @PatternSynonyms@)
        
@@ -200,9 +200,9 @@ data ConDecl a
   | RecordDecl   { _conDeclName :: Ann Name a
                  , _conDeclFields :: AnnList FieldDecl a
                  } -- ^ record data constructor (@ C { _n1 :: t1, _n2 :: t2 } @)
-  | InfixConDecl { _icdName :: Ann Name a
-                 , _icdLhs :: Ann Type a
-                 , _icdRhs :: Ann Type a
+  | InfixConDecl { _conDeclName :: Ann Name a
+                 , _conDeclLhs :: Ann Type a
+                 , _conDeclRhs :: Ann Type a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
   
 -- | Field declaration (@ _fld :: Int @)

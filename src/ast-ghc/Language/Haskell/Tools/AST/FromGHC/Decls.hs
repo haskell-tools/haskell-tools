@@ -36,11 +36,11 @@ import qualified Language.Haskell.Tools.AST as AST
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments
-trfDecls decls = makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
+trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl r)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
+  = addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
       [ trfBindOrSig vals
       , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
       , mapM (trfDecl . (fmap SpliceD)) splices
@@ -59,6 +59,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
         trfBindOrSig (getBindsAndSigs -> (sigs, binds))
           = (++) <$> mapM (trfLoc trfVal) (bagToList binds)
                  <*> mapM (trfLoc trfSig) sigs
+        addAllToScope = addToScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)
@@ -130,17 +131,17 @@ trfConDecl = trfLoc trfConDecl'
 
 trfConDecl' :: TransformName n r => ConDecl n -> Trf (AST.ConDecl r)
 trfConDecl' (ConDecl { con_names = [name], con_details = PrefixCon args })
-  = AST.ConDecl <$> trfName name <*> makeList " " atTheEnd (mapM trfType args)
+  = AST.ConDecl <$> define (trfName name) <*> makeList " " atTheEnd (mapM trfType args)
 trfConDecl' (ConDecl { con_names = [name], con_details = RecCon (unLoc -> flds) })
-  = AST.RecordDecl <$> trfName name <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
+  = AST.RecordDecl <$> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDecl { con_names = [name], con_details = InfixCon t1 t2 })
-  = AST.InfixConDecl <$> trfName name <*> trfType t1 <*> trfType t2
+  = AST.InfixConDecl <$> define (trfName name) <*> trfType t1 <*> trfType t2
 
 trfFieldDecl :: TransformName n r => Located (ConDeclField n) -> Trf (Ann AST.FieldDecl r)
 trfFieldDecl = trfLoc trfFieldDecl'
 
 trfFieldDecl' :: TransformName n r => ConDeclField n -> Trf (AST.FieldDecl r)
-trfFieldDecl' (ConDeclField names typ _) = AST.FieldDecl <$> (nonemptyAnnList <$> mapM trfName names) <*> trfType typ
+trfFieldDecl' (ConDeclField names typ _) = AST.FieldDecl <$> (define $ nonemptyAnnList <$> mapM trfName names) <*> trfType typ
 
 trfDerivings :: TransformName n r => Located [LHsType n] -> Trf (Ann AST.Deriving r)
 trfDerivings = trfLoc $ \case
@@ -205,7 +206,7 @@ createDeclHead name vars
   = foldl (\t p -> do typ <- t
                       annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
-          (annLoc (pure $ getLoc name) (AST.DeclHead <$> trfNameSp' (unLoc name))) 
+          (define $ annLoc (pure $ getLoc name) (AST.DeclHead <$> trfNameSp' (unLoc name))) 
           (hsq_tvs vars)
       
          
@@ -228,7 +229,7 @@ createClassBody sigs binds typeFams typeFamDefs
        
 trfClassElemSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.ClassElement r)
 trfClassElemSig = trfLoc $ \case
-  TypeSig names typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType typ)
+  TypeSig names typ _ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) <*> trfType typ)
   GenericSig [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType typ
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
@@ -284,7 +285,7 @@ trfPatternSynonym (PSB id _ (PrefixPatSyn args) def dir)
   = let sep = case dir of ImplicitBidirectional -> AnnEqual
                           _ -> AnnLarrow
         rhsLoc = combineSrcSpans (getLoc def) <$> tokenLoc sep
-     in AST.PatternSynonym <$> trfName id
+     in AST.PatternSynonym <$> define (trfName id)
                            <*> makeList " " (before sep) (mapM trfName args) 
                            <*> annLoc rhsLoc (trfPatSynRhs dir def)
   where trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.PatSynRhs r)

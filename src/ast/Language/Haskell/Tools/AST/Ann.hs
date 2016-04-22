@@ -73,11 +73,17 @@ type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo
 data SemanticInfo n
   = NoSemanticInfo -- ^ Semantic info type for any node not 
                    -- carrying additional semantic information
-  | NameInfo { _nameInfo :: n 
+  | ScopeInfo { _scopedLocals :: [[Name]] 
+              }
+  | NameInfo { _scopedLocals :: [[Name]]
+             , _isDefined :: Bool
+             , _nameInfo :: n
              } -- ^ Info corresponding to a name
   | ModuleInfo { _defModuleName :: Module 
                } -- ^ Info for the module element
-  | OnlyNameInfo { _onlyNameInfo :: Name 
+  | OnlyNameInfo { _scopedLocals :: [[Name]] 
+                 , _isDefined :: Bool
+                 , _onlyNameInfo :: Name 
                  } -- ^ Info of a name that has no accessible type
   | ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module
                , _availableNames :: [n] -- ^ Names available from the imported module

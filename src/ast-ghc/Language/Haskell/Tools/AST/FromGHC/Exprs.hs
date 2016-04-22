@@ -26,6 +26,7 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..))
 import qualified Language.Haskell.Tools.AST as AST
@@ -39,7 +40,7 @@ trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
 trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
-  = AST.Lambda <$> (trfAnnList " " trfPattern' pats) <*> trfExpr expr
+  = AST.Lambda <$> (trfAnnList " " trfPattern' pats) <*> addToScope pats (trfExpr expr)
 trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase <$> trfAnnList " " trfAlt' matches
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
@@ -63,11 +64,12 @@ trfExpr' (ExplicitTuple tupArgs box)
 trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeNonemptyIndentedList (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
-trfExpr' (HsLet binds expr) = AST.Let <$> trfLocalBinds binds <*> trfExpr expr
+trfExpr' (HsLet binds expr) = AST.Let <$> addToScope binds (trfLocalBinds binds) <*> addToScope binds (trfExpr expr)
 trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
-                                        <*> makeNonemptyIndentedList (mapM trfDoStmt stmts)
+                                        <*> makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)
 trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
-                                         <*> makeNonemptyIndentedList (mapM trfDoStmt stmts)
+                                         <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))
+-- TODO: scoping
 trfExpr' (HsDo ListComp stmts _)
   = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
 trfExpr' (HsDo MonadComp stmts _)

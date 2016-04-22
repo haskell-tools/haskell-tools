@@ -37,26 +37,26 @@ trfCmdDoStmt' stmt = AST.NonRecStmt <$> annCont (gTrfDoStmt' trfCmd' stmt)
 gTrfDoStmt' :: TransformName n r => (ge n -> Trf (ae r)) -> Stmt n (Located (ge n)) -> Trf (AST.Stmt' ae r)
 gTrfDoStmt' et (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> (trfLoc et) expr
 gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (et (unLoc expr))
-gTrfDoStmt' et (LetStmt binds) = AST.LetStmt <$> trfLocalBinds binds
+gTrfDoStmt' et (LetStmt binds) = AST.LetStmt <$> addToScope binds (trfLocalBinds binds)
 gTrfDoStmt' et (LastStmt body _) = AST.ExprStmt <$> annCont (et (unLoc body))
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
 trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
   = nonemptyAnnList
-      <$> mapM (\(ParStmtBlock stmts _ _) -> 
-                   let ann = toNodeAnnot $ collectLocs $ getNormalStmts stmts
-                    in Ann ann . AST.ListCompBody . AnnList ann . concat 
-                         <$> mapM trfListCompStmt stmts
-               ) blocks
+      <$> trfScopedSequence (\(ParStmtBlock stmts _ _) -> 
+                                let ann = toNodeAnnot $ collectLocs $ getNormalStmts stmts
+                                 in Ann ann . AST.ListCompBody . AnnList ann . concat 
+                                      <$> trfScopedSequence trfListCompStmt stmts
+                            ) blocks
 trfListCompStmts others 
   = let ann = (collectLocs $ getNormalStmts others)
      in AnnList (toNodeAnnot ann) . (:[]) 
           <$> annLoc (pure ann)
-                     (AST.ListCompBody . AnnList (toNodeAnnot ann) . concat <$> mapM trfListCompStmt others) 
+                     (AST.ListCompBody . AnnList (toNodeAnnot ann) . concat <$> trfScopedSequence trfListCompStmt others) 
 
 trfListCompStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt r]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
-  = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (mapM trfListCompStmt stmts)) 
+  = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (trfScopedSequence trfListCompStmt stmts)) 
          <*> ((:[]) <$> extractActualStmt trst)
 -- last statement is extracted
 trfListCompStmt (unLoc -> LastStmt _ _) = pure []

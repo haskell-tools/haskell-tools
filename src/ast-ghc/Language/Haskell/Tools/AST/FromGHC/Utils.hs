@@ -27,6 +27,7 @@ import Data.Function hiding ((&))
 import Data.List
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Debug.Trace
 
@@ -54,14 +55,19 @@ data SemanticsPhantom n = SemanticsPhantom
 -- | Annotations that carry semantic information
 class SemanticAnnot annot n where
   addSemanticInfo :: SemanticInfo n -> annot -> annot
+  addScopeData :: annot -> Trf annot
   addImportData :: SemanticsPhantom n -> Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
 instance SemanticAnnot RangeWithName GHC.Name where
   addSemanticInfo si = semanticInfo .= si
+  addScopeData = semanticInfo !~ (\case NoSemanticInfo -> do locals <- asks localsInScope
+                                                             return $ ScopeInfo locals
+                                        inf -> return inf)
   addImportData _ = addImportData'
 
 instance SemanticAnnot RangeInfo n where
   addSemanticInfo si = id
+  addScopeData = pure
   addImportData _ = pure
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
@@ -269,5 +275,11 @@ orderDefs = sortBy (compare `on` AST.ordSrcSpan . getRange . _annotation)
 -- | Orders a list of elements to the order they are defined in the source file.
 orderAnnList :: RangeAnnot i => AnnList e i -> AnnList e i
 orderAnnList (AnnList a ls) = AnnList a (orderDefs ls)
+
+
+-- | Transform a list of definitions where the defined names are in scope for subsequent definitions
+trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]
+trfScopedSequence f (def:rest) = (:) <$> f def <*> addToScope def (trfScopedSequence f rest)
+trfScopedSequence f [] = pure []
 
                 

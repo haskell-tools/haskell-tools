@@ -10,7 +10,7 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.Binds (LocalBind)
 -- | Normal monadic statements
 data Stmt' expr a
   = BindStmt { _stmtPattern :: Ann Pattern a
-             , _stmtBounded :: Ann expr a
+             , _stmtExpr :: Ann expr a
              } -- ^ Binding statement (@ x <- action @)
   | ExprStmt { _stmtExpr :: Ann expr a 
              } -- ^ Non-binding statement (@ action @)

@@ -27,7 +27,7 @@ trfPattern = trfLoc trfPattern'
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
-trfPattern' (VarPat name) = AST.VarPat <$> trfNameSp' name
+trfPattern' (VarPat name) = define $ AST.VarPat <$> trfNameSp' name
 trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
 trfPattern' (AsPat name pat) = AST.AsPat <$> trfName name <*> trfPattern pat
 trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat

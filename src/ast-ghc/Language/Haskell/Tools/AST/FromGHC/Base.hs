@@ -37,6 +37,7 @@ import qualified Language.Haskell.Tools.AST as AST
 
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
@@ -52,24 +53,21 @@ instance GHCName GHC.Name where
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name) => TransformName name res where
+class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) => TransformName name res where
   trfName :: Located name -> Trf (Ann AST.Name res)
   
 instance TransformName RdrName AST.RangeInfo where
   trfName = trfLoc trfName' 
 
 instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
-  trfName name = (annotation .- addSemanticInfo (NameInfo (unLoc name))) <$> trfLoc trfName' name
-  
---instance TransformName GHC.Id AST.RangeWithName where
---  trfName name = (annotation&semanticInfo .= (NameInfo $ idName (unLoc name))) <$> trfLoc trfName' name
+  trfName name = do locals <- asks localsInScope
+                    isDefining <- asks defining
+                    annotation .- addSemanticInfo (NameInfo locals isDefining (unLoc name)) <$> trfLoc trfName' name
   
 trfName' :: TransformName name res => name -> Trf (AST.Name res)
 trfName' n = let str = occNameString (rdrNameOcc (rdrName n)) 
               in (if isOperatorName str then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
                                         else AST.nameFromList . fst <$> trfNameStr str)
-  
-
 
 isOperatorName :: String -> Bool
 isOperatorName n = all isPunctuation n

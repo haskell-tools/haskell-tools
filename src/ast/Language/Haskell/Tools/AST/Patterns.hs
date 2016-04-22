@@ -11,15 +11,15 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
         
 -- | Representation of patterns for pattern bindings
 data Pattern a
-  = VarPat        { _patternVar :: Ann Name a 
+  = VarPat        { _patternName :: Ann Name a 
                   } -- ^ Pattern name binding
   | LitPat        { _patternLiteral :: Ann Literal a 
                   } -- ^ Literal pattern
   | InfixPat      { _patternLhs :: Ann Pattern a
-                  , _patternOp :: Ann Name a
+                  , _patternCtor :: Ann Name a
                   , _patternRhs :: Ann Pattern a
                   } -- ^ Infix constructor application pattern (@ a :+: b @)
-  | AppPat        { _patternCon :: Ann Name a
+  | AppPat        { _patternCtor :: Ann Name a
                   , _patternArg :: Ann Pattern a
                   } -- ^ Constructor application pattern (@ Point x y @)
   | TuplePat      { _patternElems :: AnnList Pattern a
@@ -32,7 +32,7 @@ data Pattern a
                   } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
   | ParenPat      { _patternInner :: Ann Pattern a 
                   } -- ^ Parenthesised patterns
-  | RecPat        { _patternName :: Ann Name a
+  | RecPat        { _patternCtor :: Ann Name a
                   , _patternFields :: AnnList PatternField a
                   } -- ^ Record pattern (@ Point { x = 3, y } @)
   | AsPat         { _patternName :: Ann Name a
@@ -55,7 +55,7 @@ data Pattern a
                   } -- ^ Splice patterns: @$(generateX inp)@
   | QuasiQuotePat { _patQQ :: Ann QuasiQuote a 
                   } -- ^ Quasi-quoted patterns: @[| 1 + 2 |]@
-  | NPlusKPat     { _patternVar :: Ann Name a
+  | NPlusKPat     { _patternName :: Ann Name a
                   , _patternLit :: Ann Literal a
                   }
                   
@@ -64,6 +64,6 @@ data PatternField a
   = NormalFieldPattern   { _fieldPatternName :: Ann Name a
                          , _fieldPattern :: Ann Pattern a
                          } -- ^ Named field pattern (@ p = Point 3 2 @)
-  | FieldPunPattern      { _fieldPunName :: Ann Name a 
+  | FieldPunPattern      { _fieldPatternName :: Ann Name a 
                          } -- ^ Named field pun (@ p @)
   | FieldWildcardPattern -- ^ Wildcard field pattern (@ .. @)

@@ -68,22 +68,22 @@ data Expr a
   | RecCon         { _exprRecName :: Ann Name a
                    , _exprRecFields :: AnnList FieldUpdate a
                    } -- ^ Record value construction: @Point { x = 3, y = -2 }@
-  | RecUpdate      { _exprRecBase :: Ann Expr a
+  | RecUpdate      { _exprInner :: Ann Expr a
                    , _exprRecFields :: AnnList FieldUpdate a
                    } -- ^ Record value  update: @p1 { x = 3, y = -2 }@
   | Enum           { _enumFrom :: Ann Expr a
                    , _enumThen :: AnnMaybe Expr a
                    , _enumTo :: AnnMaybe Expr a
                    } -- ^ Enumeration expression (@ [1,3..10] @)
-  | ParArrayEnum   { _parEnumFrom :: Ann Expr a
-                   , _parEnumThen :: AnnMaybe Expr a
-                   , _parEnumTo :: Ann Expr a
+  | ParArrayEnum   { _enumFrom :: Ann Expr a
+                   , _enumThen :: AnnMaybe Expr a
+                   , _enumToFix :: Ann Expr a
                    } -- ^ Parallel array enumeration (@ [: 1,3 .. 10 :] @)
   | ListComp       { _compExpr :: Ann Expr a
                    , _compBody :: AnnList ListCompBody a -- ^ Can only have 1 element without @ParallelListComp@
                    } -- ^ List comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
   | ParArrayComp   { _compExpr :: Ann Expr a
-                   , _parCompBody :: AnnList ListCompBody a
+                   , _compBody :: AnnList ListCompBody a
                    } -- ^ Parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
   | TypeSig        { _exprInner :: Ann Expr a
                    , _exprSig :: Ann Type a
@@ -110,7 +110,7 @@ data Expr a
                    } -- ^ Arrow application: @f -< a+1@
   | LamCase        { _exprAlts :: AnnList Alt a
                    } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
-  | StaticPtr      { _exprStatic :: Ann Expr a
+  | StaticPtr      { _exprInner :: Ann Expr a
                    } -- ^ Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
   -- XML expressions omitted
                    

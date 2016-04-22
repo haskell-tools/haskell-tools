@@ -50,8 +50,9 @@ addTypeInfos bnds mod = traverseUp (return ()) (return ()) replaceNodeInfo mod
   where replaceNodeInfo :: RangeWithName -> Ghc RangeWithType
         replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
+        replaceSemanticInfo (ScopeInfo sc) = return $ ScopeInfo sc
         replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
-        replaceSemanticInfo (NameInfo ni) = maybe (OnlyNameInfo ni) NameInfo <$> getType ni
+        replaceSemanticInfo (NameInfo sc def ni) = maybe (OnlyNameInfo sc def ni) (NameInfo sc def) <$> getType ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType' access <*> mapM getType' used
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found") <$> getType name
         getType name 
