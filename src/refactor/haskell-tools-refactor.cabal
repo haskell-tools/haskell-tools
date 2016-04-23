@@ -34,7 +34,8 @@ library
                      , references                >=0.3  && <1.0
                      , split                     >=0.2  && <1.0
                      , time                      >=1.5  && <2.0
-                     , filepath                  >=1.4  && <2
+                     , filepath                  >=1.4  && <2.0
+                     , either                    >=4.0  && <5.0
                      , haskell-tools-ast         >=0.1  && <0.2
                      , haskell-tools-ast-fromghc >=0.1  && <0.2
                      , haskell-tools-ast-gen     >=0.1  && <0.2

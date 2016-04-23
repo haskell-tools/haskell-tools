@@ -184,6 +184,8 @@ demoRefactor command workingDir moduleName =
     case transformed of 
       Right correctlyTransformed -> do
         liftIO $ putStrLn "==========="
+        liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
+        liftIO $ putStrLn "==========="
         let prettyPrinted = prettyPrint correctlyTransformed
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="
