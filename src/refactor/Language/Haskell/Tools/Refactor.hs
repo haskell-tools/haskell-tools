@@ -38,6 +38,7 @@ import Data.Maybe
 import Data.Typeable
 import Data.Time.Clock
 import Data.IORef
+import Data.Either.Combinators
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
@@ -53,6 +54,7 @@ import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
+import Language.Haskell.Tools.Refactor.RefactorBase
  
 import DynFlags
 import StringBuffer            
@@ -67,17 +69,19 @@ data RefactorCommand = NoRefactor
                      | GenerateSignature RealSrcSpan
                      | RenameDefinition RealSrcSpan String
     
-performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)
-performCommand NoRefactor = return
-performCommand OrganizeImports = organizeImports
-performCommand GenerateExports = generateExports 
-performCommand (GenerateSignature sp) 
-  = generateTypeSignature (nodesContaining sp)
-                          (nodesContaining sp)
-                          (getValBindInList sp) 
-performCommand (RenameDefinition sp str) 
-  = \mod -> renameDefinition (getGHCName $ getNodeContaining sp mod) str mod
-  where getGHCName :: Ann AST.Name TemplateWithTypes -> GHC.Name
+performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Either String (Ann AST.Module TemplateWithTypes))
+performCommand rf mod = runRefactor mod $ selectCommand rf
+  where selectCommand  NoRefactor = return
+        selectCommand OrganizeImports = organizeImports
+        selectCommand GenerateExports = generateExports 
+        selectCommand (GenerateSignature sp) 
+         = generateTypeSignature (nodesContaining sp)
+                                 (nodesContaining sp)
+                                 (getValBindInList sp) 
+        selectCommand (RenameDefinition sp str) 
+          = \mod -> renameDefinition (getGHCName $ getNodeContaining sp mod) str mod
+
+        getGHCName :: Ann AST.Name TemplateWithTypes -> GHC.Name
         getGHCName = getName . fromMaybe (error "No name is selected") . (^? semantics&nameInfo)
 
 readCommand :: String -> String -> RefactorCommand
@@ -96,7 +100,7 @@ readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
 
-onlineRefactor :: String -> String -> IO String
+onlineRefactor :: String -> String -> IO (Either String String)
 onlineRefactor command moduleStr
   = do withBinaryFile "Test.hs" WriteMode (`hPutStr` moduleStr)
        res <- performRefactor command "." "Test"
@@ -108,10 +112,10 @@ data WrongInputException = WrongInputException SourceError
 
 instance Exception WrongInputException
 
-performRefactor :: String -> String -> String -> IO String
+performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    handleSourceError (throw . WrongInputException) (prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
+    handleSourceError (throw . WrongInputException) (mapBoth id prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact = performCommand (readCommand (map (\case '.' -> '\\'; c -> c) target ++ ".hs") command)
 
 loadModule :: String -> String -> Ghc ModSummary
@@ -177,10 +181,16 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
     transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
-    liftIO $ putStrLn "==========="
-    let prettyPrinted = prettyPrint transformed
-    liftIO $ putStrLn prettyPrinted
-    liftIO $ putStrLn "==========="
+    case transformed of 
+      Right correctlyTransformed -> do
+        liftIO $ putStrLn "==========="
+        let prettyPrinted = prettyPrint correctlyTransformed
+        liftIO $ putStrLn prettyPrinted
+        liftIO $ putStrLn "==========="
+      Left transformProblem -> do
+        liftIO $ putStrLn "==========="
+        liftIO $ putStrLn transformProblem
+        liftIO $ putStrLn "==========="
     
       
 deriving instance Generic SrcSpan

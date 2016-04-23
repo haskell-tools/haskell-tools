@@ -8,6 +8,7 @@ import OccName
 
 import Control.Reference hiding (element)
 import Control.Monad.State
+import Control.Monad.Trans.Except
 import Data.Data
 import Data.Char
 import Data.Maybe
@@ -15,33 +16,32 @@ import Data.Generics.Uniplate.Data
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace
 
-type STWithNames n = NodeInfo (SemanticInfo n) SourceTemplate
-
-renameDefinition :: forall n . (NamedThing n, Data n) => GHC.Name -> String -> Ann Module (STWithNames n) -> Ghc (Ann Module (STWithNames n))
+renameDefinition :: forall n . (NamedThing n, Data n) => GHC.Name -> String -> Ann Module (STWithNames n) -> RefactoredModule n
 renameDefinition toChange newName mod
   = if not (nameValid (getOccName toChange) newName) 
-       then error "The new name is not valid"
-       else let (res,defFound) = runState (biplateRef !~ changeName toChange newName $ mod) False
-            in if not defFound then error "The definition to rename was not found"
+       then refactError "The new name is not valid"
+       else do (res,defFound) <- runStateT (biplateRef !~ changeName toChange newName $ mod) False
+               if not defFound then refactError "The definition to rename was not found"
                                else return res
   where
-    changeName :: GHC.Name -> String -> Ann Name (STWithNames n) -> State Bool (Ann Name (STWithNames n))
+    changeName :: GHC.Name -> String -> Ann Name (STWithNames n) -> StateT Bool (Refactor n) (Ann Name (STWithNames n))
     changeName toChange str elem 
       = if fmap getName (elem ^? semantics&nameInfo) == Just toChange
           then do modify (|| fromMaybe False (elem ^? semantics&isDefined)) 
                   return $ element & unqualifiedName .= mkSimpleName str $ elem
           else let namesInScope = fromMaybe [] (elem ^? semantics & scopedLocals)
-                   actualName = fromMaybe toChange (fmap getName $ elem ^? semantics & nameInfo)
+                   actualName = maybe toChange getName (elem ^? semantics & nameInfo)
                 in if str == occNameString (getOccName actualName) && sameNamespace toChange actualName && conflicts toChange actualName namesInScope
-                      then error "The definition clashes with an existing one"
+                      then lift $ refactError "The definition clashes with an existing one"
                       else return elem
 
 conflicts :: GHC.Name -> GHC.Name -> [[GHC.Name]] -> Bool
 conflicts overwrites overwritten (scopeBlock : scope) 
-  | overwritten `elem` scopeBlock && not (overwrites `elem` scopeBlock) = False
+  | overwritten `elem` scopeBlock && overwrites `notElem` scopeBlock = False
   | overwrites `elem` scopeBlock = True
   | otherwise = conflicts overwrites overwritten scope
 conflicts _ _ [] = False

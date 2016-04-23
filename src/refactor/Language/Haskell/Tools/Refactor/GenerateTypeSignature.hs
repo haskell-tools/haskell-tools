@@ -25,20 +25,21 @@ import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-type RefactorST = Refactor STWithNames
-type STWithNames = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
+type RefactorId = Refactor GHC.Id
+type STWithId = STWithNames GHC.Id
 
-generateTypeSignature :: Simple Traversal (Ann Module STWithNames) (AnnList Decl STWithNames)
-                           -> Simple Traversal (Ann Module STWithNames) (AnnList LocalBind STWithNames)
-                           -> (forall d . (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), Data (d STWithNames), Typeable d, BindingElem d) => AnnList d STWithNames -> Maybe (Ann ValueBind STWithNames))
-                           -> Ann Module STWithNames -> Ghc (Ann Module STWithNames)
-generateTypeSignature topLevelRef localRef vbAccess mod
-  = runRefactor mod (flip evalStateT False .
-                      (topLevelRef !~ genTypeSig vbAccess
-                         <=< localRef !~ genTypeSig vbAccess))
+generateTypeSignature :: Simple Traversal (Ann Module STWithId) (AnnList Decl STWithId)
+                           -> Simple Traversal (Ann Module STWithId) (AnnList LocalBind STWithId)
+                           -> (forall d . (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), Data (d STWithId), Typeable d, BindingElem d) 
+                                => AnnList d STWithId -> Maybe (Ann ValueBind STWithId))
+                           -> Ann Module STWithId -> RefactoredModule GHC.Id
+generateTypeSignature topLevelRef localRef vbAccess
+  = flip evalStateT False .
+     (topLevelRef !~ genTypeSig vbAccess
+        <=< localRef !~ genTypeSig vbAccess)
   
-genTypeSig :: (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), BindingElem d) => (AnnList d STWithNames -> Maybe (Ann ValueBind STWithNames))  
-                -> AnnList d STWithNames -> StateT Bool RefactorST (AnnList d STWithNames)
+genTypeSig :: (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), BindingElem d) => (AnnList d STWithId -> Maybe (Ann ValueBind STWithId))  
+                -> AnnList d STWithId -> StateT Bool RefactorId (AnnList d STWithId)
 genTypeSig vbAccess ls 
   | Just vb <- vbAccess ls 
   , not (typeSignatureAlreadyExist ls vb)
@@ -55,10 +56,10 @@ genTypeSig vbAccess ls
                    return $ insertWhere (wrapperAnn $ createTypeSig typeSig) (const True) isTheBind ls
   | otherwise = return ls
 
-generateTSFor :: GHC.Name -> GHC.Type -> RefactorST (Ann TypeSignature STWithNames)
+generateTSFor :: GHC.Name -> GHC.Type -> RefactorId (Ann TypeSignature STWithId)
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) <$> generateTypeFor (-1) (dropForAlls t)
 
-generateTypeFor :: Int -> GHC.Type -> RefactorST (Ann AST.Type STWithNames) 
+generateTypeFor :: Int -> GHC.Type -> RefactorId (Ann AST.Type STWithId) 
 generateTypeFor prec t 
   -- context
   | (break (not . isPredTy) -> (preds, other), rt) <- splitFunTys t
@@ -101,23 +102,23 @@ generateTypeFor prec t
   | (tvs@(_:_), t') <- splitForAllTys t
   = wrapParen (-1) <$> (mkTyForall (mkTypeVarList (map getName tvs)) noth <$> generateTypeFor 0 t')
   | otherwise = error ("Cannot represent type: " ++ showSDocUnsafe (ppr t))
-  where wrapParen :: Int -> Ann AST.Type STWithNames -> Ann AST.Type STWithNames
+  where wrapParen :: Int -> Ann AST.Type STWithId -> Ann AST.Type STWithId
         wrapParen prec' node = if prec' < prec then mkTyParen node else node
 
         getTCId :: GHC.TyCon -> GHC.Id
         getTCId tc = GHC.mkVanillaGlobal (GHC.tyConName tc) (tyConKind tc)
 
-        generateAssertionFor :: GHC.Type -> RefactorST (Ann AST.Assertion STWithNames)
+        generateAssertionFor :: GHC.Type -> RefactorId (Ann AST.Assertion STWithId)
         generateAssertionFor t 
           | Just (tc, types) <- splitTyConApp_maybe t
           = mkClassAssert <$> referenceName (getTCId tc) <*> mapM (generateTypeFor 0) types
         -- TODO: infix things
     
-typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithNames -> Ann ValueBind STWithNames -> Bool
+typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithId -> Ann ValueBind STWithId -> Bool
 typeSignatureAlreadyExist ls vb = 
   getBindingName vb `elem` concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element)
   
-getBindingName :: Ann ValueBind STWithNames -> GHC.Id
+getBindingName :: Ann ValueBind STWithId -> GHC.Id
 getBindingName vb = case nub $ vb ^? bindingName of 
   [n] -> n
   [] -> error "Trying to generate a signature for a binding with no name"

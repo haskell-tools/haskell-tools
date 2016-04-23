@@ -10,10 +10,10 @@ import Data.Maybe
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.Refactor.RefactorBase
 
-type STWithNames n = NodeInfo (SemanticInfo n) SourceTemplate
 
-generateExports :: GHC.NamedThing n => Ann Module (STWithNames n) -> GHC.Ghc (Ann Module (STWithNames n))
+generateExports :: GHC.NamedThing n => Ann Module (STWithNames n) -> RefactoredModule n
 generateExports mod = return (element & modHead & annJust & element & mhExports & annMaybe .= Just (createExports (getTopLevels mod)) $ mod)
 
 getTopLevels :: Ann Module (STWithNames n) -> [(n, Bool)]

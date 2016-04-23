@@ -10,6 +10,7 @@ import GHC.Paths ( libdir )
 import Control.Monad.IO.Class
 import Control.Monad
 import Data.Maybe
+import Data.Either.Combinators
 import Test.HUnit hiding (test)
 import System.IO
 
@@ -23,6 +24,7 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
+import Language.Haskell.Tools.Refactor.RefactorBase
 
 type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
 type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
@@ -117,17 +119,16 @@ makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng)
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
   where trf = generateTypeSignature (nodesContaining rng) (nodesContaining rng) (getValBindInList rng)
   
-checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Ghc (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
+checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
        expected <- hGetContents expectedHandle
-       transformed <- runGhc (Just libdir) (return . prettyPrint 
-                                              =<< transform 
+       transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
                                               =<< transformTyped 
                                               =<< parse workingDir moduleName)
-       assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected) 
-                                                                    (standardizeLineEndings transformed)
+       assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
+                                                                    (mapRight standardizeLineEndings transformed)
        
 standardizeLineEndings = filter (/= '\r')
        

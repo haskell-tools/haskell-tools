@@ -28,11 +28,10 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.Refactor.RefactorBase
 import Debug.Trace
 
-type STWithNames n = NodeInfo (SemanticInfo n) SourceTemplate
-
-organizeImports :: forall n . (NamedThing n, Data n) => Ann Module (STWithNames n) -> Ghc (Ann Module (STWithNames n))
+organizeImports :: forall n . (NamedThing n, Data n) => Ann Module (STWithNames n) -> RefactoredModule n
 organizeImports mod
   = element&modImports&annListElems !~ narrowImports usedNames . sortImports $ mod
   where usedNames = map getName $ catMaybes
@@ -42,15 +41,15 @@ organizeImports mod
 sortImports :: [Ann ImportDecl (STWithNames n)] -> [Ann ImportDecl (STWithNames n)]
 sortImports = sortBy (ordByOccurrence `on` (^. element&importModule&element))
 
-narrowImports :: forall n . NamedThing n => [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ghc [Ann ImportDecl (STWithNames n)]
+narrowImports :: forall n . NamedThing n => [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Refactor n [Ann ImportDecl (STWithNames n)]
 narrowImports usedNames imps = foldM (narrowOneImport usedNames) imps imps 
-  where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ann ImportDecl (STWithNames n) -> Ghc [Ann ImportDecl (STWithNames n)]
+  where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ann ImportDecl (STWithNames n) -> Refactor n [Ann ImportDecl (STWithNames n)]
         narrowOneImport names all one =
           (\case Just x -> map (\e -> if e == one then x else e) all
                  Nothing -> delete one all) <$> narrowImport names (map (^. semantics) all) one 
         
 narrowImport :: NamedThing n => [GHC.Name] -> [SemanticInfo n] -> Ann ImportDecl (STWithNames n) 
-                             -> Ghc (Maybe (Ann ImportDecl (STWithNames n)))
+                             -> Refactor n (Maybe (Ann ImportDecl (STWithNames n)))
 narrowImport usedNames otherModules imp
   | importIsExact (imp ^. element) 
   = Just <$> (element&importSpec&annJust&element&importSpecList !~ narrowImportSpecs usedNames $ imp)
@@ -63,11 +62,11 @@ narrowImport usedNames otherModules imp
   where actuallyImported = map getName (fromJust (imp ^? annotation&semanticInfo&importedNames)) `intersect` usedNames
         Just importedMod = imp ^? annotation&semanticInfo&importedModule
     
-narrowImportSpecs :: forall n . NamedThing n => [GHC.Name] -> AnnList IESpec (STWithNames n) -> Ghc (AnnList IESpec (STWithNames n))
+narrowImportSpecs :: forall n . NamedThing n => [GHC.Name] -> AnnList IESpec (STWithNames n) -> Refactor n (AnnList IESpec (STWithNames n))
 narrowImportSpecs usedNames 
   = (annList&element !~ narrowSpecSubspec usedNames) 
        >=> return . filterList isNeededSpec
-  where narrowSpecSubspec :: [GHC.Name] -> IESpec (STWithNames n) -> Ghc (IESpec (STWithNames n))
+  where narrowSpecSubspec :: [GHC.Name] -> IESpec (STWithNames n) -> Refactor n (IESpec (STWithNames n))
         narrowSpecSubspec usedNames spec 
           = do let Just specName = spec ^? ieName&annotation&semanticInfo&nameInfo
                Just tt <- GHC.lookupName (getName specName)

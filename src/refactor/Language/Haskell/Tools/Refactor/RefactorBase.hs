@@ -1,13 +1,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving
            , TypeFamilies
            , ViewPatterns
+           , StandaloneDeriving
            #-}
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
-import GHC (Ghc)
+import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import GHC (Ghc, GhcMonad(..))
+import Exception (ExceptionMonad(..))
+import DynFlags (HasDynFlags(..))
 import qualified Name as GHC
 import qualified Module as GHC
 import qualified PrelNames as GHC
@@ -18,17 +22,21 @@ import Data.Function (on)
 import Data.List
 import Data.Maybe
 import Control.Monad.Reader
+import Control.Monad.Trans.Except
 import Control.Monad.Writer
 
+-- | The information a refactoring can use
 data RefactorCtx a = RefactorCtx { refModuleName :: GHC.Module
                                  , refCtxImports :: [Ann ImportDecl a] 
                                  }
 
-runRefactor :: (a ~ NodeInfo (SemanticInfo n) s, TemplateAnnot a) => Ann Module a -> (Ann Module a -> Refactor a (Ann Module a)) -> Ghc (Ann Module a)
+-- | Performs the given refactoring, transforming it into a Ghc action
+runRefactor :: (a ~ STWithNames n, TemplateAnnot a) => Ann Module a -> (Ann Module a -> Refactor n (Ann Module a)) -> Ghc (Either String (Ann Module a))
 runRefactor mod trf = let init = RefactorCtx (fromJust $ mod ^? semantics&defModuleName) (mod ^? element&modImports&annList)
-                       in runReaderT (addGeneratedImports (runWriterT (fromRefactorT $ trf mod))) init
+                       in runExceptT $ runReaderT (addGeneratedImports (runWriterT (fromRefactorT $ trf mod))) init
 
-addGeneratedImports :: TemplateAnnot a => ReaderT (RefactorCtx a) Ghc (Ann Module a, [GHC.Name]) -> ReaderT (RefactorCtx a) Ghc (Ann Module a)
+-- | Adds the imports that bring names into scope that are needed by the refactoring
+addGeneratedImports :: (TemplateAnnot a, Monad m) => ReaderT (RefactorCtx a) m (Ann Module a, [GHC.Name]) -> ReaderT (RefactorCtx a) m (Ann Module a)
 addGeneratedImports = 
   fmap (\(m,names) -> element&modImports&annListElems .- (++ addImports names) $ m)
   where addImports :: TemplateAnnot a => [GHC.Name] -> [Ann ImportDecl a]
@@ -39,9 +47,56 @@ addGeneratedImports =
         createImport names = mkImportDecl False False False Nothing (mkUnqualName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
                                           Nothing (Just $ mkImportSpecList (map (\n -> mkIeSpec (mkUnqualName' n) Nothing) names))
 
-newtype RefactorT m ann ast = RefactorT { fromRefactorT :: WriterT [GHC.Name] (ReaderT (RefactorCtx ann) m) ast }
-  deriving (Functor, Applicative, Monad, MonadReader (RefactorCtx ann), MonadWriter [GHC.Name])
-type Refactor = RefactorT Ghc
+instance (GhcMonad m, Monoid s) => GhcMonad (WriterT s m) where
+  getSession = lift getSession
+  setSession env = lift (setSession env)
+
+instance (ExceptionMonad m, Monoid s) => ExceptionMonad (WriterT s m) where
+  gcatch w c = WriterT (runWriterT w `gcatch` (runWriterT . c))
+  gmask m = WriterT $ gmask (\f -> runWriterT $ m (WriterT . f . runWriterT))
+
+instance (Monad m, HasDynFlags m, Monoid s) => HasDynFlags (WriterT s m) where
+  getDynFlags = lift getDynFlags
+
+instance GhcMonad m => GhcMonad (ReaderT s m) where
+  getSession = lift getSession
+  setSession env = lift (setSession env)
+
+instance ExceptionMonad m => ExceptionMonad (ReaderT s m) where
+  gcatch r c = ReaderT (\ctx -> runReaderT r ctx `gcatch` (flip runReaderT ctx . c))
+  gmask m = ReaderT $ \ctx -> gmask (\f -> runReaderT (m (\a -> ReaderT $ \ctx' -> f (runReaderT a ctx'))) ctx)
+
+instance (Monad m, HasDynFlags m) => HasDynFlags (ReaderT s m) where
+  getDynFlags = lift getDynFlags
+
+instance GhcMonad m => GhcMonad (ExceptT s m) where
+  getSession = lift getSession
+  setSession env = lift (setSession env)
+
+instance ExceptionMonad m => ExceptionMonad (ExceptT s m) where
+  gcatch e c = ExceptT (runExceptT e `gcatch` (runExceptT . c))
+  gmask m = ExceptT $ gmask (\f -> runExceptT $ m (ExceptT . f . runExceptT))
+
+instance (Monad m, HasDynFlags m) => HasDynFlags (ExceptT s m) where
+  getDynFlags = lift getDynFlags
+  
+
+-- | Input and output information for the refactoring
+newtype RefactorT ann m ast = RefactorT { fromRefactorT :: WriterT [GHC.Name] (ReaderT (RefactorCtx ann) m) ast }
+  deriving (Functor, Applicative, Monad, MonadReader (RefactorCtx ann), MonadWriter [GHC.Name], MonadIO, HasDynFlags, ExceptionMonad, GhcMonad)
+
+instance MonadTrans (RefactorT ann) where
+  lift = RefactorT . lift . lift
+
+refactError :: String -> Refactor n a
+refactError = lift . throwE
+
+-- | The refactoring monad
+type Refactor n = RefactorT (STWithNames n) (ExceptT String Ghc)
+
+type STWithNames n = NodeInfo (SemanticInfo n) SourceTemplate
+
+type RefactoredModule n = Refactor n (Ann Module (STWithNames n))
 
 registeredNamesFromPrelude :: [GHC.Name]
 registeredNamesFromPrelude = GHC.basicKnownKeyNames ++ map GHC.tyConName GHC.wiredInTyCons
@@ -57,7 +112,8 @@ qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
-referenceName :: (a ~ NodeInfo (SemanticInfo n) s, Eq n, GHC.NamedThing n, TemplateAnnot a) => n -> Refactor a (Ann Name a)
+-- | Create a name that references the definition. Generates an import if the definition is not yet imported.
+referenceName :: (Eq n, GHC.NamedThing n) => n -> Refactor n (Ann Name (STWithNames n))
 referenceName (GHC.getName -> name) | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
   = return $ mkUnqualName' name -- imported from prelude
 referenceName n@(GHC.getName -> name) = do 
