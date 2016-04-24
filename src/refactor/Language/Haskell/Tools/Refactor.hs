@@ -3,6 +3,7 @@
            , LambdaCase
            , ScopedTypeVariables
            , BangPatterns
+           , MultiWayIf
            #-}
 module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan, WrongInputException(..)) where
 
@@ -19,6 +20,7 @@ import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
 
 import GHC hiding (loadModule)
+import Panic (handleGhcException)
 import Outputable
 import BasicTypes
 import Bag
@@ -95,38 +97,50 @@ readSrcLoc fileName s = case splitOn ":" s of
 
 onlineRefactor :: String -> String -> IO (Either String String)
 onlineRefactor command moduleStr
-  = do withBinaryFile "Test.hs" WriteMode (`hPutStr` moduleStr)
-       res <- performRefactor command "." "Test"
-       removeFile "Test.hs"
-       return res
+  = do withBinaryFile (moduleName ++ ".hs") WriteMode (`hPutStr` moduleStr)
+       modOpts <- runGhc (Just libdir) $ handleSourceError (throw . EarlyException) $ ms_hspp_opts <$> loadModule workingDir moduleName
+       if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
+          | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
+          | otherwise -> do 
+              res <- performRefactor command workingDir moduleName
+              removeFile (moduleName ++ ".hs")
+              return res
+  where workingDir = "."
+        moduleName = "Test"
 
-data WrongInputException = WrongInputException SourceError
-  deriving (Show, Typeable)
+data WrongInputException = EarlyException SourceError
+                         | CompileError GhcException
+  deriving (Typeable)
+
+instance Show WrongInputException where
+  show (EarlyException e) = show e
+  show (CompileError e) = show e
 
 instance Exception WrongInputException
 
 performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    handleSourceError (throw . WrongInputException) (mapBoth id prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
+     (mapBoth id prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact = performCommand (readCommand (map (\case '.' -> '\\'; c -> c) target ++ ".hs") command)
 
 loadModule :: String -> String -> Ghc ModSummary
-loadModule workingDir moduleName = do
-  dflags <- getSessionDynFlags
-  -- don't generate any code
-  setSessionDynFlags 
-    $ flip gopt_set Opt_KeepRawTokenStream
-    $ flip gopt_set Opt_NoHsMain
-    $ dflags { importPaths = [workingDir]
-             , hscTarget = HscInterpreted
-             , ghcLink = LinkInMemory
-             , ghcMode = CompManager 
-             }
-  target <- guessTarget moduleName Nothing
-  setTargets [target]
-  load LoadAllTargets
-  getModSummary $ mkModuleName moduleName
+loadModule workingDir moduleName 
+  = handleGhcException (throw . CompileError) $ handleSourceError (throw . EarlyException) $ do
+      dflags <- getSessionDynFlags
+      -- don't generate any code
+      setSessionDynFlags 
+        $ flip gopt_set Opt_KeepRawTokenStream
+        $ flip gopt_set Opt_NoHsMain
+        $ dflags { importPaths = [workingDir]
+                 , hscTarget = HscInterpreted
+                 , ghcLink = LinkInMemory
+                 , ghcMode = CompManager 
+                 }
+      target <- guessTarget moduleName Nothing
+      setTargets [target]
+      load LoadAllTargets
+      getModSummary $ mkModuleName moduleName
     
 parseTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
 parseTyped modSum = do
