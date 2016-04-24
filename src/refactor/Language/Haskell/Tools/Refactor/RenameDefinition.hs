@@ -1,10 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition) where
+module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition, renameDefinition') where
 
 import Name hiding (Name)
 import GHC (Ghc)
 import qualified GHC
 import OccName
+import SrcLoc
 
 import Control.Reference hiding (element)
 import Control.Monad.State
@@ -20,6 +21,12 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace
 
+renameDefinition' :: forall n . (NamedThing n, Data n) => RealSrcSpan -> String -> Ann Module (STWithNames n) -> RefactoredModule n
+renameDefinition' sp str mod
+  = case (getNodeContaining sp mod :: Maybe (Ann Name (STWithNames n))) >>= getNameInfo of 
+      Just n -> renameDefinition n str mod
+      Nothing -> refactError "No name is selected"
+
 renameDefinition :: forall n . (NamedThing n, Data n) => GHC.Name -> String -> Ann Module (STWithNames n) -> RefactoredModule n
 renameDefinition toChange newName mod
   = if not (nameValid (getOccName toChange) newName) 
@@ -30,7 +37,7 @@ renameDefinition toChange newName mod
   where
     changeName :: GHC.Name -> String -> Ann Name (STWithNames n) -> StateT Bool (Refactor n) (Ann Name (STWithNames n))
     changeName toChange str elem 
-      = if fmap getName (elem ^? semantics&nameInfo) == Just toChange
+      = if getNameInfo elem == Just toChange
           then do modify (|| fromMaybe False (elem ^? semantics&isDefined)) 
                   return $ element & unqualifiedName .= mkSimpleName str $ elem
           else let namesInScope = fromMaybe [] (elem ^? semantics & scopedLocals)

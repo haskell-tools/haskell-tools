@@ -24,15 +24,25 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
+import Language.Haskell.Tools.Refactor.GenerateExports
+import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
 type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
 
 main :: IO Counts
-main = runTestTT $ TestList $ map makeReprintTest (languageTests ++ organizeImportTests ++ map fst generateSignatureTests)
+main = runTestTT $ TestList $ map makeReprintTest (languageTests 
+                                                     ++ organizeImportTests 
+                                                     ++ map fst generateSignatureTests 
+                                                     ++ generateExportsTests
+                                                     ++ map (\(mod,_,_) -> mod) renameDefinitionTests
+                                                     ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests)
                                ++ map makeOrganizeImportsTest organizeImportTests
                                ++ map makeGenerateSignatureTest generateSignatureTests
+                               ++ map makeGenerateExportsTest generateExportsTests
+                               ++ map makeRenameDefinitionTest renameDefinitionTests
+                               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
         
 languageTests =
   [ "CppHsPos"
@@ -108,6 +118,31 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
   , ("Refactor.GenerateTypeSignature.Local", "4:3-4:12")
   , ("Refactor.GenerateTypeSignature.Let", "3:9-3:18")
+  , ("Refactor.GenerateTypeSignature.BringToScope.C", "6:1-6:2")
+  ]
+
+generateExportsTests = 
+  [ "Refactor.GenerateExports.Normal"
+  ]
+
+renameDefinitionTests =
+  [ ("Refactor.RenameDefinition.RecordField", "3:22-3:23", "xCoord")
+  , ("Refactor.RenameDefinition.Constructor", "3:14-3:19", "Point2D")
+  , ("Refactor.RenameDefinition.Type", "5:16-5:16", "Point2D")
+  , ("Refactor.RenameDefinition.Function", "3:1-3:2", "q")
+  , ("Refactor.RenameDefinition.ClassMember", "7:3-7:4", "q")
+  , ("Refactor.RenameDefinition.LocalFunction", "4:5-4:6", "g")
+  , ("Refactor.RenameDefinition.Arg", "4:3-4:4", "y")
+  , ("Refactor.RenameDefinition.FunTypeVar", "3:6-3:7", "x")
+  , ("Refactor.RenameDefinition.ClassTypeVar", "3:9-3:10", "f")
+  ]
+
+wrongRenameDefinitionTests =
+  [ ("Refactor.RenameDefinition.LibraryFunction", "4:5-4:7", "identity")
+  , ("Refactor.RenameDefinition.NameClash", "4:1-4:2", "g")
+  , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "F")
+  , ("Refactor.RenameDefinition.WrongName", "6:6-6:7", "x")
+  , ("Refactor.RenameDefinition.WrongName", "6:10-6:11", "x")
   ]
    
 makeOrganizeImportsTest :: String -> Test
@@ -116,8 +151,21 @@ makeOrganizeImportsTest mod
 
 makeGenerateSignatureTest :: (String, String) -> Test
 makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed trf "examples" mod
-  where trf = generateTypeSignature (nodesContaining rng) (nodesContaining rng) (getValBindInList rng)
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (generateTypeSignature' rng) "examples" mod
+
+makeGenerateExportsTest :: String -> Test
+makeGenerateExportsTest mod 
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed generateExports "examples" mod
+
+makeRenameDefinitionTest :: (String, String, String) -> Test
+makeRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (renameDefinition' rng newName) "examples" mod
+
+
+makeWrongRenameDefinitionTest :: (String, String, String) -> Test
+makeWrongRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
+  = TestLabel mod $ TestCase $ checkTransformFails (renameDefinition' rng newName) "examples" mod
+
   
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
@@ -130,6 +178,14 @@ checkCorrectlyTransformed transform workingDir moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings transformed)
        
+checkTransformFails :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
+checkTransformFails transform workingDir moduleName
+  = do -- need to use binary or line endings will be translated
+       transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
+                                              =<< transformTyped 
+                                              =<< parse workingDir moduleName)
+       assertBool "The transform should fail for the given input" (isLeft transformed)
+
 standardizeLineEndings = filter (/= '\r')
        
 toFileName mod = "examples\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"

@@ -3,7 +3,7 @@
            , ScopedTypeVariables
            , RankNTypes 
            #-}
-module Language.Haskell.Tools.Refactor.GenerateTypeSignature (generateTypeSignature) where
+module Language.Haskell.Tools.Refactor.GenerateTypeSignature (generateTypeSignature, generateTypeSignature') where
 
 import GHC hiding (Module)
 import Type as GHC
@@ -16,6 +16,7 @@ import Id as GHC
 import Data.List
 import Data.Maybe
 import Data.Data
+import Data.Generics.Uniplate.Data
 import Control.Monad
 import Control.Monad.State
 import Control.Reference hiding (element)
@@ -27,6 +28,9 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 type RefactorId = Refactor GHC.Id
 type STWithId = STWithNames GHC.Id
+
+generateTypeSignature' :: RealSrcSpan -> Ann Module STWithId -> RefactoredModule GHC.Id
+generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
 
 generateTypeSignature :: Simple Traversal (Ann Module STWithId) (AnnList Decl STWithId)
                            -> Simple Traversal (Ann Module STWithId) (AnnList LocalBind STWithId)

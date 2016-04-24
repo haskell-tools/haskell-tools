@@ -106,7 +106,7 @@ trfDecl = trfLoc $ \case
   RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfName name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name typ _ (CImport ccall safe _ _ _)) 
-    -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety safe <*> trfName name <*> trfType typ
+    -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety (getLoc ccall) safe <*> define (trfName name) <*> trfType typ
   ForD (ForeignExport name typ _ (CExport (L l (CExportStatic _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)

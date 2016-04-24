@@ -121,7 +121,7 @@ splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) No
         splitLocated' [] currLoc Nothing = []
 
 trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
-trfExportList loc = trfMaybeDefault "" "" (trfLoc trfExportList') (pure loc)
+trfExportList loc = trfMaybeDefault " " "" (trfLoc trfExportList') (pure loc)
 
 trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.ExportSpecList r)
 trfExportList' exps = AST.ExportSpecList <$> (makeList ", " (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))

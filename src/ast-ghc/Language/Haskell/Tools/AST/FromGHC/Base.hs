@@ -107,14 +107,23 @@ trfDataKeyword :: RangeAnnot a => NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword
 trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
 trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
      
-trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv a)
-trfCallConv = error "trfCallConv"      
+trfCallConv :: RangeAnnot a => Located CCallConv -> Trf (Ann AST.CallConv a)
+trfCallConv = trfLoc trfCallConv'
    
-trfCallConv' :: CCallConv -> Trf (AST.CallConv a)
-trfCallConv' = error "trfCallConv'" 
+trfCallConv' :: RangeAnnot a => CCallConv -> Trf (AST.CallConv a)
+trfCallConv' CCallConv = pure AST.CCall
+trfCallConv' CApiConv = pure AST.CApi
+trfCallConv' StdCallConv = pure AST.StdCall
+-- trfCallConv' PrimCallConv = 
+trfCallConv' JavaScriptCallConv = pure AST.JavaScript
 
-trfSafety :: Located Safety -> Trf (AnnMaybe AST.Safety a)
-trfSafety = error "trfSafety" 
+trfSafety :: RangeAnnot a => SrcSpan -> Located Safety -> Trf (AnnMaybe AST.Safety a)
+trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l 
+  = makeJust <$> trfLoc (pure . \case
+      PlaySafe -> AST.Safe
+      PlayInterruptible -> AST.Interruptible
+      PlayRisky -> AST.Unsafe) lsaf
+  | otherwise = nothing " " "" (pure $ srcSpanEnd ccLoc)
 
 trfOverlap :: RangeAnnot a => Located OverlapMode -> Trf (Ann AST.OverlapPragma a)
 trfOverlap = trfLoc $ pure . \case

@@ -36,7 +36,7 @@ trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . (^. annMa
 trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> define (trfBindings (hsq_tvs bndrs)) 
                                                        <*> trfCtx (after AnnDot) ctx
                                                        <*> addToScope bndrs (trfType typ)
-trfType' (HsTyVar name) = AST.TyVar <$> trfNameSp' name
+trfType' (HsTyVar name) = AST.TyVar <$> define (trfNameSp' name)
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ

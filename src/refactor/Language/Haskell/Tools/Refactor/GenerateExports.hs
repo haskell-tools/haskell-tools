@@ -12,17 +12,30 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-
+-- | Creates an export list that imports standalone top-level definitions with all of their contained definitions
 generateExports :: GHC.NamedThing n => Ann Module (STWithNames n) -> RefactoredModule n
 generateExports mod = return (element & modHead & annJust & element & mhExports & annMaybe .= Just (createExports (getTopLevels mod)) $ mod)
 
 getTopLevels :: Ann Module (STWithNames n) -> [(n, Bool)]
 getTopLevels mod = catMaybes $ map (\d -> fmap (,exportContainOthers d) (getTopLevelDeclName d)) (mod ^? element & modDecl & annList & element)
   where exportContainOthers :: Decl (STWithNames n) -> Bool
-        exportContainOthers (TypeDecl {}) = False
-        exportContainOthers (PatternSynonymDecl {}) = False
-        exportContainOthers (ValueBinding {}) = False
-        exportContainOthers _ = True
+        exportContainOthers (DataDecl {}) = True
+        exportContainOthers (ClassDecl {}) = True
+        exportContainOthers _ = False
+
+-- | Get all the standalone top level definitions (their GHC unique names) in a module. 
+-- You could also do getting all the names with a biplate reference and select the top-level ones, but this is more efficient.
+getTopLevelDeclName :: Decl (NodeInfo (SemanticInfo n) src) -> Maybe n
+getTopLevelDeclName (d @ TypeDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ TypeFamilyDecl {}) = listToMaybe (d ^? declTypeFamily & element & tfHead & dhNames)
+getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ DataDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ GDataDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ ClassDecl {}) = listToMaybe (d ^? declHead & dhNames)
+getTopLevelDeclName (d @ PatternSynonymDecl {}) = d ^? declPatSyn & element & patName & semantics & nameInfo
+getTopLevelDeclName (d @ ValueBinding {}) = listToMaybe (d ^? declValBind & bindingName)
+getTopLevelDeclName (d @ ForeignImport {}) = listToMaybe (d ^? declName & semantics & nameInfo)
+getTopLevelDeclName _ = Nothing
 
 createExports :: GHC.NamedThing n => [(n, Bool)] -> Ann ExportSpecList (STWithNames n)
 createExports elems = mkExportSpecList $ map (mkExportSpec . createExport) elems

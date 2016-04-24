@@ -74,15 +74,8 @@ performCommand rf mod = runRefactor mod $ selectCommand rf
   where selectCommand  NoRefactor = return
         selectCommand OrganizeImports = organizeImports
         selectCommand GenerateExports = generateExports 
-        selectCommand (GenerateSignature sp) 
-         = generateTypeSignature (nodesContaining sp)
-                                 (nodesContaining sp)
-                                 (getValBindInList sp) 
-        selectCommand (RenameDefinition sp str) 
-          = \mod -> renameDefinition (getGHCName $ getNodeContaining sp mod) str mod
-
-        getGHCName :: Ann AST.Name TemplateWithTypes -> GHC.Name
-        getGHCName = getName . fromMaybe (error "No name is selected") . (^? semantics&nameInfo)
+        selectCommand (GenerateSignature sp) = generateTypeSignature' sp
+        selectCommand (RenameDefinition sp str) = renameDefinition' sp str
 
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
