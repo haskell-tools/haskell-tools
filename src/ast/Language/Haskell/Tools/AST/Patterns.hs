@@ -20,7 +20,7 @@ data Pattern a
                   , _patternRhs :: Ann Pattern a
                   } -- ^ Infix constructor application pattern (@ a :+: b @)
   | AppPat        { _patternCtor :: Ann Name a
-                  , _patternArg :: Ann Pattern a
+                  , _patternArgs :: AnnList Pattern a
                   } -- ^ Constructor application pattern (@ Point x y @)
   | TuplePat      { _patternElems :: AnnList Pattern a
                   } -- ^ Tuple pattern (@ (x,y) @)

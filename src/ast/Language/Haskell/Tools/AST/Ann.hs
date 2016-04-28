@@ -13,6 +13,7 @@ import SrcLoc
 import Name
 import Module
 import Id
+import Outputable
 
 -- | An element of the AST keeping extra information.
 data Ann elem annot
@@ -92,7 +93,15 @@ data SemanticInfo n
   -- | ImplicitImports [ImportDecl]
   -- | ImplicitFieldUpdates [ImportDecl]
   deriving (Eq, Data)
-    
+
+instance Outputable n => Show (SemanticInfo n) where
+  show NoSemanticInfo = "NoSemanticInfo"
+  show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
+  show (NameInfo locals defined nameInfo) = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
+  show (ModuleInfo mod) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ ")"
+  show (OnlyNameInfo locals defined nameInfo) = "(OnlyNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
+  show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
+
 makeReferences ''SemanticInfo
 
 -- | A list of AST elements

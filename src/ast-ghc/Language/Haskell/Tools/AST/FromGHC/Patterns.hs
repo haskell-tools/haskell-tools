@@ -29,19 +29,27 @@ trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
 trfPattern' (VarPat name) = define $ AST.VarPat <$> trfNameSp' name
 trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
-trfPattern' (AsPat name pat) = AST.AsPat <$> trfName name <*> trfPattern pat
+trfPattern' (AsPat name pat) = AST.AsPat <$> define (trfName name) <*> trfPattern pat
 trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat
 trfPattern' (BangPat pat) = AST.BangPat <$> trfPattern pat
 trfPattern' (ListPat pats _ _) = AST.ListPat <$> trfAnnList ", " trfPattern' pats
 trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList ", " trfPattern' pats
 trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (ConPatIn name _) = AST.VarPat <$> trfNameSp' (unLoc name)
+trfPattern' (ConPatIn name (PrefixCon args)) = AST.AppPat <$> trfName name <*> trfAnnList " " trfPattern' args
+trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.RecPat <$> trfNameSp' (unLoc name) <*> trfAnnList ", " trfPatternField' flds
+trfPattern' (ConPatIn name (InfixCon left right)) = AST.InfixPat <$> trfPattern left <*> trfName name <*> trfPattern right
 trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
 trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)
 trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)
 trfPattern' (LitPat lit) = AST.LitPat <$> annCont (trfLiteral' lit)
 trfPattern' (SigPatIn pat (hswb_cts -> typ)) = AST.TypeSigPat <$> trfPattern pat <*> trfType typ
 trfPattern' (NPat (ol_val . unLoc -> lit) _ _) = AST.LitPat <$> annCont (trfOverloadedLit lit)
-trfPattern' (NPlusKPat id (L l lit) _ _) = AST.NPlusKPat <$> trfName id <*> annLoc (pure l) (trfOverloadedLit (ol_val lit))
+trfPattern' (NPlusKPat id (L l lit) _ _) = AST.NPlusKPat <$> define (trfName id) <*> annLoc (pure l) (trfOverloadedLit (ol_val lit))
 -- coercion pattern introduced by GHC
 trfPattern' (CoPat _ pat _) = trfPattern' pat
+
+trfPatternField' :: TransformName n r => HsRecField n (LPat n) -> Trf (AST.PatternField r)
+trfPatternField' (HsRecField id arg False) = AST.NormalFieldPattern <$> trfName id <*> trfPattern arg
+trfPatternField' (HsRecField id _ True) = AST.FieldPunPattern <$> trfName id
+
+

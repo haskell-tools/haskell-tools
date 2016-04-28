@@ -209,7 +209,6 @@ demoRefactor command workingDir moduleName =
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
 deriving instance Generic RangeTemplate
-deriving instance Show n => Show (SemanticInfo n)
 deriving instance Generic (SemanticInfo n)
 deriving instance Generic SourceTemplate
 deriving instance Generic SpanInfo

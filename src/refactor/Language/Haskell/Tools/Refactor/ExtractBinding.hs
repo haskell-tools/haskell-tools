@@ -53,7 +53,13 @@ getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
 getExternalBinds expr = keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef & element & exprName)
   where isApplicableName (getNameInfo -> Just nm) = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
         isApplicableName _ = return False
-        namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (expr ^? uniplateRef & semantics)
+        namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (map (^. semantics) allNames)
+        allNames :: [Ann Name STWithId]
+        allNames = expr ^? biplateRef
+
+        allPatterns :: [Ann Pattern STWithId]
+        allPatterns = expr ^? biplateRef
+
         isLocalName n = isNothing <$> GHC.lookupName n
 
         keepFirsts (e:rest) = e : keepFirsts (filter (/= e) rest)
