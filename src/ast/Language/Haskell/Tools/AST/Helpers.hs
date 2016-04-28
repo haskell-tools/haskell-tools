@@ -89,7 +89,10 @@ semantics = annotation&semanticInfo
 
 -- | Gets the GHC unique name of an AST node
 getNameInfo :: (GHC.NamedThing n) => Ann e (NodeInfo (SemanticInfo n) src) -> Maybe GHC.Name 
-getNameInfo e = fmap GHC.getName (e ^? semantics&nameInfo) `mplus` (e ^? semantics&onlyNameInfo)
+getNameInfo e = getNameInfoFromSema (e ^. semantics)
+
+getNameInfoFromSema :: (GHC.NamedThing n) => SemanticInfo n -> Maybe GHC.Name 
+getNameInfoFromSema e = fmap GHC.getName (e ^? nameInfo) `mplus` (e ^? onlyNameInfo)
 
 dhNames :: Simple Traversal (Ann DeclHead (NodeInfo (SemanticInfo n) src)) n
 dhNames = declHeadNames & semantics & nameInfo

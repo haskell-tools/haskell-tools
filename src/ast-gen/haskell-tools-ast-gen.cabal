@@ -18,10 +18,13 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.AST.Gen
-  other-modules:       Language.Haskell.Tools.AST.Gen.Base
-                     , Language.Haskell.Tools.AST.Gen.Modules
+  other-modules:       Language.Haskell.Tools.AST.Gen.Modules
                      , Language.Haskell.Tools.AST.Gen.Decls
+                     , Language.Haskell.Tools.AST.Gen.Binds
                      , Language.Haskell.Tools.AST.Gen.Types
+                     , Language.Haskell.Tools.AST.Gen.Exprs
+                     , Language.Haskell.Tools.AST.Gen.Patterns
+                     , Language.Haskell.Tools.AST.Gen.Base
                      , Language.Haskell.Tools.AST.Gen.Utils
   build-depends:       base                  >=4.8  && <4.9
                      , ghc                   >=7.10 && <7.11

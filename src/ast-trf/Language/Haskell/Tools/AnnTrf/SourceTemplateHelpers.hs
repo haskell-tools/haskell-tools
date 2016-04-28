@@ -90,10 +90,10 @@ listSep :: String -> SourceTemplate
 listSep s = SourceTemplate noSrcSpan [ChildListElem "" "" s False []]
 
 listSepBefore :: String -> String -> SourceTemplate
-listSepBefore bef s = SourceTemplate noSrcSpan [ChildListElem bef "" s False []]
+listSepBefore s bef = SourceTemplate noSrcSpan [ChildListElem bef "" s False []]
 
 listSepAfter :: String -> String -> SourceTemplate
-listSepAfter aft s = SourceTemplate noSrcSpan [ChildListElem "" aft s False []]
+listSepAfter s aft = SourceTemplate noSrcSpan [ChildListElem "" aft s False []]
 
 (<>) :: SourceTemplate -> SourceTemplate -> SourceTemplate
 SourceTemplate sp1 el1 <> SourceTemplate sp2 el2 = SourceTemplate (combineSrcSpans sp1 sp2) (el1 ++ el2)

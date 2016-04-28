@@ -1,4 +1,4 @@
--- | Generation of Module-level AST fragments for refactorings
+-- | Generation of declaration-level AST fragments for refactorings
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Haskell.Tools.AST.Gen.Decls where
 
@@ -16,3 +16,7 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 mkTypeSignature :: TemplateAnnot a => Ann Name a -> Ann Type a -> Ann TypeSignature a
 mkTypeSignature n t = mkAnn (child <> " :: " <> child) (TypeSignature (mkAnnList (listSep ", ") [n]) t)
+
+mkValueBinding :: TemplateAnnot a => Ann ValueBind a -> Ann Decl a
+mkValueBinding = mkAnn child . ValueBinding
+

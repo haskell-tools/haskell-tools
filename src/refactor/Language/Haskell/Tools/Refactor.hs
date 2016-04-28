@@ -56,6 +56,7 @@ import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
+import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
  
 import DynFlags
@@ -70,6 +71,7 @@ data RefactorCommand = NoRefactor
                      | GenerateExports
                      | GenerateSignature RealSrcSpan
                      | RenameDefinition RealSrcSpan String
+                     | ExtractBinding RealSrcSpan String
     
 performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Either String (Ann AST.Module TemplateWithTypes))
 performCommand rf mod = runRefactor mod $ selectCommand rf
@@ -78,6 +80,7 @@ performCommand rf mod = runRefactor mod $ selectCommand rf
         selectCommand GenerateExports = generateExports 
         selectCommand (GenerateSignature sp) = generateTypeSignature' sp
         selectCommand (RenameDefinition sp str) = renameDefinition' sp str
+        selectCommand (ExtractBinding sp str) = extractBinding' sp str
 
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
@@ -86,6 +89,7 @@ readCommand fileName s = case splitOn " " s of
   ("GenerateExports":_) -> GenerateExports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
   ["RenameDefinition", sp, name] -> RenameDefinition (readSrcSpan fileName sp) name
+  ["ExtractBinding", sp, name] -> ExtractBinding (readSrcSpan fileName sp) name
   
 readSrcSpan :: String -> String -> RealSrcSpan
 readSrcSpan fileName s = case splitOn "-" s of

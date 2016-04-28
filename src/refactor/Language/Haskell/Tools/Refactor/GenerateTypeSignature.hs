@@ -34,7 +34,7 @@ generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesCon
 
 generateTypeSignature :: Simple Traversal (Ann Module STWithId) (AnnList Decl STWithId)
                            -> Simple Traversal (Ann Module STWithId) (AnnList LocalBind STWithId)
-                           -> (forall d . (Show (d (NodeInfo (SemanticInfo Id) SourceTemplate)), Data (d STWithId), Typeable d, BindingElem d) 
+                           -> (forall d . (Show (d (NodeInfo STWithId SourceTemplate)), Data (d STWithId), Typeable d, BindingElem d) 
                                 => AnnList d STWithId -> Maybe (Ann ValueBind STWithId))
                            -> Ann Module STWithId -> RefactoredModule GHC.Id
 generateTypeSignature topLevelRef localRef vbAccess
