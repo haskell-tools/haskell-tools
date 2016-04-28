@@ -23,7 +23,12 @@ import Language.Haskell.Tools.AST (Ann(..))
 import qualified Language.Haskell.Tools.AST as AST
 
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern r)
-trfPattern = trfLoc trfPattern'
+-- field wildcards are not directly represented in GHC AST
+trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
+  = do normalFields <- mapM (trfLoc trfPatternField') (filter ((l /=) . getLoc) flds)
+       wildc <- annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcardPattern)
+       annLoc (pure l) (AST.RecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
+trfPattern p | otherwise = trfLoc trfPattern' p
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
@@ -36,7 +41,7 @@ trfPattern' (ListPat pats _ _) = AST.ListPat <$> trfAnnList ", " trfPattern' pat
 trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList ", " trfPattern' pats
 trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList ", " trfPattern' pats
 trfPattern' (ConPatIn name (PrefixCon args)) = AST.AppPat <$> trfName name <*> trfAnnList " " trfPattern' args
-trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.RecPat <$> trfNameSp' (unLoc name) <*> trfAnnList ", " trfPatternField' flds
+trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.RecPat <$> trfName name <*> trfAnnList ", " trfPatternField' flds
 trfPattern' (ConPatIn name (InfixCon left right)) = AST.InfixPat <$> trfPattern left <*> trfName name <*> trfPattern right
 trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
 trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)

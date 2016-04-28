@@ -82,6 +82,7 @@ languageTests =
   , "Module.Import"
   , "Pattern.Constructor"
   , "Pattern.NPlusK"
+  , "Pattern.Record"
   , "TH.QuasiQuote.Use"
   , "TH.Brackets"
   , "Type.Bang"

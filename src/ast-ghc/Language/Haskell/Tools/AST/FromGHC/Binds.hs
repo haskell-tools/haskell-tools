@@ -55,7 +55,7 @@ trfMatch' name (Match funid pats typ (GRHSs rhss locBinds))
   
 trfRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.Rhs r)
 -- the original location on the GRHS misleadingly contains the local bindings
-trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
+trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenBefore (srcSpanStart $ getLoc body) AnnEqual) 
                                          (AST.UnguardedRhs <$> trfExpr body)
 trfRhss rhss = annLoc (pure $ collectLocs rhss) 
                       (AST.GuardedRhss . nonemptyAnnList <$> mapM trfGuardedRhs rhss)
