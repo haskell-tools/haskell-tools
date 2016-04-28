@@ -17,8 +17,8 @@ import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-import Outputable
-import Debug.Trace
+--import Outputable
+--import Debug.Trace
 
 type STWithId = STWithNames GHC.Id
 
@@ -37,20 +37,27 @@ extractBinding selectDecl selectExpr name mod
                       Nothing -> return res
 
 extractThatBind :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-extractThatBind name e
-  = do trace ("\n%% " ++ show e) (return ())
-       ret <- get
-       if (isJust ret) then return e
-          else do params <- lift $ getExternalBinds e
-                  put (Just (generateBind name params e))
-                  return (generateCall name params)
+extractThatBind name e | Paren {} <- e ^. element
+                       = do modified <- doExtract name (fromJust $ e ^? element & exprInner)
+                            element & exprInner != modified $ e
+extractThatBind name e = doExtract name e
+
+doExtract :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
+doExtract name e = do ret <- get
+                      if (isJust ret) then return e
+                         else do params <- lift $ getExternalBinds e
+                                 put (Just (generateBind name params e))
+                                 return (generateCall name params)
 
 getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
-getExternalBinds expr = filterM isApplicableName (expr ^? uniplateRef & element & exprName)
+getExternalBinds expr = keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef & element & exprName)
   where isApplicableName (getNameInfo -> Just nm) = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
         isApplicableName _ = return False
         namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (expr ^? uniplateRef & semantics)
         isLocalName n = isNothing <$> GHC.lookupName n
+
+        keepFirsts (e:rest) = e : keepFirsts (filter (/= e) rest)
+        keepFirsts [] = []
 
 generateCall :: String -> [Ann Name STWithId] -> Ann Expr STWithId
 generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar (mkUnqualName name)) args
