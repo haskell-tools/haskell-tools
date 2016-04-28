@@ -67,6 +67,7 @@ languageTests =
   , "Decl.TypeSynonym"
   , "Decl.ValBind"
   , "Expr.ArrowNotation"
+  , "Expr.Case"
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
   , "Expr.If"
