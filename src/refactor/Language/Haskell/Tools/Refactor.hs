@@ -105,6 +105,7 @@ onlineRefactor command moduleStr
        modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
        if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
+          | xopt Opt_RecordWildCards modOpts -> return (Left "The scoping rules of RecordWildCards extension are not fully supported")
           | otherwise -> do 
               res <- performRefactor command workingDir moduleName
               removeFile (moduleName ++ ".hs")

@@ -8,6 +8,7 @@ module Language.Haskell.Tools.Refactor.ExtractBinding where
 import qualified GHC
 import SrcLoc
 
+import Data.Char
 import Data.Maybe
 import Data.Generics.Uniplate.Data
 import Control.Reference hiding (element)
@@ -23,7 +24,9 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 type STWithId = STWithNames GHC.Id
 
 extractBinding' :: RealSrcSpan -> String -> Ann Module STWithId -> RefactoredModule GHC.Id
-extractBinding' sp name = extractBinding (nodesContaining sp) (nodesContaining sp) name
+extractBinding' sp name mod
+  = if isValidBindingName name then extractBinding (nodesContaining sp) (nodesContaining sp) name mod
+                               else refactError "The given name is not a valid for the extracted binding"
 
 extractBinding :: Simple Traversal (Ann Module STWithId) (Ann Decl STWithId)
                    -> Simple Traversal (Ann Decl STWithId) (Ann Expr STWithId)
@@ -71,3 +74,9 @@ generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar (mkUnqualName 
 generateBind :: String -> [Ann Name STWithId] -> Ann Expr STWithId -> Ann ValueBind STWithId
 generateBind name [] e = mkSimpleBind (mkVarPat (mkUnqualName name)) (mkUnguardedRhs e) Nothing
 generateBind name args e = mkFunctionBind [mkMatch (mkUnqualName name) (map mkVarPat args) (mkUnguardedRhs e) Nothing]
+
+isValidBindingName :: String -> Bool
+isValidBindingName [] = False
+isValidBindingName (firstChar:rest) = isIdStartChar firstChar && all isIdChar rest
+  where isIdStartChar c = (isLetter c && isUpper c) || c == '\'' || c == '_'
+        isIdChar c = isLetter c || c == '\'' || c == '_' || isDigit c
