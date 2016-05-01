@@ -15,3 +15,6 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 mkVarPat :: TemplateAnnot a => Ann Name a -> Ann Pattern a
 mkVarPat = mkAnn child . VarPat
+
+mkAppPat :: TemplateAnnot a => Ann Name a -> [Ann Pattern a] -> Ann Pattern a
+mkAppPat n pat = mkAnn (child <> child) $ AppPat n (mkAnnList (listSepBefore " " " ") pat)

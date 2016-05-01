@@ -21,8 +21,7 @@ data ValueBind a
 
 -- | Clause of function (or value) binding   
 data Match a
-  = Match { _matchName :: Ann Name a
-          , _matchArgs :: AnnList Pattern a
+  = Match { _matchPattern :: Ann Pattern a
           , _matchRhs :: Ann Rhs a
           , _matchBinds :: AnnMaybe LocalBinds a
           } 

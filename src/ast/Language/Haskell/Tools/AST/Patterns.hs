@@ -16,10 +16,10 @@ data Pattern a
   | LitPat        { _patternLiteral :: Ann Literal a 
                   } -- ^ Literal pattern
   | InfixPat      { _patternLhs :: Ann Pattern a
-                  , _patternCtor :: Ann Name a
+                  , _patternName :: Ann Name a
                   , _patternRhs :: Ann Pattern a
                   } -- ^ Infix constructor application pattern (@ a :+: b @)
-  | AppPat        { _patternCtor :: Ann Name a
+  | AppPat        { _patternName :: Ann Name a
                   , _patternArgs :: AnnList Pattern a
                   } -- ^ Constructor application pattern (@ Point x y @)
   | TuplePat      { _patternElems :: AnnList Pattern a
@@ -32,7 +32,7 @@ data Pattern a
                   } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
   | ParenPat      { _patternInner :: Ann Pattern a 
                   } -- ^ Parenthesised patterns
-  | RecPat        { _patternCtor :: Ann Name a
+  | RecPat        { _patternName :: Ann Name a
                   , _patternFields :: AnnList PatternField a
                   } -- ^ Record pattern (@ Point { x = 3, y } @)
   | AsPat         { _patternName :: Ann Name a

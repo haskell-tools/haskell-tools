@@ -53,6 +53,7 @@ languageTests =
   , "Decl.FunBind"
   , "Decl.FunGuards"
   , "Decl.LocalBindings"
+  , "Decl.OperatorBind"
   , "Decl.OperatorDecl"
   , "Decl.ParamDataType"
   , "Decl.PatternBind"

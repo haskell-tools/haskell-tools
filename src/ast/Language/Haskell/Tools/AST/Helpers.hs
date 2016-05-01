@@ -67,7 +67,7 @@ importQualifiers imp
                (imp ^? importAs&annJust&element&importRename&element)
         
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
-bindingName = element&(valBindPat&element&patternName &+& funBindMatches&annList&element&matchName)
+bindingName = element&(valBindPat&element&patternName &+& funBindMatches&annList&element&matchPattern&element&patternName)
                      &semantics&nameInfo
                      
 declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann Name a)

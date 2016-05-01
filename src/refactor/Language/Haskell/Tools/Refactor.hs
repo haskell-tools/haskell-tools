@@ -164,8 +164,8 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
-    -- transformed <- runTrf (fst annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
+    transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
+    --transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
@@ -181,19 +181,19 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
-    transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
-    case transformed of 
-      Right correctlyTransformed -> do
-        liftIO $ putStrLn "==========="
-        liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
-        liftIO $ putStrLn "==========="
-        let prettyPrinted = prettyPrint correctlyTransformed
-        liftIO $ putStrLn prettyPrinted
-        liftIO $ putStrLn "==========="
-      Left transformProblem -> do
-        liftIO $ putStrLn "==========="
-        liftIO $ putStrLn transformProblem
-        liftIO $ putStrLn "==========="
+    --transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
+    --case transformed of 
+    --  Right correctlyTransformed -> do
+    --    liftIO $ putStrLn "==========="
+    --    liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
+    --    liftIO $ putStrLn "==========="
+    --    let prettyPrinted = prettyPrint correctlyTransformed
+    --    liftIO $ putStrLn prettyPrinted
+    --    liftIO $ putStrLn "==========="
+    --  Left transformProblem -> do
+    --    liftIO $ putStrLn "==========="
+    --    liftIO $ putStrLn transformProblem
+    --    liftIO $ putStrLn "==========="
     
       
 deriving instance Generic SrcSpan

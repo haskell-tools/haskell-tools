@@ -16,6 +16,8 @@ import Outputable as GHC
 import HsPat as GHC
 import HsDecls as GHC
 import HsTypes as GHC
+import OccName as GHC
+import Name as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Exprs
@@ -24,6 +26,7 @@ import Language.Haskell.Tools.AST.FromGHC.Types
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..))
 import qualified Language.Haskell.Tools.AST as AST
@@ -48,11 +51,19 @@ trfMatch id = trfLoc (trfMatch' id)
 trfMatch' :: TransformName n r => n -> Match n (LHsExpr n) -> Trf (AST.Match r)
 trfMatch' name (Match funid pats typ (GRHSs rhss locBinds))
   -- TODO: add the optional typ to pats
-  = AST.Match <$> define (maybe (annLoc (mkSrcSpan <$> atTheStart <*> atTheStart) (trfName' name)) (trfName . fst) funid)
-              <*> makeList " " (before AnnEqual) (mapM trfPattern pats)
+  = AST.Match <$> annLoc 
+                    (combineSrcSpans (maybe noSrcSpan (getLoc . fst) funid `combineSrcSpans` collectLocs pats) <$> (srcLocSpan <$> atTheStart))
+                    (do name <- define (maybe (annLoc (mkSrcSpan <$> atTheStart <*> atTheStart) (trfName' name)) (trfName . fst) funid)
+                        args <- mapM trfPattern pats
+                        createMatchPattern (maybe False snd funid) name args)
               <*> addToScope pats (trfRhss rhss)
               <*> addToScope pats (trfWhereLocalBinds locBinds)
-  
+  where createMatchPattern :: RangeAnnot r => Bool -> Ann AST.Name r -> [Ann AST.Pattern r] -> Trf (AST.Pattern r) 
+        createMatchPattern isOperator name args =
+          case (args, isOperator) of 
+            ([left, right], True) -> return $ AST.InfixPat left name right
+            _                     -> AST.AppPat name <$> (makeList " " (before AnnEqual) (pure args))
+
 trfRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.Rhs r)
 -- the original location on the GRHS misleadingly contains the local bindings
 trfRhss [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenBefore (srcSpanStart $ getLoc body) AnnEqual) 

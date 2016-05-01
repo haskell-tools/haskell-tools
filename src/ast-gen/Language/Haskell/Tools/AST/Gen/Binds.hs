@@ -22,7 +22,7 @@ mkFunctionBind = mkAnn child . FunBind . mkAnnList indentedList
 mkUnguardedRhs :: TemplateAnnot a => Ann Expr a -> Ann Rhs a
 mkUnguardedRhs = mkAnn (" = " <> child) . UnguardedRhs
 
-mkMatch :: TemplateAnnot a => Ann Name a -> [Ann Pattern a] -> Ann Rhs a -> Maybe (Ann LocalBinds a) -> Ann Match a
-mkMatch name args rhs locs 
-  = mkAnn (child <> child <> child <> child) 
-      $ Match name (mkAnnList (listSepBefore " " " ") args) rhs (mkAnnMaybe (optBefore " ") locs)
+mkMatch :: TemplateAnnot a => Ann Pattern a -> Ann Rhs a -> Maybe (Ann LocalBinds a) -> Ann Match a
+mkMatch matchArgs rhs locs 
+  = mkAnn (child <> child <> child) 
+      $ Match matchArgs rhs (mkAnnMaybe (optBefore " ") locs)
