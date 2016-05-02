@@ -99,9 +99,9 @@ readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
 
-onlineRefactor :: String -> String -> IO (Either String String)
-onlineRefactor command moduleStr
-  = do withBinaryFile (moduleName ++ ".hs") WriteMode (`hPutStr` moduleStr)
+onlineRefactor :: String -> FilePath -> String -> IO (Either String String)
+onlineRefactor command workingDir moduleStr
+  = do withBinaryFile (workingDir </> (moduleName ++ ".hs")) WriteMode (`hPutStr` moduleStr)
        modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
        if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
@@ -110,8 +110,7 @@ onlineRefactor command moduleStr
               res <- performRefactor command workingDir moduleName
               removeFile (moduleName ++ ".hs")
               return res
-  where workingDir = "."
-        moduleName = "Test"
+  where moduleName = "Test"
 
 performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
@@ -164,8 +163,8 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
-    transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    --transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
+    --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source $ tm_parsed_module t))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
@@ -181,19 +180,19 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
-    --transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
-    --case transformed of 
-    --  Right correctlyTransformed -> do
-    --    liftIO $ putStrLn "==========="
-    --    liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
-    --    liftIO $ putStrLn "==========="
-    --    let prettyPrinted = prettyPrint correctlyTransformed
-    --    liftIO $ putStrLn prettyPrinted
-    --    liftIO $ putStrLn "==========="
-    --  Left transformProblem -> do
-    --    liftIO $ putStrLn "==========="
-    --    liftIO $ putStrLn transformProblem
-    --    liftIO $ putStrLn "==========="
+    transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
+    case transformed of 
+      Right correctlyTransformed -> do
+        liftIO $ putStrLn "==========="
+        liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
+        liftIO $ putStrLn "==========="
+        let prettyPrinted = prettyPrint correctlyTransformed
+        liftIO $ putStrLn prettyPrinted
+        liftIO $ putStrLn "==========="
+      Left transformProblem -> do
+        liftIO $ putStrLn "==========="
+        liftIO $ putStrLn transformProblem
+        liftIO $ putStrLn "==========="
     
       
 deriving instance Generic SrcSpan
