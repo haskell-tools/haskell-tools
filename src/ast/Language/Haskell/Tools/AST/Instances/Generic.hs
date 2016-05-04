@@ -109,6 +109,7 @@ deriving instance Generic a => Generic (Literal a)
 deriving instance Generic a => Generic (Promoted a)
 
 -- Base
+deriving instance Generic a => Generic (Operator a)
 deriving instance Generic a => Generic (Name a)
 deriving instance Generic a => Generic (SimpleName a)
 deriving instance Generic a => Generic (StringNode a)

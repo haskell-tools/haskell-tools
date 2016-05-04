@@ -100,6 +100,7 @@ makeReferences ''Literal
 makeReferences ''Promoted
 
 -- Base
+makeReferences ''Operator
 makeReferences ''Name
 makeReferences ''SimpleName
 makeReferences ''StringNode

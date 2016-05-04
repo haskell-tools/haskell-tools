@@ -21,7 +21,7 @@ import HsSyn as GHC
 import Module as GHC
 import RdrName as GHC
 import Id as GHC
-import Name as GHC hiding (Name)
+import Name as GHC hiding (Name, occName)
 import qualified Name as GHC (Name)
 import Outputable as GHC
 import SrcLoc as GHC
@@ -39,6 +39,12 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
+trfOperator' :: TransformName name res => name -> Trf (AST.Operator res)
+trfOperator' n
+  | isSymOcc (occName n) = AST.NormalOp <$> annCont (trfName' n)
+  | otherwise = AST.BacktickOp <$> annLoc loc (trfName' n)
+     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
@@ -46,6 +52,9 @@ class OutputableBndr name => GHCName name where
 instance GHCName RdrName where
   rdrName = id
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
+
+occName :: GHCName n => n -> OccName
+occName = rdrNameOcc . rdrName 
     
 instance GHCName GHC.Name where
   rdrName = nameRdrName
@@ -53,24 +62,26 @@ instance GHCName GHC.Name where
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) => TransformName name res where
-  trfName :: Located name -> Trf (Ann AST.Name res)
+class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) 
+        => TransformName name res where
+  addNameInfo :: name -> Ann AST.Name res -> Trf (Ann AST.Name res)
   
 instance TransformName RdrName AST.RangeInfo where
-  trfName = trfLoc trfName' 
+  addNameInfo _ = return
 
 instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
-  trfName name = do locals <- asks localsInScope
-                    isDefining <- asks defining
-                    annotation .- addSemanticInfo (NameInfo locals isDefining (unLoc name)) <$> trfLoc trfName' name
+  addNameInfo name ast = do locals <- asks localsInScope
+                            isDefining <- asks defining
+                            return (annotation .- addSemanticInfo (NameInfo locals isDefining name) $ ast)
   
-trfName' :: TransformName name res => name -> Trf (AST.Name res)
-trfName' n = let str = occNameString (rdrNameOcc (rdrName n)) 
-              in (if isOperatorName str then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
-                                        else AST.nameFromList . fst <$> trfNameStr str)
+trfName :: TransformName name res => Located name -> Trf (Ann AST.Name res)
+trfName name@(L l n) = addNameInfo n =<< trfLoc trfName' name
 
-isOperatorName :: String -> Bool
-isOperatorName n = all isPunctuation n
+trfName' :: TransformName name res => name -> Trf (AST.Name res)
+trfName' n = let occ = occName n
+                 str = occNameString occ
+              in (if isSymOcc occ then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
+                                  else AST.nameFromList . fst <$> trfNameStr str)
 
 trfNameSp :: TransformName name res => name -> SrcSpan -> Trf (Ann AST.Name res)
 trfNameSp n l = trfName (L l n)

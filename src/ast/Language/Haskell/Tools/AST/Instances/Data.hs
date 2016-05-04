@@ -108,6 +108,7 @@ deriving instance Data a => Data (Literal a)
 deriving instance Data a => Data (Promoted a)
 
 -- Base
+deriving instance Data a => Data (Operator a)
 deriving instance Data a => Data (Name a)
 deriving instance Data a => Data (SimpleName a)
 deriving instance Data a => Data (StringNode a)

@@ -75,6 +75,7 @@ languageTests =
   , "Expr.ListComp"
   , "Expr.Negate"
   , "Expr.Operator"
+  , "Expr.ParenName"
   , "Expr.ParListComp"
   , "Expr.RecordWildcards"
   , "Expr.Sections"

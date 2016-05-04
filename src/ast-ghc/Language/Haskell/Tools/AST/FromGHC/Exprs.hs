@@ -44,14 +44,13 @@ trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] ex
 trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase <$> trfAnnList " " trfAlt' matches
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
-  = AST.InfixApp <$> trfExpr e1 <*> trfNameSp op opLoc <*> trfExpr e2
-trfExpr' (NegApp e _) = AST.PrefixApp <$> (annLoc (mkSrcSpan <$> (srcSpanStart <$> asks contRange) 
-                                                             <*> (pure $ srcSpanStart (getLoc e))) 
-                                                  (AST.nameFromList . fst <$> trfNameStr "-")) 
+  = AST.InfixApp <$> trfExpr e1 <*> annLoc (pure opLoc) (trfOperator' op) <*> trfExpr e2
+trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList . fst <$> trfNameStr "-"))
                                       <*> trfExpr e
+  where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
-trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfNameSp op l
-trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> trfNameSp op l <*> trfExpr expr
+trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> annLoc (pure l) (trfOperator' op)
+trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> annLoc (pure l) (trfOperator' op) <*> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
   = wrap <$> between AnnOpenP AnnCloseP (trfAnnList ", " (trfExpr' . unLoc . (\(Present e) -> e)) tupArgs)
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple

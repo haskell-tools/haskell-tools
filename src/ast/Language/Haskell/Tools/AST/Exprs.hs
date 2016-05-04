@@ -17,10 +17,10 @@ data Expr a
   | Lit            { _exprLit :: Ann Literal a
                    } -- ^ Primitive literal
   | InfixApp       { _exprLhs :: Ann Expr a
-                   , _exprOperator :: Ann Name a
+                   , _exprOperator :: Ann Operator a
                    , _exprRhs :: Ann Expr a
                    } -- ^ Infix operator application (@ a + b @)
-  | PrefixApp      { _exprOperator :: Ann Name a
+  | PrefixApp      { _exprOperator :: Ann Operator a
                    , _exprRhs :: Ann Expr a
                    } -- ^ Prefix operator application (@ -x @)
   | App            { _exprFun :: Ann Expr a
@@ -60,9 +60,9 @@ data Expr a
   | Paren          { _exprInner :: Ann Expr a 
                    }
   | LeftSection    { _exprLhs :: Ann Expr a
-                   , _exprOperator :: Ann Name a
+                   , _exprOperator :: Ann Operator a
                    } -- ^ Left operator section: @(1+)@
-  | RightSection   { _exprOperator :: Ann Name a
+  | RightSection   { _exprOperator :: Ann Operator a
                    , _exprRhs :: Ann Expr a
                    } -- ^ Right operator section: @(+1)@
   | RecCon         { _exprRecName :: Ann Name a

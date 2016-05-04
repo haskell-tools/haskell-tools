@@ -112,6 +112,7 @@ deriving instance Show (Literal a)
 deriving instance Show (Promoted a)
 
 -- Base
+deriving instance Show (Operator a)
 deriving instance Show (Name a)
 deriving instance Show (SimpleName a)
 deriving instance Show (StringNode a)

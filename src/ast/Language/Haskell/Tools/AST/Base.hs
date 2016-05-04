@@ -10,12 +10,16 @@ module Language.Haskell.Tools.AST.Base where
   
 import Language.Haskell.Tools.AST.Ann
 
+data Operator a
+  = BacktickOp { _operatorName :: Ann Name a } -- ^ Backtick operator name: @ a `mod` b @
+  | NormalOp { _operatorName :: Ann Name a }
+
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
 data Name a 
   = Name { _qualifiers      :: AnnList SimpleName a
          , _unqualifiedName :: Ann SimpleName a 
-         } 
+         }
 
 nameFromList :: AnnList SimpleName a -> Name a
 nameFromList (AnnList a xs) | not (null xs) 
