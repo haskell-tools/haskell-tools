@@ -39,10 +39,13 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
+trfOperator :: TransformName name res => Located name -> Trf (Ann AST.Operator res)
+trfOperator = trfLoc trfOperator'
+
 trfOperator' :: TransformName name res => name -> Trf (AST.Operator res)
 trfOperator' n
-  | isSymOcc (occName n) = AST.NormalOp <$> annCont (trfName' n)
-  | otherwise = AST.BacktickOp <$> annLoc loc (trfName' n)
+  | isSymOcc (occName n) = AST.NormalOp <$> (addNameInfo n =<< annCont (trfName' n))
+  | otherwise = AST.BacktickOp <$> (addNameInfo n =<< annLoc loc (trfName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 class OutputableBndr name => GHCName name where 
