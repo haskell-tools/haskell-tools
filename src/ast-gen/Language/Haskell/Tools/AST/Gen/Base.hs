@@ -19,6 +19,9 @@ mkSimpleName s = mkAnn (fromString s) (SimpleName s)
 
 mkUnqualName' :: TemplateAnnot a => GHC.Name -> Ann Name a
 mkUnqualName' = mkUnqualName . GHC.occNameString . GHC.getOccName
+
+mkUnqualOp' :: TemplateAnnot a => GHC.Name -> Ann Name a
+mkUnqualOp' = mkUnqualName'
                       
 mkUnqualName :: TemplateAnnot a => String -> Ann Name a
 mkUnqualName n = mkAnn (child <> child) 

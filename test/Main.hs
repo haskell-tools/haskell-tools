@@ -82,6 +82,7 @@ languageTests =
   , "Module.Simple"
   , "Module.Export"
   , "Module.Import"
+  , "Pattern.Backtick"
   , "Pattern.Constructor"
   , "Pattern.NPlusK"
   , "Pattern.Record"

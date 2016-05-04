@@ -112,19 +112,27 @@ qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
--- | Create a name that references the definition. Generates an import if the definition is not yet imported.
 referenceName :: (Eq n, GHC.NamedThing n) => n -> Refactor n (Ann Name (STWithNames n))
-referenceName (GHC.getName -> name) | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
-  = return $ mkUnqualName' name -- imported from prelude
-referenceName n@(GHC.getName -> name) = do 
+referenceName = referenceName' False
+
+referenceOperator :: (Eq n, GHC.NamedThing n) => n -> Refactor n (Ann Name (STWithNames n))
+referenceOperator = referenceName' True
+
+-- | Create a name that references the definition. Generates an import if the definition is not yet imported.
+referenceName' :: (Eq n, GHC.NamedThing n) => Bool -> n -> Refactor n (Ann Name (STWithNames n))
+referenceName' asOperator (GHC.getName -> name) | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
+  = return $ mkUnqualNameOrOp asOperator name -- imported from prelude
+referenceName' asOperator n@(GHC.getName -> name) = do 
   RefactorCtx {refCtxImports = imports} <- ask
   if isNothing (GHC.nameModule_maybe name) 
-    then return $ mkUnqualName' name -- in the same module, use simple name
+    then return $ mkUnqualNameOrOp asOperator name -- in the same module, use simple name
     else let possibleImports = filter ((n `elem`) . (\imp -> fromJust $ imp ^? semantics&importedNames)) imports
           in if null possibleImports 
-               then do tell [name] -- have to import itreturn $ mkUnqualName' name
-                       return $ mkUnqualName' name
+               then do tell [name]
+                       return $ mkUnqualNameOrOp asOperator name
                else return $ referenceBy name possibleImports -- use it according to the best available import
+
+mkUnqualNameOrOp asOperator = if asOperator then mkUnqualName' else mkUnqualOp'
 
 
 -- | Reference the name by the shortest suitable import
