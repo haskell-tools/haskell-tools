@@ -69,11 +69,11 @@ getExternalBinds expr = keepFirsts <$> filterM isApplicableName (expr ^? uniplat
         keepFirsts [] = []
 
 generateCall :: String -> [Ann Name STWithId] -> Ann Expr STWithId
-generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar (mkUnqualName name)) args
+generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar $ mkNormalName $ mkSimpleName name) args
 
 generateBind :: String -> [Ann Name STWithId] -> Ann Expr STWithId -> Ann ValueBind STWithId
-generateBind name [] e = mkSimpleBind (mkVarPat (mkUnqualName name)) (mkUnguardedRhs e) Nothing
-generateBind name args e = mkFunctionBind [mkMatch (mkAppPat (mkUnqualName name) (map mkVarPat args)) (mkUnguardedRhs e) Nothing]
+generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing
+generateBind name args e = mkFunctionBind [mkMatch (mkAppPat (mkNormalName $ mkSimpleName name) (map mkVarPat args)) (mkUnguardedRhs e) Nothing]
 
 isValidBindingName :: String -> Bool
 isValidBindingName [] = False

@@ -16,7 +16,7 @@ data Pattern a
   | LitPat        { _patternLiteral :: Ann Literal a 
                   } -- ^ Literal pattern
   | InfixPat      { _patternLhs :: Ann Pattern a
-                  , _patternName :: Ann Name a
+                  , _patternOperator :: Ann Operator a
                   , _patternRhs :: Ann Pattern a
                   } -- ^ Infix constructor application pattern (@ a :+: b @)
   | AppPat        { _patternName :: Ann Name a

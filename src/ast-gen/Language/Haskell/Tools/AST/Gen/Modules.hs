@@ -20,13 +20,13 @@ mkModule pragmas head imps decls
       $ Module (mkAnnList (listSep "\n") pragmas) (mkAnnMaybe opt head)
                (mkAnnList indentedList imps) (mkAnnList indentedList decls)
                
-mkModuleHead :: TemplateAnnot a => Ann Name a -> Maybe (Ann ExportSpecList a) -> Ann ModuleHead a
+mkModuleHead :: TemplateAnnot a => Ann SimpleName a -> Maybe (Ann ExportSpecList a) -> Ann ModuleHead a
 mkModuleHead n es = mkAnn (child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es)
 
 mkExportSpecList :: TemplateAnnot a => [Ann ExportSpec a] -> Ann ExportSpecList a
 mkExportSpecList = mkAnn ("(" <> child <> ")") . ExportSpecList . mkAnnList (listSep ", ")
 
-mkModuleExport :: TemplateAnnot a => Ann Name a -> Ann ExportSpec a
+mkModuleExport :: TemplateAnnot a => Ann SimpleName a -> Ann ExportSpec a
 mkModuleExport = mkAnn ("module " <> child) . ModuleExport
 
 mkExportSpec :: TemplateAnnot a => Ann IESpec a -> Ann ExportSpec a
@@ -35,10 +35,10 @@ mkExportSpec = mkAnn child . DeclExport
 mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
 mkImportSpecList = mkAnn ("(" <> child <> ")") . ImportSpecList . mkAnnList (listSep ", ")
 
-mkIeSpec :: TemplateAnnot a => Ann Name a -> Maybe (Ann SubSpec a) -> Ann IESpec a
+mkIeSpec :: TemplateAnnot a => Ann SimpleName a -> Maybe (Ann SubSpec a) -> Ann IESpec a
 mkIeSpec name ss = mkAnn (child <> child) (IESpec name (mkAnnMaybe opt ss))
         
-mkSubList :: TemplateAnnot a => [Ann Name a] -> Ann SubSpec a
+mkSubList :: TemplateAnnot a => [Ann SimpleName a] -> Ann SubSpec a
 mkSubList = mkAnn ("(" <> child <> ")") . SubSpecList . mkAnnList (listSep ", ")
 
 mkSubAll :: TemplateAnnot a => Ann SubSpec a
@@ -46,7 +46,7 @@ mkSubAll = mkAnn "(..)" SubSpecAll
 
 -- TODO: mk pragmas
 
-mkImportDecl :: TemplateAnnot a => Bool -> Bool -> Bool -> Maybe String -> Ann Name a -> Maybe (Ann ImportRenaming a) -> Maybe (Ann ImportSpec a) -> Ann ImportDecl a       
+mkImportDecl :: TemplateAnnot a => Bool -> Bool -> Bool -> Maybe String -> Ann SimpleName a -> Maybe (Ann ImportRenaming a) -> Maybe (Ann ImportSpec a) -> Ann ImportDecl a       
 mkImportDecl source qualified safe pkg name rename spec
   = mkAnn ("import " <> child <> child <> child <> child <> child <> child <> child) $
       ImportDecl (if source then justVal (mkAnn "{-# SOURCE #-} " ImportSource) else noth)

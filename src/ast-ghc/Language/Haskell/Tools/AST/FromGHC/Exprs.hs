@@ -35,8 +35,8 @@ trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr = trfLoc trfExpr'
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
-trfExpr' (HsVar name) = AST.Var <$> trfNameSp' name
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <$> trfNameStr (unpackFS ip))
+trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.NormalName <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip)))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
 trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
@@ -44,14 +44,13 @@ trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] ex
 trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase <$> trfAnnList " " trfAlt' matches
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
-  = AST.InfixApp <$> trfExpr e1 <*> trfNameSp op opLoc <*> trfExpr e2
-trfExpr' (NegApp e _) = AST.PrefixApp <$> (annLoc (mkSrcSpan <$> (srcSpanStart <$> asks contRange) 
-                                                             <*> (pure $ srcSpanStart (getLoc e))) 
-                                                  (AST.nameFromList . fst <$> trfNameStr "-")) 
+  = AST.InfixApp <$> trfExpr e1 <*> annLoc (pure opLoc) (trfOperator' op) <*> trfExpr e2
+trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList <$> trfNameStr "-"))
                                       <*> trfExpr e
+  where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
-trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfNameSp op l
-trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> trfNameSp op l <*> trfExpr expr
+trfExpr' (SectionL expr (L l (HsVar op))) = AST.LeftSection <$> trfExpr expr <*> annLoc (pure l) (trfOperator' op)
+trfExpr' (SectionR (L l (HsVar op)) expr) = AST.RightSection <$> annLoc (pure l) (trfOperator' op) <*> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
   = wrap <$> between AnnOpenP AnnCloseP (trfAnnList ", " (trfExpr' . unLoc . (\(Present e) -> e)) tupArgs)
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
@@ -115,7 +114,7 @@ trfFieldUpdates (HsRecFields fields dotdot)
   
 trfFieldUpdate :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate r)
 trfFieldUpdate = trfLoc $ \case
-  HsRecField id _ True -> AST.FieldPun <$> trfNameSp' (unLoc id)
+  HsRecField id _ True -> AST.FieldPun <$> annCont (trfName' (unLoc id))
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
 trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt r)

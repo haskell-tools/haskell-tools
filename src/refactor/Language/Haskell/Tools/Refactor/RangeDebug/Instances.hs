@@ -112,8 +112,10 @@ instance (Generic a, Show a) => TreeDebug Literal a
 instance (Generic a, Show a) => TreeDebug Promoted a
 
 -- Base
+instance (Generic a, Show a) => TreeDebug Operator a
 instance (Generic a, Show a) => TreeDebug Name a
 instance (Generic a, Show a) => TreeDebug SimpleName a
+instance (Generic a, Show a) => TreeDebug UnqualName a
 instance (Generic a, Show a) => TreeDebug StringNode a
 instance (Generic a, Show a) => TreeDebug DataOrNewtypeKeyword a
 instance (Generic a, Show a) => TreeDebug DoKind a

@@ -44,8 +44,8 @@ addGeneratedImports =
 
         -- TODO: group names like constructors into correct IESpecs
         createImport :: TemplateAnnot a => [GHC.Name] -> Ann ImportDecl a
-        createImport names = mkImportDecl False False False Nothing (mkUnqualName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
-                                          Nothing (Just $ mkImportSpecList (map (\n -> mkIeSpec (mkUnqualName' n) Nothing) names))
+        createImport names = mkImportDecl False False False Nothing (mkSimpleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
+                                          Nothing (Just $ mkImportSpecList (map (\n -> mkIeSpec (mkSimpleName' n) Nothing) names))
 
 instance (GhcMonad m, Monoid s) => GhcMonad (WriterT s m) where
   getSession = lift getSession
@@ -112,26 +112,32 @@ qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
--- | Create a name that references the definition. Generates an import if the definition is not yet imported.
 referenceName :: (Eq n, GHC.NamedThing n) => n -> Refactor n (Ann Name (STWithNames n))
-referenceName (GHC.getName -> name) | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
-  = return $ mkUnqualName' name -- imported from prelude
-referenceName n@(GHC.getName -> name) = do 
-  RefactorCtx {refCtxImports = imports} <- ask
-  if isNothing (GHC.nameModule_maybe name) 
-    then return $ mkUnqualName' name -- in the same module, use simple name
-    else let possibleImports = filter ((n `elem`) . (\imp -> fromJust $ imp ^? semantics&importedNames)) imports
-          in if null possibleImports 
-               then do tell [name] -- have to import itreturn $ mkUnqualName' name
-                       return $ mkUnqualName' name
-               else return $ referenceBy name possibleImports -- use it according to the best available import
+referenceName = referenceName' mkQualName'
 
+referenceOperator :: (Eq n, GHC.NamedThing n) => n -> Refactor n (Ann Operator (STWithNames n))
+referenceOperator = referenceName' mkQualOp'
+
+-- | Create a name that references the definition. Generates an import if the definition is not yet imported.
+referenceName' :: (Eq n, GHC.NamedThing n) => ([String] -> GHC.Name -> Ann nt (STWithNames n)) -> n -> Refactor n (Ann nt (STWithNames n))
+referenceName' makeName n@(GHC.getName -> name) 
+  | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
+  = return $ makeName [] name -- imported from prelude
+  | otherwise 
+  = do RefactorCtx {refCtxImports = imports} <- ask
+       if isNothing (GHC.nameModule_maybe name) 
+         then return $ makeName [] name -- in the same module, use simple name
+         else let possibleImports = filter ((n `elem`) . (\imp -> fromJust $ imp ^? semantics&importedNames)) imports
+               in if null possibleImports 
+                    then do tell [name]
+                            return $ makeName [] name
+                    else return $ referenceBy makeName name possibleImports -- use it according to the best available import
 
 -- | Reference the name by the shortest suitable import
-referenceBy :: (TemplateAnnot a) => GHC.Name -> [Ann ImportDecl a] -> Ann Name a
-referenceBy name imps = 
+referenceBy :: (TemplateAnnot a) => ([String] -> GHC.Name -> Ann nt a) -> GHC.Name -> [Ann ImportDecl a] -> Ann nt a
+referenceBy makeName name imps = 
   let prefixes = map importQualifier imps
-   in mkQualifiedName' (minimumBy (compare `on` (length . concat)) prefixes) name
+   in makeName (minimumBy (compare `on` (length . concat)) prefixes) name
   where importQualifier :: Ann ImportDecl a -> [String]
         importQualifier imp 
           = if isJust (imp ^? element&importQualified&annJust) 

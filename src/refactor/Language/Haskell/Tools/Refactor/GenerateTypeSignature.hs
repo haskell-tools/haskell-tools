@@ -78,7 +78,7 @@ generateTypeFor prec t
   | (op, [at,rt]) <- splitAppTys t
   , Just tc <- tyConAppTyCon_maybe op
   , isSymOcc (getOccName (getName tc))
-  = wrapParen 0 <$> (mkTyInfix <$> generateTypeFor 10 at <*> referenceName (getTCId tc) <*> generateTypeFor 10 rt)
+  = wrapParen 0 <$> (mkTyInfix <$> generateTypeFor 10 at <*> referenceOperator (getTCId tc) <*> generateTypeFor 10 rt)
   -- tuple types
   | Just (tc, tas) <- splitTyConApp_maybe t
   , isTupleTyCon tc
@@ -88,7 +88,7 @@ generateTypeFor prec t
   , Just ch <- tyConAppTyCon_maybe et
   , listTyCon == ls
   , charTyCon == ch
-  = return $ mkTyVar (mkUnqualName "String")
+  = return $ mkTyVar (mkNormalName $ mkSimpleName "String")
   -- list types
   | Just (tc, [et]) <- splitTyConApp_maybe t
   , listTyCon == tc

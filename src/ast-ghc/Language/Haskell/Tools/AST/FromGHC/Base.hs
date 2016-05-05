@@ -21,7 +21,7 @@ import HsSyn as GHC
 import Module as GHC
 import RdrName as GHC
 import Id as GHC
-import Name as GHC hiding (Name)
+import Name as GHC hiding (Name, occName)
 import qualified Name as GHC (Name)
 import Outputable as GHC
 import SrcLoc as GHC
@@ -39,66 +39,91 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
+trfOperator :: TransformName name res => Located name -> Trf (Ann AST.Operator res)
+trfOperator = trfLoc trfOperator'
+
+trfOperator' :: TransformName name res => name -> Trf (AST.Operator res)
+trfOperator' n
+  | isSymOcc (occName n) = AST.NormalOp <$> (addNameInfo n =<< annCont (trfSimpleName' n))
+  | otherwise = AST.BacktickOp <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
+     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+
+trfName :: TransformName name res => Located name -> Trf (Ann AST.Name res)
+trfName = trfLoc trfName'
+
+trfName' :: TransformName name res => name -> Trf (AST.Name res)
+trfName' n
+  | isSymOcc (occName n) = AST.ParenName <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
+  | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
+     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
+  correctNameString :: name -> Trf String
   
 instance GHCName RdrName where
   rdrName = id
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
+  correctNameString = pure . rdrNameStr
+
+occName :: GHCName n => n -> OccName
+occName = rdrNameOcc . rdrName 
     
 instance GHCName GHC.Name where
   rdrName = nameRdrName
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
+  correctNameString n = getOriginalName (rdrName n)
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) => TransformName name res where
-  trfName :: Located name -> Trf (Ann AST.Name res)
-  
+class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) 
+        => TransformName name res where
 instance TransformName RdrName AST.RangeInfo where
-  trfName = trfLoc trfName' 
-
 instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
-  trfName name = do locals <- asks localsInScope
-                    isDefining <- asks defining
-                    annotation .- addSemanticInfo (NameInfo locals isDefining (unLoc name)) <$> trfLoc trfName' name
-  
-trfName' :: TransformName name res => name -> Trf (AST.Name res)
-trfName' n = let str = occNameString (rdrNameOcc (rdrName n)) 
-              in (if isOperatorName str then AST.Name <$> emptyList "." atTheStart <*> annCont (pure $ AST.SimpleName str)
-                                        else AST.nameFromList . fst <$> trfNameStr str)
 
-isOperatorName :: String -> Bool
-isOperatorName n = all isPunctuation n
+addNameInfo :: TransformName n r => n -> Ann AST.SimpleName r -> Trf (Ann AST.SimpleName r)
+addNameInfo name ast = do locals <- asks localsInScope
+                          isDefining <- asks defining
+                          return (annotation .- addSemanticInfo (NameInfo locals isDefining name) $ ast)
 
-trfNameSp :: TransformName name res => name -> SrcSpan -> Trf (Ann AST.Name res)
-trfNameSp n l = trfName (L l n)
+trfSimpleName :: TransformName name res => Located name -> Trf (Ann AST.SimpleName res)
+trfSimpleName name@(L l n) = addNameInfo n =<< annLoc (pure l) (trfSimpleName' n)
 
-trfNameSp' :: TransformName name res => name -> Trf (Ann AST.Name res)
-trfNameSp' n = trfNameSp n =<< asks contRange
-  
-trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann AST.SimpleName a)
-trfSimplName start n = (\srcLoc -> Ann (toNodeAnnot $ mkSrcSpan start srcLoc) $ AST.SimpleName (pprStr n)) <$> asks (srcSpanEnd . contRange)
-  where pprStr :: Outputable a => a -> String
-        pprStr = showSDocUnsafe . ppr
-                
+trfSimpleName' :: TransformName name res => name -> Trf (AST.SimpleName res)
+trfSimpleName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
 
-trfNameStr :: RangeAnnot a => String -> Trf (AnnList AST.SimpleName a, SrcLoc)
-trfNameStr str = (\srcLoc -> (\(ls,loc) -> (AnnList (toListAnnot "" "" "." srcLoc) ls, loc))
-  (foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                          in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (AST.SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
-  ([],srcLoc) (splitOn "." str))) <$> asks (srcSpanStart . contRange)
-  where advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
+-- | Creates a qualified name from a name string
+trfNameStr :: RangeAnnot a => String -> Trf (AnnList AST.UnqualName a)
+trfNameStr str = (\loc -> AnnList (toListAnnot "" "" "." loc) $ trfNameStr' str loc) <$> atTheStart
+
+trfNameStr' :: RangeAnnot a => String -> SrcLoc -> [Ann AST.UnqualName a]
+trfNameStr' str srcLoc = fst $
+  foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
+                         in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (AST.UnqualName np)], advanceAllSrcLoc nextLoc "." ) ) 
+  ([], srcLoc) (nameParts str)
+  where -- | Move the source location according to a string
+        advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
         advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
         advanceAllSrcLoc oth _ = oth
+
+        -- | Break up a name into parts, but take care for operators
+        nameParts :: String -> [String]
+        nameParts = nameParts' ""
+
+        nameParts' :: String -> String -> [String]
+        nameParts' carry (c : rest) | isLetter c || isDigit c || c == '\'' || c == '_' || c == '#'
+                                    = nameParts' (c:carry) rest
+        nameParts' carry@(_:_) ('.' : rest) = reverse carry : nameParts rest
+        nameParts' "" rest = [rest] 
+        nameParts' carry [] = [reverse carry]
+        nameParts' carry str = error $ "nameParts': " ++ show carry ++ " " ++ show str
   
-  
-trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann AST.Name a)
+trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann AST.SimpleName a)
 trfModuleName = trfLoc trfModuleName'
 
-trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.Name a)
-trfModuleName' = (AST.nameFromList . fst <$>) . trfNameStr . moduleNameString
+trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.SimpleName a)
+trfModuleName' = (AST.nameFromList <$>) . trfNameStr . moduleNameString
 
 trfFastString :: RangeAnnot a => Located FastString -> Trf (Ann AST.StringNode a)
 trfFastString = trfLoc $ pure . AST.StringNode . unpackFS

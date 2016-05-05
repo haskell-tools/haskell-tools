@@ -111,8 +111,10 @@ deriving instance Eq (Literal a)
 deriving instance Eq (Promoted a)
 
 -- Base
+deriving instance Eq (Operator a)
 deriving instance Eq (Name a)
 deriving instance Eq (SimpleName a)
+deriving instance Eq (UnqualName a)
 deriving instance Eq (StringNode a)
 deriving instance Eq (DataOrNewtypeKeyword a)
 deriving instance Eq (DoKind a)

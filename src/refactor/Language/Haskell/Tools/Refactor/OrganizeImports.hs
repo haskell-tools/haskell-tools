@@ -36,7 +36,7 @@ organizeImports mod
   = element&modImports&annListElems !~ narrowImports usedNames . sortImports $ mod
   where usedNames = map getName $ catMaybes
                                 $ map (^? (annotation&semanticInfo&nameInfo))
-                                $ (universeBi (mod ^. element&modHead) ++ universeBi (mod ^. element&modDecl) :: [Ann Name (STWithNames n)])
+                                $ (universeBi (mod ^. element&modHead) ++ universeBi (mod ^. element&modDecl) :: [Ann SimpleName (STWithNames n)])
         
 sortImports :: [Ann ImportDecl (STWithNames n)] -> [Ann ImportDecl (STWithNames n)]
 sortImports = sortBy (ordByOccurrence `on` (^. element&importModule&element))

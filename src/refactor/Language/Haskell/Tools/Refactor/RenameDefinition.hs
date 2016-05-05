@@ -23,7 +23,7 @@ import Debug.Trace
 
 renameDefinition' :: forall n . (NamedThing n, Data n) => RealSrcSpan -> String -> Ann Module (STWithNames n) -> RefactoredModule n
 renameDefinition' sp str mod
-  = case (getNodeContaining sp mod :: Maybe (Ann Name (STWithNames n))) >>= getNameInfo of 
+  = case (getNodeContaining sp mod :: Maybe (Ann SimpleName (STWithNames n))) >>= getNameInfo of 
       Just n -> renameDefinition n str mod
       Nothing -> refactError "No name is selected"
 
@@ -35,11 +35,11 @@ renameDefinition toChange newName mod
                if not defFound then refactError "The definition to rename was not found"
                                else return res
   where
-    changeName :: GHC.Name -> String -> Ann Name (STWithNames n) -> StateT Bool (Refactor n) (Ann Name (STWithNames n))
+    changeName :: GHC.Name -> String -> Ann SimpleName (STWithNames n) -> StateT Bool (Refactor n) (Ann SimpleName (STWithNames n))
     changeName toChange str elem 
       = if getNameInfo elem == Just toChange
           then do modify (|| fromMaybe False (elem ^? semantics&isDefined)) 
-                  return $ element & unqualifiedName .= mkSimpleName str $ elem
+                  return $ element & unqualifiedName .= mkNamePart str $ elem
           else let namesInScope = fromMaybe [] (elem ^? semantics & scopedLocals)
                    actualName = maybe toChange getName (elem ^? semantics & nameInfo)
                 in if str == occNameString (getOccName actualName) && sameNamespace toChange actualName && conflicts toChange actualName namesInScope
@@ -66,9 +66,9 @@ nameValid n str | str `elem` reservedNames = False
                         , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
                         ]
 nameValid n (':' : opCtrNameRest)
-  = isDataSymOcc n && all isPunctuation opCtrNameRest
-nameValid n (c : optNameRest) | isPunctuation c
-  = isSymOcc n && not (isDataSymOcc n) && all isPunctuation optNameRest
+  = isDataSymOcc n && all isOperatorChar opCtrNameRest
+nameValid n (c : optNameRest) | isOperatorChar c
+  = isSymOcc n && not (isDataSymOcc n) && all isOperatorChar optNameRest
 nameValid n (c : nameRest) | isUpper c
                            = not (isSymOcc n) && (isTcOcc n || isDataOcc n) && all (\c -> isIdStartChar c || isDigit c) nameRest
 nameValid n (c : nameRest) | isIdStartChar c 
@@ -76,4 +76,5 @@ nameValid n (c : nameRest) | isIdStartChar c
 nameValid _ _ = False
 
 isIdStartChar c = isLetter c || c == '\'' || c == '_'
+isOperatorChar c = isPunctuation c || isSymbol c
 

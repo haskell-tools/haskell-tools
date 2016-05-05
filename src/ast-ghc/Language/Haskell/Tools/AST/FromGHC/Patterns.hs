@@ -32,7 +32,7 @@ trfPattern p | otherwise = trfLoc trfPattern' p
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
-trfPattern' (VarPat name) = define $ AST.VarPat <$> trfNameSp' name
+trfPattern' (VarPat name) = define $ AST.VarPat <$> annCont (trfName' name)
 trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
 trfPattern' (AsPat name pat) = AST.AsPat <$> define (trfName name) <*> trfPattern pat
 trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat
@@ -42,7 +42,7 @@ trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList ", " trfPatter
 trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList ", " trfPattern' pats
 trfPattern' (ConPatIn name (PrefixCon args)) = AST.AppPat <$> trfName name <*> trfAnnList " " trfPattern' args
 trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.RecPat <$> trfName name <*> trfAnnList ", " trfPatternField' flds
-trfPattern' (ConPatIn name (InfixCon left right)) = AST.InfixPat <$> trfPattern left <*> trfName name <*> trfPattern right
+trfPattern' (ConPatIn name (InfixCon left right)) = AST.InfixPat <$> trfPattern left <*> trfOperator name <*> trfPattern right
 trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
 trfPattern' (SplicePat splice) = AST.SplicePat <$> annCont (trfSplice' splice)
 trfPattern' (QuasiQuotePat qq) = AST.QuasiQuotePat <$> annCont (trfQuasiQuotation' qq)

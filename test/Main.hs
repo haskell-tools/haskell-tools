@@ -28,9 +28,6 @@ import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
-type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
-
 main :: IO Counts
 main = runTestTT $ TestList $ map makeReprintTest (languageTests 
                                                      ++ organizeImportTests 
@@ -75,6 +72,7 @@ languageTests =
   , "Expr.ListComp"
   , "Expr.Negate"
   , "Expr.Operator"
+  , "Expr.ParenName"
   , "Expr.ParListComp"
   , "Expr.RecordWildcards"
   , "Expr.Sections"
@@ -82,6 +80,7 @@ languageTests =
   , "Module.Simple"
   , "Module.Export"
   , "Module.Import"
+  , "Pattern.Backtick"
   , "Pattern.Constructor"
   , "Pattern.NPlusK"
   , "Pattern.Record"
@@ -133,6 +132,9 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.Constructor", "3:14-3:19", "Point2D")
   , ("Refactor.RenameDefinition.Type", "5:16-5:16", "Point2D")
   , ("Refactor.RenameDefinition.Function", "3:1-3:2", "q")
+  , ("Refactor.RenameDefinition.QualName", "3:1-3:2", "q")
+  , ("Refactor.RenameDefinition.BacktickName", "3:1-3:2", "g")
+  , ("Refactor.RenameDefinition.ParenName", "4:3-4:5", "<->")
   , ("Refactor.RenameDefinition.ClassMember", "7:3-7:4", "q")
   , ("Refactor.RenameDefinition.LocalFunction", "4:5-4:6", "g")
   , ("Refactor.RenameDefinition.Arg", "4:3-4:4", "y")
@@ -176,7 +178,7 @@ checkCorrectlyTransformed transform workingDir moduleName
        expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
        expected <- hGetContents expectedHandle
        transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
-                                              =<< transformTyped 
+                                              =<< parseTyped 
                                               =<< parse workingDir moduleName)
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings transformed)
@@ -185,7 +187,7 @@ checkTransformFails :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann
 checkTransformFails transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
-                                              =<< transformTyped 
+                                              =<< parseTyped 
                                               =<< parse workingDir moduleName)
        assertBool "The transform should fail for the given input" (isLeft transformed)
 
@@ -203,46 +205,22 @@ checkCorrectlyPrinted workingDir moduleName
        expected <- hGetContents expectedHandle
        (actual, actual', actual'') <- runGhc (Just libdir) $ do
          parsed <- parse workingDir moduleName
-         actual <- prettyPrint <$> transformParsed parsed
-         actual' <- prettyPrint <$> transformRenamed parsed
-         actual'' <- prettyPrint <$> transformTyped parsed
+         actual <- prettyPrint <$> parseAST parsed
+         actual' <- prettyPrint <$> parseRenamed parsed
+         actual'' <- prettyPrint <$> parseTyped parsed
          return (actual, actual', actual'')
        assertEqual "The original and the transformed source differ" expected actual
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
               
-transformParsed :: ModSummary -> Ghc (Ann AST.Module (NodeInfo () SourceTemplate))
-transformParsed modSum = do
+parseAST :: ModSummary -> Ghc (Ann AST.Module (NodeInfo (SemanticInfo RdrName) SourceTemplate))
+parseAST modSum = do
   p <- parseModule modSum
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
      <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule $ pm_parsed_source p)
-
-transformRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
-transformRenamed modSum = do
-  p <- parseModule modSum
-  tc <- typecheckModule p
-  let annots = pm_annotations p
-      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-    <$> (runTrf (fst annots) (getPragmaComments $ snd annots) 
-         $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source tc) 
-                           (pm_parsed_source p))
                                  
-transformTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
-transformTyped modSum = do
-  p <- parseModule modSum
-  tc <- typecheckModule p
-  let annots = pm_annotations p
-      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-    <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename (ms_mod $ modSum)
-                  (fromJust $ tm_renamed_source tc) 
-                  (pm_parsed_source p)))
-       
 parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do
   dflags <- getSessionDynFlags

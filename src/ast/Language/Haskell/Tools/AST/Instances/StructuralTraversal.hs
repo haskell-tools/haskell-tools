@@ -145,8 +145,10 @@ deriveStructTrav ''Literal
 deriveStructTrav ''Promoted
 
 -- Base
+deriveStructTrav ''Operator
 deriveStructTrav ''Name
 deriveStructTrav ''SimpleName
+deriveStructTrav ''UnqualName
 deriveStructTrav ''StringNode
 deriveStructTrav ''DataOrNewtypeKeyword
 deriveStructTrav ''DoKind

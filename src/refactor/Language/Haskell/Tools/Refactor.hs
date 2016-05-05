@@ -5,7 +5,7 @@
            , BangPatterns
            , MultiWayIf
            #-}
-module Language.Haskell.Tools.Refactor (demoRefactor, performRefactor, onlineRefactor, readCommand, readSrcSpan) where
+module Language.Haskell.Tools.Refactor where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST
@@ -147,10 +147,24 @@ parseTyped modSum = do
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename (ms_mod $ modSum)
+           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+                   runTrf (fst annots) (getPragmaComments $ snd annots)
+                     $ trfModuleRename (ms_mod $ modSum) parseTrf
+                         (fromJust $ tm_renamed_source tc) 
+                         (pm_parsed_source p)))
+
+parseRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
+parseRenamed modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
+    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+            runTrf (fst annots) (getPragmaComments $ snd annots)
+              $ trfModuleRename (ms_mod $ modSum) parseTrf
                   (fromJust $ tm_renamed_source tc) 
-                  (pm_parsed_source p)))
+                  (pm_parsed_source p))
     
 -- | Should be only used for testing
 demoRefactor :: String -> String -> String -> IO ()
@@ -167,8 +181,11 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "==========="
-    --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source $ tm_parsed_module t)
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) (fromJust $ tm_renamed_source t) (pm_parsed_source p))
+    --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+    liftIO $ putStrLn $ rangeDebug parseTrf
+    liftIO $ putStrLn "==========="
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
     liftIO $ putStrLn $ rangeDebug transformed
     liftIO $ putStrLn "==========="
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
@@ -198,7 +215,6 @@ demoRefactor command workingDir moduleName =
         liftIO $ putStrLn transformProblem
         liftIO $ putStrLn "==========="
     
-
 printSemaInfo :: (StructuralTraversable node, Outputable n) => node (NodeInfo (SemanticInfo n) src) -> Ghc (node (NodeInfo (SemanticInfo n) src))
 printSemaInfo = traverseUp (return ()) (return ()) (\n@(NodeInfo s _) -> liftIO (print s) >> return n)
       

@@ -24,21 +24,6 @@ import ApiAnnotation
 
 import Language.Haskell.Tools.AST
 
-deriving instance Data SrcLoc
-
--- created a correct Data instance for RealSrcLoc, because it is not given
-instance Data RealSrcLoc where
-  gfoldl k z loc = z mkRealSrcLoc `k` srcLocFile loc `k` srcLocLine loc `k` srcLocCol loc
-  gunfold k z c = case constrIndex c of
-                        1 -> k (k (k (z mkRealSrcLoc)))
-  toConstr _ = con_RealSrcLoc
-  dataTypeOf _ = ty_RealSrcLoc
-
-con_RealSrcLoc = mkConstr ty_RealSrcLoc "RealSrcLoc" [] Prefix
-ty_RealSrcLoc = mkDataType "SrcLoc.RealSrcLoc" [con_RealSrcLoc]
-  
-deriving instance Data SpanInfo
-
 getNormalComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map SrcSpan [Located AnnotationComment] 
 getNormalComments = Map.map (filter (isPragma . unLoc))
 

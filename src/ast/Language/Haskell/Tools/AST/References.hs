@@ -100,8 +100,10 @@ makeReferences ''Literal
 makeReferences ''Promoted
 
 -- Base
+makeReferences ''Operator
 makeReferences ''Name
 makeReferences ''SimpleName
+makeReferences ''UnqualName
 makeReferences ''StringNode
 makeReferences ''DataOrNewtypeKeyword
 makeReferences ''DoKind

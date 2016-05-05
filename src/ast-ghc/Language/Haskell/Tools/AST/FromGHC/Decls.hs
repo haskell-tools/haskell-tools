@@ -103,7 +103,7 @@ trfDecl = trfLoc $ \case
   DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybe "" "" trfOverlap overlap <*> trfInstanceRule t
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   RuleD (HsRules _ rules) -> AST.PragmaDecl <$> annCont (AST.RulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
-  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfName name <*> makeList " " atTheEnd (mapM trfRole roles)
+  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfSimpleName name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name typ _ (CImport ccall safe _ _ _)) 
     -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety (getLoc ccall) safe <*> define (trfName name) <*> trfType typ
@@ -158,7 +158,7 @@ trfInstanceRule = trfLoc $ \case
                                                           <*> trfCtx atTheStart ctx
                                                           <*> trfInstanceHead typ
     HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
-    HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> trfNameSp' tv)
+    HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> annCont (trfName' tv))
     HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
   where instanceHead hd = AST.InstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
                             
@@ -175,7 +175,7 @@ trfInstanceHead = trfLoc trfInstanceHead'
 
 trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead r)
 trfInstanceHead' (HsForAllTy Implicit Nothing (HsQTvs [] []) (unLoc -> []) (unLoc -> t)) = trfInstanceHead' t
-trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> trfNameSp' tv
+trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> annCont (trfName' tv)
 trfInstanceHead' (HsAppTy t1 t2) = AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
 trfInstanceHead' (HsParTy typ) = AST.InstanceHeadParen <$> trfInstanceHead typ
 trfInstanceHead' (HsOpTy t1 (_,op) t2) 
@@ -194,7 +194,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
                                      (AST.TyApp <$> pure typ <*> trfType p)) 
-                  (annLoc (pure $ getLoc name) (AST.TyVar <$> trfNameSp' (unLoc name))) 
+                  (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
                   (hswb_cts pats)
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
@@ -206,7 +206,7 @@ createDeclHead name vars
   = foldl (\t p -> do typ <- t
                       annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
                              (AST.DHApp typ <$> trfTyVar p)) 
-          (define $ annLoc (pure $ getLoc name) (AST.DeclHead <$> trfNameSp' (unLoc name))) 
+          (define $ annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
           (hsq_tvs vars)
       
          

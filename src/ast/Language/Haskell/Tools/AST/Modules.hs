@@ -16,7 +16,7 @@ data Module a
 
 -- | Module declaration with name and (optional) exports
 data ModuleHead a
-  = ModuleHead { _mhName :: Ann Name a
+  = ModuleHead { _mhName :: Ann SimpleName a
                , _mhExports :: AnnMaybe ExportSpecList a
                }
 
@@ -28,25 +28,25 @@ data ExportSpecList a
 data ExportSpec a
   = DeclExport { _exportDecl :: Ann IESpec a 
                } -- ^ Export a name and related names
-  | ModuleExport { _exportModuleName :: Ann Name a 
+  | ModuleExport { _exportModuleName :: Ann SimpleName a 
                  } -- ^ The export of an imported module (@ module A @)
   
 -- | Marks a name to be imported or exported with related names (subspecifier)
 data IESpec a
-  = IESpec { _ieName :: Ann Name a
+  = IESpec { _ieName :: Ann SimpleName a
            , _ieSubspec :: AnnMaybe SubSpec a
            }
   
 -- | Marks how related names will be imported or exported with a given name
 data SubSpec a
   = SubSpecAll -- @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-  | SubSpecList { _essList :: AnnList Name a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+  | SubSpecList { _essList :: AnnList SimpleName a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
            
 -- | Pragmas that affect the whole module           
 data ModulePragma a
   = LanguagePragma { _lpPragmas :: AnnList LanguageExtension a 
                    }  -- ^ LANGUAGE pragma
-  | OptionsPragma { _opTool :: AnnMaybe Name a
+  | OptionsPragma { _opTool :: AnnMaybe SimpleName a
                   , _opStr :: Ann StringNode a
                   } -- ^ OPTIONS pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
   | AnnModulePragma { _ampExpr :: Ann Expr a 
@@ -60,7 +60,7 @@ data ImportDecl a
                , _importQualified :: AnnMaybe ImportQualified a
                , _importSafe :: AnnMaybe ImportSafe a
                , _importPkg :: AnnMaybe StringNode a
-               , _importModule :: Ann Name a
+               , _importModule :: Ann SimpleName a
                , _importAs :: AnnMaybe ImportRenaming a
                , _importSpec :: AnnMaybe ImportSpec a
                }
@@ -85,5 +85,5 @@ data ImportSafe a = ImportSafe
 data TypeNamespace a = TypeNamespace
 
 -- | Renaming imports (@ as A @)
-data ImportRenaming a = ImportRenaming { _importRename :: Ann Name a }
+data ImportRenaming a = ImportRenaming { _importRename :: Ann SimpleName a }
                
