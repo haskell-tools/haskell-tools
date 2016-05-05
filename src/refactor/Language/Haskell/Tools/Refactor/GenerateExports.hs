@@ -32,13 +32,13 @@ getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = listToMaybe (d ^? declHead &
 getTopLevelDeclName (d @ DataDecl {}) = listToMaybe (d ^? declHead & dhNames)
 getTopLevelDeclName (d @ GDataDecl {}) = listToMaybe (d ^? declHead & dhNames)
 getTopLevelDeclName (d @ ClassDecl {}) = listToMaybe (d ^? declHead & dhNames)
-getTopLevelDeclName (d @ PatternSynonymDecl {}) = d ^? declPatSyn & element & patName & semantics & nameInfo
+getTopLevelDeclName (d @ PatternSynonymDecl {}) = d ^? declPatSyn & element & patName & element & simpleName & semantics & nameInfo
 getTopLevelDeclName (d @ ValueBinding {}) = listToMaybe (d ^? declValBind & bindingName)
-getTopLevelDeclName (d @ ForeignImport {}) = listToMaybe (d ^? declName & semantics & nameInfo)
+getTopLevelDeclName (d @ ForeignImport {}) = listToMaybe (d ^? declName & element & simpleName & semantics & nameInfo)
 getTopLevelDeclName _ = Nothing
 
 createExports :: GHC.NamedThing n => [(n, Bool)] -> Ann ExportSpecList (STWithNames n)
 createExports elems = mkExportSpecList $ map (mkExportSpec . createExport) elems
-  where createExport (n, False) = mkIeSpec (mkUnqualName' (GHC.getName n)) Nothing
-        createExport (n, True)  = mkIeSpec (mkUnqualName' (GHC.getName n)) (Just mkSubAll)
+  where createExport (n, False) = mkIeSpec (mkSimpleName' (GHC.getName n)) Nothing
+        createExport (n, True)  = mkIeSpec (mkSimpleName' (GHC.getName n)) (Just mkSubAll)
 

@@ -41,7 +41,7 @@ data Type a
   | TyParen      { _typeInner :: Ann Type a
                  } -- ^ type surrounded by parentheses (@ (T a) @)
   | TyInfix      { _typeLeft :: Ann Type a 
-                 , _typeOperator :: Ann Name a
+                 , _typeOperator :: Ann Operator a
                  , _typeRight :: Ann Type a
                  } -- ^ Infix type constructor (@ (a <: b) @)
   | TyKinded     { _typeInner :: Ann Type a

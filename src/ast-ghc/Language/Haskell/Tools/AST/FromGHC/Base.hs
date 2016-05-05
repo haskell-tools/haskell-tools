@@ -44,8 +44,17 @@ trfOperator = trfLoc trfOperator'
 
 trfOperator' :: TransformName name res => name -> Trf (AST.Operator res)
 trfOperator' n
-  | isSymOcc (occName n) = AST.NormalOp <$> (addNameInfo n =<< annCont (trfName' n))
-  | otherwise = AST.BacktickOp <$> (addNameInfo n =<< annLoc loc (trfName' n))
+  | isSymOcc (occName n) = AST.NormalOp <$> (addNameInfo n =<< annCont (trfSimpleName' n))
+  | otherwise = AST.BacktickOp <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
+     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+
+trfName :: TransformName name res => Located name -> Trf (Ann AST.Name res)
+trfName = trfLoc trfName'
+
+trfName' :: TransformName name res => name -> Trf (AST.Name res)
+trfName' n
+  | isSymOcc (occName n) = AST.ParenName <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
+  | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 class OutputableBndr name => GHCName name where 
@@ -73,34 +82,25 @@ class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCNa
 instance TransformName RdrName AST.RangeInfo where
 instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
 
-addNameInfo :: TransformName n r => n -> Ann AST.Name r -> Trf (Ann AST.Name r)
+addNameInfo :: TransformName n r => n -> Ann AST.SimpleName r -> Trf (Ann AST.SimpleName r)
 addNameInfo name ast = do locals <- asks localsInScope
                           isDefining <- asks defining
                           return (annotation .- addSemanticInfo (NameInfo locals isDefining name) $ ast)
-  
-trfName :: TransformName name res => Located name -> Trf (Ann AST.Name res)
-trfName name@(L l n) = addNameInfo n =<< annLoc (pure l) (trfName' n)
 
-trfName' :: TransformName name res => name -> Trf (AST.Name res)
-trfName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
+trfSimpleName :: TransformName name res => Located name -> Trf (Ann AST.SimpleName res)
+trfSimpleName name@(L l n) = addNameInfo n =<< annLoc (pure l) (trfSimpleName' n)
 
-trfNameSp :: TransformName name res => name -> SrcSpan -> Trf (Ann AST.Name res)
-trfNameSp n l = trfName (L l n)
+trfSimpleName' :: TransformName name res => name -> Trf (AST.SimpleName res)
+trfSimpleName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
 
-trfNameSp' :: TransformName name res => name -> Trf (Ann AST.Name res)
-trfNameSp' n = trfNameSp n =<< asks contRange
-  
-trfSimplName :: RangeAnnot a => SrcLoc -> OccName -> Trf (Ann AST.SimpleName a)
-trfSimplName start n = (\srcLoc -> Ann (toNodeAnnot $ mkSrcSpan start srcLoc) $ AST.SimpleName (occNameString n)) <$> atTheEnd
-                
 -- | Creates a qualified name from a name string
-trfNameStr :: RangeAnnot a => String -> Trf (AnnList AST.SimpleName a)
+trfNameStr :: RangeAnnot a => String -> Trf (AnnList AST.UnqualName a)
 trfNameStr str = (\loc -> AnnList (toListAnnot "" "" "." loc) $ trfNameStr' str loc) <$> atTheStart
 
-trfNameStr' :: RangeAnnot a => String -> SrcLoc -> [Ann AST.SimpleName a]
+trfNameStr' :: RangeAnnot a => String -> SrcLoc -> [Ann AST.UnqualName a]
 trfNameStr' str srcLoc = fst $
   foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                         in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (AST.SimpleName np)], advanceAllSrcLoc nextLoc "." ) ) 
+                         in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (AST.UnqualName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([], srcLoc) (nameParts str)
   where -- | Move the source location according to a string
         advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
@@ -119,10 +119,10 @@ trfNameStr' str srcLoc = fst $
         nameParts' carry [] = [reverse carry]
         nameParts' carry str = error $ "nameParts': " ++ show carry ++ " " ++ show str
   
-trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann AST.Name a)
+trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann AST.SimpleName a)
 trfModuleName = trfLoc trfModuleName'
 
-trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.Name a)
+trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.SimpleName a)
 trfModuleName' = (AST.nameFromList <$>) . trfNameStr . moduleNameString
 
 trfFastString :: RangeAnnot a => Located FastString -> Trf (Ann AST.StringNode a)

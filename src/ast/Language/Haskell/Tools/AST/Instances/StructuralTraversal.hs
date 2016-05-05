@@ -148,6 +148,7 @@ deriveStructTrav ''Promoted
 deriveStructTrav ''Operator
 deriveStructTrav ''Name
 deriveStructTrav ''SimpleName
+deriveStructTrav ''UnqualName
 deriveStructTrav ''StringNode
 deriveStructTrav ''DataOrNewtypeKeyword
 deriveStructTrav ''DoKind

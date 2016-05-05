@@ -27,20 +27,20 @@ import Language.Haskell.Tools.AST.References
 
 import Debug.Trace
 
-ordByOccurrence :: Name a -> Name a -> Ordering
+ordByOccurrence :: SimpleName a -> SimpleName a -> Ordering
 ordByOccurrence = compare `on` nameElements
 
 -- | The occurrence of the name.
-nameString :: Name a -> String
+nameString :: SimpleName a -> String
 nameString = intercalate "." . nameElements
 
 -- | The qualifiers and the unqualified name
-nameElements :: Name a -> [String]
+nameElements :: SimpleName a -> [String]
 nameElements n = (n ^? qualifiers&annList&element&simpleNameStr) 
                     ++ [n ^. unqualifiedName&element&simpleNameStr]
 
 -- | The qualifier of the name
-nameQualifier :: Name a -> [String]
+nameQualifier :: SimpleName a -> [String]
 nameQualifier n = n ^? qualifiers&annList&element&simpleNameStr
          
 -- | Does the import declaration import only the explicitly listed elements?
@@ -67,11 +67,13 @@ importQualifiers imp
                (imp ^? importAs&annJust&element&importRename&element)
         
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
-bindingName = element&(valBindPat&element&patternName &+& funBindMatches&annList&element&matchPattern&element&patternName)
+bindingName = element&(valBindPat&element&patternName&element&simpleName 
+                        &+& funBindMatches&annList&element&matchPattern&element
+                              &(patternName&element&simpleName &+& patternOperator&element&operatorName))
                      &semantics&nameInfo
                      
-declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann Name a)
-declHeadNames = element & (dhName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames)
+declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann SimpleName a)
+declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames &+& dhOperator&element&operatorName)
 
                
 typeParams :: Simple Traversal (Ann Type a) (Ann Type a)
@@ -128,7 +130,7 @@ instance BindingElem LocalBind where
   isBinding _ = False
 
 bindName :: BindingElem d => Simple Traversal (d (NodeInfo (SemanticInfo n) src)) n
-bindName = valBind&bindingName &+& sigBind&element&tsName&annList&semantics&nameInfo
+bindName = valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics&nameInfo
 
 valBindsInList :: BindingElem d => Simple Traversal (AnnList d a) (Ann ValueBind a)
 valBindsInList = annList & element & valBind

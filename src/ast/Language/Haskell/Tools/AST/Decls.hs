@@ -84,7 +84,7 @@ data Decl a
                          } -- ^ foreign export (@ foreign export ccall _foo :: Int -> IO Int @)
   | PragmaDecl           { _declPragma :: Ann TopLevelPragma a 
                          } -- ^ top level pragmas
-  | RoleDecl             { _declRoleType :: Ann Name a 
+  | RoleDecl             { _declRoleType :: Ann SimpleName a 
                          , _declRoles :: AnnList Role a
                          } -- ^ role annotations (@ type role Ptr representational @)
   | SpliceDecl           { _declSplice :: Ann Splice a 
@@ -136,7 +136,7 @@ data DeclHead a
   | DHApp    { _dhAppFun :: Ann DeclHead a
              , _dhAppOperand :: Ann TyVar a
              } -- ^ Type application
-  | DHInfix  { _dhName :: Ann Name a 
+  | DHInfix  { _dhOperator :: Ann Operator a 
              , _dhLeft :: Ann TyVar a
              } -- ^ Infix application of the type/class name to the left operand
        

@@ -42,7 +42,7 @@ mkTyParArray = mkAnn ("[:" <> child <> ":]") . TyParArray
 mkTyApp :: TemplateAnnot a => Ann Type a -> Ann Type a -> Ann Type a
 mkTyApp ft at = mkAnn (child <> " " <> child) (TyApp ft at)
 
-mkTyInfix :: TemplateAnnot a => Ann Type a -> Ann Name a -> Ann Type a -> Ann Type a
+mkTyInfix :: TemplateAnnot a => Ann Type a -> Ann Operator a -> Ann Type a -> Ann Type a
 mkTyInfix left op right = mkAnn (child <> " " <> child <> " " <> child) (TyInfix left op right)
              
 mkTyParen :: TemplateAnnot a => Ann Type a -> Ann Type a

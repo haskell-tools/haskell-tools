@@ -99,7 +99,7 @@ ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) 
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
-             <$> lookupGlobalName n -- lookupName would be better?
+             <$> lookupName n
   | otherwise = return False
 
 

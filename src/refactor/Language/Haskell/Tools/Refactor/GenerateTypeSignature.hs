@@ -88,7 +88,7 @@ generateTypeFor prec t
   , Just ch <- tyConAppTyCon_maybe et
   , listTyCon == ls
   , charTyCon == ch
-  = return $ mkTyVar (mkUnqualName "String")
+  = return $ mkTyVar (mkNormalName $ mkSimpleName "String")
   -- list types
   | Just (tc, [et]) <- splitTyConApp_maybe t
   , listTyCon == tc

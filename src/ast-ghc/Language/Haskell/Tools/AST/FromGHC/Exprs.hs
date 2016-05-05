@@ -35,8 +35,8 @@ trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr = trfLoc trfExpr'
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
-trfExpr' (HsVar name) = AST.Var <$> trfNameSp' name
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip))
+trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.NormalName <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip)))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
 trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
@@ -114,7 +114,7 @@ trfFieldUpdates (HsRecFields fields dotdot)
   
 trfFieldUpdate :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate r)
 trfFieldUpdate = trfLoc $ \case
-  HsRecField id _ True -> AST.FieldPun <$> trfNameSp' (unLoc id)
+  HsRecField id _ True -> AST.FieldPun <$> annCont (trfName' (unLoc id))
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName id <*> trfExpr val
   
 trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt r)

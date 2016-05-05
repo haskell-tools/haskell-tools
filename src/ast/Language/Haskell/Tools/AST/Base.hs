@@ -11,24 +11,28 @@ module Language.Haskell.Tools.AST.Base where
 import Language.Haskell.Tools.AST.Ann
 
 data Operator a
-  = BacktickOp { _operatorName :: Ann Name a } -- ^ Backtick operator name: @ a `mod` b @
-  | NormalOp { _operatorName :: Ann Name a }
+  = BacktickOp { _operatorName :: Ann SimpleName a } -- ^ Backtick operator name: @ a `mod` b @
+  | NormalOp { _operatorName :: Ann SimpleName a }
+
+data Name a
+  = ParenName { _simpleName :: Ann SimpleName a } -- ^ Parenthesized name: @ foldl (+) 0 @
+  | NormalName { _simpleName :: Ann SimpleName a }
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
-data Name a 
-  = Name { _qualifiers      :: AnnList SimpleName a
-         , _unqualifiedName :: Ann SimpleName a 
-         }
+data SimpleName a 
+  = SimpleName { _qualifiers      :: AnnList UnqualName a
+               , _unqualifiedName :: Ann UnqualName a 
+               }
 
-nameFromList :: AnnList SimpleName a -> Name a
+nameFromList :: AnnList UnqualName a -> SimpleName a
 nameFromList (AnnList a xs) | not (null xs) 
-  = Name (AnnList a (init xs)) (last xs) 
+  = SimpleName (AnnList a (init xs)) (last xs) 
 nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         
-data SimpleName a 
-  = SimpleName { _simpleNameStr :: String } 
+data UnqualName a 
+  = UnqualName { _simpleNameStr :: String } 
                
 -- | Program elements formatted as string literals (import packages, pragma texts)
 data StringNode a
