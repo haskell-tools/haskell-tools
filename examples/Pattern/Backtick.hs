@@ -1,5 +1,5 @@
 module Pattern.Backtick where
 
-data Point = Point { x :: Int, y :: Int }
+data Point = Point { x :: Prelude.Int, y :: Int }
 
-f (x `Point` y) = 0
+f (x `Pattern.Backtick.Point` y) = 0

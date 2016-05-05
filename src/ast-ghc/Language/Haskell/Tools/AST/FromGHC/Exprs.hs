@@ -36,7 +36,7 @@ trfExpr = trfLoc trfExpr'
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> trfNameSp' name
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList . fst <$> trfNameStr (unpackFS ip))
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
 trfExpr' (HsLam (mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] EmptyLocalBinds)]))
@@ -45,7 +45,7 @@ trfExpr' (HsLamCase _ (mg_alts -> matches)) = AST.LamCase <$> trfAnnList " " trf
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (L opLoc (HsVar op)) _ e2) 
   = AST.InfixApp <$> trfExpr e1 <*> annLoc (pure opLoc) (trfOperator' op) <*> trfExpr e2
-trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList . fst <$> trfNameStr "-"))
+trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList <$> trfNameStr "-"))
                                       <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr

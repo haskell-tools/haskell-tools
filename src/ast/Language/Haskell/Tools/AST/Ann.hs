@@ -11,9 +11,11 @@ import Data.Data
 import Control.Reference
 import SrcLoc
 import Name
+import RdrName
 import Module
 import Id
 import Outputable
+import Language.Haskell.Tools.AST.Utils.GHCInstances
 
 -- | An element of the AST keeping extra information.
 data Ann elem annot
@@ -48,8 +50,8 @@ data SpanInfo
                 , _optionalAfter :: String 
                 , _optionalPos :: SrcLoc 
                 }
-  deriving (Eq, Show)
-  
+  deriving (Eq, Show, Data)
+
 makeReferences ''SpanInfo
 
 -- | Extracts the concrete range corresponding to a given span.
@@ -65,7 +67,7 @@ class HasRange annot where
 instance HasRange (NodeInfo sema SpanInfo) where 
   getRange = spanRange . (^. sourceInfo)
   
-type RangeInfo = NodeInfo () SpanInfo
+type RangeInfo = NodeInfo (SemanticInfo RdrName) SpanInfo
 type RangeWithName = NodeInfo (SemanticInfo Name) SpanInfo
 type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo
 

@@ -37,6 +37,7 @@ library
                      , Language.Haskell.Tools.AST.References
                      , Language.Haskell.Tools.AST.Helpers
                      , Language.Haskell.Tools.AST.Utils.OrdSrcSpan
+                     , Language.Haskell.Tools.AST.Utils.GHCInstances
                      
   build-depends:       base                 >=4.8  && <4.9
                      , ghc                  >=7.10 && <7.11

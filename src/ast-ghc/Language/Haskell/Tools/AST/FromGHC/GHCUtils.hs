@@ -6,6 +6,10 @@ module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
 import GHC
 import Bag
+import RdrName
+import OccName
+import Name
+import Outputable
 
 class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
@@ -110,3 +114,16 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames (SigPatIn p _) = hsGetNames p
   hsGetNames (SigPatOut p _) = hsGetNames p
   hsGetNames _ = []
+
+-- | Get the original form of a name
+rdrNameStr :: RdrName -> String
+rdrNameStr name = showSDocUnsafe $ ppr name
+  -- | Just (mod,simple) <- isQual_maybe name
+  -- = moduleNameString mod ++ "." ++ occNameString simple
+  -- | Just (mod,simple) <- isOrig_maybe name
+  -- = moduleNameString (moduleName mod) ++ "." ++ occNameString simple
+  -- | Just exact <- isExact_maybe name
+  -- , Just mod <- nameModule_maybe exact
+  -- = moduleNameString (moduleName mod) ++ "." ++ occNameString (nameOccName exact)
+  -- | otherwise
+  -- = occNameString (rdrNameOcc name)

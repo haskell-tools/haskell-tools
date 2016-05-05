@@ -11,11 +11,13 @@ import Data.List
 import Data.Char
 import Data.Map as Map hiding (map, filter)
 import Data.IORef
+import Data.Data
 import Data.Generics.Uniplate.Operations
 import Data.Generics.Uniplate.Data
 import Data.StructuralTraversal
 import Control.Monad.Reader
 import Control.Monad.Writer
+import Control.Monad.State
 
 import Avail as GHC
 import GHC as GHC
@@ -37,7 +39,8 @@ import Bag as GHC
 import Var as GHC
 import PatSyn as GHC
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo, SemanticInfo(..), semanticInfo)
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo
+                                  , SemanticInfo(..), semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan)
 import qualified Language.Haskell.Tools.AST as AST
 
 import Language.Haskell.Tools.AST.FromGHC.Base
@@ -78,18 +81,24 @@ trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere An
                <*> trfImports imports
                <*> trfDecls decls
        
-trfModuleRename :: Module -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
-trfModuleRename mod (gr,imports,exps,_) 
+trfModuleRename :: Module -> Ann AST.Module RangeInfo -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
+trfModuleRename mod rangeMod (gr,imports,exps,_) 
   = addModuleInfo mod <=< (trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
-      \(HsModule name exports _ decls deprec haddock) -> 
-        AST.Module <$> trfPragmas deprec haddock
-                   <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                                   _                       -> Nothing)
-                   <*> (orderAnnList <$> (trfImports imports))
-                   <*> trfDeclsGroup gr)
+      \hsMod@(HsModule name exports _ decls deprec haddock) -> 
+        setOriginalNames originalNames
+          $ AST.Module <$> trfPragmas deprec haddock
+                       <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                                       _                       -> Nothing)
+                       <*> (orderAnnList <$> (trfImports imports))
+                       <*> trfDeclsGroup gr)
   where addModuleInfo :: Module -> Ann AST.Module RangeWithName -> Trf (Ann AST.Module RangeWithName)
         addModuleInfo m = AST.semantics != ModuleInfo m
-       
+
+        originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
+        getSourceAndInfo :: Ann AST.Name RangeInfo -> Maybe (SrcSpan, RdrName)
+        getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
+
+        
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ModuleHead r) 
 trfModuleHead (Just mn) exports 
   = makeJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])

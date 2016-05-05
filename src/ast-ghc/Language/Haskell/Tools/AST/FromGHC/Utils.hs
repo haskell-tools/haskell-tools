@@ -38,17 +38,11 @@ class HasRange annot => RangeAnnot annot where
   toIndentedListAnnot :: String -> String -> String -> SrcLoc -> annot
   toOptAnnot :: String -> String -> SrcLoc -> annot
 
-instance RangeAnnot RangeWithName where
+instance RangeAnnot (NodeInfo (SemanticInfo n) SpanInfo) where
   toNodeAnnot = NodeInfo NoSemanticInfo . NodeSpan
   toListAnnot bef aft sep = NodeInfo NoSemanticInfo . ListPos bef aft sep False
   toIndentedListAnnot bef aft sep = NodeInfo NoSemanticInfo . ListPos bef aft sep True
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
-
-instance RangeAnnot RangeInfo where
-  toNodeAnnot = NodeInfo () . NodeSpan
-  toListAnnot bef aft sep = NodeInfo () . ListPos bef aft sep False
-  toIndentedListAnnot bef aft sep = NodeInfo () . ListPos bef aft sep True
-  toOptAnnot bef aft = NodeInfo () . OptionalPos bef aft
 
 data SemanticsPhantom n = SemanticsPhantom
 
@@ -65,7 +59,14 @@ instance SemanticAnnot RangeWithName GHC.Name where
                                         inf -> return inf)
   addImportData _ = addImportData'
 
-instance SemanticAnnot RangeInfo n where
+instance {-# OVERLAPPING #-} SemanticAnnot RangeInfo RdrName where
+  addSemanticInfo si = semanticInfo .= si
+  addScopeData = semanticInfo !~ (\case NoSemanticInfo -> do locals <- asks localsInScope
+                                                             return $ ScopeInfo locals
+                                        inf -> return inf)
+  addImportData _ = pure
+
+instance {-# OVERLAPPABLE #-} SemanticAnnot RangeInfo n where
   addSemanticInfo si = id
   addScopeData = pure
   addImportData _ = pure
