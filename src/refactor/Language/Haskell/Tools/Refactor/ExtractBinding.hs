@@ -19,7 +19,7 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 --import Outputable
---import Debug.Trace
+import Debug.Trace
 
 type STWithId = STWithNames GHC.Id
 
@@ -53,15 +53,22 @@ doExtract name e = do ret <- get
                                  return (generateCall name params)
 
 getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
-getExternalBinds expr = keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef & element & exprName)
-  where isApplicableName (getNameInfo -> Just nm) = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
-        isApplicableName _ = return False
-        namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (map (^. semantics) allNames)
-        allNames :: [Ann Name STWithId]
-        allNames = expr ^? biplateRef
+getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef)
+  where isApplicableName (getExprNameInfo -> Just nm) = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
+        isApplicableName _                            = return False
 
-        allPatterns :: [Ann Pattern STWithId]
-        allPatterns = expr ^? biplateRef
+        getExprNameInfo :: Ann Expr STWithId -> Maybe GHC.Name
+        getExprNameInfo expr = getNameInfo =<< (listToMaybe $ expr ^? element & (exprName&element&simpleName &+& exprOperator&element&operatorName))
+
+        exprToName :: Ann Expr STWithId -> Ann Name STWithId
+        exprToName e | Just n <- e ^? element & exprName                     = n
+                     | Just op <- e ^? element & exprOperator & element & operatorName = mkParenName op
+
+        namesDefinedInside :: [GHC.Name]
+        namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (map (^. semantics) allNames)
+
+        allNames :: [Ann SimpleName STWithId]
+        allNames = expr ^? biplateRef
 
         isLocalName n = isNothing <$> GHC.lookupName n
 
@@ -78,5 +85,5 @@ generateBind name args e = mkFunctionBind [mkMatch (mkAppPat (mkNormalName $ mkS
 isValidBindingName :: String -> Bool
 isValidBindingName [] = False
 isValidBindingName (firstChar:rest) = isIdStartChar firstChar && all isIdChar rest
-  where isIdStartChar c = (isLetter c && isUpper c) || c == '\'' || c == '_'
+  where isIdStartChar c = (isLetter c && isLower c) || c == '\'' || c == '_'
         isIdChar c = isLetter c || c == '\'' || c == '_' || isDigit c

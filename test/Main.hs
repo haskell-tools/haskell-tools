@@ -26,6 +26,7 @@ import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
+import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 main :: IO Counts
@@ -40,6 +41,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                ++ map makeGenerateExportsTest generateExportsTests
                                ++ map makeRenameDefinitionTest renameDefinitionTests
                                ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                               ++ map makeExtractBindingTest extractBindingTests
         
 languageTests =
   [ "CppHsPos"
@@ -149,6 +151,10 @@ wrongRenameDefinitionTests =
   , ("Refactor.RenameDefinition.WrongName", "6:6-6:7", "x")
   , ("Refactor.RenameDefinition.WrongName", "6:10-6:11", "x")
   ]
+
+extractBindingTests =
+  [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
+  ]
    
 makeOrganizeImportsTest :: String -> Test
 makeOrganizeImportsTest mod 
@@ -171,6 +177,9 @@ makeWrongRenameDefinitionTest :: (String, String, String) -> Test
 makeWrongRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
   = TestLabel mod $ TestCase $ checkTransformFails (renameDefinition' rng newName) "examples" mod
 
+makeExtractBindingTest :: (String, String, String) -> Test
+makeExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (extractBinding' rng newName) "examples" mod
   
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName

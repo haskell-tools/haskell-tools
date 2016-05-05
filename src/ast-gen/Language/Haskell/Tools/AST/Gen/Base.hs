@@ -34,6 +34,9 @@ mkUnqualName' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn ("(" <> child <> ")") 
 mkNormalName :: TemplateAnnot a => Ann SimpleName a -> Ann Name a
 mkNormalName = mkAnn child . NormalName
 
+mkParenName :: TemplateAnnot a => Ann SimpleName a -> Ann Name a
+mkParenName = mkAnn ("(" <> child <> ")") . ParenName
+
 mkQualifiedName' :: TemplateAnnot a => [String] -> GHC.Name -> Ann SimpleName a
 mkQualifiedName' [] n = mkSimpleName' n
 mkQualifiedName' quals (GHC.occNameString . GHC.getOccName -> name) 
