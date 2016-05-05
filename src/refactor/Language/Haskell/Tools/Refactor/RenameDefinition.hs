@@ -66,9 +66,9 @@ nameValid n str | str `elem` reservedNames = False
                         , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
                         ]
 nameValid n (':' : opCtrNameRest)
-  = isDataSymOcc n && all isPunctuation opCtrNameRest
-nameValid n (c : optNameRest) | isPunctuation c
-  = isSymOcc n && not (isDataSymOcc n) && all isPunctuation optNameRest
+  = isDataSymOcc n && all isOperatorChar opCtrNameRest
+nameValid n (c : optNameRest) | isOperatorChar c
+  = isSymOcc n && not (isDataSymOcc n) && all isOperatorChar optNameRest
 nameValid n (c : nameRest) | isUpper c
                            = not (isSymOcc n) && (isTcOcc n || isDataOcc n) && all (\c -> isIdStartChar c || isDigit c) nameRest
 nameValid n (c : nameRest) | isIdStartChar c 
@@ -76,4 +76,5 @@ nameValid n (c : nameRest) | isIdStartChar c
 nameValid _ _ = False
 
 isIdStartChar c = isLetter c || c == '\'' || c == '_'
+isOperatorChar c = isPunctuation c || isSymbol c
 
