@@ -155,6 +155,7 @@ wrongRenameDefinitionTests =
 
 extractBindingTests =
   [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
+  , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
   ]
    
 makeOrganizeImportsTest :: String -> Test

@@ -21,11 +21,13 @@ import Data.StructuralTraversal
 
 import SrcLoc
 import ApiAnnotation
+import Outputable
+import Debug.Trace
 
 import Language.Haskell.Tools.AST
 
 getNormalComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map SrcSpan [Located AnnotationComment] 
-getNormalComments = Map.map (filter (isPragma . unLoc))
+getNormalComments = Map.map (filter (not . isPragma . unLoc))
 
 getPragmaComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map String [Located String]
 getPragmaComments comms = Map.fromListWith (++) $ map (\(L l (AnnBlockComment str)) -> (getPragmaCommand str, [L l str])) 
