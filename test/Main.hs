@@ -122,7 +122,8 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Complex", "3:1-3:21")
   , ("Refactor.GenerateTypeSignature.Local", "4:3-4:12")
   , ("Refactor.GenerateTypeSignature.Let", "3:9-3:18")
-  , ("Refactor.GenerateTypeSignature.BringToScope.C", "6:1-6:2")
+  , ("Refactor.GenerateTypeSignature.TypeDefinedInModule", "3:1-3:1")
+  , ("Refactor.GenerateTypeSignature.BringToScope.AlreadyQualImport", "6:1-6:2")
   ]
 
 generateExportsTests = 

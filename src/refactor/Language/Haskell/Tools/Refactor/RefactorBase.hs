@@ -124,8 +124,8 @@ referenceName' makeName n@(GHC.getName -> name)
   | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
   = return $ makeName [] name -- imported from prelude
   | otherwise 
-  = do RefactorCtx {refCtxImports = imports} <- ask
-       if isNothing (GHC.nameModule_maybe name) 
+  = do RefactorCtx {refCtxImports = imports, refModuleName = thisModule} <- ask
+       if maybe True (thisModule ==) (GHC.nameModule_maybe name) 
          then return $ makeName [] name -- in the same module, use simple name
          else let possibleImports = filter ((n `elem`) . (\imp -> fromJust $ imp ^? semantics&importedNames)) imports
                in if null possibleImports 
