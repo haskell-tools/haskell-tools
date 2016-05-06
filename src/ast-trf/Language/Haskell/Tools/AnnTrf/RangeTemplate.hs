@@ -22,8 +22,8 @@ getRangeElemSpan _ = Nothing
 instance Show RangeTemplateElem where
   show (RangeElem sp) = show sp
   show RangeChildElem = "«.»"
-  show (RangeOptionalElem {}) = "«?»"
-  show (RangeListElem {}) = "«*»"
+  show (RangeOptionalElem bef aft) = "«?" ++ show bef ++ " " ++ show aft ++ "?»"
+  show (RangeListElem bef aft sep _ _) = "«*" ++ show bef ++ " " ++ show sep ++ " " ++ show aft ++ "*»"
   
 -- | The intermediate annotation with ranges and children cut out from parents.
 data RangeTemplate = RangeTemplate { _rangeTemplateSpan :: RealSrcSpan

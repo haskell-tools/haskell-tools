@@ -142,11 +142,11 @@ trfExport = trfMaybeLoc $ \case
               fmap AST.DeclExport <$> (sequence $ fmap (annCont . return) trf)
 
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl r)
-trfImports imps 
-  = AnnList <$> importDefaultLoc <*> mapM trfImport (filter (not . ideclImplicit . unLoc) imps)
-  where importDefaultLoc = toListAnnot (if Data.List.null imps then "\n" else "") "" "\n" . srcSpanEnd 
+trfImports (filter (not . ideclImplicit . unLoc) -> imps) 
+  = AnnList <$> importDefaultLoc <*> mapM trfImport imps
+  where importDefaultLoc = toIndentedListAnnot (if Data.List.null imps then "\n" else "") "" "\n" . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
-                                                  <*> tokenLoc AnnWhere)
+                                                  <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 trfImport :: forall n r . TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl r)
 trfImport = (addImportData (SemanticsPhantom :: SemanticsPhantom n) <=<) $ trfLoc $ \(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) ->
   let -- default positions of optional parts of an import declaration

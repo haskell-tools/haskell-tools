@@ -2,6 +2,7 @@
            , FlexibleContexts
            , DeriveDataTypeable
            , TemplateHaskell
+           , RecordWildCards
            #-}
 module Language.Haskell.Tools.AnnTrf.SourceTemplate where
 
@@ -42,8 +43,8 @@ instance HasRange (NodeInfo sema SourceTemplate) where
 instance Show SourceTemplateElem where
   show (TextElem s) = s
   show (ChildElem) = "«.»"
-  show (OptionalChildElem {}) = "«?»"
-  show (ChildListElem {}) = "«*»"
+  show (OptionalChildElem {..}) = "«?" ++ show _srcTmpBefore ++ " " ++ show _srcTmpAfter ++ "?»"
+  show (ChildListElem {..}) = "«*" ++ show _srcTmpBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpAfter ++ "*»"
 
 instance Show SourceTemplate where
   show (SourceTemplate rng sp) = concatMap show sp
