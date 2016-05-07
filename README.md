@@ -18,5 +18,5 @@ This repository contains several related packages in the src directory. You shou
 
 Or you might want to just start it in ghci: `ghci -package ghc -isrc\ast;src\ast-ghc;src\ast-trf;src\ast-ppr;src\ast-gen;src\refactor Language.Haskell.Tools.Refactor` (from root, on Windows)
 
-Sources for the demo application can be found [here](https://github.com/kelemzol/haskell-tools-demoo)
+Sources for the demo application can be found [here](https://github.com/kelemzol/haskell-tools-demo)
 
