@@ -136,8 +136,9 @@ data DeclHead a
   | DHApp    { _dhAppFun :: Ann DeclHead a
              , _dhAppOperand :: Ann TyVar a
              } -- ^ Type application
-  | DHInfix  { _dhOperator :: Ann Operator a 
-             , _dhLeft :: Ann TyVar a
+  | DHInfix  { _dhLeft :: Ann TyVar a
+             , _dhOperator :: Ann Operator a 
+             , _dhRight :: Ann TyVar a
              } -- ^ Infix application of the type/class name to the left operand
        
 -- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
@@ -200,8 +201,8 @@ data ConDecl a
   | RecordDecl   { _conDeclName :: Ann Name a
                  , _conDeclFields :: AnnList FieldDecl a
                  } -- ^ record data constructor (@ C { _n1 :: t1, _n2 :: t2 } @)
-  | InfixConDecl { _conDeclName :: Ann Name a
-                 , _conDeclLhs :: Ann Type a
+  | InfixConDecl { _conDeclLhs :: Ann Type a
+                 , _conDeclName :: Ann Name a
                  , _conDeclRhs :: Ann Type a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
   

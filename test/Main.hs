@@ -47,6 +47,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
 languageTests =
   [ "CppHsPos"
   , "Decl.ClosedTypeFamily"
+  , "Decl.CtorOp"
   , "Decl.DataFamily"
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"

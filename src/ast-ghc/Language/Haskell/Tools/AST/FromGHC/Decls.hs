@@ -135,7 +135,7 @@ trfConDecl' (ConDecl { con_names = [name], con_details = PrefixCon args })
 trfConDecl' (ConDecl { con_names = [name], con_details = RecCon (unLoc -> flds) })
   = AST.RecordDecl <$> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDecl { con_names = [name], con_details = InfixCon t1 t2 })
-  = AST.InfixConDecl <$> define (trfName name) <*> trfType t1 <*> trfType t2
+  = AST.InfixConDecl <$> trfType t1 <*> define (trfName name) <*> trfType t2
 
 trfFieldDecl :: TransformName n r => Located (ConDeclField n) -> Trf (Ann AST.FieldDecl r)
 trfFieldDecl = trfLoc trfFieldDecl'
@@ -202,12 +202,23 @@ trfFunDeps [] = nothing "|" "" $ before AnnWhere
 trfFunDeps _ = error "trfFunDeps"
   
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
-createDeclHead name vars
-  = foldl (\t p -> do typ <- t
-                      annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
-                             (AST.DHApp typ <$> trfTyVar p)) 
-          (define $ annLoc (pure $ getLoc name) (AST.DeclHead <$> annCont (trfName' (unLoc name)))) 
-          (hsq_tvs vars)
+createDeclHead name (hsq_tvs -> lhs : rhs : rest)
+  | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
+  -- infix declaration
+  = wrapDeclHead rest
+      $ annLoc (addParenLocs $ getLoc lhs `combineSrcSpans` getLoc rhs) 
+               (AST.DHInfix <$> trfTyVar lhs <*> trfOperator name <*> trfTyVar rhs)
+createDeclHead name vars = wrapDeclHead (hsq_tvs vars) (define $ copyAnnot AST.DeclHead (trfName name))
+
+wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.DeclHead r) -> Trf (Ann AST.DeclHead r)
+wrapDeclHead vars base
+  = foldl (\t p -> do typ <- t 
+                      annLoc (addParenLocs $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
+                             (AST.DHApp typ <$> trfTyVar p)
+          ) base vars
+
+addParenLocs :: SrcSpan -> Trf SrcSpan
+addParenLocs sp = combineSrcSpans <$> (combineSrcSpans sp <$> tokenLoc AnnOpenP) <*> tokenLocBack AnnCloseP
       
          
 createClassBody :: TransformName n r => [LSig n] -> LHsBinds n -> [LFamilyDecl n] 
