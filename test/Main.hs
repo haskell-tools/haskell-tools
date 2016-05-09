@@ -42,6 +42,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                ++ map makeRenameDefinitionTest renameDefinitionTests
                                ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
                                ++ map makeExtractBindingTest extractBindingTests
+                               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
   [ "CppHsPos"
@@ -158,6 +159,11 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
   ]
+
+wrongExtractBindingTests = 
+  [ ("Refactor.ExtractBinding.TooSimple", "3:19-3:20", "x")
+  , ("Refactor.ExtractBinding.NameConflict", "3:19-3:27", "stms")
+  ]
    
 makeOrganizeImportsTest :: String -> Test
 makeOrganizeImportsTest mod 
@@ -184,6 +190,10 @@ makeExtractBindingTest :: (String, String, String) -> Test
 makeExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
   = TestLabel mod $ TestCase $ checkCorrectlyTransformed (extractBinding' rng newName) "examples" mod
   
+makeWrongExtractBindingTest :: (String, String, String) -> Test
+makeWrongExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
+  = TestLabel mod $ TestCase $ checkTransformFails (extractBinding' rng newName) "examples" mod
+
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated

@@ -66,11 +66,14 @@ importQualifiers imp
       ++ maybe [] (\n -> [nameElements n]) 
                (imp ^? importAs&annJust&element&importRename&element)
         
+bindingSemantics :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) (SemanticInfo n)
+bindingSemantics = element&(valBindPat&element&patternName&element&simpleName 
+                             &+& funBindMatches&annList&element&matchPattern&element
+                                   &(patternName&element&simpleName &+& patternOperator&element&operatorName))
+                          &semantics
+
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
-bindingName = element&(valBindPat&element&patternName&element&simpleName 
-                        &+& funBindMatches&annList&element&matchPattern&element
-                              &(patternName&element&simpleName &+& patternOperator&element&operatorName))
-                     &semantics&nameInfo
+bindingName = bindingSemantics&nameInfo
                      
 declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann SimpleName a)
 declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames &+& dhOperator&element&operatorName)

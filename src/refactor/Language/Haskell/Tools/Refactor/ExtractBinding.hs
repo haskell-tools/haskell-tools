@@ -6,6 +6,7 @@
 module Language.Haskell.Tools.Refactor.ExtractBinding where
 
 import qualified GHC
+import qualified OccName as GHC
 import SrcLoc
 
 import Data.Char
@@ -33,18 +34,23 @@ extractBinding :: Simple Traversal (Ann Module STWithId) (Ann Decl STWithId)
                    -> Simple Traversal (Ann Decl STWithId) (Ann Expr STWithId)
                    -> String -> Ann Module STWithId -> RefactoredModule GHC.Id
 extractBinding selectDecl selectExpr name mod
-  = let declRange :: Maybe SrcSpan
+  = let declLocals = listToMaybe (mod ^? selectDecl & element & valBind & bindingSemantics & scopedLocals)
         declRange = listToMaybe (mod ^? selectDecl & annotation & sourceInfo & sourceTemplateRange)
         isTheDecl (Just d) = maybe (const False) (==) declRange $ (d ^. annotation & sourceInfo & sourceTemplateRange)
         isTheDecl Nothing = False
-     in do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
-           case st of Just def -> return $ element & modDecl .- insertWhere (mkValueBinding def) isTheDecl (const True) $ res
-                      Nothing -> return res
+     in if maybe False (any (any ((name ==) . GHC.occNameString . GHC.getOccName))) declLocals 
+           then refactError "The given name causes name conflict."
+           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
+                   case st of Just def -> return $ element & modDecl .- insertWhere (mkValueBinding def) isTheDecl (const True) $ res
+                              Nothing -> return res
 
 extractThatBind :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-extractThatBind name e | Paren {} <- e ^. element
-                       = do modified <- doExtract name (fromJust $ e ^? element & exprInner)
-                            element & exprInner != modified $ e
+extractThatBind name e 
+  | Paren {} <- e ^. element
+  = do modified <- doExtract name (fromJust $ e ^? element & exprInner)
+       element & exprInner != modified $ e
+  | Var {} <- e ^. element
+  = lift $ refactError "The selected expression is too simple to be extracted."
 extractThatBind name e = doExtract name e
 
 doExtract :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
