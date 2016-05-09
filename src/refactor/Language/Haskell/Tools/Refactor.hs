@@ -180,33 +180,31 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn $ show annots
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     liftIO $ putStrLn $ rangeDebug parseTrf
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== typed:"
     transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
     liftIO $ putStrLn $ rangeDebug transformed
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== ranges fixed:"
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
     liftIO $ putStrLn $ rangeDebug commented
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ templateDebug cutUp
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
-    liftIO $ putStrLn "==========="
-    liftIO $ putStrLn $ fromJust $ ml_hs_file $ ms_location modSum
     transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
     case transformed of 
       Right correctlyTransformed -> do
-        liftIO $ putStrLn "==========="
+        liftIO $ putStrLn "=========== transformed AST:"
         liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
-        liftIO $ putStrLn "==========="
+        liftIO $ putStrLn "=========== transformed & prettyprinted:"
         let prettyPrinted = prettyPrint correctlyTransformed
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="

@@ -39,6 +39,6 @@ getTopLevelDeclName _ = Nothing
 
 createExports :: GHC.NamedThing n => [(n, Bool)] -> Ann ExportSpecList (STWithNames n)
 createExports elems = mkExportSpecList $ map (mkExportSpec . createExport) elems
-  where createExport (n, False) = mkIeSpec (mkSimpleName' (GHC.getName n)) Nothing
-        createExport (n, True)  = mkIeSpec (mkSimpleName' (GHC.getName n)) (Just mkSubAll)
+  where createExport (n, False) = mkIeSpec (mkUnqualName' (GHC.getName n)) Nothing
+        createExport (n, True)  = mkIeSpec (mkUnqualName' (GHC.getName n)) (Just mkSubAll)
 

@@ -73,13 +73,13 @@ trfDecl = trfLoc $ \case
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> createDeclHead name vars <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
-    -> let ctxLoc = case nd of DataType -> after AnnData
-                               NewType -> after AnnNewtype
-           consLoc = case unLoc ctx of [] -> ctxLoc
+    -> let ctxTok = case nd of DataType -> AnnData
+                               NewType -> AnnNewtype
+           consLoc = case unLoc ctx of [] -> after ctxTok
                                        _  -> after AnnDarrow
         in AST.DataDecl <$> trfDataKeyword nd
-                        <*> trfCtx ctxLoc ctx
-                        <*> createDeclHead name vars
+                        <*> trfCtx (after ctxTok) ctx
+                        <*> between ctxTok AnnEqual (createDeclHead name vars)
                         <*> makeList " | " consLoc (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 

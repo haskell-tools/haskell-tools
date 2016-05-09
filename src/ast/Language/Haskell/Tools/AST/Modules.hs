@@ -33,14 +33,14 @@ data ExportSpec a
   
 -- | Marks a name to be imported or exported with related names (subspecifier)
 data IESpec a
-  = IESpec { _ieName :: Ann SimpleName a
+  = IESpec { _ieName :: Ann Name a
            , _ieSubspec :: AnnMaybe SubSpec a
            }
   
 -- | Marks how related names will be imported or exported with a given name
 data SubSpec a
   = SubSpecAll -- @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-  | SubSpecList { _essList :: AnnList SimpleName a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+  | SubSpecList { _essList :: AnnList Name a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
            
 -- | Pragmas that affect the whole module           
 data ModulePragma a

@@ -68,7 +68,7 @@ narrowImportSpecs usedNames
        >=> return . filterList isNeededSpec
   where narrowSpecSubspec :: [GHC.Name] -> IESpec (STWithNames n) -> Refactor n (IESpec (STWithNames n))
         narrowSpecSubspec usedNames spec 
-          = do let Just specName = spec ^? ieName&annotation&semanticInfo&nameInfo
+          = do let Just specName = spec ^? ieName&element&simpleName&annotation&semanticInfo&nameInfo
                Just tt <- GHC.lookupName (getName specName)
                let subspecsInScope = case tt of ATyCon tc | not (isClassTyCon tc) 
                                                   -> map getName (tyConDataCons tc) `intersect` usedNames
@@ -78,7 +78,7 @@ narrowImportSpecs usedNames
         isNeededSpec :: Ann IESpec (STWithNames n) -> Bool
         isNeededSpec ie = 
           -- if the name is used, it is needed
-          fmap getName (ie ^? element&ieName&annotation&semanticInfo&nameInfo) `elem` map Just usedNames
+          fmap getName (ie ^? element&ieName&element&simpleName&annotation&semanticInfo&nameInfo) `elem` map Just usedNames
           -- if the name is not used, but some of its constructors are used, it is needed
             || ((ie ^? element&ieSubspec&annJust&element&essList&annList) /= [])
             || (case ie ^? element&ieSubspec&annJust&element of Just SubSpecAll -> True; _ -> False)     
@@ -87,4 +87,4 @@ narrowImportSubspecs :: NamedThing n => [GHC.Name] -> Ann SubSpec (STWithNames n
 narrowImportSubspecs [] (Ann _ SubSpecAll) = mkSubList []
 narrowImportSubspecs _ ss@(Ann _ SubSpecAll) = ss
 narrowImportSubspecs usedNames ss@(Ann _ (SubSpecList _)) 
-  = element&essList .- filterList (\n -> fmap getName (n ^? annotation&semanticInfo&nameInfo) `elem` map Just usedNames) $ ss
+  = element&essList .- filterList (\n -> fmap getName (n ^? element&simpleName&annotation&semanticInfo&nameInfo) `elem` map Just usedNames) $ ss

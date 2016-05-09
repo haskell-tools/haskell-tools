@@ -130,6 +130,7 @@ generateSignatureTests =
 
 generateExportsTests = 
   [ "Refactor.GenerateExports.Normal"
+  , "Refactor.GenerateExports.Operators"
   ]
 
 renameDefinitionTests =

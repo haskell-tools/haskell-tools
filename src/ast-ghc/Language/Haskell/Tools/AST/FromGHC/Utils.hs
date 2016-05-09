@@ -95,7 +95,7 @@ checkImportVisible imp name
   | otherwise = return True
 
 ieSpecMatches :: GhcMonad m => AST.IESpec RangeWithName -> GHC.Name -> m Bool
-ieSpecMatches (AST.IESpec ((^? annotation&semanticInfo&nameInfo) -> Just n) ss) name
+ieSpecMatches (AST.IESpec ((^? element&simpleName&annotation&semanticInfo&nameInfo) -> Just n) ss) name
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
@@ -153,18 +153,12 @@ trfMaybeDefault bef aft _ loc Nothing  = nothing bef aft loc
 -- | Transform a located part of the AST by automatically transforming the location
 -- with correction by applying the given function. Sets the source range for transforming children.
 trfLocCorrect :: RangeAnnot i => (SrcSpan -> Trf SrcSpan) -> (a -> Trf (b i)) -> Located a -> Trf (Ann b i)
-trfLocCorrect locF f (L l e) = do loc <- locF l
-                                  Ann (toNodeAnnot loc) <$> local (\s -> s { contRange = loc }) (f e)
+trfLocCorrect locF f (L l e) = annLoc (locF l) (f e)
 
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
 trfMaybeLoc :: RangeAnnot i => (a -> Trf (Maybe (b i))) -> Located a -> Trf (Maybe (Ann b i))
-trfMaybeLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)  
-
--- | Transform a located part of the AST by automatically transforming the location.
--- Sets the source range for transforming children.
-trfListLoc :: RangeAnnot i => (a -> Trf [b i]) -> Located a -> Trf [Ann b i]
-trfListLoc f (L l e) = fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
+trfMaybeLoc f (L l e) = do fmap (Ann (toNodeAnnot l)) <$> local (\s -> s { contRange = l }) (f e)
 
 -- | Creates a place for a list of nodes with the default place at the end of the focus if the list is empty.
 trfAnnList :: RangeAnnot i => String -> (a -> Trf (b i)) -> [Located a] -> Trf (AnnList b i)

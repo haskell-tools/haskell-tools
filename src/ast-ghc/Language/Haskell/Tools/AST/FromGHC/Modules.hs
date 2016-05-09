@@ -182,14 +182,14 @@ trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.IESpec r))
 trfIESpec = trfMaybeLoc trfIESpec'
   
 trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.IESpec r))
-trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfSimpleName n <*> (nothing "(" ")" atTheEnd))
-trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfSimpleName n <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n) 
-  = Just <$> (AST.IESpec <$> trfSimpleName n <*> (makeJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
+  = Just <$> (AST.IESpec <$> trfName n <*> (makeJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
 trfIESpec' (IEThingWith n ls)
-  = Just <$> (AST.IESpec <$> trfSimpleName n
+  = Just <$> (AST.IESpec <$> trfName n
                          <*> (makeJust <$> between AnnOpenP AnnCloseP 
-                                                  (annCont $ AST.SubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfSimpleName ls))))
+                                                  (annCont $ AST.SubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfName ls))))
 trfIESpec' _ = pure Nothing
   
  
