@@ -14,6 +14,7 @@ import Data.Generics.Uniplate.Data
 import Control.Reference hiding (element)
 import Control.Monad.State
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
@@ -32,8 +33,9 @@ extractBinding :: Simple Traversal (Ann Module STWithId) (Ann Decl STWithId)
                    -> Simple Traversal (Ann Decl STWithId) (Ann Expr STWithId)
                    -> String -> Ann Module STWithId -> RefactoredModule GHC.Id
 extractBinding selectDecl selectExpr name mod
-  = let declName = head (mod ^? selectDecl & element & valBind & bindingName)
-        isTheDecl (Just d) = maybe False (declName ==) (listToMaybe $ d ^? element & valBind & bindingName)
+  = let declRange :: Maybe SrcSpan
+        declRange = listToMaybe (mod ^? selectDecl & annotation & sourceInfo & sourceTemplateRange)
+        isTheDecl (Just d) = maybe (const False) (==) declRange $ (d ^. annotation & sourceInfo & sourceTemplateRange)
         isTheDecl Nothing = False
      in do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
            case st of Just def -> return $ element & modDecl .- insertWhere (mkValueBinding def) isTheDecl (const True) $ res
