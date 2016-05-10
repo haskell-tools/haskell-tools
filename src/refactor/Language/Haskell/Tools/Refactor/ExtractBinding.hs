@@ -6,7 +6,8 @@
 module Language.Haskell.Tools.Refactor.ExtractBinding where
 
 import qualified GHC
-import qualified OccName as GHC
+import qualified Var as GHC
+import qualified OccName as GHC hiding (varName)
 import SrcLoc
 
 import Data.Char
@@ -62,18 +63,22 @@ doExtract name e = do ret <- get
 
 getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
 getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef)
-  where isApplicableName (getExprNameInfo -> Just nm) = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
-        isApplicableName _                            = return False
+  where isApplicableName (fmap GHC.varName . getExprNameInfo -> Just nm) 
+          = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
+        isApplicableName _ = return False
 
-        getExprNameInfo :: Ann Expr STWithId -> Maybe GHC.Name
-        getExprNameInfo expr = getNameInfo =<< (listToMaybe $ expr ^? element & (exprName&element&simpleName &+& exprOperator&element&operatorName))
+        getExprNameInfo :: Ann Expr STWithId -> Maybe GHC.Var
+        getExprNameInfo expr = (listToMaybe $ expr ^? element & (exprName&element&simpleName &+& exprOperator&element&operatorName) 
+                                                              & semantics&nameInfo)
 
         exprToName :: Ann Expr STWithId -> Ann Name STWithId
         exprToName e | Just n <- e ^? element & exprName                     = n
                      | Just op <- e ^? element & exprOperator & element & operatorName = mkParenName op
 
         namesDefinedInside :: [GHC.Name]
-        namesDefinedInside = catMaybes $ map getNameInfoFromSema $ filter (fromMaybe False . (^? isDefined)) (map (^. semantics) allNames)
+        namesDefinedInside = catMaybes $ map (fmap GHC.varName . (^? nameInfo)) 
+                                       $ filter (fromMaybe False . (^? isDefined)) 
+                                       $ map (^. semantics) allNames
 
         allNames :: [Ann SimpleName STWithId]
         allNames = expr ^? biplateRef

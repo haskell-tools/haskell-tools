@@ -145,6 +145,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.LocalFunction", "4:5-4:6", "g")
   , ("Refactor.RenameDefinition.Arg", "4:3-4:4", "y")
   , ("Refactor.RenameDefinition.FunTypeVar", "3:6-3:7", "x")
+  , ("Refactor.RenameDefinition.FunTypeVarLocal", "5:10-5:11", "b")
   , ("Refactor.RenameDefinition.ClassTypeVar", "3:9-3:10", "f")
   ]
 

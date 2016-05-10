@@ -84,10 +84,6 @@ data SemanticInfo n
              } -- ^ Info corresponding to a name
   | ModuleInfo { _defModuleName :: Module 
                } -- ^ Info for the module element
-  | OnlyNameInfo { _scopedLocals :: [[Name]] 
-                 , _isDefined :: Bool
-                 , _onlyNameInfo :: Name 
-                 } -- ^ Info of a name that has no accessible type
   | ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module
                , _availableNames :: [n] -- ^ Names available from the imported module
                , _importedNames :: [n] -- ^ Names actually imported from the module.
@@ -101,7 +97,6 @@ instance Outputable n => Show (SemanticInfo n) where
   show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
   show (NameInfo locals defined nameInfo) = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
   show (ModuleInfo mod) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ ")"
-  show (OnlyNameInfo locals defined nameInfo) = "(OnlyNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
   show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
 
 makeReferences ''SemanticInfo

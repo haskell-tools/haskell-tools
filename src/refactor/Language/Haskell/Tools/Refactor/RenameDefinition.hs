@@ -23,7 +23,7 @@ import Debug.Trace
 
 renameDefinition' :: forall n . (NamedThing n, Data n) => RealSrcSpan -> String -> Ann Module (STWithNames n) -> RefactoredModule n
 renameDefinition' sp str mod
-  = case (getNodeContaining sp mod :: Maybe (Ann SimpleName (STWithNames n))) >>= getNameInfo of 
+  = case (getNodeContaining sp mod :: Maybe (Ann SimpleName (STWithNames n))) >>= (fmap getName . (^? semantics&nameInfo)) of 
       Just n -> renameDefinition n str mod
       Nothing -> refactError "No name is selected"
 
@@ -37,7 +37,7 @@ renameDefinition toChange newName mod
   where
     changeName :: GHC.Name -> String -> Ann SimpleName (STWithNames n) -> StateT Bool (Refactor n) (Ann SimpleName (STWithNames n))
     changeName toChange str elem 
-      = if getNameInfo elem == Just toChange
+      = if fmap getName (elem ^? semantics&nameInfo) == Just toChange
           then do modify (|| fromMaybe False (elem ^? semantics&isDefined)) 
                   return $ element & unqualifiedName .= mkNamePart str $ elem
           else let namesInScope = fromMaybe [] (elem ^? semantics & scopedLocals)
