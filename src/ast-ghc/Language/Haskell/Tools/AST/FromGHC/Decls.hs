@@ -69,9 +69,9 @@ trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl OpenTypeFamily name tyVars kindSig)) 
     -> AST.TypeFamilyDecl <$> (annCont $ AST.TypeFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig)
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig)) 
-    -> AST.ClosedTypeFamilyDecl <$> createDeclHead name tyVars <*> trfKindSig kindSig <*> trfTypeEqs typeEqs
+    -> AST.ClosedTypeFamilyDecl <$> between AnnType AnnWhere (createDeclHead name tyVars) <*> trfKindSig kindSig <*> trfTypeEqs typeEqs
   TyClD (SynDecl name vars rhs _) 
-    -> AST.TypeDecl <$> createDeclHead name vars <*> trfType rhs
+    -> AST.TypeDecl <$> between AnnType AnnEqual (createDeclHead name vars) <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
     -> let ctxTok = case nd of DataType -> AnnData
                                NewType -> AnnNewtype
@@ -84,7 +84,7 @@ trfDecl = trfLoc $ \case
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
-                     <*> createDeclHead name vars 
+                     <*> between AnnType AnnWhere (createDeclHead name vars)
                      <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
@@ -246,13 +246,14 @@ trfClassElemSig = trfLoc $ \case
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
 trfTypeFam = trfLoc $ \case
   FamilyDecl DataFamily name tyVars kindSig
-    -> AST.DataFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig
+    -> AST.DataFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
   FamilyDecl OpenTypeFamily name tyVars kindSig
-    -> AST.TypeFamily <$> createDeclHead name tyVars <*> trfKindSig kindSig
-          
+    -> AST.TypeFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
+
+
 trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.ClassElement r)
 trfTypeFamDef = trfLoc $ \(TyFamEqn con pats rhs) 
-  -> AST.ClsTypeDef <$> createDeclHead con pats <*> trfType rhs
+  -> AST.ClsTypeDef <$> between AnnType AnnEqual (createDeclHead con pats) <*> trfType rhs
           
 trfInstBody :: TransformName n r => LHsBinds n -> [LSig n] -> [LTyFamInstDecl n] -> [LDataFamInstDecl n] -> Trf (AnnMaybe AST.InstBody r)
 trfInstBody binds sigs fams dats = do

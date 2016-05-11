@@ -97,6 +97,7 @@ instance HsHasName n => HsHasName (Stmt n b) where
   hsGetNames (LetStmt binds) = hsGetNames binds
   hsGetNames (BindStmt pat _ _ _) = hsGetNames pat
   hsGetNames (RecStmt {recS_rec_ids = ids}) = hsGetNames ids
+  hsGetNames _ = []
 
 instance HsHasName n => HsHasName (Pat n) where
   hsGetNames (VarPat id) = hsGetNames id

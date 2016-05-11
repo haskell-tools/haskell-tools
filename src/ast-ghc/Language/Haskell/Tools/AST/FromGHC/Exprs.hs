@@ -131,7 +131,7 @@ trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann A
 trfCaseRhss = gTrfCaseRhss trfExpr'
 
 gTrfCaseRhss :: TransformName n r => (ge n -> Trf (ae r)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) r)
-gTrfCaseRhss te [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLoc AnnEqual) 
+gTrfCaseRhss te [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLocBack AnnRarrow) 
                                                  (AST.UnguardedCaseRhs <$> trfLoc te body)
 gTrfCaseRhss te rhss = annLoc (pure $ collectLocs rhss) 
                               (AST.GuardedCaseRhss <$> trfAnnList ";" (gTrfGuardedCaseRhs' te) rhss)

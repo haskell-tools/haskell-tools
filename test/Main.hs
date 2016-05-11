@@ -35,7 +35,10 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map fst generateSignatureTests 
                                                      ++ generateExportsTests
                                                      ++ map (\(mod,_,_) -> mod) renameDefinitionTests
-                                                     ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests)
+                                                     ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
+                                                     ++ map (\(mod,_,_) -> mod) extractBindingTests
+                                                     ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
+                               ++ map makeCpphsTest cppHsTests
                                ++ map makeOrganizeImportsTest organizeImportTests
                                ++ map makeGenerateSignatureTest generateSignatureTests
                                ++ map makeGenerateExportsTest generateExportsTests
@@ -45,8 +48,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
-  [ "CppHsPos"
-  , "Decl.ClosedTypeFamily"
+  [ "Decl.ClosedTypeFamily"
   , "Decl.CtorOp"
   , "Decl.DataFamily"
   , "Decl.DataType"
@@ -86,6 +88,7 @@ languageTests =
   , "Module.Import"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
+  , "Pattern.Infix"
   , "Pattern.NPlusK"
   , "Pattern.Record"
   , "TH.QuasiQuote.Use"
@@ -99,6 +102,21 @@ languageTests =
   , "Refactor.CommentHandling.BlockComments"
   , "Refactor.CommentHandling.Crosslinking"
   , "Refactor.CommentHandling.FunctionArgs"
+  ]
+
+cppHsTests = 
+  [ "Main"
+  , "Language.Preprocessor.Cpphs"
+  , "Language.Preprocessor.Unlit"
+  , "Language.Preprocessor.Cpphs.CppIfdef"
+  , "Language.Preprocessor.Cpphs.HashDefine"
+  , "Language.Preprocessor.Cpphs.MacroPass"
+  , "Language.Preprocessor.Cpphs.Options"
+  , "Language.Preprocessor.Cpphs.Position"
+  , "Language.Preprocessor.Cpphs.ReadFirst"
+  , "Language.Preprocessor.Cpphs.RunCpphs"
+  , "Language.Preprocessor.Cpphs.SymTab"
+  , "Language.Preprocessor.Cpphs.Tokenise"
   ]
         
 organizeImportTests = 
@@ -222,6 +240,9 @@ toFileName mod = "examples\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)
+
+makeCpphsTest :: String -> Test       
+makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples/CppHs" mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 

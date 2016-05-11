@@ -15,6 +15,8 @@ import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
+import Debug.Trace
+
 rangeToSource :: StructuralTraversable node => StringBuffer -> Ann node (NodeInfo sema RangeTemplate) 
                                                             -> Ann node (NodeInfo sema SourceTemplate)
 rangeToSource srcInput tree = let locIndices = getLocIndices tree

@@ -193,6 +193,11 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ templateDebug cutUp
+    liftIO $ putStrLn "=========== source map:"
+    let locIndices = getLocIndices cutUp
+        srcMap = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) locIndices
+    liftIO $ print (map (\(k,v) -> (shortShowSpan . fromOrdSrcSpan $ k, v)) (Map.assocs locIndices))
+    liftIO $ print srcMap
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced

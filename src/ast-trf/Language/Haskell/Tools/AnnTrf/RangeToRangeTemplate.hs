@@ -84,9 +84,12 @@ collectSpanRanges (RealSrcLoc loc) [] = realSrcLocSpan loc
 collectSpanRanges _ [] = error "collectSpanRanges: No real src loc for empty element"
 collectSpanRanges _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
                      
+-- | Cuts out all elements from a list, the rest is the list of separators
 getSeparators :: RealSrcSpan -> [SpanInfo] -> [RealSrcSpan]
-getSeparators sp infos 
+getSeparators sp infos@(_:_:_)
   = catMaybes $ map getRangeElemSpan (cutOutElem infos (NodeSpan (RealSrcSpan sp)) ^. rangeTemplateElems)
+-- at least two elements needed or there can be no separators
+getSeparators sp _ = []
                      
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element. Returns Nothing if the second argument is not inside.

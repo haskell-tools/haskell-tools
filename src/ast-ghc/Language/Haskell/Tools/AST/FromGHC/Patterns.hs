@@ -28,7 +28,13 @@ trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . g
   = do normalFields <- mapM (trfLoc trfPatternField') (filter ((l /=) . getLoc) flds)
        wildc <- annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcardPattern)
        annLoc (pure l) (AST.RecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
-trfPattern p | otherwise = trfLoc trfPattern' p
+trfPattern p | otherwise = trfLoc trfPattern' (correctPatternLoc p)
+
+-- | Locations for right-associative infix patterns are incorrect in GHC AST
+correctPatternLoc :: Located (Pat n) -> Located (Pat n)
+correctPatternLoc (L l p@(ConPatIn name (InfixCon left right)))
+  = L (getLoc (correctPatternLoc left) `combineSrcSpans` getLoc (correctPatternLoc right)) p
+correctPatternLoc p = p
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern r)
 trfPattern' (WildPat _) = pure AST.WildPat
