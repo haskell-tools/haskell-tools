@@ -94,6 +94,8 @@ makeReferences ''PatSynRhs
 makeReferences ''PatSynWhere
 makeReferences ''PatternTypeSignature
 makeReferences ''Role
+makeReferences ''LanguageExtension
+makeReferences ''MatchLhs
 
 -- Literal
 makeReferences ''Literal

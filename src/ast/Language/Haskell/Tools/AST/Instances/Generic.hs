@@ -102,6 +102,7 @@ deriving instance Generic a => Generic (Role a)
 deriving instance Generic a => Generic (Cmd a)
 deriving instance Generic a => Generic (CmdStmt a)
 deriving instance Generic a => Generic (LanguageExtension a)
+deriving instance Generic a => Generic (MatchLhs a)
 
 
 -- Literal

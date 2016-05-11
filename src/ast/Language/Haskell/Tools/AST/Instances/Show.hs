@@ -105,6 +105,7 @@ deriving instance Show (Role a)
 deriving instance Show (Cmd a)
 deriving instance Show (CmdStmt a)
 deriving instance Show (LanguageExtension a)
+deriving instance Show (MatchLhs a)
 
 
 -- Literal

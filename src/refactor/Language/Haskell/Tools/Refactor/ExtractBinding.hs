@@ -93,7 +93,7 @@ generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar $ mkNormalName
 
 generateBind :: String -> [Ann Name STWithId] -> Ann Expr STWithId -> Ann ValueBind STWithId
 generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing
-generateBind name args e = mkFunctionBind [mkMatch (mkAppPat (mkNormalName $ mkSimpleName name) (map mkVarPat args)) (mkUnguardedRhs e) Nothing]
+generateBind name args e = mkFunctionBind [mkMatch (mkNormalMatchLhs (mkNormalName $ mkSimpleName name) (map mkVarPat args)) (mkUnguardedRhs e) Nothing]
 
 isValidBindingName :: String -> Bool
 isValidBindingName [] = False

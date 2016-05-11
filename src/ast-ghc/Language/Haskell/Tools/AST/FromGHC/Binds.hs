@@ -51,19 +51,21 @@ trfMatch id = trfLoc (trfMatch' id)
 trfMatch' :: TransformName n r => n -> Match n (LHsExpr n) -> Trf (AST.Match r)
 trfMatch' name (Match funid pats typ (GRHSs rhss locBinds))
   -- TODO: add the optional typ to pats
-  = AST.Match <$> annLoc 
-                    (combineSrcSpans (maybe noSrcSpan (getLoc . fst) funid `combineSrcSpans` collectLocs pats) <$> (srcLocSpan <$> atTheStart))
-                    (do implicitIdLoc <- mkSrcSpan <$> atTheStart <*> atTheStart
-                        let n = maybe (L implicitIdLoc name) fst funid
-                        args <- mapM trfPattern pats
-                        createMatchPattern (maybe False snd funid) n args)
+  = AST.Match <$> trfMatchLhs name funid pats
               <*> addToScope pats (trfRhss rhss)
               <*> addToScope pats (trfWhereLocalBinds locBinds)
-  where createMatchPattern :: TransformName n r => Bool -> Located n -> [Ann AST.Pattern r] -> Trf (AST.Pattern r) 
-        createMatchPattern isOperator name args =
-          case (args, isOperator) of 
-            ([left, right], True) -> AST.InfixPat left <$> define (trfOperator name) <*> pure right
-            _                     -> AST.AppPat <$> define (trfName name) <*> (makeList " " (before AnnEqual) (pure args))
+
+trfMatchLhs :: TransformName n r => n -> Maybe (Located n, Bool) -> [LPat n] -> Trf (Ann AST.MatchLhs r)
+trfMatchLhs name funid pats 
+  = do implicitIdLoc <- mkSrcSpan <$> atTheStart <*> atTheStart
+       closeLoc <- srcSpanStart <$> (combineSrcSpans <$> tokenLoc AnnEqual <*> tokenLoc AnnVbar)
+       let n = maybe (L implicitIdLoc name) fst funid
+       args <- mapM trfPattern pats
+       let isOperator = maybe False snd funid
+       annLoc (mkSrcSpan <$> atTheStart <*> (pure closeLoc)) $
+         case (args, isOperator) of 
+            (left:right:rest, True) -> AST.InfixLhs left <$> define (trfOperator n) <*> pure right <*> makeList " " (pure closeLoc) (pure rest)
+            _                       -> AST.NormalLhs <$> define (trfName n) <*> makeList " " (pure closeLoc) (pure args)
 
 trfRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.Rhs r)
 -- the original location on the GRHS misleadingly contains the local bindings

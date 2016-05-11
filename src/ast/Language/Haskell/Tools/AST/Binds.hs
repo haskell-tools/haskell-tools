@@ -21,10 +21,21 @@ data ValueBind a
 
 -- | Clause of function (or value) binding   
 data Match a
-  = Match { _matchPattern :: Ann Pattern a
+  = Match { _matchLhs :: Ann MatchLhs a
           , _matchRhs :: Ann Rhs a
           , _matchBinds :: AnnMaybe LocalBinds a
           } 
+
+-- | Something on the left side of the match
+data MatchLhs a 
+  = NormalLhs { _matchLhsName :: Ann Name a
+              , _matchLhsArgs :: AnnList Pattern a
+              }
+  | InfixLhs { _matchLhsLhs :: Ann Pattern a
+             , _matchLhsOperator :: Ann Operator a
+             , _matchLhsRhs :: Ann Pattern a
+             , _matchLhsArgs :: AnnList Pattern a
+             }
     
 -- | Local bindings attached to a declaration (@ where x = 42 @)             
 data LocalBinds a

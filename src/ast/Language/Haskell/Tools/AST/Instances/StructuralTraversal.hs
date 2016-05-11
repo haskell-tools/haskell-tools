@@ -114,6 +114,7 @@ deriveStructTrav ''Role
 deriveStructTrav ''Cmd
 deriveStructTrav ''CmdStmt
 deriveStructTrav ''LanguageExtension
+deriveStructTrav ''MatchLhs
 
 
 -- FIXME: structural traversal deriving does not respect the instance requirements for type like Ann expr a

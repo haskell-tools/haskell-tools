@@ -68,8 +68,8 @@ importQualifiers imp
         
 bindingSemantics :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) (SemanticInfo n)
 bindingSemantics = element&(valBindPat&element&patternName&element&simpleName 
-                             &+& funBindMatches&annList&element&matchPattern&element
-                                   &(patternName&element&simpleName &+& patternOperator&element&operatorName))
+                             &+& funBindMatches&annList&element&matchLhs&element
+                                   &(matchLhsName&element&simpleName &+& matchLhsOperator&element&operatorName))
                           &semantics
 
 bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
