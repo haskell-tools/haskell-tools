@@ -12,6 +12,8 @@ import FastString as GHC
 import Type as GHC
 import TyCon as GHC
 import Outputable as GHC
+import TysWiredIn (eqTyCon)
+import Id (mkVanillaGlobal)
 
 import Control.Monad.Reader.Class
 import Control.Applicative
@@ -23,6 +25,7 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
+import Language.Haskell.Tools.AST.FromGHC.Literals
 
 import Language.Haskell.Tools.AST as AST
 
@@ -51,13 +54,12 @@ trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
 trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
 trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
 -- HsRecTy only appears as part of GADT constructor declarations, so it is omitted
-trfType' (HsTyLit (HsNumTy _ int)) = pure $ AST.TyNumLit int
-trfType' (HsTyLit (HsStrTy _ str)) = pure $ AST.TyStrLit (unpackFS str)
 trfType' (HsWrapTy _ typ) = trfType' typ
 trfType' HsWildcardTy = pure AST.TyWildcard
 -- not implemented as ghc 7.10.3
 trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> annCont (define (trfName' name))
-trfType' t = error $ "Unknown type: " ++ (showSDocUnsafe (ppr t))
+-- must be a promoted type
+trfType' t = AST.TyPromoted <$> annCont (trfPromoted' trfType' t) 
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
 trfBindings vars = trfAnnList "\n" trfTyVar' vars
@@ -86,13 +88,16 @@ trfAssertion = trfLoc trfAssertion'
 
 trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
 trfAssertion' (HsOpTy left op right) = AST.InfixAssert <$> trfType left 
-                                                       <*> trfName (snd op) 
+                                                       <*> trfOperator (snd op) 
                                                        <*> trfType right
 trfAssertion' t = case base of
    HsTyVar name -> AST.ClassAssert <$> (annLoc (case sp of Just l -> pure l; _ -> asks contRange) $ trfName' name)
                                    <*> trfAnnList " " trfType' args
+   HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLoc (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)
         getArgs t = ([], Nothing, t)
-  
+
+        typeEq :: n 
+        typeEq = nameFromId (mkVanillaGlobal (tyConName eqTyCon) (tyConKind eqTyCon))

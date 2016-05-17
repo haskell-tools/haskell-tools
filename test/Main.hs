@@ -39,6 +39,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map (\(mod,_,_) -> mod) extractBindingTests
                                                      ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
                                ++ map makeCpphsTest cppHsTests
+                               ++ map makeInstanceControlTest instanceControlTests
                                ++ map makeOrganizeImportsTest organizeImportTests
                                ++ map makeGenerateSignatureTest generateSignatureTests
                                ++ map makeGenerateExportsTest generateExportsTests
@@ -117,6 +118,13 @@ cppHsTests =
   , "Language.Preprocessor.Cpphs.RunCpphs"
   , "Language.Preprocessor.Cpphs.SymTab"
   , "Language.Preprocessor.Cpphs.Tokenise"
+  ]
+
+instanceControlTests = 
+  [ "Control.Instances.Test"
+  , "Control.Instances.Morph"
+  , "Control.Instances.ShortestPath"
+  , "Control.Instances.TypeLevelPrelude"
   ]
         
 organizeImportTests = 
@@ -243,6 +251,9 @@ makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples"
 
 makeCpphsTest :: String -> Test       
 makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples/CppHs" mod)
+
+makeInstanceControlTest :: String -> Test       
+makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples/InstanceControl" mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 

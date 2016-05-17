@@ -107,7 +107,7 @@ deriving instance Generic a => Generic (MatchLhs a)
 
 -- Literal
 deriving instance Generic a => Generic (Literal a)
-deriving instance Generic a => Generic (Promoted a)
+deriving instance (Generic a, Generic (k a)) => Generic (Promoted k a)
 
 -- Base
 deriving instance Generic a => Generic (Operator a)

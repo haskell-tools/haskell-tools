@@ -61,11 +61,13 @@ class OutputableBndr name => GHCName name where
   rdrName :: name -> RdrName
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
   correctNameString :: name -> Trf String
+  nameFromId :: Id -> name
   
 instance GHCName RdrName where
   rdrName = id
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
   correctNameString = pure . rdrNameStr
+  nameFromId = nameRdrName . getName
 
 occName :: GHCName n => n -> OccName
 occName = rdrNameOcc . rdrName 
@@ -74,6 +76,7 @@ instance GHCName GHC.Name where
   rdrName = nameRdrName
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
   correctNameString n = getOriginalName (rdrName n)
+  nameFromId = getName
   
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.

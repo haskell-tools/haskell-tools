@@ -79,12 +79,12 @@ trfDecl = trfLoc $ \case
                                        _  -> after AnnDarrow
         in AST.DataDecl <$> trfDataKeyword nd
                         <*> trfCtx (after ctxTok) ctx
-                        <*> between ctxTok AnnEqual (createDeclHead name vars)
+                        <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
                         <*> makeList " | " consLoc (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
-                     <*> between AnnType AnnWhere (createDeclHead name vars)
+                     <*> betweenIfPresent AnnClass AnnWhere (createDeclHead name vars)
                      <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
@@ -217,8 +217,12 @@ wrapDeclHead vars base
                              (AST.DHApp typ <$> trfTyVar p)
           ) base vars
 
+-- | Get the parentheses directly before and after (for parenthesized application)
 addParenLocs :: SrcSpan -> Trf SrcSpan
-addParenLocs sp = combineSrcSpans <$> (combineSrcSpans sp <$> tokenLoc AnnOpenP) <*> tokenLocBack AnnCloseP
+addParenLocs sp 
+  = let possibleSpan = mkSrcSpan (updateCol (subtract 1) (srcSpanStart sp)) (updateCol (+1) (srcSpanEnd sp))
+     in local (\s -> s { contRange = possibleSpan })
+              (combineSrcSpans <$> (combineSrcSpans sp <$> tokenLoc AnnOpenP) <*> tokenLocBack AnnCloseP)
       
          
 createClassBody :: TransformName n r => [LSig n] -> LHsBinds n -> [LFamilyDecl n] 
@@ -246,7 +250,7 @@ trfClassElemSig = trfLoc $ \case
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
 trfTypeFam = trfLoc $ \case
   FamilyDecl DataFamily name tyVars kindSig
-    -> AST.DataFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
+    -> AST.DataFamily <$> (if isJust kindSig then between AnnData AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
   FamilyDecl OpenTypeFamily name tyVars kindSig
     -> AST.TypeFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
 
