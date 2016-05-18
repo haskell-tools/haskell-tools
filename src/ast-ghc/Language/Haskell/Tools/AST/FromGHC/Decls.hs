@@ -75,12 +75,11 @@ trfDecl = trfLoc $ \case
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
     -> let ctxTok = case nd of DataType -> AnnData
                                NewType -> AnnNewtype
-           consLoc = case unLoc ctx of [] -> after ctxTok
-                                       _  -> after AnnDarrow
+           consLoc = focusBeforeIfPresent AnnDeriving atTheEnd
         in AST.DataDecl <$> trfDataKeyword nd
                         <*> trfCtx (after ctxTok) ctx
                         <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
-                        <*> makeList " | " consLoc (mapM trfConDecl cons)
+                        <*> makeListBefore "=" " | " consLoc (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
@@ -198,7 +197,7 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
                   (hswb_cts pats)
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
-trfFunDeps [] = nothing "|" "" $ before AnnWhere
+trfFunDeps [] = nothing "|" "" $ focusBeforeIfPresent AnnWhere atTheEnd
 trfFunDeps _ = error "trfFunDeps"
   
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
