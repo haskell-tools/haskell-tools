@@ -187,14 +187,17 @@ trfTypeEqs eqs = makeList "\n" (after AnnWhere) (mapM trfTypeEq eqs)
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn r)
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
-  -> AST.TypeEqn <$> combineTypes name pats <*> trfType rhs
-  where combineTypes :: TransformName n r => Located n -> HsTyPats n -> Trf (Ann AST.Type r)
-        combineTypes name pats 
+  -> AST.TypeEqn <$> focusBefore AnnEqual (combineTypes name (hswb_cts pats)) <*> trfType rhs
+  where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.Type r)
+        combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
+          = annCont $ AST.TyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
+        combineTypes name pats = wrapTypes (annLoc (pure $ getLoc name) (AST.TyVar <$> trfName name)) pats
+
+        wrapTypes :: TransformName n r => Trf (Ann AST.Type r) -> [LHsType n] -> Trf (Ann AST.Type r)
+        wrapTypes base pats 
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
-                                     (AST.TyApp <$> pure typ <*> trfType p)) 
-                  (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
-                  (hswb_cts pats)
+                                     (AST.TyApp <$> pure typ <*> trfType p)) base pats
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
 trfFunDeps [] = nothing "|" "" $ focusBeforeIfPresent AnnWhere atTheEnd
