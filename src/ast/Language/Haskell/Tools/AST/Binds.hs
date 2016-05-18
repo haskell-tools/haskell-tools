@@ -62,7 +62,7 @@ data TypeSignature a
 data FixitySignature a 
   = FixitySignature { _fixityAssoc :: Ann Assoc a
                     , _fixityPrecedence :: Ann Precedence a
-                    , _fixityOperators :: AnnList Name a
+                    , _fixityOperators :: AnnList SimpleName a
                     }
    
 -- | Right hand side of a value binding (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)

@@ -33,12 +33,12 @@ trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
 trfType = trfLoc trfType'
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
-trfType' (HsForAllTy Implicit _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
-trfType' (HsForAllTy Implicit _ _ ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
-                                                       <*> trfType typ
-trfType' (HsForAllTy _ _ bndrs ctx typ) = AST.TyForall <$> define (trfBindings (hsq_tvs bndrs)) 
-                                                       <*> trfCtx (after AnnDot) ctx
-                                                       <*> addToScope bndrs (trfType typ)
+trfType' (HsForAllTy Explicit _ bndrs ctx typ) = AST.TyForall <$> define (trfBindings (hsq_tvs bndrs)) 
+                                                              <*> trfCtx (after AnnDot) ctx
+                                                              <*> addToScope bndrs (trfType typ)
+trfType' (HsForAllTy _ _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
+trfType' (HsForAllTy _ _ _ ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
+                                                <*> trfType typ
 trfType' (HsTyVar name) = AST.TyVar <$> annCont (define (trfName' name))
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
