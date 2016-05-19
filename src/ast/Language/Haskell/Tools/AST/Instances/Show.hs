@@ -103,7 +103,6 @@ deriving instance Show (PatSynWhere a)
 deriving instance Show (PatternTypeSignature a)
 deriving instance Show (Role a)
 deriving instance Show (Cmd a)
-deriving instance Show (CmdStmt a)
 deriving instance Show (LanguageExtension a)
 deriving instance Show (MatchLhs a)
 

@@ -16,15 +16,10 @@ data Stmt' expr a
              } -- ^ Non-binding statement (@ action @)
   | LetStmt  { _stmtBinds :: AnnList LocalBind a 
              } -- ^ Let statement (@ let x = 3; y = 4 @)
+  | RecStmt  { _cmdStmtBinds :: AnnList (Stmt' expr) a 
+             } -- ^ A recursive binding statement with (@ rec b <- f a c; c <- f b a @)
 type Stmt = Stmt' Expr
 
--- | Statements in a proc
-data CmdStmt a
-  = RecStmt    { _cmdStmtBinds :: AnnList CmdStmt a 
-               } -- ^ A recursive binding group for arrows (@ rec b <- f a c; c <- f b a @)
-  | NonRecStmt { _cmdStmtNonrec :: Ann (Stmt' Cmd) a
-               }
-        
 -- | Body of a list comprehension: (@ | x <- [1..10] @)
 data ListCompBody a
   = ListCompBody { _compStmts :: AnnList CompStmt a 

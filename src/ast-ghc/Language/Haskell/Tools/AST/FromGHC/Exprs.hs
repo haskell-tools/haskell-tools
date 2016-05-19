@@ -66,6 +66,9 @@ trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' 
 trfExpr' (HsLet binds expr) = AST.Let <$> addToScope binds (trfLocalBinds binds) <*> addToScope binds (trfExpr expr)
 trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
                                         <*> makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)
+trfExpr' (HsDo MDoExpr [unLoc -> RecStmt { recS_stmts = stmts }, lastStmt] _) 
+  = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
+           <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt (stmts ++ [lastStmt])))
 trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
                                          <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))
 -- TODO: scoping
@@ -166,4 +169,4 @@ trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG alts _ _ _)) = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd')) alts) 
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
 trfCmd' (HsCmdLet binds cmd) = AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd
-trfCmd' (HsCmdDo stmts _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc trfCmdDoStmt') stmts)
+trfCmd' (HsCmdDo stmts _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd')) stmts)

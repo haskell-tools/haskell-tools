@@ -104,7 +104,6 @@ instance (Generic a, Show a) => TreeDebug PatSynWhere a
 instance (Generic a, Show a) => TreeDebug PatternTypeSignature a
 instance (Generic a, Show a) => TreeDebug Role a
 instance (Generic a, Show a) => TreeDebug Cmd a
-instance (Generic a, Show a) => TreeDebug CmdStmt a
 instance (Generic a, Show a) => TreeDebug LanguageExtension a
 instance (Generic a, Show a) => TreeDebug MatchLhs a
 

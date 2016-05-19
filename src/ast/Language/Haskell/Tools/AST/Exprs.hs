@@ -208,6 +208,6 @@ data Cmd a
   | LetCmd        { _cmdBinds :: AnnList LocalBind a -- ^ nonempty
                   , _cmdInner :: Ann Cmd a
                   }
-  | DoCmd         { _cmdStmts :: AnnList CmdStmt a
+  | DoCmd         { _cmdStmts :: AnnList (Stmt' Cmd) a
                   }
  
