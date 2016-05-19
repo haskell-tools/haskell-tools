@@ -85,6 +85,7 @@ languageTests =
   , "Expr.RecordWildcards"
   , "Expr.Sections"
   , "Expr.StaticPtr"
+  --, "Expr.UnicodeSyntax"
   , "Module.Simple"
   , "Module.Export"
   , "Module.Import"
