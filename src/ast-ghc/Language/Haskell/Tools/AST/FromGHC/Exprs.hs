@@ -34,7 +34,9 @@ import qualified Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
-trfExpr = trfLoc trfExpr'
+-- correction for empty cases (TODO: put of and {} inside)
+trfExpr (L l cs@(HsCase expr (mg_alts -> []))) = annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+trfExpr e = trfLoc trfExpr' e
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
@@ -77,7 +79,7 @@ trfExpr' (ExplicitTuple tupArgs box)
           | realSp `containsSpan` realSep = [mkSrcSpan (srcSpanStart sp) (srcSpanStart sep), mkSrcSpan (srcSpanEnd sep) (srcSpanEnd sp)]
         breakUpOne _ sp = [sp]
 
-trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeNonemptyIndentedList (mapM trfAlt cases))
+trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeIndentedList (focusBeforeIfPresent AnnCloseC atTheEnd) (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
 trfExpr' (HsLet binds expr) = AST.Let <$> addToScope binds (trfLocalBinds binds) <*> addToScope binds (trfExpr expr)

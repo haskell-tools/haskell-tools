@@ -77,6 +77,7 @@ languageTests =
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
   , "Expr.If"
+  , "Expr.LambdaCase"
   , "Expr.ListComp"
   , "Expr.Negate"
   , "Expr.Operator"
