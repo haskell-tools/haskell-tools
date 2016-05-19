@@ -48,16 +48,19 @@ fixRanges node = evalState (traverseUp desc asc f node) [[],[]]
         f ni = do (below : top : xs) <- get
                   put ([] : (top ++ [ expandAsNodeToContain (ni ^. sourceInfo) below ]) : xs)
                   return (sourceInfo .- expandToContain below $ ni)
-                  
+
+-- | Expand a list or optional node to contain its children
 expandAsNodeInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandAsNodeInfo ns@(NodeSpan _) _ = ns
 expandAsNodeInfo (OptionalPos {_optionalPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
 expandAsNodeInfo (ListPos {_listPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
 
+-- | Expand a simple node to contain its children
 expandToContain :: [SpanInfo] -> SpanInfo -> SpanInfo
 expandToContain cont (NodeSpan sp) = NodeSpan (foldl1 combineSrcSpans $ sp : map spanRange cont)
 expandToContain _ oth = oth
 
+-- | Expand any node to contain its children
 expandAsNodeToContain :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandAsNodeToContain ns@(NodeSpan _) ls = expandToContain ls ns
 expandAsNodeToContain oth ls = expandAsNodeInfo oth ls

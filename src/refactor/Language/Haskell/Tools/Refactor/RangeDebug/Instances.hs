@@ -110,7 +110,7 @@ instance (Generic a, Show a) => TreeDebug MatchLhs a
 
 -- Literal
 instance (Generic a, Show a) => TreeDebug Literal a
-instance (Generic a, Show a) => TreeDebug Promoted a
+instance (Generic a, Show a, TreeDebug k a, Show (k a), Generic (k a)) => TreeDebug (Promoted k) a
 
 -- Base
 instance (Generic a, Show a) => TreeDebug Operator a

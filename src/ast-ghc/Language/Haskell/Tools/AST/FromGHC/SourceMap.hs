@@ -25,7 +25,7 @@ getKeywordInsideBack keyw sr srcmap = getSourceElementInside False sr =<< Map.lo
 
 getSourceElementInside :: Bool -> SrcSpan -> Map SrcLoc SrcLoc -> Maybe SrcSpan
 getSourceElementInside b sr srcmap = 
-  case (if b then lookupGE (srcSpanStart sr) else lookupLE (srcSpanEnd sr)) srcmap of
+  case (if b then lookupGE (srcSpanStart sr) else lookupLT (srcSpanEnd sr)) srcmap of
     Just (k, v) -> let sp = mkSrcSpan k v in if sp `isSubspanOf` sr then Just sp else Nothing
     Nothing -> Nothing
     

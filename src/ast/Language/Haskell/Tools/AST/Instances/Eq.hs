@@ -109,7 +109,7 @@ deriving instance Eq (MatchLhs a)
 
 -- Literal
 deriving instance Eq (Literal a)
-deriving instance Eq (Promoted a)
+deriving instance Eq (k a) => Eq (Promoted k a)
 
 -- Base
 deriving instance Eq (Operator a)

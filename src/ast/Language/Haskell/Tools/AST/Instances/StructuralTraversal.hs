@@ -143,7 +143,18 @@ instance StructuralTraversable expr => StructuralTraversable (GuardedCaseRhs' ex
 
 -- Literal
 deriveStructTrav ''Literal
-deriveStructTrav ''Promoted
+
+instance StructuralTraversable k => StructuralTraversable (Promoted k) where
+  traverseUp desc asc f (PromotedInt i) = pure $ PromotedInt i
+  traverseUp desc asc f (PromotedString str) = pure $ PromotedString str
+  traverseUp desc asc f (PromotedCon name) = PromotedCon <$> traverseUp desc asc f name
+  traverseUp desc asc f (PromotedList elems) = PromotedList <$> traverseUp desc asc f elems
+  traverseUp desc asc f (PromotedTuple elems) = PromotedTuple <$> traverseUp desc asc f elems
+  traverseDown desc asc f (PromotedInt i) = pure $ PromotedInt i
+  traverseDown desc asc f (PromotedString str) = pure $ PromotedString str
+  traverseDown desc asc f (PromotedCon name) = PromotedCon <$> traverseDown desc asc f name
+  traverseDown desc asc f (PromotedList elems) = PromotedList <$> traverseDown desc asc f elems
+  traverseDown desc asc f (PromotedTuple elems) = PromotedTuple <$> traverseDown desc asc f elems
 
 -- Base
 deriveStructTrav ''Operator

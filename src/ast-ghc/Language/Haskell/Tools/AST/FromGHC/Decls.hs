@@ -75,16 +75,15 @@ trfDecl = trfLoc $ \case
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _) 
     -> let ctxTok = case nd of DataType -> AnnData
                                NewType -> AnnNewtype
-           consLoc = case unLoc ctx of [] -> after ctxTok
-                                       _  -> after AnnDarrow
+           consLoc = focusBeforeIfPresent AnnDeriving atTheEnd
         in AST.DataDecl <$> trfDataKeyword nd
                         <*> trfCtx (after ctxTok) ctx
-                        <*> between ctxTok AnnEqual (createDeclHead name vars)
-                        <*> makeList " | " consLoc (mapM trfConDecl cons)
+                        <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
+                        <*> makeListBefore "=" " | " consLoc (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
-                     <*> between AnnType AnnWhere (createDeclHead name vars)
+                     <*> betweenIfPresent AnnClass AnnWhere (createDeclHead name vars)
                      <*> trfFunDeps funDeps 
                      <*> createClassBody sigs defs typeFuns typeFunDefs
   InstD (ClsInstD (ClsInstDecl typ binds sigs typefam datafam overlap))
@@ -188,17 +187,20 @@ trfTypeEqs eqs = makeList "\n" (after AnnWhere) (mapM trfTypeEq eqs)
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn r)
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
-  -> AST.TypeEqn <$> combineTypes name pats <*> trfType rhs
-  where combineTypes :: TransformName n r => Located n -> HsTyPats n -> Trf (Ann AST.Type r)
-        combineTypes name pats 
+  -> AST.TypeEqn <$> focusBefore AnnEqual (combineTypes name (hswb_cts pats)) <*> trfType rhs
+  where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.Type r)
+        combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
+          = annCont $ AST.TyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
+        combineTypes name pats = wrapTypes (annLoc (pure $ getLoc name) (AST.TyVar <$> trfName name)) pats
+
+        wrapTypes :: TransformName n r => Trf (Ann AST.Type r) -> [LHsType n] -> Trf (Ann AST.Type r)
+        wrapTypes base pats 
           = foldl (\t p -> do typ <- t
                               annLoc (pure $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
-                                     (AST.TyApp <$> pure typ <*> trfType p)) 
-                  (annLoc (pure $ getLoc name) (AST.TyVar <$> annCont (trfName' (unLoc name)))) 
-                  (hswb_cts pats)
+                                     (AST.TyApp <$> pure typ <*> trfType p)) base pats
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
-trfFunDeps [] = nothing "|" "" $ before AnnWhere
+trfFunDeps [] = nothing "|" "" $ focusBeforeIfPresent AnnWhere atTheEnd
 trfFunDeps _ = error "trfFunDeps"
   
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
@@ -217,8 +219,12 @@ wrapDeclHead vars base
                              (AST.DHApp typ <$> trfTyVar p)
           ) base vars
 
+-- | Get the parentheses directly before and after (for parenthesized application)
 addParenLocs :: SrcSpan -> Trf SrcSpan
-addParenLocs sp = combineSrcSpans <$> (combineSrcSpans sp <$> tokenLoc AnnOpenP) <*> tokenLocBack AnnCloseP
+addParenLocs sp 
+  = let possibleSpan = mkSrcSpan (updateCol (subtract 1) (srcSpanStart sp)) (updateCol (+1) (srcSpanEnd sp))
+     in local (\s -> s { contRange = possibleSpan })
+              (combineSrcSpans <$> (combineSrcSpans sp <$> tokenLoc AnnOpenP) <*> tokenLocBack AnnCloseP)
       
          
 createClassBody :: TransformName n r => [LSig n] -> LHsBinds n -> [LFamilyDecl n] 
@@ -246,7 +252,7 @@ trfClassElemSig = trfLoc $ \case
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
 trfTypeFam = trfLoc $ \case
   FamilyDecl DataFamily name tyVars kindSig
-    -> AST.DataFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
+    -> AST.DataFamily <$> (if isJust kindSig then between AnnData AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
   FamilyDecl OpenTypeFamily name tyVars kindSig
     -> AST.TypeFamily <$> (if isJust kindSig then between AnnType AnnDcolon else id) (createDeclHead name tyVars) <*> trfKindSig kindSig
 

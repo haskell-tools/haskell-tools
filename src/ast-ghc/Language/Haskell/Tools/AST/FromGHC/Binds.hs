@@ -19,6 +19,8 @@ import HsTypes as GHC
 import OccName as GHC
 import Name as GHC
 
+import Data.List
+
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Exprs
 import Language.Haskell.Tools.AST.FromGHC.Patterns
@@ -120,14 +122,12 @@ trfFixitySig :: TransformName n r => FixitySig n -> Trf (AST.FixitySignature r)
 trfFixitySig (FixitySig names (Fixity prec dir)) 
   = AST.FixitySignature <$> transformDir dir
                         <*> annLoc (tokenLoc AnnVal) (pure $ AST.Precedence prec) 
-                        <*> (nonemptyAnnList <$> mapM trfName names)
+                        <*> (nonemptyAnnList . nub <$> mapM trfSimpleName names)
   where transformDir InfixL = directionChar (pure AST.AssocLeft)
         transformDir InfixR = directionChar (pure AST.AssocRight)
         transformDir InfixN = annLoc (srcLocSpan . srcSpanEnd <$> tokenLoc AnnInfix) (pure AST.AssocNone)
         
-        directionChar = annLoc ((\l -> mkSrcSpan (moveBackOneCol l) l) . srcSpanEnd <$> tokenLoc AnnInfix)
-        moveBackOneCol (RealSrcLoc rl) = mkSrcLoc (srcLocFile rl) (srcLocLine rl) (srcLocCol rl - 1)
-        moveBackOneCol (UnhelpfulLoc fs) = UnhelpfulLoc fs
+        directionChar = annLoc ((\l -> mkSrcSpan (updateCol (subtract 1) l) l) . srcSpanEnd <$> tokenLoc AnnInfix)
    
 trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.Rule r)
 trfRewriteRule = trfLoc $ \(HsRule name act bndrs left _ right _) ->

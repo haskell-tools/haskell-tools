@@ -181,24 +181,45 @@ annLoc locm nodem = do loc <- locm
 
 -- * Focus manipulation
 
--- | Focuses the transformation to go between tokens
+-- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
-between firstTok lastTok trf
-  = do firstToken <- tokenLoc firstTok
-       lastToken <- tokenLocBack lastTok
-       local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanStart lastToken)}) trf
+between firstTok lastTok = focusAfter firstTok . focusBefore lastTok
 
--- | Focuses the transformation to be performed after the given token
+-- | Focuses the transformation to go between tokens if they are present
+betweenIfPresent :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
+betweenIfPresent firstTok lastTok = focusAfterIfPresent firstTok . focusBeforeIfPresent lastTok
+
+-- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
 focusAfter :: AnnKeywordId -> Trf a -> Trf a
 focusAfter firstTok trf
   = do firstToken <- tokenLoc firstTok
-       local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf
+       if (isGoodSrcSpan firstToken)
+          then local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf
+          else do rng <- asks contRange 
+                  error $ "focusAfter: token not found in " ++ show rng ++ ": " ++ show firstTok
 
--- | Focuses the transformation to be performed after the given token
+focusAfterIfPresent :: AnnKeywordId -> Trf a -> Trf a
+focusAfterIfPresent firstTok trf
+  = do firstToken <- tokenLoc firstTok
+       if (isGoodSrcSpan firstToken)
+          then local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf
+          else trf
+
+-- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
 focusBefore :: AnnKeywordId -> Trf a -> Trf a
 focusBefore lastTok trf
-  = do lastToken <- tokenLoc lastTok
-       local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf
+  = do lastToken <- tokenLocBack lastTok
+       if (isGoodSrcSpan lastToken)
+          then local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf
+          else do rng <- asks contRange 
+                  error $ "focusBefore: token not found in " ++ show rng ++ ": " ++ show lastTok
+
+focusBeforeIfPresent :: AnnKeywordId -> Trf a -> Trf a
+focusBeforeIfPresent lastTok trf
+  = do lastToken <- tokenLocBack lastTok
+       if (isGoodSrcSpan lastToken)
+          then local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanStart lastToken)}) trf
+          else trf
 
 -- | Gets the position before the given token
 before :: AnnKeywordId -> Trf SrcLoc

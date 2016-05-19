@@ -26,11 +26,3 @@ data Literal a
                 } -- ^ Primitive character literal (of type @Char#@): @'c'#@
   | PrimStringLit { _stringLitValue :: String }
                
--- | Literals promoted to kinds
-data Promoted a
-  = PromotedInt    { _promotedIntValue :: Integer }
-  | PromotedString { _promotedStringValue :: String }
-  | PromotedCon    { _promotedConName :: Name a }
-  | PromotedList   { _promotedElements :: AnnList Promoted a }
-  | PromotedTuple  { _promotedElements :: AnnList Promoted a }
-  | PromotedUnit

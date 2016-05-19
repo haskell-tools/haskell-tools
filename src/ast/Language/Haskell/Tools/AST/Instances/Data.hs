@@ -106,7 +106,7 @@ deriving instance Data a => Data (MatchLhs a)
 
 -- Literal
 deriving instance Data a => Data (Literal a)
-deriving instance Data a => Data (Promoted a)
+deriving instance (Data a, Typeable k, Data (k a)) => Data (Promoted k a)
 
 -- Base
 deriving instance Data a => Data (Operator a)

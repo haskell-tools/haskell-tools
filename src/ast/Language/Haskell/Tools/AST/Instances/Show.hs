@@ -110,7 +110,7 @@ deriving instance Show (MatchLhs a)
 
 -- Literal
 deriving instance Show (Literal a)
-deriving instance Show (Promoted a)
+deriving instance Show (k a) => Show (Promoted k a)
 
 -- Base
 deriving instance Show (Operator a)

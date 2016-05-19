@@ -47,8 +47,8 @@ data Type a
   | TyKinded     { _typeInner :: Ann Type a
                  , _typeKind :: Ann Kind a
                  } -- ^ Type with explicit kind signature (@ _a :: * @)
-  | TyPromoted   { _tpPromoted :: Promoted a
-                 } -- A promoted data type with @-XDataKinds@ (@ '3 @).
+  | TyPromoted   { _tpPromoted :: Ann (Promoted Type) a
+                 } -- A promoted data type with @-XDataKinds@ (@ 3 @, @ Left @, @ 'Left @).
   | TySplice     { _tsSplice :: Splice a
                  } -- ^ a Template Haskell splice type (@ $(genType) @).
   | TyQuasiQuote { _typeQQ :: QuasiQuote a
@@ -57,10 +57,6 @@ data Type a
                  } -- ^ Strict type marked with "!".
   | TyUnpack     { _typeInner :: Ann Type a
                  } -- ^ Type marked with UNPACK pragma.
-  | TyNumLit     { _typeNumLit :: Integer
-                 } -- ^ A numeric type literal (as @4096@ in @ ArrPtr 4096 Word8 @) with @-XDataKinds@
-  | TyStrLit     { _typeStrLit :: String
-                 } -- ^ A textual type literal (as @"x"@ in @ _Get :: Label "x" @) with @-XDataKinds@
   | TyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
   | TyNamedWildc { _typeWildcardName :: Ann Name a
                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
@@ -78,7 +74,7 @@ data Assertion a
                 , _assertTypes :: AnnList Type a
                 } -- ^ Class assertion (@Cls x@)
   | InfixAssert { _assertLhs :: Ann Type a
-                , _assertOp :: Ann Name a
+                , _assertOp :: Ann Operator a
                 , _assertRhs :: Ann Type a
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
                  

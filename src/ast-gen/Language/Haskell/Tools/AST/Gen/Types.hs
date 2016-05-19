@@ -83,5 +83,5 @@ mkClassAssert :: TemplateAnnot a => Ann Name a -> [Ann Type a] -> Ann Assertion 
 -- fixme: class assertion without parameters should not have the last space
 mkClassAssert n args = mkAnn (child <> " " <> child) $ ClassAssert n (mkAnnList (listSep " ") args)
 
-mkInfixAssert :: TemplateAnnot a => Ann Type a -> Ann Name a -> Ann Type a -> Ann Assertion a
+mkInfixAssert :: TemplateAnnot a => Ann Type a -> Ann Operator a -> Ann Type a -> Ann Assertion a
 mkInfixAssert left op right = mkAnn (child <> " " <> child <> " " <> child) $ InfixAssert left op right
