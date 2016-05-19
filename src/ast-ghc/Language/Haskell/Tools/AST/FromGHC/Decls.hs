@@ -200,9 +200,13 @@ trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs)
                                      (AST.TyApp <$> pure typ <*> trfType p)) base pats
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps r)
-trfFunDeps [] = nothing "|" "" $ focusBeforeIfPresent AnnWhere atTheEnd
-trfFunDeps _ = error "trfFunDeps"
+trfFunDeps [] = nothing "| " "" $ focusBeforeIfPresent AnnWhere atTheEnd
+trfFunDeps fundeps = makeJust <$> annLoc (combineSrcSpans (collectLocs fundeps) <$> tokenLoc AnnVbar) 
+                                         (AST.FunDeps <$> trfAnnList ", " trfFunDep' fundeps)
   
+trfFunDep' :: TransformName n r => FunDep (Located n) -> Trf (AST.FunDep r)
+trfFunDep' (lhs, rhs) = AST.FunDep <$> trfAnnList ", " trfName' lhs <*> trfAnnList ", " trfName' rhs
+
 createDeclHead :: TransformName n r => Located n -> LHsTyVarBndrs n -> Trf (Ann AST.DeclHead r)
 createDeclHead name (hsq_tvs -> lhs : rhs : rest)
   | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)

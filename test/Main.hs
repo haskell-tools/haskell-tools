@@ -55,6 +55,7 @@ languageTests =
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"
   , "Decl.FunBind"
+  , "Decl.FunctionalDeps"
   , "Decl.FunGuards"
   , "Decl.LocalBindings"
   , "Decl.OperatorBind"
