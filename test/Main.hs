@@ -86,6 +86,7 @@ languageTests =
   , "Expr.RecursiveDo"
   , "Expr.Sections"
   , "Expr.StaticPtr"
+  , "Expr.TupleSections"
   --, "Expr.UnicodeSyntax"
   , "Module.Simple"
   , "Module.Export"

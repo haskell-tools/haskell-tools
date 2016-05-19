@@ -31,6 +31,8 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..))
 import qualified Language.Haskell.Tools.AST as AST
 
+import Debug.Trace
+
 trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 trfExpr = trfLoc trfExpr'
 
@@ -56,10 +58,25 @@ trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
 trfExpr' (ExplicitTuple tupArgs box)
   = wrap <$> between AnnOpenP AnnCloseP
-               (trfAnnList ", " (\case (Present e) -> AST.Present <$> annCont (trfExpr' (unLoc e))
-                                       (Missing _) -> pure AST.Missing
-                                ) tupArgs)
+               (do locs <- elemLocs
+                   makeList ", " atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
+        trfTupSecElem :: TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
+        trfTupSecElem (Present e, l) = annLoc (pure l) (AST.Present <$> annCont (trfExpr' (unLoc e)))
+        trfTupSecElem (Missing _, l) = annLoc (pure l) (pure AST.Missing)
+        
+        elemLocs :: Trf [SrcSpan]
+        elemLocs = do r <- asks contRange
+                      commaLocs <- allTokenLoc AnnComma
+                      return $ foldl breakUp [r] commaLocs
+        breakUp :: [SrcSpan] -> SrcSpan -> [SrcSpan]
+        breakUp cont sep = concatMap (breakUpOne sep) cont
+
+        breakUpOne :: SrcSpan -> SrcSpan -> [SrcSpan]
+        breakUpOne sep@(RealSrcSpan realSep) sp@(RealSrcSpan realSp) 
+          | realSp `containsSpan` realSep = [mkSrcSpan (srcSpanStart sp) (srcSpanStart sep), mkSrcSpan (srcSpanEnd sep) (srcSpanEnd sp)]
+        breakUpOne _ sp = [sp]
+
 trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeNonemptyIndentedList (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
