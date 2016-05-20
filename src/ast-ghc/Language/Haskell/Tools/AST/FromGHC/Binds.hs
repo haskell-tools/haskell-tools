@@ -122,7 +122,7 @@ trfFixitySig :: TransformName n r => FixitySig n -> Trf (AST.FixitySignature r)
 trfFixitySig (FixitySig names (Fixity prec dir)) 
   = AST.FixitySignature <$> transformDir dir
                         <*> annLoc (tokenLoc AnnVal) (pure $ AST.Precedence prec) 
-                        <*> (nonemptyAnnList . nub <$> mapM trfSimpleName names)
+                        <*> (nonemptyAnnList . nub <$> mapM trfOperator names)
   where transformDir InfixL = directionChar (pure AST.AssocLeft)
         transformDir InfixR = directionChar (pure AST.AssocRight)
         transformDir InfixN = annLoc (srcLocSpan . srcSpanEnd <$> tokenLoc AnnInfix) (pure AST.AssocNone)
