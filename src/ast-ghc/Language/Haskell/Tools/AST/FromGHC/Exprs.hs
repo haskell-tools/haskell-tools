@@ -1,10 +1,12 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
 import Control.Monad.Reader
+import Control.Reference
 
 import SrcLoc as GHC
 import RdrName as GHC
@@ -33,10 +35,14 @@ import qualified Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
+trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 -- correction for empty cases (TODO: put of and {} inside)
-trfExpr (L l cs@(HsCase expr (mg_alts -> []))) = annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
-trfExpr e = trfLoc trfExpr' e
+trfExpr (L l cs@(HsCase expr (mg_alts -> []))) = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+trfExpr e = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< trfLoc trfExpr' e
+
+addScopeInfo :: forall n r . TransformName n r => SemanticsPhantom n -> Ann AST.Expr r -> Trf (Ann AST.Expr r)
+addScopeInfo _ expr = do scope <- asks localsInScope
+                         return $ AST.annotation .- addSemanticInfo (AST.ScopeInfo scope :: AST.SemanticInfo n) $ expr
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)

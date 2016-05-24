@@ -9,6 +9,7 @@ import qualified GHC
 import qualified Var as GHC
 import qualified OccName as GHC hiding (varName)
 import SrcLoc
+import Unique
 
 import Data.Char
 import Data.Maybe
@@ -20,9 +21,6 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
-
---import Outputable
-import Debug.Trace
 
 type STWithId = STWithNames GHC.Id
 
@@ -63,8 +61,8 @@ doExtract name e = do ret <- get
 
 getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
 getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef)
-  where isApplicableName (fmap GHC.varName . getExprNameInfo -> Just nm) 
-          = (not (nm `elem` namesDefinedInside) &&) <$> isLocalName nm 
+  where isApplicableName name@(fmap GHC.varName . getExprNameInfo -> Just nm) 
+          = ((nm `elem` namesDefinedOutside) &&) <$> isLocalName nm 
         isApplicableName _ = return False
 
         getExprNameInfo :: Ann Expr STWithId -> Maybe GHC.Var
@@ -75,10 +73,8 @@ getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName
         exprToName e | Just n <- e ^? element & exprName                     = n
                      | Just op <- e ^? element & exprOperator & element & operatorName = mkParenName op
 
-        namesDefinedInside :: [GHC.Name]
-        namesDefinedInside = catMaybes $ map (fmap GHC.varName . (^? nameInfo)) 
-                                       $ filter (fromMaybe False . (^? isDefined)) 
-                                       $ map (^. semantics) allNames
+        namesDefinedOutside :: [GHC.Name]
+        namesDefinedOutside = expr ^? semantics & scopedLocals & traversal & traversal
 
         allNames :: [Ann SimpleName STWithId]
         allNames = expr ^? biplateRef

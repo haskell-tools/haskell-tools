@@ -10,6 +10,10 @@ import HsPat as GHC
 import HsLit as GHC
 import ApiAnnotation as GHC
 import BasicTypes as GHC
+import Unique as GHC
+import Debug.Trace
+import Data.List
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
@@ -25,7 +29,8 @@ import qualified Language.Haskell.Tools.AST as AST
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern r)
 -- field wildcards are not directly represented in GHC AST
 trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
-  = do normalFields <- mapM (trfLoc trfPatternField') (filter ((l /=) . getLoc) flds)
+  = do let (fromWC, notWC) = partition ((l ==) . getLoc) flds
+       normalFields <- mapM (trfLoc trfPatternField') notWC
        wildc <- annLoc (tokenLoc AnnDotdot) (pure AST.FieldWildcardPattern)
        annLoc (pure l) (AST.RecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
 trfPattern p | otherwise = trfLoc trfPattern' (correctPatternLoc p)
