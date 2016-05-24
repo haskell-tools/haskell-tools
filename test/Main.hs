@@ -197,6 +197,7 @@ extractBindingTests =
   [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
   , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
+  , ("Refactor.ExtractBinding.Records", "5:6-5:38", "plus")
   ]
 
 wrongExtractBindingTests = 
