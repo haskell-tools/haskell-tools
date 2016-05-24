@@ -94,6 +94,7 @@ languageTests =
   --, "Expr.UnicodeSyntax"
   , "Module.Simple"
   , "Module.Export"
+  , "Module.NamespaceExport"
   , "Module.Import"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
