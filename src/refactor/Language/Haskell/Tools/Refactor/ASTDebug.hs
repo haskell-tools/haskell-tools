@@ -6,12 +6,17 @@
            , MultiParamTypeClasses
            , TypeFamilies
            , TemplateHaskell
+           , OverloadedStrings
+           , LambdaCase
            #-}
 module Language.Haskell.Tools.Refactor.ASTDebug where
 
 import GHC.Generics
 import Control.Reference
 import Control.Applicative
+import Data.Sequence as Seq
+import Data.Foldable
+import Data.List as List
 import SrcLoc
 
 import Language.Haskell.Tools.AST
@@ -20,8 +25,10 @@ import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
-data DebugNode a = TreeNode { _nodeLabel :: String
-                            , _nodeSubtree :: TreeDebugNode a
+
+
+
+data DebugNode a = TreeNode { _nodeSubtree :: TreeDebugNode a 
                             }
                  | SimpleNode { _nodeLabel :: String
                               , _nodeValue :: String
@@ -38,8 +45,19 @@ data TreeDebugNode a
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
-astDebug :: ASTDebug e a => e a -> [DebugNode a]
-astDebug = astDebug'
+astDebug :: ASTDebug e a => e a -> String
+astDebug ast = toList (astDebugToJson (astDebug' ast))
+
+astDebugToJson :: [DebugNode a] -> Seq Char
+astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
+    where (treeNodes, otherNodes) = List.partition (\case TreeNode {} -> True; _ -> False) nodes
+          childrenJson = case map (astDebugElemJson . _nodeSubtree) treeNodes of 
+                           first:rest -> first >< foldl (><) Seq.empty (fmap (fromList ", " ><) (fromList rest))
+                           []         -> Seq.empty
+
+astDebugElemJson :: TreeDebugNode a -> Seq Char
+astDebugElemJson (TreeDebugNode name info children) 
+  = fromList "{ \"text\" : \"" >< fromList name >< fromList "\", \"children\" : " >< astDebugToJson children >< fromList " }"
 
 class ASTDebug e a where
   astDebug' :: e a -> [DebugNode a]
@@ -70,7 +88,7 @@ instance {-# OVERLAPPABLE #-} Show x => GAstDebug (K1 i x) a where
   gAstDebug (K1 x) = [SimpleNode "" (show x)]
         
 instance (GAstDebug f a, Constructor c) => GAstDebug (M1 C c f) a where
-  gAstDebug c@(M1 x) = [TreeNode "" (TreeDebugNode "" undefined (gAstDebug x))]
+  gAstDebug c@(M1 x) = [TreeNode (TreeDebugNode (conName c) undefined (gAstDebug x))]
 
 instance (GAstDebug f a, Selector s) => GAstDebug (M1 S s f) a where
   gAstDebug s@(M1 x) = traversal&nodeLabel .= selName s $ gAstDebug x
