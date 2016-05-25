@@ -55,8 +55,10 @@ languageTests =
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"
   , "Decl.FunBind"
+  , "Decl.FunctionalDeps"
   , "Decl.FunGuards"
   , "Decl.LocalBindings"
+  , "Decl.LocalFixity"
   , "Decl.OperatorBind"
   , "Decl.OperatorDecl"
   , "Decl.ParamDataType"
@@ -76,16 +78,23 @@ languageTests =
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
   , "Expr.If"
+  , "Expr.LambdaCase"
   , "Expr.ListComp"
+  , "Expr.MultiwayIf"
   , "Expr.Negate"
   , "Expr.Operator"
   , "Expr.ParenName"
   , "Expr.ParListComp"
+  , "Expr.RecordPuns"
   , "Expr.RecordWildcards"
+  , "Expr.RecursiveDo"
   , "Expr.Sections"
   , "Expr.StaticPtr"
+  , "Expr.TupleSections"
+  --, "Expr.UnicodeSyntax"
   , "Module.Simple"
   , "Module.Export"
+  , "Module.NamespaceExport"
   , "Module.Import"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
@@ -98,6 +107,7 @@ languageTests =
   , "Type.Builtin"
   , "Type.Ctx"
   , "Type.Forall"
+  , "Type.Primitives"
   , "Type.Wildcard"
   , "Refactor.CommentHandling.CommentTypes"
   , "Refactor.CommentHandling.BlockComments"
@@ -187,6 +197,8 @@ extractBindingTests =
   [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
   , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
+  , ("Refactor.ExtractBinding.Records", "5:6-5:38", "plus")
+  , ("Refactor.ExtractBinding.RecordWildcards", "6:6-6:28", "plus")
   ]
 
 wrongExtractBindingTests = 

@@ -112,7 +112,6 @@ deriveStructTrav ''PatSynWhere
 deriveStructTrav ''PatternTypeSignature
 deriveStructTrav ''Role
 deriveStructTrav ''Cmd
-deriveStructTrav ''CmdStmt
 deriveStructTrav ''LanguageExtension
 deriveStructTrav ''MatchLhs
 
@@ -122,9 +121,11 @@ instance StructuralTraversable expr => StructuralTraversable (Stmt' expr) where
   traverseUp desc asc f (BindStmt p e) = BindStmt <$> traverseUp desc asc f p <*> traverseUp desc asc f e
   traverseUp desc asc f (ExprStmt e) = ExprStmt <$> traverseUp desc asc f e
   traverseUp desc asc f (LetStmt bs) = LetStmt <$> traverseUp desc asc f bs
+  traverseUp desc asc f (RecStmt stmts) = RecStmt <$> traverseUp desc asc f stmts
   traverseDown desc asc f (BindStmt p e) = BindStmt <$> traverseDown desc asc f p <*> traverseDown desc asc f e
   traverseDown desc asc f (ExprStmt e) = ExprStmt <$> traverseDown desc asc f e
   traverseDown desc asc f (LetStmt bs) = LetStmt <$> traverseDown desc asc f bs
+  traverseDown desc asc f (RecStmt stmts) = RecStmt <$> traverseDown desc asc f stmts
 
 instance StructuralTraversable expr => StructuralTraversable (Alt' expr) where
   traverseUp desc asc f (Alt p r b) = Alt <$> traverseUp desc asc f p <*> traverseUp desc asc f r <*> traverseUp desc asc f b

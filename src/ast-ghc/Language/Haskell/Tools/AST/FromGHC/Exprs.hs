@@ -1,10 +1,12 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
 import Control.Monad.Reader
+import Control.Reference
 
 import SrcLoc as GHC
 import RdrName as GHC
@@ -31,8 +33,16 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..))
 import qualified Language.Haskell.Tools.AST as AST
 
-trfExpr :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
-trfExpr = trfLoc trfExpr'
+import Debug.Trace
+
+trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
+-- correction for empty cases (TODO: put of and {} inside)
+trfExpr (L l cs@(HsCase expr (mg_alts -> []))) = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+trfExpr e = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< trfLoc trfExpr' e
+
+addScopeInfo :: forall n r . TransformName n r => SemanticsPhantom n -> Ann AST.Expr r -> Trf (Ann AST.Expr r)
+addScopeInfo _ expr = do scope <- asks localsInScope
+                         return $ AST.annotation .- addSemanticInfo (AST.ScopeInfo scope :: AST.SemanticInfo n) $ expr
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> annCont (trfName' name)
@@ -56,16 +66,34 @@ trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
 trfExpr' (ExplicitTuple tupArgs box)
   = wrap <$> between AnnOpenP AnnCloseP
-               (trfAnnList ", " (\case (Present e) -> AST.Present <$> annCont (trfExpr' (unLoc e))
-                                       (Missing _) -> pure AST.Missing
-                                ) tupArgs)
+               (do locs <- elemLocs
+                   makeList ", " atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
-trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeNonemptyIndentedList (mapM trfAlt cases))
+        trfTupSecElem :: TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
+        trfTupSecElem (Present e, l) = annLoc (pure l) (AST.Present <$> annCont (trfExpr' (unLoc e)))
+        trfTupSecElem (Missing _, l) = annLoc (pure l) (pure AST.Missing)
+        
+        elemLocs :: Trf [SrcSpan]
+        elemLocs = do r <- asks contRange
+                      commaLocs <- allTokenLoc AnnComma
+                      return $ foldl breakUp [r] commaLocs
+        breakUp :: [SrcSpan] -> SrcSpan -> [SrcSpan]
+        breakUp cont sep = concatMap (breakUpOne sep) cont
+
+        breakUpOne :: SrcSpan -> SrcSpan -> [SrcSpan]
+        breakUpOne sep@(RealSrcSpan realSep) sp@(RealSrcSpan realSp) 
+          | realSp `containsSpan` realSep = [mkSrcSpan (srcSpanStart sp) (srcSpanStart sep), mkSrcSpan (srcSpanEnd sep) (srcSpanEnd sp)]
+        breakUpOne _ sp = [sp]
+
+trfExpr' (HsCase expr (mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeIndentedList (focusBeforeIfPresent AnnCloseC atTheEnd) (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
 trfExpr' (HsLet binds expr) = AST.Let <$> addToScope binds (trfLocalBinds binds) <*> addToScope binds (trfExpr expr)
 trfExpr' (HsDo DoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
                                         <*> makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)
+trfExpr' (HsDo MDoExpr [unLoc -> RecStmt { recS_stmts = stmts }, lastStmt] _) 
+  = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
+           <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt (stmts ++ [lastStmt])))
 trfExpr' (HsDo MDoExpr stmts _) = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
                                          <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))
 -- TODO: scoping
@@ -166,4 +194,4 @@ trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG alts _ _ _)) = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd')) alts) 
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
 trfCmd' (HsCmdLet binds cmd) = AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd
-trfCmd' (HsCmdDo stmts _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc trfCmdDoStmt') stmts)
+trfCmd' (HsCmdDo stmts _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd')) stmts)

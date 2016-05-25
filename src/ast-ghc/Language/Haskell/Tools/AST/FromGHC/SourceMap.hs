@@ -20,6 +20,10 @@ getKeywordAnywhere keyw srcmap = return . uncurry mkSrcSpan =<< headMay . assocs
 getKeywordInside :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
 getKeywordInside keyw sr srcmap = getSourceElementInside True sr =<< Map.lookup keyw srcmap
 
+getKeywordsInside :: AnnKeywordId -> SrcSpan -> SourceMap -> [SrcSpan]
+getKeywordsInside keyw sr srcmap 
+  = maybe [] (List.map (uncurry mkSrcSpan) . assocs . fst . Map.split (srcSpanEnd sr) . snd . Map.split (srcSpanStart sr)) (Map.lookup keyw srcmap)
+
 getKeywordInsideBack :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
 getKeywordInsideBack keyw sr srcmap = getSourceElementInside False sr =<< Map.lookup keyw srcmap
 

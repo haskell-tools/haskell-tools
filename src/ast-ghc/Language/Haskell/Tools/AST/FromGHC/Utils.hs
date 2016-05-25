@@ -245,6 +245,9 @@ atTheEnd = asks (srcSpanEnd . contRange)
 tokenLoc :: AnnKeywordId -> Trf SrcSpan
 tokenLoc keyw = fromMaybe noSrcSpan <$> (getKeywordInside keyw <$> asks contRange <*> asks srcMap)
 
+allTokenLoc :: AnnKeywordId -> Trf [SrcSpan]
+allTokenLoc keyw = getKeywordsInside keyw <$> asks contRange <*> asks srcMap
+
 -- | Searches for a token backward inside the focus and retrieves its location
 tokenLocBack :: AnnKeywordId -> Trf SrcSpan
 tokenLocBack keyw = fromMaybe noSrcSpan <$> (getKeywordInsideBack keyw <$> asks contRange <*> asks srcMap)

@@ -103,7 +103,6 @@ deriving instance Eq (PatSynWhere a)
 deriving instance Eq (PatternTypeSignature a)
 deriving instance Eq (Role a)
 deriving instance Eq (Cmd a)
-deriving instance Eq (CmdStmt a)
 deriving instance Eq (LanguageExtension a)
 deriving instance Eq (MatchLhs a)
 
