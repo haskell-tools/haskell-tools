@@ -18,6 +18,8 @@ import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
+import Language.Haskell.Tools.Refactor.ASTDebug
+import Language.Haskell.Tools.Refactor.ASTDebug.Instances
 
 import GHC hiding (loadModule)
 import Panic (handleGhcException)
@@ -193,14 +195,11 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ templateDebug cutUp
-    liftIO $ putStrLn "=========== source map:"
-    let locIndices = getLocIndices cutUp
-        srcMap = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) locIndices
-    liftIO $ print (map (\(k,v) -> (shortShowSpan . fromOrdSrcSpan $ k, v)) (Map.assocs locIndices))
-    liftIO $ print srcMap
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced
+    liftIO $ putStrLn "=========== ast debug:"
+    liftIO $ putStrLn $ show (astDebug sourced)
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
