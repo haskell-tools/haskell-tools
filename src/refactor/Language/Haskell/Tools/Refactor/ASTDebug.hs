@@ -17,6 +17,7 @@ import Control.Reference
 import Control.Applicative
 import Data.Sequence as Seq
 import Data.Foldable
+import Data.Maybe
 import Data.List as List
 import SrcLoc
 
@@ -51,7 +52,7 @@ astDebug ast = toList (astDebugToJson (astDebug' ast))
 
 astDebugToJson :: HasRange a => [DebugNode a] -> Seq Char
 astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
-    where (treeNodes, otherNodes) = List.partition (\case TreeNode {} -> True; _ -> False) nodes
+    where treeNodes = List.filter (\case TreeNode {} -> True; _ -> False) nodes
           childrenJson = case map debugTreeNode treeNodes of 
                            first:rest -> first >< foldl (><) Seq.empty (fmap (fromList ", " ><) (fromList rest))
                            []         -> Seq.empty
@@ -61,10 +62,14 @@ astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
 astDebugElemJson :: HasRange a => TreeDebugNode a -> Seq Char
 astDebugElemJson (TreeDebugNode name info children) 
   = fromList "{ \"text\" : \"" >< fromList name 
-     >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \" " 
+     >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \"" 
      >< fromList (shortShowSpan (getRange info))
-     >< fromList " \" }, \"children\" : " 
+     >< fromList "\", \"data-elems\" : \"" 
+     >< foldl (><) Seq.empty dataElems
+     >< fromList "\" }, \"children\" : " 
      >< astDebugToJson children >< fromList " }"
+  where dataElems = catMaybes (map (\case SimpleNode l v -> Just (fromList (formatScalarElem l v)); _ -> Nothing) children)
+        formatScalarElem l v = "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ tail (init (show v)) ++ "</div>"
 
 class ASTDebug e a where
   astDebug' :: e a -> [DebugNode a]
