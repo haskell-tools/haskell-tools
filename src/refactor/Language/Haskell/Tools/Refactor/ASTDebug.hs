@@ -9,6 +9,7 @@
            , OverloadedStrings
            , LambdaCase
            , ViewPatterns
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.Refactor.ASTDebug where
 
@@ -20,6 +21,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.List as List
 import SrcLoc
+import Outputable
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -47,10 +49,10 @@ data TreeDebugNode a
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
-astDebug :: (HasRange a, ASTDebug e a) => e a -> String
+astDebug :: (Outputable n, HasRange a, ASTDebug e a, a ~ (NodeInfo (SemanticInfo n) src)) => e a -> String
 astDebug ast = toList (astDebugToJson (astDebug' ast))
 
-astDebugToJson :: HasRange a => [DebugNode a] -> Seq Char
+astDebugToJson :: (Outputable n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => [DebugNode a] -> Seq Char
 astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
     where treeNodes = List.filter (\case TreeNode {} -> True; _ -> False) nodes
           childrenJson = case map debugTreeNode treeNodes of 
@@ -59,13 +61,15 @@ astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
           debugTreeNode (TreeNode "" s) = astDebugElemJson s
           debugTreeNode (TreeNode (dropWhile (=='_') -> l) s) = astDebugElemJson (nodeName .- (("<span class='astlab'>" ++ l ++ "</span>: ") ++) $ s)
 
-astDebugElemJson :: HasRange a => TreeDebugNode a -> Seq Char
+astDebugElemJson :: (Outputable n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => TreeDebugNode a -> Seq Char
 astDebugElemJson (TreeDebugNode name info children) 
   = fromList "{ \"text\" : \"" >< fromList name 
      >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \"" 
      >< fromList (shortShowSpan (getRange info))
      >< fromList "\", \"data-elems\" : \"" 
      >< foldl (><) Seq.empty dataElems
+     >< fromList "\", \"data-sema\" : \"" 
+     >< fromList (tail $ init $ show $ show (info ^. semanticInfo))
      >< fromList "\" }, \"children\" : " 
      >< astDebugToJson children >< fromList " }"
   where dataElems = catMaybes (map (\case SimpleNode l v -> Just (fromList (formatScalarElem l v)); _ -> Nothing) children)
