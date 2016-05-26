@@ -8,6 +8,7 @@
            , TemplateHaskell
            , OverloadedStrings
            , LambdaCase
+           , ViewPatterns
            #-}
 module Language.Haskell.Tools.Refactor.ASTDebug where
 
@@ -24,11 +25,11 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.Refactor.RangeDebug
 
 
-
-
-data DebugNode a = TreeNode { _nodeSubtree :: TreeDebugNode a 
+data DebugNode a = TreeNode { _nodeLabel :: String
+                            , _nodeSubtree :: TreeDebugNode a 
                             }
                  | SimpleNode { _nodeLabel :: String
                               , _nodeValue :: String
@@ -45,19 +46,25 @@ data TreeDebugNode a
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
-astDebug :: ASTDebug e a => e a -> String
+astDebug :: (HasRange a, ASTDebug e a) => e a -> String
 astDebug ast = toList (astDebugToJson (astDebug' ast))
 
-astDebugToJson :: [DebugNode a] -> Seq Char
+astDebugToJson :: HasRange a => [DebugNode a] -> Seq Char
 astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
     where (treeNodes, otherNodes) = List.partition (\case TreeNode {} -> True; _ -> False) nodes
-          childrenJson = case map (astDebugElemJson . _nodeSubtree) treeNodes of 
+          childrenJson = case map debugTreeNode treeNodes of 
                            first:rest -> first >< foldl (><) Seq.empty (fmap (fromList ", " ><) (fromList rest))
                            []         -> Seq.empty
+          debugTreeNode (TreeNode "" s) = astDebugElemJson s
+          debugTreeNode (TreeNode (dropWhile (=='_') -> l) s) = astDebugElemJson (nodeName .- (("<span class='astlab'>" ++ l ++ "</span>: ") ++) $ s)
 
-astDebugElemJson :: TreeDebugNode a -> Seq Char
+astDebugElemJson :: HasRange a => TreeDebugNode a -> Seq Char
 astDebugElemJson (TreeDebugNode name info children) 
-  = fromList "{ \"text\" : \"" >< fromList name >< fromList "\", \"children\" : " >< astDebugToJson children >< fromList " }"
+  = fromList "{ \"text\" : \"" >< fromList name 
+     >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \" " 
+     >< fromList (shortShowSpan (getRange info))
+     >< fromList " \" }, \"children\" : " 
+     >< astDebugToJson children >< fromList " }"
 
 class ASTDebug e a where
   astDebug' :: e a -> [DebugNode a]
@@ -88,7 +95,7 @@ instance {-# OVERLAPPABLE #-} Show x => GAstDebug (K1 i x) a where
   gAstDebug (K1 x) = [SimpleNode "" (show x)]
         
 instance (GAstDebug f a, Constructor c) => GAstDebug (M1 C c f) a where
-  gAstDebug c@(M1 x) = [TreeNode (TreeDebugNode (conName c) undefined (gAstDebug x))]
+  gAstDebug c@(M1 x) = [TreeNode "" (TreeDebugNode (conName c) undefined (gAstDebug x))]
 
 instance (GAstDebug f a, Selector s) => GAstDebug (M1 S s f) a where
   gAstDebug s@(M1 x) = traversal&nodeLabel .= selName s $ gAstDebug x

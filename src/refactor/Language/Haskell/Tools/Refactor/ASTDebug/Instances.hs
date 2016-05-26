@@ -19,10 +19,10 @@ instance (ASTDebug e a, Show (e a)) => ASTDebug (Ann e) a where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= a $ astDebug' e
   
 instance (ASTDebug e a, Show (e a)) => ASTDebug (AnnList e) a where
-  astDebug' (AnnList a ls) = [TreeNode (TreeDebugNode "*" a (concatMap astDebug' ls))]
+  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" a (concatMap astDebug' ls))]
   
 instance (ASTDebug e a, Show (e a)) => ASTDebug (AnnMaybe e) a where
-  astDebug' (AnnMaybe a e) = [TreeNode (TreeDebugNode "?" a (maybe [] astDebug' e))]
+  astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" a (maybe [] astDebug' e))]
   
 -- Modules
 instance (Generic a, Show a) => ASTDebug Module a
