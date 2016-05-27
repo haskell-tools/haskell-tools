@@ -18,6 +18,8 @@ import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.Refactor.RangeDebug.Instances
+import Language.Haskell.Tools.Refactor.ASTDebug
+import Language.Haskell.Tools.Refactor.ASTDebug.Instances
 
 import GHC hiding (loadModule)
 import Panic (handleGhcException)
@@ -116,11 +118,31 @@ onlineRefactor command workingDir moduleStr
   where moduleName = "Test"
         fileName = workingDir </> (moduleName ++ ".hs")
 
+onlineASTView :: FilePath -> String -> IO (Either String String)
+onlineASTView workingDir moduleStr
+  = do withBinaryFile fileName WriteMode (`hPutStr` moduleStr)
+       modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
+       if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
+          | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
+          | xopt Opt_EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
+          | otherwise -> do 
+              res <- astView workingDir moduleName
+              removeFile fileName
+              return (Right res)
+  where moduleName = "Test"
+        fileName = workingDir </> (moduleName ++ ".hs")
+
+
 performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
     (mapRight prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact = performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command)
+
+astView :: String -> String -> IO String
+astView workingDir target = 
+  runGhc (Just libdir) $
+    (astDebug <$> (parseTyped =<< loadModule workingDir target))
 
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName 
@@ -193,14 +215,11 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ templateDebug cutUp
-    liftIO $ putStrLn "=========== source map:"
-    let locIndices = getLocIndices cutUp
-        srcMap = mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) locIndices
-    liftIO $ print (map (\(k,v) -> (shortShowSpan . fromOrdSrcSpan $ k, v)) (Map.assocs locIndices))
-    liftIO $ print srcMap
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced
+    liftIO $ putStrLn "=========== ast debug:"
+    liftIO $ putStrLn $ astDebug sourced
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted

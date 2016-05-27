@@ -22,6 +22,8 @@ library
                      , Language.Haskell.Tools.Refactor.ExtractBinding
                      , Language.Haskell.Tools.Refactor.RangeDebug
                      , Language.Haskell.Tools.Refactor.RangeDebug.Instances
+                     , Language.Haskell.Tools.Refactor.ASTDebug
+                     , Language.Haskell.Tools.Refactor.ASTDebug.Instances
                      , Language.Haskell.Tools.Refactor.DebugGhcAST
                      , Language.Haskell.Tools.Refactor.RefactorBase
   build-depends:       base                      >=4.8  && <4.9
