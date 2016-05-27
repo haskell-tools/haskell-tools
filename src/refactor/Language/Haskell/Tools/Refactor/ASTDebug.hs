@@ -23,6 +23,12 @@ import Data.List as List
 import SrcLoc
 import Outputable
 
+import DynFlags as GHC
+import Name as GHC
+import Id as GHC
+import RdrName as GHC
+import Unique as GHC
+
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
@@ -49,10 +55,10 @@ data TreeDebugNode a
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
-astDebug :: (Outputable n, HasRange a, ASTDebug e a, a ~ (NodeInfo (SemanticInfo n) src)) => e a -> String
+astDebug :: (InspectableName n, HasRange a, ASTDebug e a, a ~ (NodeInfo (SemanticInfo n) src)) => e a -> String
 astDebug ast = toList (astDebugToJson (astDebug' ast))
 
-astDebugToJson :: (Outputable n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => [DebugNode a] -> Seq Char
+astDebugToJson :: (InspectableName n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => [DebugNode a] -> Seq Char
 astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
     where treeNodes = List.filter (\case TreeNode {} -> True; _ -> False) nodes
           childrenJson = case map debugTreeNode treeNodes of 
@@ -61,7 +67,7 @@ astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
           debugTreeNode (TreeNode "" s) = astDebugElemJson s
           debugTreeNode (TreeNode (dropWhile (=='_') -> l) s) = astDebugElemJson (nodeName .- (("<span class='astlab'>" ++ l ++ "</span>: ") ++) $ s)
 
-astDebugElemJson :: (Outputable n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => TreeDebugNode a -> Seq Char
+astDebugElemJson :: (InspectableName n, HasRange a, a ~ (NodeInfo (SemanticInfo n) src)) => TreeDebugNode a -> Seq Char
 astDebugElemJson (TreeDebugNode name info children) 
   = fromList "{ \"text\" : \"" >< fromList name 
      >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \"" 
@@ -69,11 +75,51 @@ astDebugElemJson (TreeDebugNode name info children)
      >< fromList "\", \"data-elems\" : \"" 
      >< foldl (><) Seq.empty dataElems
      >< fromList "\", \"data-sema\" : \"" 
-     >< fromList (tail $ init $ show $ show (info ^. semanticInfo))
+     >< fromList (showSema (info ^. semanticInfo))
      >< fromList "\" }, \"children\" : " 
      >< astDebugToJson children >< fromList " }"
   where dataElems = catMaybes (map (\case SimpleNode l v -> Just (fromList (formatScalarElem l v)); _ -> Nothing) children)
         formatScalarElem l v = "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ tail (init (show v)) ++ "</div>"
+        showSema info = "<div class='semaname'>" ++ assocName info ++ "</div>" 
+                          ++ concatMap (\(l,i) -> "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ i ++ "</div>") (toAssoc info) 
+
+class AssocData a where
+  assocName :: a -> String
+  toAssoc :: a -> [(String, String)]
+
+instance InspectableName n => AssocData (SemanticInfo n) where
+  assocName NoSemanticInfo = "NoSemanticInfo"
+  assocName (ScopeInfo {}) = "ScopeInfo"
+  assocName (NameInfo {}) = "NameInfo"
+  assocName (ModuleInfo {}) = "ModuleInfo"
+  assocName (ImportInfo {}) = "ImportInfo"
+
+  toAssoc NoSemanticInfo = []
+  toAssoc (ScopeInfo locals) = [ ("namesInScope", inspectScope locals) ]
+  toAssoc (NameInfo locals defined nameInfo) = [ ("name", inspect nameInfo)
+                                               , ("isDefined", show defined)
+                                               , ("namesInScope", inspectScope locals) 
+                                               ]
+  toAssoc (ModuleInfo mod) = [("moduleName", showSDocUnsafe (ppr mod))]
+  toAssoc (ImportInfo mod avail imported) = [ ("moduleName", showSDocUnsafe (ppr mod)) 
+                                            , ("availableNames", concat (intersperse ", " (map inspect avail))) 
+                                            , ("importedNames", concat (intersperse ", " (map inspect imported))) 
+                                            ]
+
+inspectScope :: InspectableName n => [[n]] -> String
+inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)
+
+class InspectableName n where
+  inspect :: n -> String
+
+instance InspectableName GHC.Name where
+  inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "]"
+
+instance InspectableName GHC.RdrName where
+  inspect name = showSDocUnsafe (ppr name)
+
+instance InspectableName GHC.Id where
+  inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "] :: " ++ showSDocOneLine unsafeGlobalDynFlags (ppr (idType name))
 
 class ASTDebug e a where
   astDebug' :: e a -> [DebugNode a]
