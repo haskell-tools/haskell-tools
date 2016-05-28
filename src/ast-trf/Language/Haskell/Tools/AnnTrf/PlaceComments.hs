@@ -49,10 +49,10 @@ placeComments comms mod
   where sortedElemStarts = Set.fromList $ map srcSpanStart (allElemSpans mod)
         sortedElemEnds = Set.fromList $ map srcSpanEnd (allElemSpans mod)
         nextSrcLoc comm@(L sp _) 
-          = let after = case Set.lookupLE (srcSpanEnd sp) sortedElemEnds of Just x  -> x
-                                                                            Nothing -> noSrcLoc
-                before = case Set.lookupGE (srcSpanStart sp) sortedElemStarts of Just x  -> x
-                                                                                 Nothing -> noSrcLoc
+          = let after = case Set.lookupLE (srcSpanStart sp) sortedElemEnds of Just x  -> x
+                                                                              Nothing -> noSrcLoc
+                before = case Set.lookupGE (srcSpanEnd sp) sortedElemStarts of Just x  -> x
+                                                                               Nothing -> noSrcLoc
              in ((after,before),comm)
   
 allElemSpans :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) -> [SrcSpan]
@@ -67,14 +67,15 @@ resizeAnnots comments elem
   = flip evalState comments $ 
         -- if a comment that could be attached to more than one documentable element (possibly nested) 
         -- the order of different documentable elements here decide which will be chosen
-        transformBiM (expandAnnot :: ExpandType Module sema)
-          >=> transformBiM (expandAnnot :: ExpandType ImportDecl sema)
+        
+        transformBiM (expandAnnot :: ExpandType ImportDecl sema)
           >=> transformBiM (expandAnnotToFunArgs :: ExpandType TypeSignature sema)
           >=> transformBiM (expandAnnot :: ExpandType Decl sema)
           >=> transformBiM (expandAnnot :: ExpandType ClassElement sema)
           >=> transformBiM (expandAnnot :: ExpandType ConDecl sema)
           >=> transformBiM (expandAnnot :: ExpandType FieldDecl sema)
           >=> transformBiM (expandAnnot :: ExpandType LocalBind sema)
+          >=> transformBiM (expandAnnot :: ExpandType Module sema)
       $ elem
 
 type ExpandType elem sema = Ann elem (NodeInfo sema SpanInfo) 
@@ -85,6 +86,7 @@ expandAnnot :: forall elem sema . ExpandType elem sema
 expandAnnot elem
   = do let Just sp = elem ^? annotation&sourceInfo&nodeSpan
        applicable <- gets (applicableComments (srcSpanStart sp) (srcSpanEnd sp))
+       
        -- this check is just for performance (quick return if no modification is needed)
        if not (null applicable) then do
          -- the new span is the original plus all the covered spans

@@ -218,8 +218,6 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ sourceTemplateDebug sourced
-    liftIO $ putStrLn "=========== ast debug:"
-    liftIO $ putStrLn $ astDebug sourced
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
