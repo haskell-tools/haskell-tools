@@ -40,13 +40,13 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
                                 ++ map makeCpphsTest cppHsTests
                                 ++ map makeInstanceControlTest instanceControlTests
-                               -- ++ map makeOrganizeImportsTest organizeImportTests
-                               -- ++ map makeGenerateSignatureTest generateSignatureTests
-                               -- ++ map makeGenerateExportsTest generateExportsTests
-                               -- ++ map makeRenameDefinitionTest renameDefinitionTests
-                               -- ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-                               -- ++ map makeExtractBindingTest extractBindingTests
-                               -- ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+                                ++ map makeOrganizeImportsTest organizeImportTests
+                                ++ map makeGenerateSignatureTest generateSignatureTests
+                                ++ map makeGenerateExportsTest generateExportsTests
+                                ++ map makeRenameDefinitionTest renameDefinitionTests
+                                ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                                ++ map makeExtractBindingTest extractBindingTests
+                                ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
   [ "Decl.ClosedTypeFamily"
