@@ -31,14 +31,14 @@ trfDoStmt' :: TransformName n r => Stmt n (Located (HsExpr n)) -> Trf (AST.Stmt'
 trfDoStmt' = gTrfDoStmt' trfExpr'
 
 gTrfDoStmt' :: TransformName n r => (ge n -> Trf (ae r)) -> Stmt n (Located (ge n)) -> Trf (AST.Stmt' ae r)
-gTrfDoStmt' et (BindStmt pat expr _ _) = AST.BindStmt <$> trfPattern pat <*> (trfLoc et) expr
+gTrfDoStmt' et (BindStmt pat expr _ _ _) = AST.BindStmt <$> trfPattern pat <*> (trfLoc et) expr
 gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.ExprStmt <$> annCont (et (unLoc expr))
-gTrfDoStmt' et (LetStmt binds) = AST.LetStmt <$> addToScope binds (trfLocalBinds binds)
-gTrfDoStmt' et (LastStmt body _) = AST.ExprStmt <$> annCont (et (unLoc body))
+gTrfDoStmt' et (LetStmt (unLoc -> binds)) = AST.LetStmt <$> addToScope binds (trfLocalBinds binds)
+gTrfDoStmt' et (LastStmt body _ _) = AST.ExprStmt <$> annCont (et (unLoc body))
 gTrfDoStmt' et (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," (gTrfDoStmt' et) stmts
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody r)
-trfListCompStmts [unLoc -> ParStmt blocks _ _, unLoc -> (LastStmt {})]
+trfListCompStmts [unLoc -> ParStmt blocks _ _ _, unLoc -> (LastStmt {})]
   = nonemptyAnnList
       <$> trfScopedSequence (\(ParStmtBlock stmts _ _) -> 
                                 let ann = toNodeAnnot $ collectLocs $ getNormalStmts stmts
@@ -56,7 +56,7 @@ trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts }))
   = (++) <$> (concat <$> local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) (srcSpanEnd (getLoc (last stmts))) }) (trfScopedSequence trfListCompStmt stmts)) 
          <*> ((:[]) <$> extractActualStmt trst)
 -- last statement is extracted
-trfListCompStmt (unLoc -> LastStmt _ _) = pure []
+trfListCompStmt (unLoc -> LastStmt _ _ _) = pure []
 trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
   
 extractActualStmt :: TransformName n r => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt r)
@@ -70,11 +70,11 @@ extractActualStmt = \case
                       <$> tokenLocBack AnnThen)
   
 getNormalStmts :: [Located (Stmt n (LHsExpr n))] -> [Located (Stmt n (LHsExpr n))]
-getNormalStmts (L _ (LastStmt body _) : rest) = getNormalStmts rest
+getNormalStmts (L _ (LastStmt body _ _) : rest) = getNormalStmts rest
 getNormalStmts (stmt : rest) = stmt : getNormalStmts rest 
 getNormalStmts [] = []
  
 getLastStmt :: [Located (Stmt n (LHsExpr n))] -> Located (HsExpr n)
-getLastStmt (L _ (LastStmt body _) : rest) = body
+getLastStmt (L _ (LastStmt body _ _) : rest) = body
 getLastStmt (_ : rest) = getLastStmt rest
   

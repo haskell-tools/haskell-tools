@@ -19,17 +19,17 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 
 import qualified Language.Haskell.Tools.AST as AST
 
-trfQuasiQuotation' :: TransformName n r => HsQuasiQuote n -> Trf (AST.QuasiQuote r)
+--trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.QuasiQuote r)
 -- the lexer does not provide us with tokens '[', '|' and '|]'
-trfQuasiQuotation' (HsQuasiQuote id l str) 
-  = AST.QuasiQuote <$> annLoc (pure quoterLoc) (trfName' id)
-                   <*> annLoc (pure strLoc) (pure $ AST.QQString (unpackFS str))
-  where quoterLoc = mkSrcSpan (updateCol (subtract (1 + length (occNameString $ rdrNameOcc $ rdrName id))) (srcSpanStart l)) 
-                              (updateCol (subtract 1) (srcSpanStart l))
-        strLoc = mkSrcSpan (srcSpanStart l) (updateCol (subtract 2) (srcSpanEnd l))
+--trfQuasiQuotation' (HsQuasiQuote id l str) 
+--  = AST.QuasiQuote <$> annLoc (pure quoterLoc) (trfName' id)
+--                   <*> annLoc (pure strLoc) (pure $ AST.QQString (unpackFS str))
+--  where quoterLoc = mkSrcSpan (updateCol (subtract (1 + length (occNameString $ rdrNameOcc $ rdrName id))) (srcSpanStart l)) 
+--                              (updateCol (subtract 1) (srcSpanStart l))
+--        strLoc = mkSrcSpan (srcSpanStart l) (updateCol (subtract 2) (srcSpanEnd l))
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice r)
-trfSplice' (HsSplice _ expr) = AST.ParenSplice <$> trfExpr expr
+trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket r)
 trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr

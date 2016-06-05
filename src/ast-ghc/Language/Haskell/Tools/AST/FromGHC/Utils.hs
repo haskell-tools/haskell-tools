@@ -5,6 +5,7 @@
            , ViewPatterns
            , MultiParamTypeClasses
            , FlexibleContexts
+           , AllowAmbiguousTypes
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
@@ -304,5 +305,6 @@ orderAnnList (AnnList a ls) = AnnList a (orderDefs ls)
 trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]
 trfScopedSequence f (def:rest) = (:) <$> f def <*> addToScope def (trfScopedSequence f rest)
 trfScopedSequence f [] = pure []
+
 
                 

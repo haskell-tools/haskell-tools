@@ -65,7 +65,7 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
               Just (AnId id) -> do modify (universeBi (varType id) ++)
                                    return (Just id)
               Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
-              Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (patSynType ps)
+              Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (createPatSynType ps)
               Just (ATyCon tc) -> do modify (tyConTyVars tc ++)
                                      return $ Just $ mkVanillaGlobal name (tyConKind tc)
               Nothing -> case Map.lookup name mapping of 
@@ -75,6 +75,7 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
                            -- this is not a problem, because every time the closest name will be added
                            Nothing -> gets (find (\v -> nameOccName (GHC.varName v) == nameOccName name))
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
+        createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
 extractTypes :: LHsBinds Id -> [Id]
 extractTypes = concatMap universeBi . bagToList
@@ -169,7 +170,7 @@ trfImport = (addImportData (SemanticsPhantom :: SemanticsPhantom n) <=<) $ trfLo
        <*> (if isSafe then makeJust <$> (annLoc (tokenLoc AnnSafe) (pure AST.ImportSafe)) 
                       else nothing " " "" (after annBeforeSafe))
        <*> maybe (nothing " " "" (after annBeforePkg)) 
-                 (\str -> makeJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS str))))) pkg
+                 (\str -> makeJust <$> (annLoc (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS $ sl_fs str))))) pkg
        <*> trfModuleName name 
        <*> maybe (nothing " " "" atAsPos) (\mn -> makeJust <$> (trfRenaming mn)) declAs
        <*> trfImportSpecs declHiding
@@ -193,7 +194,7 @@ trfIESpec' (IEVar n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing "(" ")" a
 trfIESpec' (IEThingAbs n) = Just <$> (AST.IESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n) 
   = Just <$> (AST.IESpec <$> trfName n <*> (makeJust <$> (annLoc (tokenLoc AnnDotdot) (pure AST.SubSpecAll))))
-trfIESpec' (IEThingWith n ls)
+trfIESpec' (IEThingWith n _ ls _)
   = Just <$> (AST.IESpec <$> trfName n
                          <*> (makeJust <$> between AnnOpenP AnnCloseP 
                                                   (annCont $ AST.SubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfName ls))))

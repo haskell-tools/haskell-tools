@@ -60,6 +60,8 @@ import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
+
+import Language.Haskell.TH.LanguageExtensions
  
 import DynFlags
 import StringBuffer            
@@ -108,9 +110,9 @@ onlineRefactor :: String -> FilePath -> String -> IO (Either String String)
 onlineRefactor command workingDir moduleStr
   = do withBinaryFile fileName WriteMode (`hPutStr` moduleStr)
        modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
-       if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
-          | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
-          | xopt Opt_EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
+       if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
+          | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
+          | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
           | otherwise -> do 
               res <- performRefactor command workingDir moduleName
               removeFile fileName
@@ -122,9 +124,9 @@ onlineASTView :: FilePath -> String -> IO (Either String String)
 onlineASTView workingDir moduleStr
   = do withBinaryFile fileName WriteMode (`hPutStr` moduleStr)
        modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
-       if | xopt Opt_Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
-          | xopt Opt_TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
-          | xopt Opt_EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
+       if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
+          | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
+          | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
           | otherwise -> do 
               res <- astView workingDir moduleName
               removeFile fileName

@@ -104,7 +104,7 @@ generateTypeFor prec t
   = mkTyVar <$> referenceName tv
   -- forall type
   | (tvs@(_:_), t') <- splitForAllTys t
-  = wrapParen (-1) <$> (mkTyForall (mkTypeVarList (map getName tvs)) noth <$> generateTypeFor 0 t')
+  = wrapParen (-1) <$> (mkTyForall (mkTypeVarList (map getName tvs)) <$> generateTypeFor 0 t')
   | otherwise = error ("Cannot represent type: " ++ showSDocUnsafe (ppr t))
   where wrapParen :: Int -> Ann AST.Type STWithId -> Ann AST.Type STWithId
         wrapParen prec' node = if prec' < prec then mkTyParen node else node

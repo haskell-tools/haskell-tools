@@ -15,8 +15,8 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 -- * Generation of types
 
-mkTyForall :: TemplateAnnot a => AnnList TyVar a -> AnnMaybe Context a -> Ann Type a -> Ann Type a
-mkTyForall vars ctx t = mkAnn ("forall " <> child <> " ." <> child <> " " <> child) (TyForall vars ctx t)
+mkTyForall :: TemplateAnnot a => AnnList TyVar a -> Ann Type a -> Ann Type a
+mkTyForall vars t = mkAnn ("forall " <> child <> " ." <> child <> " " <> child) (TyForall vars t)
 
 mkTypeVarList :: TemplateAnnot a => [GHC.Name] -> AnnList TyVar a
 mkTypeVarList ls = mkAnnList (listSep " ") (map (mkTypeVar . mkUnqualName') ls)

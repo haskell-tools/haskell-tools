@@ -7,6 +7,7 @@
            , ScopedTypeVariables
            , MultiParamTypeClasses
            , UndecidableInstances
+           , AllowAmbiguousTypes
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
@@ -57,30 +58,19 @@ trfName' n
   | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
-class OutputableBndr name => GHCName name where 
-  rdrName :: name -> RdrName
-  getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
-  correctNameString :: name -> Trf String
-  nameFromId :: Id -> name
-  
-instance GHCName RdrName where
-  rdrName = id
-  getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
-  correctNameString = pure . rdrNameStr
-  nameFromId = nameRdrName . getName
+class GHCName n => TransformableName n where
+  correctNameString :: n -> Trf String
 
-occName :: GHCName n => n -> OccName
-occName = rdrNameOcc . rdrName 
-    
-instance GHCName GHC.Name where
-  rdrName = nameRdrName
-  getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
+instance TransformableName RdrName where
+  correctNameString = pure . rdrNameStr
+
+instance TransformableName GHC.Name where
   correctNameString n = getOriginalName (rdrName n)
-  nameFromId = getName
-  
+
+
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, GHCName name, HsHasName name) 
+class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, TransformableName name, HsHasName name) 
         => TransformName name res where
 instance TransformName RdrName AST.RangeInfo where
 instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
@@ -164,12 +154,12 @@ trfOverlap = trfLoc $ pure . \case
 trfRole :: RangeAnnot a => Located (Maybe Role) -> Trf (Ann AST.Role a)
 trfRole = trfLoc $ \case Just Nominal -> pure AST.Nominal
                          Just Representational -> pure AST.Representational
-                         Just Phantom -> pure AST.Phantom
+                         Just GHC.Phantom -> pure AST.Phantom
          
 trfPhase :: RangeAnnot a => Activation -> Trf (AnnMaybe AST.PhaseControl a)
 trfPhase AlwaysActive = nothing "" "" atTheEnd
-trfPhase (ActiveAfter pn) = makeJust <$> annCont (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
-trfPhase (ActiveBefore pn) = makeJust <$> annCont (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+trfPhase (ActiveAfter _ pn) = makeJust <$> annCont (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase (ActiveBefore _ pn) = makeJust <$> annCont (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
 
 trfPhaseNum :: RangeAnnot a => PhaseNum -> Trf (Ann AST.PhaseNumber a)
 trfPhaseNum i = annLoc (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 
