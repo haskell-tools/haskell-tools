@@ -5,6 +5,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
+import Data.Data (toConstr)
 import Control.Monad.Reader
 import Control.Reference
 
@@ -18,6 +19,7 @@ import HsLit as GHC
 import BasicTypes as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
+import Outputable as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -127,10 +129,11 @@ trfExpr' (PArrSeq _ (FromThenTo from step to))
 trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsRnBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
 trfExpr' (HsTcBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
+trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
 trfExpr' (HsSpliceE splice) = AST.Splice <$> annCont (trfSplice' splice)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
 trfExpr' (HsStatic expr) = AST.StaticPtr <$> trfExpr expr
--- TODO: static
+trfType'' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate r)
 trfFieldInits (HsRecFields fields dotdot) 

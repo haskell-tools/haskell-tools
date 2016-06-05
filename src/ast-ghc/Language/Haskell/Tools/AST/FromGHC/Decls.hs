@@ -21,6 +21,7 @@ import Outputable as GHC
 import Control.Monad.Reader
 import Control.Reference
 import Data.Maybe
+import Data.Data (toConstr)
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
@@ -171,17 +172,19 @@ makeInstanceRuleTyVars n vars = annCont
                                (hsib_body vars)
 
 trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead r)
-trfInstanceHead = trfLoc (trfInstanceHead' . cleanHsType)
+trfInstanceHead = trfLoc trfInstanceHead'
 
 trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead r)
-trfInstanceHead' (HsForAllTy [] (unLoc -> t)) = trfInstanceHead' t
-trfInstanceHead' (HsTyVar tv) = AST.InstanceHeadCon <$> trfName tv
-trfInstanceHead' (HsAppTy t1 t2) = AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
-trfInstanceHead' (HsParTy typ) = AST.InstanceHeadParen <$> trfInstanceHead typ
-trfInstanceHead' (HsOpTy t1 op t2) 
-  = AST.InstanceHeadApp <$> (annLoc (pure $ combineSrcSpans (getLoc t1) (getLoc op))
-                                    (AST.InstanceHeadInfix <$> trfType t1 <*> trfName op)) 
-                        <*> trfType t2
+trfInstanceHead' = trfInstanceHead'' . cleanHsType where
+  trfInstanceHead'' (HsForAllTy [] (unLoc -> t)) = trfInstanceHead' t
+  trfInstanceHead'' (HsTyVar tv) = AST.InstanceHeadCon <$> trfName tv
+  trfInstanceHead'' (HsAppTy t1 t2) = AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2
+  trfInstanceHead'' (HsParTy typ) = AST.InstanceHeadParen <$> trfInstanceHead typ
+  trfInstanceHead'' (HsOpTy t1 op t2) 
+    = AST.InstanceHeadApp <$> (annLoc (pure $ combineSrcSpans (getLoc t1) (getLoc op))
+                                      (AST.InstanceHeadInfix <$> trfType t1 <*> trfName op)) 
+                          <*> trfType t2
+  trfInstanceHead'' t = error ("Illegal instance head: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
  
 trfTypeEqs :: TransformName n r => Maybe [Located (TyFamInstEqn n)] -> Trf (AnnList AST.TypeEqn r)
 trfTypeEqs Nothing = makeList "\n" (after AnnWhere) (pure [])
@@ -257,14 +260,7 @@ trfClassElemSig = trfLoc $ \case
   ClassOpSig True [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType (hsib_body typ)
   ClassOpSig False names typ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                            <*> trfType (hsib_body typ))
-  PatSynSig _ _ -> error "PatSynSig"
-  --ClassOpSig True _ _ -> error "ClassOpSig (default signature)"
-  --IdSig {} -> error "IdSig"
-  --FixSig {} -> error "FixSig"
-  --InlineSig {} -> error "INLINE pragma"
-  --SpecSig {} -> error "SPECIALISE pragma"
-  --SpecInstSig {} -> error "SPECIALISE instance pragma"
-  --MinimalSig {} -> error "MINIMAL pragma"
+  s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
 trfTypeFam = trfLoc $ \case
@@ -298,6 +294,9 @@ trfClassInstSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.InstBody
 trfClassInstSig = trfLoc $ \case
   TypeSig names typ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) 
                                            <*> trfType (hswc_body $ hsib_body typ))
+  ClassOpSig _ names typ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
+                                                <*> trfType (hsib_body typ))
+  s -> error ("Illegal class instance signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
           
 trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl r)
 trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.InstBodyTypeDecl (trfTypeEq eqn)

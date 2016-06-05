@@ -2,6 +2,7 @@
            , TypeSynonymInstances
            , FlexibleInstances
            , ScopedTypeVariables
+           , ViewPatterns
            #-}
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
@@ -171,9 +172,11 @@ rdrNameStr :: RdrName -> String
 rdrNameStr name = showSDocUnsafe $ ppr name
 
 
-cleanHsType :: HsType n -> HsType n
+cleanHsType :: OutputableBndr n => HsType n -> HsType n
 cleanHsType (HsAppsTy apps) 
   | Just (head, args) <- getAppsTyHead_maybe apps 
   = foldl (\core t -> HsAppTy (L (getLoc head `combineSrcSpans` getLoc t) core) t) (unLoc head) args
-cleanHsType (HsAppsTy apps) = error "HsAppsTy cannot be cleaned"
+cleanHsType (HsAppsTy [unLoc -> HsAppPrefix t]) = unLoc t
+cleanHsType (HsAppsTy [unLoc -> HsAppInfix n]) = HsTyVar n
+cleanHsType (HsAppsTy apps) = error ("HsAppsTy cannot be cleaned: " ++ showSDocUnsafe (ppr apps))
 cleanHsType t = t

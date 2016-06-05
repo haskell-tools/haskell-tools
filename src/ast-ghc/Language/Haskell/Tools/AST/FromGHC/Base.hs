@@ -32,6 +32,7 @@ import ApiAnnotation as GHC
 import ForeignCall as GHC
 import CoAxiom as GHC
 import Bag as GHC
+import Data.Data (Data)
 
 import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..), SemanticInfo(..), annotation, semanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
@@ -58,7 +59,7 @@ trfName' n
   | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
-class GHCName n => TransformableName n where
+class (DataId n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
 
 instance TransformableName RdrName where

@@ -19,6 +19,7 @@ import Control.Monad.Reader.Class
 import Control.Applicative
 import Control.Reference
 import Data.Maybe
+import Data.Data (Data(..), toConstr)
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
@@ -49,25 +50,17 @@ trfType' = trfType'' . cleanHsType where
   trfType'' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
   trfType'' (HsTupleTy HsBoxedOrConstraintTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
   trfType'' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
-  trfType'' (HsTupleTy HsConstraintTuple typs) = error "HsTupleTy HsConstraintTuple"
   trfType'' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList ", " trfType' typs
   trfType'' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfOperator op <*> trfType t2
   trfType'' (HsParTy typ) = AST.TyParen <$> trfType typ
-  trfType'' (HsIParamTy _ _) = error "HsIParamType"
-  trfType'' (HsEqTy _ _) = error "HsEqTy"
   trfType'' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
   trfType'' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
-  trfType'' (HsDocTy _ _) = error "HsDocTy"
   trfType'' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
-  trfType'' (HsRecTy _) = error "HsRecTy"
-  trfType'' (HsCoreTy _) = error "HsCoreTy"
   trfType'' pt@(HsExplicitListTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
   trfType'' pt@(HsExplicitTupleTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
   trfType'' pt@(HsTyLit {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
-  -- HsRecTy only appears as part of GADT constructor declarations, so it is omitted
-  trfType'' (HsWildCardTy _) = pure AST.TyWildcard
-  --trfType' (HsNamedWildCardTy name) = AST.TyNamedWildc <$> annCont (define (trfName' name))
-  -- must be a promoted type
+  trfType'' (HsWildCardTy _) = pure AST.TyWildcard -- TODO: named wildcards
+  trfType'' t = error ("Illegal type: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
 trfBindings vars = trfAnnList "\n" trfTyVar' vars
@@ -95,11 +88,14 @@ trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
 trfAssertion = trfLoc trfAssertion'
 
 trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
+trfAssertion' (cleanHsType -> HsParTy t) 
+  = trfAssertion' (unLoc t)
 trfAssertion' (cleanHsType -> HsOpTy left op right) 
   = AST.InfixAssert <$> trfType left <*> trfOperator op <*> trfType right
-trfAssertion' (cleanHsType -> t) = case base of
+trfAssertion' (cleanHsType -> t) = case cleanHsType base of
    HsTyVar name -> AST.ClassAssert <$> trfName name <*> trfAnnList " " trfType' args
    HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLoc (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
+   t -> error ("Illegal trf assertion: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)

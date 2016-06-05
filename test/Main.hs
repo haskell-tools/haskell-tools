@@ -38,15 +38,15 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
                                                      ++ map (\(mod,_,_) -> mod) extractBindingTests
                                                      ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
-                               ++ map makeCpphsTest cppHsTests
-                               ++ map makeInstanceControlTest instanceControlTests
-                               ++ map makeOrganizeImportsTest organizeImportTests
-                               ++ map makeGenerateSignatureTest generateSignatureTests
-                               ++ map makeGenerateExportsTest generateExportsTests
-                               ++ map makeRenameDefinitionTest renameDefinitionTests
-                               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-                               ++ map makeExtractBindingTest extractBindingTests
-                               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+                               -- ++ map makeCpphsTest cppHsTests
+                               -- ++ map makeInstanceControlTest instanceControlTests
+                               -- ++ map makeOrganizeImportsTest organizeImportTests
+                               -- ++ map makeGenerateSignatureTest generateSignatureTests
+                               -- ++ map makeGenerateExportsTest generateExportsTests
+                               -- ++ map makeRenameDefinitionTest renameDefinitionTests
+                               -- ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                               -- ++ map makeExtractBindingTest extractBindingTests
+                               -- ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
   [ "Decl.ClosedTypeFamily"
@@ -101,8 +101,8 @@ languageTests =
   , "Pattern.Infix"
   , "Pattern.NPlusK"
   , "Pattern.Record"
-  , "TH.QuasiQuote.Use"
-  , "TH.Brackets"
+  --, "TH.QuasiQuote.Use"
+  --, "TH.Brackets"
   , "Type.Bang"
   , "Type.Builtin"
   , "Type.Ctx"
