@@ -21,6 +21,8 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..))
 import qualified Language.Haskell.Tools.AST as AST
 
+import Debug.Trace
+
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
 trfKindSig = trfMaybe "" "" (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
                                              (fmap AST.KindConstraint $ trfLoc trfKind' k))
@@ -43,8 +45,11 @@ trfKind' (HsFunTy k1 k2) = AST.KindFn <$> trfKind k1 <*> trfKind k2
 trfKind' (HsAppTy k1 k2) = AST.KindApp <$> trfKind k1 <*> trfKind k2
 trfKind' (HsTyVar kv) = AST.KindVar <$> define (trfName kv)
 trfKind' (HsListTy kind) = AST.KindList <$> trfKind kind
--- otherwise it must be promoted
-trfKind' k = AST.KindPromoted <$> annCont (trfPromoted' trfKind' k)
+trfKind' (HsAppsTy [unLoc -> HsAppPrefix t]) = trfKind' (unLoc t)
+trfKind' (HsAppsTy [unLoc -> HsAppInfix n]) = AST.KindVar <$> trfName n
+trfKind' pt@(HsExplicitListTy {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
+trfKind' pt@(HsExplicitTupleTy {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
+trfKind' pt@(HsTyLit {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
 
 trfPromoted' :: TransformName n r => (HsType n -> Trf (a r)) -> HsType n -> Trf (AST.Promoted a r)
 trfPromoted' f (HsTyLit (HsNumTy _ int)) = pure $ AST.PromotedInt int

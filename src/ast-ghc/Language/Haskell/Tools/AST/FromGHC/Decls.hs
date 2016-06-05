@@ -70,7 +70,7 @@ trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl OpenTypeFamily name tyVars kindSig _)) 
     -> AST.TypeFamilyDecl <$> (annCont $ AST.TypeFamily <$> createDeclHead name tyVars <*> trfFamilyResultSig kindSig)
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _)) 
-    -> AST.ClosedTypeFamilyDecl <$> between AnnType AnnWhere (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig <*> trfTypeEqs typeEqs
+    -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig <*> trfTypeEqs typeEqs
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> between AnnType AnnEqual (createDeclHead name vars) <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _ _) 
