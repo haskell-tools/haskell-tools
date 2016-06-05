@@ -175,4 +175,5 @@ cleanHsType :: HsType n -> HsType n
 cleanHsType (HsAppsTy apps) 
   | Just (head, args) <- getAppsTyHead_maybe apps 
   = foldl (\core t -> HsAppTy (L (getLoc head `combineSrcSpans` getLoc t) core) t) (unLoc head) args
+cleanHsType (HsAppsTy apps) = error "HsAppsTy cannot be cleaned"
 cleanHsType t = t

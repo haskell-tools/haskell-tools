@@ -47,6 +47,7 @@ addScopeInfo _ expr = do scope <- asks localsInScope
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> trfName name
+trfExpr' (HsRecFld fld) = AST.Var <$> annCont (trfName' $ getAmbiguousFieldName' fld)
 trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.NormalName <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip)))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)

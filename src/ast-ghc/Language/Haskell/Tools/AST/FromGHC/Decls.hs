@@ -171,7 +171,7 @@ makeInstanceRuleTyVars n vars = annCont
                                (hsib_body vars)
 
 trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead r)
-trfInstanceHead = trfLoc trfInstanceHead'
+trfInstanceHead = trfLoc (trfInstanceHead' . cleanHsType)
 
 trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead r)
 trfInstanceHead' (HsForAllTy [] (unLoc -> t)) = trfInstanceHead' t
@@ -332,7 +332,7 @@ trfPatternSynonym (PSB id _ (PrefixPatSyn args) def dir)
         trfPatSynWhere (MG { mg_alts = alts }) = annLoc (pure $ getLoc alts) (AST.PatSynWhere <$> makeIndentedList (after AnnWhere) (mapM (trfMatch (unLoc id)) (unLoc alts)))
 
 trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybe AST.KindConstraint r)
-trfFamilyResultSig (L l fr) = case fr of
-  NoSig -> nothing "" " " (pure $ srcSpanEnd l)
+trfFamilyResultSig (unLoc -> fr) = case fr of
+  NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
-  TyVarSig _ -> nothing "" " " (pure $ srcSpanEnd l)
+  TyVarSig _ -> nothing "" " " atTheEnd
