@@ -25,14 +25,14 @@ import Debug.Trace
 
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
 trfKindSig = trfMaybe "" "" (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
-                                             (fmap AST.KindConstraint $ trfLoc trfKind' k))
+                                             (fmap AST.KindConstraint $ trfLoc (trfKind' . cleanHsType) k))
 
 trfKindSig' :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.KindConstraint r)
 trfKindSig' k = annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
                        (AST.KindConstraint <$> trfLoc trfKind' k)
 
 trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind r)
-trfKind = trfLoc trfKind'
+trfKind = trfLoc (trfKind' . cleanHsType)
 
 trfKind' :: TransformName n r => HsKind n -> Trf (AST.Kind r)
 trfKind' (HsTyVar (rdrName . unLoc -> Exact n)) 

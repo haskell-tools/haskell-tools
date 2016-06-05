@@ -144,18 +144,23 @@ trfDerivings = trfLoc $ \case
   derivs -> AST.Derivings <$> trfAnnList ", " trfInstanceHead' (map hsib_body derivs)
   
 trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceRule r)
-trfInstanceRule = trfLoc $ \case
-    (HsForAllTy bndrs (unLoc -> HsQualTy ctx typ)) 
-      -> AST.InstanceRule <$> (makeJust <$> annLoc (pure $ collectLocs bndrs) (trfBindings bndrs)) 
-                          <*> trfCtx (after AnnDot) ctx
-                          <*> trfInstanceHead typ
-    (HsQualTy ctx typ) -> AST.InstanceRule <$> nothing "" " . " atTheStart 
-                                           <*> trfCtx atTheStart ctx
-                                           <*> trfInstanceHead typ
-    HsParTy typ -> AST.InstanceParen <$> trfInstanceRule typ
-    HsTyVar tv -> instanceHead $ annCont (AST.InstanceHeadCon <$> trfName tv)
-    HsAppTy t1 t2 -> instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
-  where instanceHead hd = AST.InstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
+trfInstanceRule = trfLoc (trfInstanceRule' . cleanHsType)
+
+trfInstanceRule' :: TransformName n r => HsType n -> Trf (AST.InstanceRule r)
+trfInstanceRule' (HsForAllTy bndrs (unLoc -> HsQualTy ctx typ))
+  = AST.InstanceRule <$> (makeJust <$> annLoc (pure $ collectLocs bndrs) (trfBindings bndrs)) 
+                     <*> trfCtx (after AnnDot) ctx
+                     <*> trfInstanceHead typ
+trfInstanceRule' (HsQualTy ctx typ) = AST.InstanceRule <$> nothing "" " . " atTheStart 
+                                                       <*> trfCtx atTheStart ctx
+                                                       <*> trfInstanceHead typ
+trfInstanceRule' (HsParTy typ) = AST.InstanceParen <$> trfInstanceRule typ
+trfInstanceRule' (HsTyVar tv) = instanceHead $ annCont (AST.InstanceHeadCon <$> trfName tv)
+trfInstanceRule' (HsAppTy t1 t2) = instanceHead $ annCont (AST.InstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
+trfInstanceRule' t = error (showSDocUnsafe $ ppr t)
+
+instanceHead :: RangeAnnot r => Trf (Ann AST.InstanceHead r) -> Trf (AST.InstanceRule r)
+instanceHead hd = AST.InstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
                             
 makeInstanceRuleTyVars :: TransformName n r => Located n -> HsImplicitBndrs n [LHsType n] -> Trf (Ann AST.InstanceRule r)
 makeInstanceRuleTyVars n vars = annCont
@@ -250,6 +255,16 @@ trfClassElemSig = trfLoc $ \case
   TypeSig names typ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                   <*> trfType (hswc_body $ hsib_body typ))
   ClassOpSig True [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType (hsib_body typ)
+  ClassOpSig False names typ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
+                                           <*> trfType (hsib_body typ))
+  PatSynSig _ _ -> error "PatSynSig"
+  --ClassOpSig True _ _ -> error "ClassOpSig (default signature)"
+  --IdSig {} -> error "IdSig"
+  --FixSig {} -> error "FixSig"
+  --InlineSig {} -> error "INLINE pragma"
+  --SpecSig {} -> error "SPECIALISE pragma"
+  --SpecInstSig {} -> error "SPECIALISE instance pragma"
+  --MinimalSig {} -> error "MINIMAL pragma"
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
 trfTypeFam = trfLoc $ \case

@@ -31,7 +31,7 @@ import Language.Haskell.Tools.AST.FromGHC.Literals
 import Language.Haskell.Tools.AST as AST
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
-trfType = trfLoc trfType'
+trfType = trfLoc (trfType' . cleanHsType)
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
 trfType' (HsForAllTy [] typ) = trfType' (unLoc typ)
@@ -40,8 +40,8 @@ trfType' (HsForAllTy bndrs typ) = AST.TyForall <$> define (trfBindings bndrs)
 trfType' (HsQualTy ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
                                         <*> trfType typ
 trfType' (HsTyVar name) = AST.TyVar <$> define (trfName name)
-trfType' (HsAppsTy [unLoc -> HsAppPrefix t]) = trfType' (unLoc t)
-trfType' (HsAppsTy [unLoc -> HsAppInfix n]) = AST.TyVar <$> trfName n
+trfType' (HsAppsTy apps) | Just (head, args) <- getAppsTyHead_maybe apps 
+  = foldl (\core t -> AST.TyApp <$> annLoc (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
 trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
 trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
 trfType' (HsListTy typ) = AST.TyList <$> trfType typ

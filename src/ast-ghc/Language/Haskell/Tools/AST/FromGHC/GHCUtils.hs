@@ -11,6 +11,7 @@ import RdrName
 import OccName
 import Name
 import Outputable
+import SrcLoc
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
@@ -168,3 +169,10 @@ instance HsHasName n => HsHasName (Pat n) where
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String
 rdrNameStr name = showSDocUnsafe $ ppr name
+
+
+cleanHsType :: HsType n -> HsType n
+cleanHsType (HsAppsTy apps) 
+  | Just (head, args) <- getAppsTyHead_maybe apps 
+  = foldl (\core t -> HsAppTy (L (getLoc head `combineSrcSpans` getLoc t) core) t) (unLoc head) args
+cleanHsType t = t
