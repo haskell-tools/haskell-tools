@@ -38,8 +38,8 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
                                                      ++ map (\(mod,_,_) -> mod) extractBindingTests
                                                      ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
-                               -- ++ map makeCpphsTest cppHsTests
-                               -- ++ map makeInstanceControlTest instanceControlTests
+                                ++ map makeCpphsTest cppHsTests
+                                ++ map makeInstanceControlTest instanceControlTests
                                -- ++ map makeOrganizeImportsTest organizeImportTests
                                -- ++ map makeGenerateSignatureTest generateSignatureTests
                                -- ++ map makeGenerateExportsTest generateExportsTests

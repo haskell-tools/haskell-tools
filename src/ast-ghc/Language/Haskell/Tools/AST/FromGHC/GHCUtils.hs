@@ -171,12 +171,17 @@ instance HsHasName n => HsHasName (Pat n) where
 rdrNameStr :: RdrName -> String
 rdrNameStr name = showSDocUnsafe $ ppr name
 
-
+-- | Tries to simplify the type that has HsAppsTy before renaming. Does not always provide the correct form.
+-- Treats each operator as if they are of equivalent precedence and always left-associative.
 cleanHsType :: OutputableBndr n => HsType n -> HsType n
-cleanHsType (HsAppsTy apps) 
-  | Just (head, args) <- getAppsTyHead_maybe apps 
-  = foldl (\core t -> HsAppTy (L (getLoc head `combineSrcSpans` getLoc t) core) t) (unLoc head) args
-cleanHsType (HsAppsTy [unLoc -> HsAppPrefix t]) = unLoc t
-cleanHsType (HsAppsTy [unLoc -> HsAppInfix n]) = HsTyVar n
-cleanHsType (HsAppsTy apps) = error ("HsAppsTy cannot be cleaned: " ++ showSDocUnsafe (ppr apps))
+-- for some reason * is considered infix
+cleanHsType (HsAppsTy [unLoc -> HsAppInfix t]) = HsTyVar t
+cleanHsType (HsAppsTy apps) = unLoc $ guessType (splitHsAppsTy apps)
+  where guessType :: OutputableBndr n => ([[LHsType n]], [Located n]) -> LHsType n
+        guessType (term:terms, operator:operators)  
+          = let rhs = guessType (terms,operators)
+             in L (getLoc (head term) `combineSrcSpans` getLoc rhs) $ HsOpTy (doApps term) operator rhs
+        guessType ([term],[]) = doApps term
+        guessType x = error ("guessType: " ++ showSDocUnsafe (ppr x))
+        doApps term = foldl1 (\core t -> L (getLoc core `combineSrcSpans` getLoc t) $ HsAppTy core t) term
 cleanHsType t = t
