@@ -25,11 +25,10 @@ import qualified Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
-trfKindSig = trfMaybe "" "" (\k -> annLoc (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
-                                             (fmap AST.KindConstraint $ trfLoc (trfKind' . cleanHsType) k))
+trfKindSig = trfMaybe "" "" trfKindSig'
 
 trfKindSig' :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.KindConstraint r)
-trfKindSig' k = annLoc (combineSrcSpans (getLoc k) <$> (tokenLoc AnnDcolon)) 
+trfKindSig' k = annLoc (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
                        (AST.KindConstraint <$> trfLoc trfKind' k)
 
 trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind r)

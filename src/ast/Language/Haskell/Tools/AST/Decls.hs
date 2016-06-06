@@ -94,12 +94,23 @@ data Decl a
 -- | Open type and data families
 data TypeFamily a
   = TypeFamily { _tfHead :: Ann DeclHead a
-               , _tfKind :: AnnMaybe KindConstraint a
+               , _tfSpec :: AnnMaybe TypeFamilySpec a
                } -- ^ A type family declaration (@ type family A _a :: * -> * @)    
- | DataFamily { _tfHead :: Ann DeclHead a
-              , _tfKind :: AnnMaybe KindConstraint a
-              } -- ^ Data family declaration
+  | DataFamily { _tfHead :: Ann DeclHead a
+               , _tfKind :: AnnMaybe KindConstraint a
+               } -- ^ Data family declaration
                   
+data TypeFamilySpec a 
+  = TypeFamilyKind { _tfSpecKind :: Ann KindConstraint a 
+                   }
+  | TypeFamilyInjectivity { _tfInjectivity :: Ann InjectivityAnn a
+                          }
+
+data InjectivityAnn a
+  = InjectivityAnn { _injAnnRes :: Ann Name a
+                   , _injAnnDeps :: AnnList Name a
+                   }
+
 -- | The list of declarations that can appear in a typeclass
 data ClassBody a
   = ClassBody { _cbElements :: AnnList ClassElement a 

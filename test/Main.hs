@@ -60,6 +60,7 @@ languageTests =
   , "Decl.FunGuards"
   , "Decl.LocalBindings"
   , "Decl.LocalFixity"
+  , "Decl.InjectiveTypeFamily"
   , "Decl.OperatorBind"
   , "Decl.OperatorDecl"
   , "Decl.ParamDataType"

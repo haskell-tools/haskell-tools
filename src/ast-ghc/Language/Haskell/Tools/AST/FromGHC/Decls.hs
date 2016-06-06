@@ -66,12 +66,11 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)
 trfDecl = trfLoc $ \case
-  TyClD (FamDecl (FamilyDecl DataFamily name tyVars kindSig _)) 
-    -> AST.TypeFamilyDecl <$> (annCont $ AST.DataFamily <$> createDeclHead name tyVars <*> trfFamilyResultSig kindSig)
-  TyClD (FamDecl (FamilyDecl OpenTypeFamily name tyVars kindSig _)) 
-    -> AST.TypeFamilyDecl <$> (annCont $ AST.TypeFamily <$> createDeclHead name tyVars <*> trfFamilyResultSig kindSig)
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _)) 
-    -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig <*> trfTypeEqs typeEqs
+    -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) 
+                                <*> trfFamilyKind kindSig 
+                                <*> trfTypeEqs typeEqs
+  TyClD (FamDecl fd) -> AST.TypeFamilyDecl <$> annCont (trfTypeFam' fd)
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> between AnnType AnnEqual (createDeclHead name vars) <*> trfType rhs
   TyClD (DataDecl name vars (HsDataDefn nd ctx _ kind cons derivs) _ _) 
@@ -288,12 +287,15 @@ trfClassElemSig = trfLoc $ \case
   s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
-trfTypeFam = trfLoc $ \case
-  FamilyDecl DataFamily name tyVars kindSig _
-    -> AST.DataFamily <$> (case unLoc kindSig of KindSig _ -> between AnnData AnnDcolon; _ -> id) (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig
-  FamilyDecl OpenTypeFamily name tyVars kindSig _
-    -> AST.TypeFamily <$> (case unLoc kindSig of KindSig _ -> between AnnType AnnDcolon; _ -> id) (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig
+trfTypeFam = trfLoc trfTypeFam'
 
+trfTypeFam' :: TransformName n r => FamilyDecl n -> Trf (AST.TypeFamily r)
+trfTypeFam' (FamilyDecl DataFamily name tyVars kindSig _)
+  = AST.DataFamily <$> (case unLoc kindSig of KindSig _ -> between AnnData AnnDcolon; _ -> id) (createDeclHead name tyVars) 
+                   <*> trfFamilyKind kindSig
+trfTypeFam' (FamilyDecl OpenTypeFamily name tyVars kindSig injectivity)
+  = AST.TypeFamily <$> (case unLoc kindSig of KindSig _ -> between AnnType AnnDcolon; _ -> id) (createDeclHead name tyVars) 
+                   <*> trfFamilyResultSig kindSig injectivity
 
 trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.ClassElement r)
 trfTypeFamDef = trfLoc $ \(TyFamEqn con pats rhs) 
@@ -355,8 +357,14 @@ trfPatternSynonym (PSB id _ (PrefixPatSyn args) def dir)
         trfPatSynWhere :: TransformName n r => MatchGroup n (LHsExpr n) -> Trf (Ann AST.PatSynWhere r)
         trfPatSynWhere (MG { mg_alts = alts }) = annLoc (pure $ getLoc alts) (AST.PatSynWhere <$> makeIndentedList (after AnnWhere) (mapM (trfMatch (unLoc id)) (unLoc alts)))
 
-trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybe AST.KindConstraint r)
-trfFamilyResultSig (unLoc -> fr) = case fr of
+trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybe AST.KindConstraint r)
+trfFamilyKind (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
-  TyVarSig _ -> error "TyVarSig"
+
+trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybe AST.TypeFamilySpec r)
+trfFamilyResultSig (L l fr) Nothing = case fr of 
+  NoSig -> nothing "" " " atTheEnd
+  KindSig k -> makeJust <$> (annLoc (pure l) $ AST.TypeFamilyKind <$> trfKindSig' k)
+trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps))) 
+  = makeJust <$> (annLoc (pure l) $ AST.TypeFamilyInjectivity <$> (annCont $ AST.InjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))

@@ -87,6 +87,8 @@ makeReferences ''TypeSignature
 makeReferences ''ListCompBody
 makeReferences ''TupSecElem
 makeReferences ''TypeFamily
+makeReferences ''TypeFamilySpec
+makeReferences ''InjectivityAnn
 makeReferences ''CaseRhs'
 makeReferences ''GuardedCaseRhs'
 makeReferences ''PatternSynonym

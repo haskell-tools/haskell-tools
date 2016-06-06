@@ -106,6 +106,8 @@ deriveStructTrav ''TypeSignature
 deriveStructTrav ''ListCompBody
 deriveStructTrav ''TupSecElem
 deriveStructTrav ''TypeFamily
+deriveStructTrav ''TypeFamilySpec
+deriveStructTrav ''InjectivityAnn
 deriveStructTrav ''PatternSynonym
 deriveStructTrav ''PatSynRhs
 deriveStructTrav ''PatSynWhere
