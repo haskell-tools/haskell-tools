@@ -88,6 +88,9 @@ data Expr a
   | TypeSig        { _exprInner :: Ann Expr a
                    , _exprSig :: Ann Type a
                    } -- ^ Explicit type signature (@ _x :: Int @)
+  | ExplTypeApp    { _exprInner :: Ann Expr a
+                   , _exprType :: Ann Type a
+                   } -- ^ Explicit type application (@ show \@Integer (read "5") @)
   | VarQuote       { _quotedName :: Ann Name a 
                    } -- ^ @'x@ for template haskell reifying of expressions
   | TypeQuote      { _quotedName :: Ann Name a 

@@ -109,6 +109,7 @@ languageTests =
   , "Type.Bang"
   , "Type.Builtin"
   , "Type.Ctx"
+  , "Type.ExplicitTypeApplication"
   , "Type.Forall"
   , "Type.Primitives"
   , "Type.TypeOperators"

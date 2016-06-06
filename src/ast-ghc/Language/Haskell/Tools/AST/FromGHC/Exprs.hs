@@ -133,7 +133,8 @@ trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = AST.QuasiQuoteExpr <$> annCont (trfQ
 trfExpr' (HsSpliceE splice) = AST.Splice <$> annCont (trfSplice' splice)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
 trfExpr' (HsStatic expr) = AST.StaticPtr <$> trfExpr expr
-trfType'' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
+trfExpr' (HsAppType expr typ) = AST.ExplTypeApp <$> trfExpr expr <*> trfType (hswc_body typ)
+trfExpr' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate r)
 trfFieldInits (HsRecFields fields dotdot) 
