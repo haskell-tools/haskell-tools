@@ -57,12 +57,12 @@ deriveStructTrav ''ImportRenaming
 -- Declarations
 deriveStructTrav ''Decl
 deriveStructTrav ''ClassBody
-deriveStructTrav ''GadtDeclList
 deriveStructTrav ''ClassElement
 deriveStructTrav ''DeclHead
 deriveStructTrav ''InstBody
 deriveStructTrav ''InstBodyDecl
-deriveStructTrav ''GadtDecl
+deriveStructTrav ''GadtConDecl
+deriveStructTrav ''GadtConType
 deriveStructTrav ''GadtField
 deriveStructTrav ''FunDeps
 deriveStructTrav ''FunDep

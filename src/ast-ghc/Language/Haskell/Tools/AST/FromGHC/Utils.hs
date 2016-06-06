@@ -134,6 +134,10 @@ makeIndentedListNewlineBefore :: RangeAnnot a => Trf SrcLoc -> Trf [Ann e a] -> 
 makeIndentedListNewlineBefore ann ls = do isEmpty <- null <$> ls 
                                           AnnList <$> (toIndentedListAnnot (if isEmpty then "\n" else "") "" "\n" <$> ann) <*> ls
 
+makeIndentedListBefore :: RangeAnnot a => String -> Trf SrcLoc -> Trf [Ann e a] -> Trf (AnnList e a)
+makeIndentedListBefore bef sp ls = do isEmpty <- null <$> ls 
+                                      AnnList <$> (toIndentedListAnnot (if isEmpty then bef else "") "" "\n" <$> sp) <*> ls
+  
 makeNonemptyIndentedList :: RangeAnnot a => Trf [Ann e a] -> Trf (AnnList e a)
 makeNonemptyIndentedList ls = AnnList (toIndentedListAnnot "" "" "\n" noSrcLoc) <$> ls
   

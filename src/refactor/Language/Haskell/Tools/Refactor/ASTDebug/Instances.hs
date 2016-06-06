@@ -43,12 +43,12 @@ instance (Generic a, Show a) => ASTDebug ImportRenaming a
 -- Declarations
 instance (Generic a, Show a) => ASTDebug Decl a
 instance (Generic a, Show a) => ASTDebug ClassBody a
-instance (Generic a, Show a) => ASTDebug GadtDeclList a
 instance (Generic a, Show a) => ASTDebug ClassElement a
 instance (Generic a, Show a) => ASTDebug DeclHead a
 instance (Generic a, Show a) => ASTDebug InstBody a
 instance (Generic a, Show a) => ASTDebug InstBodyDecl a
-instance (Generic a, Show a) => ASTDebug GadtDecl a
+instance (Generic a, Show a) => ASTDebug GadtConDecl a
+instance (Generic a, Show a) => ASTDebug GadtConType a
 instance (Generic a, Show a) => ASTDebug GadtField a
 instance (Generic a, Show a) => ASTDebug FunDeps a
 instance (Generic a, Show a) => ASTDebug FunDep a

@@ -74,15 +74,13 @@ trfDecl = trfLoc $ \case
     -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) <*> trfFamilyResultSig kindSig <*> trfTypeEqs typeEqs
   TyClD (SynDecl name vars rhs _) 
     -> AST.TypeDecl <$> between AnnType AnnEqual (createDeclHead name vars) <*> trfType rhs
-  TyClD (DataDecl name vars (HsDataDefn nd ctx ct kind cons derivs) _ _) 
-    -> let ctxTok = case nd of DataType -> AnnData
-                               NewType -> AnnNewtype
-           consLoc = focusBeforeIfPresent AnnDeriving atTheEnd
-        in AST.DataDecl <$> trfDataKeyword nd
-                        <*> trfCtx (after ctxTok) ctx
-                        <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
-                        <*> makeListBefore "=" " | " consLoc (mapM trfConDecl cons)
-                        <*> trfMaybe "" "" trfDerivings derivs
+  TyClD (DataDecl name vars (HsDataDefn nd ctx _ kind cons derivs) _ _) 
+    -> do let ctxTok = case nd of DataType -> AnnData
+                                  NewType -> AnnNewtype
+              consLoc = focusBeforeIfPresent AnnDeriving atTheEnd
+          whereLoc <- tokenLoc AnnWhere
+          if isGoodSrcSpan whereLoc then trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
+                                    else trfDataDef nd name vars ctx cons derivs ctxTok consLoc
   TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
     -> AST.ClassDecl <$> trfCtx (after AnnClass) ctx 
                      <*> betweenIfPresent AnnClass AnnWhere (createDeclHead name vars)
@@ -112,6 +110,21 @@ trfDecl = trfLoc $ \case
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
 
+trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
+  = AST.GDataDecl <$> trfDataKeyword nd
+                  <*> trfCtx (after ctxTok) ctx
+                  <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
+                  <*> trfKindSig kind
+                  <*> makeIndentedListBefore " where " consLoc (mapM trfGADTConDecl cons)
+                  <*> trfMaybe "" "" trfDerivings derivs
+
+trfDataDef nd name vars ctx cons derivs ctxTok consLoc
+  = AST.DataDecl <$> trfDataKeyword nd
+                 <*> trfCtx (after ctxTok) ctx
+                 <*> betweenIfPresent ctxTok AnnEqual (createDeclHead name vars)
+                 <*> makeListBefore "=" " | " consLoc (mapM trfConDecl cons)
+                 <*> trfMaybe "" "" trfDerivings derivs
+
 trfVal :: TransformName n r => HsBindLR n n -> Trf (AST.Decl r)
 trfVal (PatSynBind psb) = AST.PatternSynonymDecl <$> annCont (trfPatternSynonym psb)
 trfVal bind = AST.ValueBinding <$> (annCont $ trfBind' bind)
@@ -132,6 +145,18 @@ trfConDecl' (ConDeclH98 { con_name = name, con_details = RecCon (unLoc -> flds) 
   = AST.RecordDecl <$> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDeclH98 { con_name = name, con_details = InfixCon t1 t2 })
   = AST.InfixConDecl <$> trfType t1 <*> define (trfName name) <*> trfType t2
+
+trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.GadtConDecl r)
+trfGADTConDecl = trfLoc $ \(ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
+  -> AST.GadtConDecl <$> define (trfAnnList ", " trfName' names) 
+                     <*> trfGadtConType typ
+
+trfGadtConType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.GadtConType r)
+trfGadtConType = trfLoc $ \case 
+  HsFunTy (cleanHsType . unLoc -> HsRecTy flds) resType 
+    -> AST.GadtRecordType <$> between AnnOpenC AnnCloseC (trfAnnList ", " trfFieldDecl' flds) 
+                          <*> trfType resType
+  typ -> AST.GadtNormalType <$> annCont (trfType' typ)
 
 trfFieldDecl :: TransformName n r => Located (ConDeclField n) -> Trf (Ann AST.FieldDecl r)
 trfFieldDecl = trfLoc trfFieldDecl'

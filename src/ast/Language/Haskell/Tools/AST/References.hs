@@ -36,12 +36,12 @@ makeReferences ''ImportRenaming
 -- Declarations
 makeReferences ''Decl
 makeReferences ''ClassBody
-makeReferences ''GadtDeclList
 makeReferences ''ClassElement
 makeReferences ''DeclHead
 makeReferences ''InstBody
 makeReferences ''InstBodyDecl
-makeReferences ''GadtDecl
+makeReferences ''GadtConDecl
+makeReferences ''GadtConType
 makeReferences ''GadtField
 makeReferences ''FunDeps
 makeReferences ''FunDep

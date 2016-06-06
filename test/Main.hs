@@ -54,6 +54,7 @@ languageTests =
   , "Decl.DataFamily"
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"
+  , "Decl.GADT"
   , "Decl.FunBind"
   , "Decl.FunctionalDeps"
   , "Decl.FunGuards"

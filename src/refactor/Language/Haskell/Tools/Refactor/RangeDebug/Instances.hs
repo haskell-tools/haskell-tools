@@ -45,12 +45,12 @@ instance (Generic a, Show a) => TreeDebug ImportRenaming a
 -- Declarations
 instance (Generic a, Show a) => TreeDebug Decl a
 instance (Generic a, Show a) => TreeDebug ClassBody a
-instance (Generic a, Show a) => TreeDebug GadtDeclList a
 instance (Generic a, Show a) => TreeDebug ClassElement a
 instance (Generic a, Show a) => TreeDebug DeclHead a
 instance (Generic a, Show a) => TreeDebug InstBody a
 instance (Generic a, Show a) => TreeDebug InstBodyDecl a
-instance (Generic a, Show a) => TreeDebug GadtDecl a
+instance (Generic a, Show a) => TreeDebug GadtConDecl a
+instance (Generic a, Show a) => TreeDebug GadtConType a
 instance (Generic a, Show a) => TreeDebug GadtField a
 instance (Generic a, Show a) => TreeDebug FunDeps a
 instance (Generic a, Show a) => TreeDebug FunDep a
