@@ -69,6 +69,7 @@ languageTests =
   , "Decl.StandaloneDeriving"
   , "Decl.TypeClass"
   , "Decl.TypeFamily"
+  , "Decl.TypeFamilyKindSig"
   , "Decl.TypeInstance"
   , "Decl.TypeRole"
   , "Decl.TypeSynonym"

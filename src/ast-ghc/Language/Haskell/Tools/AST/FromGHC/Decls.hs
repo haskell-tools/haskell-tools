@@ -334,4 +334,4 @@ trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Trf (A
 trfFamilyResultSig (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
-  TyVarSig _ -> nothing "" " " atTheEnd
+  TyVarSig _ -> error "TyVarSig"
