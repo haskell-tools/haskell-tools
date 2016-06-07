@@ -8,6 +8,7 @@
            , MultiParamTypeClasses
            , UndecidableInstances
            , AllowAmbiguousTypes
+           , TypeApplications
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
@@ -58,6 +59,20 @@ trfName' n
   | isSymOcc (occName n) = AST.ParenName <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
   | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+
+trfAmbiguousFieldName :: TransformName n res => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.Name res)
+trfAmbiguousFieldName all@(L l af) = trfAmbiguousFieldName' l af
+
+trfAmbiguousFieldName' :: forall n res . (TransformName n res) => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.Name res)
+trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLoc (pure l) $ trfName' (unpackPostRn @n rdr pr)
+-- no Id transformation is done, so we can basically ignore the postTC value
+trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _) 
+  = do locals <- asks localsInScope
+       isDefining <- asks defining
+       annLoc (pure l) 
+         $ AST.NormalName 
+         <$> (annotation .- addSemanticInfo (AmbiguousNameInfo locals isDefining rdr l :: SemanticInfo n)) 
+         <$> (annLoc (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
 
 class (DataId n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String

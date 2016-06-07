@@ -40,6 +40,7 @@ import Bag as GHC
 import Var as GHC
 import PatSyn as GHC
 import Type as GHC
+import Unique as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo
                                   , SemanticInfo(..), semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan)
@@ -56,9 +57,12 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
         replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
         replaceSemanticInfo (ScopeInfo sc) = return $ ScopeInfo sc
+        replaceSemanticInfo (AmbiguousNameInfo sc d rdr l) = return $ NameInfo sc d (locMapping ! l)
         replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
-        replaceSemanticInfo (NameInfo sc def ni) = (NameInfo sc def) <$> getType' ni
+        replaceSemanticInfo (NameInfo sc def ni) = NameInfo sc def <$> getType' ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType' access <*> mapM getType' used
+        
+        getType' :: GHC.Name -> StateT [GHC.Id] Ghc GHC.Id
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found") <$> getType name
         getType name 
           = lift (lookupName name) >>= \case
@@ -75,10 +79,15 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
                            -- this is not a problem, because every time the closest name will be added
                            Nothing -> gets (find (\v -> nameOccName (GHC.varName v) == nameOccName name))
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
+        locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
 extractTypes :: LHsBinds Id -> [Id]
 extractTypes = concatMap universeBi . bagToList
+
+extractExprIds :: LHsBinds Id -> [Located Id]
+        -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar
+extractExprIds = catMaybes . map (\case (L l (HsVar (L _ n))) -> Just (L l n); _ -> Nothing) . concatMap universeBi . bagToList
 
 
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RangeInfo)

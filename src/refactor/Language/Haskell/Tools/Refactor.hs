@@ -204,6 +204,7 @@ demoRefactor command workingDir moduleName =
     -- liftIO $ putStrLn $ show annots
     -- liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
+    liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)

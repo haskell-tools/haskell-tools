@@ -49,7 +49,7 @@ addScopeInfo _ expr = do scope <- asks localsInScope
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> trfName name
-trfExpr' (HsRecFld fld) = AST.Var <$> annCont (trfName' $ getAmbiguousFieldName' fld)
+trfExpr' (HsRecFld fld) = AST.Var <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
 trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.NormalName <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip)))
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
@@ -151,8 +151,8 @@ trfFieldInit = trfLoc $ \case
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName (getFieldOccName id) <*> trfExpr val
   
 trfFieldUpdate :: TransformName n r => HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -> Trf (AST.FieldUpdate r)
-trfFieldUpdate (HsRecField id _ True) = AST.FieldPun <$> trfName (getAmbiguousFieldName id)
-trfFieldUpdate (HsRecField id val False) = AST.NormalFieldUpdate <$> trfName (getAmbiguousFieldName id) <*> trfExpr val
+trfFieldUpdate (HsRecField id _ True) = AST.FieldPun <$> trfAmbiguousFieldName id
+trfFieldUpdate (HsRecField id val False) = AST.NormalFieldUpdate <$> trfAmbiguousFieldName id <*> trfExpr val
 
 trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt r)
 trfAlt = trfLoc trfAlt'

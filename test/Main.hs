@@ -49,7 +49,8 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                 ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
-  [ "Decl.ClosedTypeFamily"
+  [ "Decl.AmbiguousFields"
+  , "Decl.ClosedTypeFamily"
   , "Decl.CtorOp"
   , "Decl.DataFamily"
   , "Decl.DataType"
@@ -175,7 +176,8 @@ generateExportsTests =
   ]
 
 renameDefinitionTests =
-  [ ("Refactor.RenameDefinition.RecordField", "3:22-3:23", "xCoord")
+  [ ("Refactor.RenameDefinition.AmbiguousFields", "4:14-4:15", "xx")
+  , ("Refactor.RenameDefinition.RecordField", "3:22-3:23", "xCoord")
   , ("Refactor.RenameDefinition.Constructor", "3:14-3:19", "Point2D")
   , ("Refactor.RenameDefinition.Type", "5:16-5:16", "Point2D")
   , ("Refactor.RenameDefinition.Function", "3:1-3:2", "q")

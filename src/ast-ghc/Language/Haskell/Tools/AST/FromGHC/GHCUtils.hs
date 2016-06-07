@@ -28,7 +28,6 @@ instance GHCName RdrName where
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
   nameFromId = nameRdrName . getName
   unpackPostRn rdr _ = rdr
-  unpackPostTc rdr _ _ = rdr
 
   gunpackPostRn a _ _ = a
 
@@ -40,7 +39,6 @@ instance GHCName GHC.Name where
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
   nameFromId = getName
   unpackPostRn _ a = a
-  unpackPostTc _ nm _ = nm
 
   gunpackPostRn _ f pr = f pr
 
@@ -50,12 +48,6 @@ getFieldOccName (L l (FieldOcc (L _ rdr) postRn)) = L l (unpackPostRn rdr postRn
 getFieldOccName' :: GHCName n => FieldOcc n -> n
 getFieldOccName' (FieldOcc (L _ rdr) postRn) = unpackPostRn rdr postRn
 
-getAmbiguousFieldName :: GHCName n => Located (AmbiguousFieldOcc n) -> Located n
-getAmbiguousFieldName (L l af) = L l (getAmbiguousFieldName' af)
-
-getAmbiguousFieldName' :: GHCName n => AmbiguousFieldOcc n -> n
-getAmbiguousFieldName' (Unambiguous (L _ rdr) pr) = unpackPostRn rdr pr
-getAmbiguousFieldName' (Ambiguous (L _ rdr) pt) = unpackPostTc rdr undefined pt
 
 class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
