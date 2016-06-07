@@ -100,6 +100,7 @@ instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) =
 instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) => ASTDebug (GuardedCaseRhs' expr) a
 instance (Generic a, Show a) => ASTDebug PatternSynonym a
 instance (Generic a, Show a) => ASTDebug PatSynRhs a
+instance (Generic a, Show a) => ASTDebug PatSynLhs a
 instance (Generic a, Show a) => ASTDebug PatSynWhere a
 instance (Generic a, Show a) => ASTDebug PatternTypeSignature a
 instance (Generic a, Show a) => ASTDebug Role a

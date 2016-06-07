@@ -343,14 +343,23 @@ trfInstDataFam = trfLoc $ \case
          <*> trfMaybe " deriving " "" trfDerivings derivs
           
 trfPatternSynonym :: forall n r . TransformName n r => PatSynBind n n -> Trf (AST.PatternSynonym r)
-trfPatternSynonym (PSB id _ (PrefixPatSyn args) def dir)
+trfPatternSynonym (PSB id _ lhs def dir)
   = let sep = case dir of ImplicitBidirectional -> AnnEqual
-                          _ -> AnnLarrow
+                          _                     -> AnnLarrow
         rhsLoc = combineSrcSpans (getLoc def) <$> tokenLoc sep
-     in AST.PatternSynonym <$> define (trfName id)
-                           <*> makeList " " (before sep) (mapM trfName args) 
+     in AST.PatternSynonym <$> trfPatSynLhs id lhs
                            <*> annLoc rhsLoc (trfPatSynRhs dir def)
-  where trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.PatSynRhs r)
+
+  where trfPatSynLhs :: TransformName n r => Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.PatSynLhs r)
+        trfPatSynLhs id (PrefixPatSyn args)
+          = annLoc (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.NormalPatSyn <$> trfName id <*> trfAnnList " " trfName' args
+        trfPatSynLhs op (InfixPatSyn lhs rhs)
+          = annLoc (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.InfixPatSyn <$> trfName lhs <*> trfOperator op <*> trfName rhs
+        trfPatSynLhs id (RecordPatSyn flds)
+          = annLoc (mkSrcSpan (srcSpanStart (getLoc id)) <$> before AnnEqual) 
+              $ AST.RecordPatSyn <$> trfName id <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
+
+        trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.PatSynRhs r)
         trfPatSynRhs ImplicitBidirectional pat = AST.BidirectionalPatSyn <$> trfPattern pat <*> nothing " where " "" atTheEnd
         trfPatSynRhs (ExplicitBidirectional mg) pat = AST.BidirectionalPatSyn <$> trfPattern pat <*> (makeJust <$> trfPatSynWhere mg)
         trfPatSynRhs Unidirectional pat = AST.OneDirectionalPatSyn <$> trfPattern pat

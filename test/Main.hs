@@ -67,6 +67,7 @@ languageTests =
   , "Decl.ParamDataType"
   , "Decl.PatternBind"
   , "Decl.PatternSynonym"
+  , "Decl.RecordPatternSynonyms"
   , "Decl.RecordType"
   , "Decl.RewriteRule"
   , "Decl.StandaloneDeriving"

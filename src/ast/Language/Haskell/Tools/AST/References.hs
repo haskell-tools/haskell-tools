@@ -93,6 +93,7 @@ makeReferences ''CaseRhs'
 makeReferences ''GuardedCaseRhs'
 makeReferences ''PatternSynonym
 makeReferences ''PatSynRhs
+makeReferences ''PatSynLhs
 makeReferences ''PatSynWhere
 makeReferences ''PatternTypeSignature
 makeReferences ''Role

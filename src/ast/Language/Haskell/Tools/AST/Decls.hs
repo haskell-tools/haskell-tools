@@ -267,10 +267,22 @@ data PatternTypeSignature a
 
 -- | Pattern synonyms: @ pattern Arrow t1 t2 = App "->" [t1, t2] @
 data PatternSynonym a 
-  = PatternSynonym { _patName :: Ann Name a
-                   , _patArgs :: AnnList Name a
+  = PatternSynonym { _patLhs :: Ann PatSynLhs a
                    , _patRhs :: Ann PatSynRhs a
                    }
+
+-- | Left hand side of a pattern synonym
+data PatSynLhs a
+  = NormalPatSyn { _patName :: Ann Name a
+                 , _patArgs :: AnnList Name a
+                 }
+  | InfixPatSyn { _patSynLhs :: Ann Name a 
+                , _patSynOp :: Ann Operator a
+                , _patSynRhs :: Ann Name a
+                }
+  | RecordPatSyn { _patName :: Ann Name a
+                 , _patArgs :: AnnList Name a
+                 }
 
 -- | Right-hand side of pattern synonym
 data PatSynRhs a

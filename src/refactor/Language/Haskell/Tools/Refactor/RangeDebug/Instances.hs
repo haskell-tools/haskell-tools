@@ -102,6 +102,7 @@ instance (Generic a, Show a, TreeDebug expr a, Show (expr a), Generic (expr a)) 
 instance (Generic a, Show a, TreeDebug expr a, Show (expr a), Generic (expr a)) => TreeDebug (GuardedCaseRhs' expr) a
 instance (Generic a, Show a) => TreeDebug PatternSynonym a
 instance (Generic a, Show a) => TreeDebug PatSynRhs a
+instance (Generic a, Show a) => TreeDebug PatSynLhs a
 instance (Generic a, Show a) => TreeDebug PatSynWhere a
 instance (Generic a, Show a) => TreeDebug PatternTypeSignature a
 instance (Generic a, Show a) => TreeDebug Role a

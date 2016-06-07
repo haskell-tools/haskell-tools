@@ -110,6 +110,7 @@ deriveStructTrav ''TypeFamilySpec
 deriveStructTrav ''InjectivityAnn
 deriveStructTrav ''PatternSynonym
 deriveStructTrav ''PatSynRhs
+deriveStructTrav ''PatSynLhs
 deriveStructTrav ''PatSynWhere
 deriveStructTrav ''PatternTypeSignature
 deriveStructTrav ''Role

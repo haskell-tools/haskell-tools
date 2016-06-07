@@ -98,6 +98,7 @@ deriving instance (Data a, Typeable expr, Data (expr a)) => Data (CaseRhs' expr 
 deriving instance (Data a, Typeable expr, Data (expr a))=> Data (GuardedCaseRhs' expr a)
 deriving instance Data a => Data (PatternSynonym a)
 deriving instance Data a => Data (PatSynRhs a)
+deriving instance Data a => Data (PatSynLhs a)
 deriving instance Data a => Data (PatSynWhere a)
 deriving instance Data a => Data (PatternTypeSignature a)
 deriving instance Data a => Data (Role a)

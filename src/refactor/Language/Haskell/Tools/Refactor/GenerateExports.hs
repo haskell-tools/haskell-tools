@@ -32,7 +32,8 @@ getTopLevelDeclName (d @ ClosedTypeFamilyDecl {}) = listToMaybe (d ^? declHead &
 getTopLevelDeclName (d @ DataDecl {}) = listToMaybe (d ^? declHead & dhNames)
 getTopLevelDeclName (d @ GDataDecl {}) = listToMaybe (d ^? declHead & dhNames)
 getTopLevelDeclName (d @ ClassDecl {}) = listToMaybe (d ^? declHead & dhNames)
-getTopLevelDeclName (d @ PatternSynonymDecl {}) = d ^? declPatSyn & element & patName & element & simpleName & semantics & nameInfo
+getTopLevelDeclName (d @ PatternSynonymDecl {}) 
+  = listToMaybe (d ^? declPatSyn & element & patLhs & element & (patName & element & simpleName &+& patSynOp & element & operatorName) & semantics & nameInfo)
 getTopLevelDeclName (d @ ValueBinding {}) = listToMaybe (d ^? declValBind & bindingName)
 getTopLevelDeclName (d @ ForeignImport {}) = listToMaybe (d ^? declName & element & simpleName & semantics & nameInfo)
 getTopLevelDeclName _ = Nothing
