@@ -10,6 +10,6 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST (Ann(..))
 import qualified Language.Haskell.Tools.AST as AST
 
-trfQuasiQuotation' :: TransformName n r => HsQuasiQuote n -> Trf (AST.QuasiQuote r)
+trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.QuasiQuote r)
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice r)
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket r)

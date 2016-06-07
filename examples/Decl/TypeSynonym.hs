@@ -1,3 +1,3 @@
 module Decl.TypeSynonym where
 
-type List = []
+type List = Int

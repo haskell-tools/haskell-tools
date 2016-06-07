@@ -36,12 +36,12 @@ makeReferences ''ImportRenaming
 -- Declarations
 makeReferences ''Decl
 makeReferences ''ClassBody
-makeReferences ''GadtDeclList
 makeReferences ''ClassElement
 makeReferences ''DeclHead
 makeReferences ''InstBody
 makeReferences ''InstBodyDecl
-makeReferences ''GadtDecl
+makeReferences ''GadtConDecl
+makeReferences ''GadtConType
 makeReferences ''GadtField
 makeReferences ''FunDeps
 makeReferences ''FunDep
@@ -87,6 +87,8 @@ makeReferences ''TypeSignature
 makeReferences ''ListCompBody
 makeReferences ''TupSecElem
 makeReferences ''TypeFamily
+makeReferences ''TypeFamilySpec
+makeReferences ''InjectivityAnn
 makeReferences ''CaseRhs'
 makeReferences ''GuardedCaseRhs'
 makeReferences ''PatternSynonym

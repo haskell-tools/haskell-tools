@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, DataKinds, TypeOperators, MultiParamTypeClasses, FlexibleInstances, PolyKinds, UndecidableInstances, AllowAmbiguousTypes, RankNTypes, ScopedTypeVariables, FlexibleContexts, OverlappingInstances #-}
+{-# LANGUAGE TypeFamilies, DataKinds, TypeOperators, MultiParamTypeClasses, FlexibleInstances, PolyKinds, UndecidableInstances, AllowAmbiguousTypes, RankNTypes, ScopedTypeVariables, FlexibleContexts #-}
 
 module Control.Instances.Morph (GenMorph(..), Morph(..)) where
 
@@ -106,14 +106,14 @@ instance (HasMorph db (ConnectMorph a b), GeneratableMorph db r)
 -- | This class extracts a given morph from the set of rules
 class HasMorph r m where 
   getMorph :: r -> m
-instance HasMorph (m :+: r) m where
-  getMorph (c :+: r) = c
-instance Monad k => HasMorph (ConnectMorph_2m a b :+: r) (ConnectMorph a (b k)) where
+instance {-# OVERLAPPING #-} Monad k => HasMorph (ConnectMorph_2m a b :+: r) (ConnectMorph a (b k)) where
   getMorph (ConnectMorph_2m f :+: r) = ConnectMorph f
-instance Monad k => HasMorph (ConnectMorph_mt t :+: r) (ConnectMorph k (t k)) where
+instance {-# OVERLAPPING #-} Monad k => HasMorph (ConnectMorph_mt t :+: r) (ConnectMorph k (t k)) where
   getMorph (ConnectMorph_mt f :+: r) = ConnectMorph f
-instance HasMorph r m => HasMorph (c :+: r) m where
+instance {-# OVERLAPS #-} HasMorph r m => HasMorph (c :+: r) m where
   getMorph (c :+: r) = getMorph r
+instance {-# OVERLAPPABLE #-} HasMorph (m :+: r) m where
+  getMorph (c :+: r) = c
 
 -- | Checks if the path is found to provide usable error messages
 class CorrectPath from to path

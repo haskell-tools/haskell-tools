@@ -1,4 +1,4 @@
 module Refactor.GenerateTypeSignature.HigherOrder where
 
-app :: (t1 -> t) -> t1 -> t
+app :: (t -> t1) -> t -> t1
 app f x = f x

@@ -2,7 +2,7 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                haskell-tools-ast-gen
-version:             0.1.0.0
+version:             0.1.1.0
 synopsis:            Facilities for generating new parts of the Haskell AST
 description:         
 -- homepage:            https://github.com/nboldi/haskell-tools
@@ -26,8 +26,8 @@ library
                      , Language.Haskell.Tools.AST.Gen.Patterns
                      , Language.Haskell.Tools.AST.Gen.Base
                      , Language.Haskell.Tools.AST.Gen.Utils
-  build-depends:       base                  >=4.8  && <4.9
-                     , ghc                   >=7.10 && <7.11
+  build-depends:       base                  >=4.9 && <5.0
+                     , ghc                   >=8.0 && <8.1
                      , mtl                   >=2.2  && <2.3
                      , containers            >=0.5  && <0.6
                      , references            >=0.3  && <1.0

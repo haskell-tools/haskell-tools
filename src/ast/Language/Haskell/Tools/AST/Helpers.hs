@@ -82,7 +82,7 @@ declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+
 typeParams :: Simple Traversal (Ann Type a) (Ann Type a)
 typeParams = fromTraversal typeParamsTrav
   where typeParamsTrav f (Ann a (TyFun p r)) = Ann a <$> (TyFun <$> f p <*> typeParamsTrav f r)
-        typeParamsTrav f (Ann a (TyForall vs ctx t)) = Ann a <$> (TyForall vs ctx <$> typeParamsTrav f t)
+        typeParamsTrav f (Ann a (TyForall vs t)) = Ann a <$> (TyForall vs <$> typeParamsTrav f t)
         typeParamsTrav f (Ann a (TyCtx ctx t)) = Ann a <$> (TyCtx ctx <$> typeParamsTrav f t)
         typeParamsTrav f (Ann a (TyParen t)) = Ann a <$> (TyParen <$> typeParamsTrav f t)
         typeParamsTrav f t = f t

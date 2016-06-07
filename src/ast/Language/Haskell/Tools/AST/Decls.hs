@@ -28,12 +28,13 @@ data Decl a
                          , _declHead :: Ann DeclHead a
                          , _declCons :: AnnList ConDecl a
                          , _declDeriving :: AnnMaybe Deriving a
-                         } -- ^ A data or newtype declaration.
+                         } -- ^ A data or newtype declaration. Empty data type declarations without 
+                           -- where keyword are always belong to DataDecl.
   | GDataDecl            { _declNewtype :: Ann DataOrNewtypeKeyword a
                          , _declCtx  :: AnnMaybe Context a
                          , _declHead :: Ann DeclHead a
                          , _declKind :: AnnMaybe KindConstraint a
-                         , _declGadt :: Ann GadtDeclList a
+                         , _declGadt :: AnnList GadtConDecl a
                          , _declDeriving :: AnnMaybe Deriving a
                          } -- ^ A data or newtype declaration.
   | TypeInstDecl         { _declInstance :: Ann InstanceRule a
@@ -47,7 +48,7 @@ data Decl a
   | GDataInstDecl        { _declNewtype :: Ann DataOrNewtypeKeyword a
                          , _declInstance :: Ann InstanceRule a
                          , _declKind :: AnnMaybe KindConstraint a
-                         , _declGadt :: Ann GadtDeclList a
+                         , _declGadt :: AnnList GadtConDecl a
                          } -- ^ Gadt style data instance declaration (@ data instance Fam T where ... @)
   | ClassDecl            { _declCtx :: AnnMaybe Context a
                          , _declHead :: Ann DeclHead a
@@ -93,21 +94,27 @@ data Decl a
 -- | Open type and data families
 data TypeFamily a
   = TypeFamily { _tfHead :: Ann DeclHead a
-               , _tfKind :: AnnMaybe KindConstraint a
+               , _tfSpec :: AnnMaybe TypeFamilySpec a
                } -- ^ A type family declaration (@ type family A _a :: * -> * @)    
- | DataFamily { _tfHead :: Ann DeclHead a
-              , _tfKind :: AnnMaybe KindConstraint a
-              } -- ^ Data family declaration
+  | DataFamily { _tfHead :: Ann DeclHead a
+               , _tfKind :: AnnMaybe KindConstraint a
+               } -- ^ Data family declaration
                   
+data TypeFamilySpec a 
+  = TypeFamilyKind { _tfSpecKind :: Ann KindConstraint a 
+                   }
+  | TypeFamilyInjectivity { _tfInjectivity :: Ann InjectivityAnn a
+                          }
+
+data InjectivityAnn a
+  = InjectivityAnn { _injAnnRes :: Ann Name a
+                   , _injAnnDeps :: AnnList Name a
+                   }
+
 -- | The list of declarations that can appear in a typeclass
 data ClassBody a
   = ClassBody { _cbElements :: AnnList ClassElement a 
               }
-              
--- | A list of GADT declarations with the @where@ keyword
-data GadtDeclList a 
-  = GadtDeclList { _gadtList :: AnnList GadtDecl a 
-                 } 
                  
 -- | Members of a class declaration       
 data ClassElement a
@@ -162,7 +169,7 @@ data InstBodyDecl a
   | InstBodyGadtDataDecl { _instBodyDataNew :: Ann DataOrNewtypeKeyword a
                          , _instBodyLhsType :: Ann InstanceRule a
                          , _instBodyDataKind :: AnnMaybe Kind a
-                         , _instBodyGadtCons :: AnnList GadtDecl a
+                         , _instBodyGadtCons :: AnnList GadtConDecl a
                          , _instBodyDerivings :: AnnMaybe Deriving a
                          } -- ^ An associated data type implemented using GADT style
   -- not supported yet
@@ -170,12 +177,19 @@ data InstBodyDecl a
                          } -- ^ A pattern synonym in a class instance
 
 -- | GADT constructor declaration (@ _D1 :: { _val :: Int } -> T String @)
-data GadtDecl a
-  = GadtDecl { _gdName :: Ann Name a
-             , _gdFields :: AnnList FieldDecl a
-             , _gdResType :: Ann Type a
-             }
+data GadtConDecl a
+  = GadtConDecl { _gadtConNames :: AnnList Name a
+                , _gadtConType :: Ann GadtConType a
+                }
              
+-- | Type of GADT constructors (can be record types: @{ _val :: Int }@)
+data GadtConType a
+  = GadtNormalType { _gadtConNormalType :: Ann Type a 
+                   }
+  | GadtRecordType { _gadtConRecordFields :: AnnList FieldDecl a
+                   , _gadtConResultType :: Ann Type a
+                   }
+
 data GadtField a
   = GadtNormalField { _gadtFieldType :: Ann Type a 
                     } -- ^ Normal GADT field type (@ Int @)

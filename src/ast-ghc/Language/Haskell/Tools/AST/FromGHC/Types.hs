@@ -12,14 +12,16 @@ import FastString as GHC
 import Type as GHC
 import TyCon as GHC
 import Outputable as GHC
-import TysWiredIn (eqTyCon)
+import TysWiredIn (heqTyCon)
 import Id (mkVanillaGlobal)
 
 import Control.Monad.Reader.Class
 import Control.Applicative
 import Control.Reference
 import Data.Maybe
+import Data.Data (Data(..), toConstr)
 
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Kinds
@@ -33,33 +35,32 @@ trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
 trfType = trfLoc trfType'
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
-trfType' (HsForAllTy Explicit _ bndrs ctx typ) = AST.TyForall <$> define (trfBindings (hsq_tvs bndrs)) 
-                                                              <*> trfCtx (after AnnDot) ctx
-                                                              <*> addToScope bndrs (trfType typ)
-trfType' (HsForAllTy _ _ _ (unLoc -> []) typ) = trfType' (unLoc typ)
-trfType' (HsForAllTy _ _ _ ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
-                                                <*> trfType typ
-trfType' (HsTyVar name) = AST.TyVar <$> annCont (define (trfName' name))
-trfType' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
-trfType' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
-trfType' (HsListTy typ) = AST.TyList <$> trfType typ
-trfType' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
-trfType' (HsTupleTy HsBoxedOrConstraintTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
-trfType' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
-trfType' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList ", " trfType' typs
-trfType' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfOperator (snd op) <*> trfType t2
-trfType' (HsParTy typ) = AST.TyParen <$> trfType typ
-trfType' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
-trfType' (HsQuasiQuoteTy qq) = AST.TyQuasiQuote <$> trfQuasiQuotation' qq
-trfType' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
-trfType' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
--- HsRecTy only appears as part of GADT constructor declarations, so it is omitted
-trfType' (HsWrapTy _ typ) = trfType' typ
-trfType' HsWildcardTy = pure AST.TyWildcard
--- not implemented as ghc 7.10.3
-trfType' (HsNamedWildcardTy name) = AST.TyNamedWildc <$> annCont (define (trfName' name))
--- must be a promoted type
-trfType' t = AST.TyPromoted <$> annCont (trfPromoted' trfType' t) 
+trfType' = trfType'' . cleanHsType where
+  trfType'' (HsForAllTy [] typ) = trfType' (unLoc typ)
+  trfType'' (HsForAllTy bndrs typ) = AST.TyForall <$> define (trfBindings bndrs) 
+                                                 <*> addToScope bndrs (trfType typ)
+  trfType'' (HsQualTy ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
+                                          <*> trfType typ
+  trfType'' (HsTyVar name) = AST.TyVar <$> define (trfName name)
+  trfType'' (HsAppsTy apps) | Just (head, args) <- getAppsTyHead_maybe apps 
+    = foldl (\core t -> AST.TyApp <$> annLoc (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
+  trfType'' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
+  trfType'' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
+  trfType'' (HsListTy typ) = AST.TyList <$> trfType typ
+  trfType'' (HsPArrTy typ) = AST.TyParArray <$> trfType typ
+  trfType'' (HsTupleTy HsBoxedOrConstraintTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
+  trfType'' (HsTupleTy HsBoxedTuple typs) = AST.TyTuple <$> trfAnnList ", " trfType' typs
+  trfType'' (HsTupleTy HsUnboxedTuple typs) = AST.TyUnbTuple <$> trfAnnList ", " trfType' typs
+  trfType'' (HsOpTy t1 op t2) = AST.TyInfix <$> trfType t1 <*> trfOperator op <*> trfType t2
+  trfType'' (HsParTy typ) = AST.TyParen <$> trfType typ
+  trfType'' (HsKindSig typ kind) = AST.TyKinded <$> trfType typ <*> trfKind kind
+  trfType'' (HsSpliceTy splice _) = AST.TySplice <$> trfSplice' splice
+  trfType'' (HsBangTy _ typ) = AST.TyBang <$> trfType typ
+  trfType'' pt@(HsExplicitListTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
+  trfType'' pt@(HsExplicitTupleTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
+  trfType'' pt@(HsTyLit {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
+  trfType'' (HsWildCardTy _) = pure AST.TyWildcard -- TODO: named wildcards
+  trfType'' t = error ("Illegal type: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
 trfBindings vars = trfAnnList "\n" trfTyVar' vars
@@ -68,7 +69,7 @@ trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar r
 trfTyVar = trfLoc trfTyVar' 
   
 trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
-trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> annCont (trfName' name)
+trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> trfName name
                                            <*> (nothing " " "" atTheEnd)
 trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
   
@@ -87,17 +88,18 @@ trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
 trfAssertion = trfLoc trfAssertion'
 
 trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
-trfAssertion' (HsOpTy left op right) = AST.InfixAssert <$> trfType left 
-                                                       <*> trfOperator (snd op) 
-                                                       <*> trfType right
-trfAssertion' t = case base of
-   HsTyVar name -> AST.ClassAssert <$> (annLoc (case sp of Just l -> pure l; _ -> asks contRange) $ trfName' name)
-                                   <*> trfAnnList " " trfType' args
+trfAssertion' (cleanHsType -> HsParTy t) 
+  = trfAssertion' (unLoc t)
+trfAssertion' (cleanHsType -> HsOpTy left op right) 
+  = AST.InfixAssert <$> trfType left <*> trfOperator op <*> trfType right
+trfAssertion' (cleanHsType -> t) = case cleanHsType base of
+   HsTyVar name -> AST.ClassAssert <$> trfName name <*> trfAnnList " " trfType' args
    HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLoc (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
+   t -> error ("Illegal trf assertion: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)
         getArgs t = ([], Nothing, t)
 
         typeEq :: n 
-        typeEq = nameFromId (mkVanillaGlobal (tyConName eqTyCon) (tyConKind eqTyCon))
+        typeEq = nameFromId (mkVanillaGlobal (tyConName heqTyCon) (tyConKind heqTyCon))

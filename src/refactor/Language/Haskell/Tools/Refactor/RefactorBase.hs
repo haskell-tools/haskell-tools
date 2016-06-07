@@ -55,9 +55,6 @@ instance (ExceptionMonad m, Monoid s) => ExceptionMonad (WriterT s m) where
   gcatch w c = WriterT (runWriterT w `gcatch` (runWriterT . c))
   gmask m = WriterT $ gmask (\f -> runWriterT $ m (WriterT . f . runWriterT))
 
-instance (Monad m, HasDynFlags m, Monoid s) => HasDynFlags (WriterT s m) where
-  getDynFlags = lift getDynFlags
-
 instance GhcMonad m => GhcMonad (ReaderT s m) where
   getSession = lift getSession
   setSession env = lift (setSession env)
@@ -66,9 +63,6 @@ instance ExceptionMonad m => ExceptionMonad (ReaderT s m) where
   gcatch r c = ReaderT (\ctx -> runReaderT r ctx `gcatch` (flip runReaderT ctx . c))
   gmask m = ReaderT $ \ctx -> gmask (\f -> runReaderT (m (\a -> ReaderT $ \ctx' -> f (runReaderT a ctx'))) ctx)
 
-instance (Monad m, HasDynFlags m) => HasDynFlags (ReaderT s m) where
-  getDynFlags = lift getDynFlags
-
 instance GhcMonad m => GhcMonad (ExceptT s m) where
   getSession = lift getSession
   setSession env = lift (setSession env)
@@ -76,9 +70,6 @@ instance GhcMonad m => GhcMonad (ExceptT s m) where
 instance ExceptionMonad m => ExceptionMonad (ExceptT s m) where
   gcatch e c = ExceptT (runExceptT e `gcatch` (runExceptT . c))
   gmask m = ExceptT $ gmask (\f -> runExceptT $ m (ExceptT . f . runExceptT))
-
-instance (Monad m, HasDynFlags m) => HasDynFlags (ExceptT s m) where
-  getDynFlags = lift getDynFlags
   
 
 -- | Input and output information for the refactoring

@@ -38,27 +38,30 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
                                                      ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
                                                      ++ map (\(mod,_,_) -> mod) extractBindingTests
                                                      ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
-                               ++ map makeCpphsTest cppHsTests
-                               ++ map makeInstanceControlTest instanceControlTests
-                               ++ map makeOrganizeImportsTest organizeImportTests
-                               ++ map makeGenerateSignatureTest generateSignatureTests
-                               ++ map makeGenerateExportsTest generateExportsTests
-                               ++ map makeRenameDefinitionTest renameDefinitionTests
-                               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-                               ++ map makeExtractBindingTest extractBindingTests
-                               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+                                ++ map makeCpphsTest cppHsTests
+                                ++ map makeInstanceControlTest instanceControlTests
+                                ++ map makeOrganizeImportsTest organizeImportTests
+                                ++ map makeGenerateSignatureTest generateSignatureTests
+                                ++ map makeGenerateExportsTest generateExportsTests
+                                ++ map makeRenameDefinitionTest renameDefinitionTests
+                                ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                                ++ map makeExtractBindingTest extractBindingTests
+                                ++ map makeWrongExtractBindingTest wrongExtractBindingTests
         
 languageTests =
-  [ "Decl.ClosedTypeFamily"
+  [ "Decl.AmbiguousFields"
+  , "Decl.ClosedTypeFamily"
   , "Decl.CtorOp"
   , "Decl.DataFamily"
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"
+  , "Decl.GADT"
   , "Decl.FunBind"
   , "Decl.FunctionalDeps"
   , "Decl.FunGuards"
   , "Decl.LocalBindings"
   , "Decl.LocalFixity"
+  , "Decl.InjectiveTypeFamily"
   , "Decl.OperatorBind"
   , "Decl.OperatorDecl"
   , "Decl.ParamDataType"
@@ -69,6 +72,7 @@ languageTests =
   , "Decl.StandaloneDeriving"
   , "Decl.TypeClass"
   , "Decl.TypeFamily"
+  , "Decl.TypeFamilyKindSig"
   , "Decl.TypeInstance"
   , "Decl.TypeRole"
   , "Decl.TypeSynonym"
@@ -101,13 +105,15 @@ languageTests =
   , "Pattern.Infix"
   , "Pattern.NPlusK"
   , "Pattern.Record"
-  , "TH.QuasiQuote.Use"
-  , "TH.Brackets"
+  --, "TH.QuasiQuote.Use"
+  --, "TH.Brackets"
   , "Type.Bang"
   , "Type.Builtin"
   , "Type.Ctx"
+  , "Type.ExplicitTypeApplication"
   , "Type.Forall"
   , "Type.Primitives"
+  , "Type.TypeOperators"
   , "Type.Wildcard"
   , "Refactor.CommentHandling.CommentTypes"
   , "Refactor.CommentHandling.BlockComments"
@@ -170,7 +176,8 @@ generateExportsTests =
   ]
 
 renameDefinitionTests =
-  [ ("Refactor.RenameDefinition.RecordField", "3:22-3:23", "xCoord")
+  [ ("Refactor.RenameDefinition.AmbiguousFields", "4:14-4:15", "xx")
+  , ("Refactor.RenameDefinition.RecordField", "3:22-3:23", "xCoord")
   , ("Refactor.RenameDefinition.Constructor", "3:14-3:19", "Point2D")
   , ("Refactor.RenameDefinition.Type", "5:16-5:16", "Point2D")
   , ("Refactor.RenameDefinition.Function", "3:1-3:2", "q")

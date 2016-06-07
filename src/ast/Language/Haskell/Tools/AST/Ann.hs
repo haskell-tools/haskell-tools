@@ -88,6 +88,11 @@ data SemanticInfo n
                , _availableNames :: [n] -- ^ Names available from the imported module
                , _importedNames :: [n] -- ^ Names actually imported from the module.
                } -- ^ Info corresponding to an import declaration
+  | AmbiguousNameInfo { _scopedLocals :: [[Name]]
+                      , _isDefined :: Bool
+                      , _ambiguousName :: RdrName
+                      , _ambiguousLocation :: SrcSpan
+                      }
   -- | ImplicitImports [ImportDecl]
   -- | ImplicitFieldUpdates [ImportDecl]
   deriving (Eq, Data)
