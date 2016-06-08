@@ -62,6 +62,8 @@ languageTests =
   , "Decl.LocalBindings"
   , "Decl.LocalFixity"
   , "Decl.InjectiveTypeFamily"
+  , "Decl.MultipleFixity"
+  , "Decl.MultipleSigs"
   , "Decl.OperatorBind"
   , "Decl.OperatorDecl"
   , "Decl.ParamDataType"

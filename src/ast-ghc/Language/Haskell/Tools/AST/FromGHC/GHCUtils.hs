@@ -6,6 +6,8 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
+import Data.List
+
 import GHC
 import Bag
 import RdrName
@@ -176,3 +178,10 @@ cleanHsType (HsAppsTy apps) = unLoc $ guessType (splitHsAppsTy apps)
         guessType x = error ("guessType: " ++ showSDocUnsafe (ppr x))
         doApps term = foldl1 (\core t -> L (getLoc core `combineSrcSpans` getLoc t) $ HsAppTy core t) term
 cleanHsType t = t
+
+mergeFixityDefs :: [Located (FixitySig n)] -> [Located (FixitySig n)]
+mergeFixityDefs (s@(L l _) : rest) 
+  = let (same, different) = partition ((== l) . getLoc) rest 
+     in foldl mergeWith s (map unLoc same) : mergeFixityDefs different
+  where mergeWith (L l (FixitySig names fixity)) (FixitySig otherNames _) = L l (FixitySig (names ++ otherNames) fixity)
+mergeFixityDefs [] = []

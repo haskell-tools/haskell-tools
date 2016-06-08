@@ -37,6 +37,8 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, getRange)
 import qualified Language.Haskell.Tools.AST as AST
 
+import Debug.Trace
+
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl r)
 -- TODO: filter documentation comments
 trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
@@ -49,7 +51,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
       , mapM (trfDecl . (fmap SpliceD)) splices
       , mapM (trfDecl . (fmap InstD)) insts
       , mapM (trfDecl . (fmap DerivD)) derivs
-      , mapM (trfDecl . (fmap (SigD . FixSig))) fixities
+      , mapM (trfDecl . (fmap (SigD . FixSig))) (mergeFixityDefs fixities)
       , mapM (trfDecl . (fmap DefD)) defaults
       , mapM (trfDecl . (fmap ForD)) foreigns
       , mapM (trfDecl . (fmap WarningD)) warns
