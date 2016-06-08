@@ -19,7 +19,6 @@ class OutputableBndr name => GHCName name where
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
   nameFromId :: Id -> name
   unpackPostRn :: RdrName -> PostRn name name -> name
-  unpackPostTc :: RdrName -> GHC.Name -> PostTc name name -> name
 
   gunpackPostRn :: a -> (name -> a) -> PostRn name name -> a
 

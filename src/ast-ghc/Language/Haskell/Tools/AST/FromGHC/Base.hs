@@ -74,7 +74,7 @@ trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
          <$> (annotation .- addSemanticInfo (AmbiguousNameInfo locals isDefining rdr l :: SemanticInfo n)) 
          <$> (annLoc (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
 
-class (DataId n, GHCName n) => TransformableName n where
+class (DataId n, Eq n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
 
 instance TransformableName RdrName where

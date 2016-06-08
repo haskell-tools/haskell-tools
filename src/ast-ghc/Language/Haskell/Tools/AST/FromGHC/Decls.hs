@@ -22,6 +22,7 @@ import Control.Monad.Reader
 import Control.Reference
 import Data.Maybe
 import Data.Data (toConstr)
+import Data.Generics.Uniplate.Data
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
@@ -347,8 +348,12 @@ trfPatternSynonym (PSB id _ lhs def dir)
   = let sep = case dir of ImplicitBidirectional -> AnnEqual
                           _                     -> AnnLarrow
         rhsLoc = combineSrcSpans (getLoc def) <$> tokenLoc sep
+        -- we use the selector name instead of the pattern variable name
+        rewrites = case lhs of RecordPatSyn flds -> map (\r -> (unLoc (recordPatSynPatVar r), unLoc (recordPatSynSelectorId r))) flds
+                               _                 -> []
+        changedRhs = biplateRef .- (\n -> case lookup n rewrites of Just x -> x; Nothing -> n) $ def
      in AST.PatternSynonym <$> trfPatSynLhs id lhs
-                           <*> annLoc rhsLoc (trfPatSynRhs dir def)
+                           <*> annLoc rhsLoc (trfPatSynRhs dir changedRhs)
 
   where trfPatSynLhs :: TransformName n r => Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.PatSynLhs r)
         trfPatSynLhs id (PrefixPatSyn args)
