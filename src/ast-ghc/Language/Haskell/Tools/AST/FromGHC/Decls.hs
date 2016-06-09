@@ -287,6 +287,7 @@ trfClassElemSig = trfLoc $ \case
   ClassOpSig True [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType (hsib_body typ)
   ClassOpSig False names typ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                            <*> trfType (hsib_body typ))
+  MinimalSig _ formula -> AST.ClsMinimal <$> trfMinimalFormula formula
   s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)

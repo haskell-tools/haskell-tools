@@ -18,6 +18,7 @@ import HsDecls as GHC
 import HsTypes as GHC
 import OccName as GHC
 import Name as GHC
+import BooleanFormula as GHC
 
 import Data.List
 
@@ -140,3 +141,13 @@ trfRewriteRule = trfLoc $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ ri
 trfRuleBndr :: TransformName n r =>  Located (RuleBndr n) -> Trf (Ann AST.TyVar r)
 trfRuleBndr = trfLoc $ \case (RuleBndr n) -> AST.TyVarDecl <$> trfName n <*> nothing " " "" atTheEnd
                              (RuleBndrSig n k) -> AST.TyVarDecl <$> trfName n <*> (makeJust <$> (trfKindSig' (hswc_body $ hsib_body k)))
+
+trfMinimalFormula :: TransformName n r => Located (BooleanFormula (Located n)) -> Trf (Ann AST.MinimalFormula r)
+trfMinimalFormula = trfLoc trfMinimalFormula'
+
+trfMinimalFormula' :: TransformName n r => BooleanFormula (Located n) -> Trf (AST.MinimalFormula r)
+trfMinimalFormula' (Var name) = AST.MinimalName <$> trfName name
+trfMinimalFormula' (And formulas) = AST.MinimalAnd <$> trfAnnList " & " trfMinimalFormula' formulas
+trfMinimalFormula' (Or formulas) = AST.MinimalOr <$> trfAnnList " | " trfMinimalFormula' formulas
+trfMinimalFormula' (Parens formula) = AST.MinimalParen <$> trfMinimalFormula formula
+

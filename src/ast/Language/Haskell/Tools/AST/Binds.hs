@@ -121,16 +121,6 @@ data TopLevelPragma a
                      , _specializeType :: Ann Type a 
                      }
 
-data ClassBodyPragma a 
-  = MinimalPragma { _pragmaFormula :: AnnMaybe MinimalFormula a 
-                  }
-
-data ClassInstancePragma a 
-  = SpecializeInstancePragma { _instancePragmaPhase :: AnnMaybe PhaseControl a
-                             , _specializeInstanceDef :: Ann Name a 
-                             , _specializeInstanceType :: Ann Type a 
-                             }
- 
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 data Rule a
   = Rule { _ruleName :: Ann StringNode a -- ^ User name of the rule
@@ -155,9 +145,7 @@ data MinimalFormula a
                  }
   | MinimalParen { _minimalInner :: Ann MinimalFormula a 
                  }
-  | MinimalOr    { _minimalLhs :: Ann MinimalFormula a
-                 , _minimalRhs :: Ann MinimalFormula a
+  | MinimalOr    { _minimalOrs :: AnnList MinimalFormula a
                  } -- ^ One of the minimal formulas are needed (@ min1 | min2 @)
-  | MinimalAnd   { _minimalLhs :: Ann MinimalFormula a
-                 , _minimalRhs :: Ann MinimalFormula a
+  | MinimalAnd   { _minimalAnds :: AnnList MinimalFormula a
                  } -- ^ Both of the minimal formulas are needed (@ min1 , min2 @)
