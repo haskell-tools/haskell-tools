@@ -175,10 +175,8 @@ data InstBodyDecl a
                          , _instBodyGadtCons :: AnnList GadtConDecl a
                          , _instBodyDerivings :: AnnMaybe Deriving a
                          } -- ^ An associated data type implemented using GADT style
-  | SpecializeInstance   { _instancePragmaPhase :: AnnMaybe PhaseControl a
-                         , _specializeInstanceDef :: Ann Name a 
-                         , _specializeInstanceType :: Ann Type a 
-                         } -- ^ Specialize instance pragma
+  | SpecializeInstance   { _specializeInstanceType :: Ann Type a 
+                         } -- ^ Specialize instance pragma (no phase selection is allowed)
   -- not supported yet
   | InstBodyPatSyn       { _instBodyPatSyn :: Ann PatternSynonym a 
                          } -- ^ A pattern synonym in a class instance

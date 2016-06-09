@@ -327,6 +327,7 @@ trfClassInstSig = trfLoc $ \case
                                            <*> trfType (hswc_body $ hsib_body typ))
   ClassOpSig _ names typ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                                 <*> trfType (hsib_body typ))
+  SpecInstSig _ typ -> AST.SpecializeInstance <$> trfType (hsib_body typ)
   s -> error ("Illegal class instance signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
           
 trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl r)
