@@ -28,6 +28,7 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Types
+import Language.Haskell.Tools.AST.FromGHC.Exprs
 import Language.Haskell.Tools.AST.FromGHC.Patterns
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Binds
@@ -111,6 +112,10 @@ trfDecl = trfLoc $ \case
   ForD (ForeignExport name (hsib_body -> typ) _ (CExport (L l (CExportStatic _ _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
+  AnnD (HsAnnotation stxt subject expr) 
+    -> AST.PragmaDecl <$> annCont (AST.AnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
+  d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
+
 
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.GDataDecl <$> trfDataKeyword nd
@@ -386,3 +391,11 @@ trfFamilyResultSig (L l fr) Nothing = case fr of
   KindSig k -> makeJust <$> (annLoc (pure l) $ AST.TypeFamilyKind <$> trfKindSig' k)
 trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps))) 
   = makeJust <$> (annLoc (pure l) $ AST.TypeFamilyInjectivity <$> (annCont $ AST.InjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))
+
+trfAnnotationSubject :: TransformName n r => SourceText -> AnnProvenance n -> SrcLoc -> Trf (Ann AST.AnnotationSubject r)
+trfAnnotationSubject stxt subject payloadEnd
+  = do payloadStart <- advanceStr stxt <$> atTheStart
+       case subject of ValueAnnProvenance name@(L l _) -> annLoc (pure l) (AST.NameAnnotation <$> trfName name)
+                       TypeAnnProvenance name@(L l _) -> annLoc (pure $ mkSrcSpan payloadStart (srcSpanEnd l)) 
+                                                                (AST.TypeAnnotation <$> trfName name)
+                       ModuleAnnProvenance -> annLoc (pure $ mkSrcSpan payloadStart payloadEnd) (pure AST.ModuleAnnotation)

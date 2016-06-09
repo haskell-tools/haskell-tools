@@ -100,7 +100,8 @@ data TopLevelPragma a
   | WarningPragma    { _pragmaObjects :: AnnList Name a
                      , _pragmaMessage :: Ann StringNode a
                      }
-  | AnnPragma        { _pragmaAnnotation :: Ann Annotation a 
+  | AnnPragma        { _annotationSubject :: Ann AnnotationSubject a 
+                     , _annotateExpr :: Ann Expr a
                      }
   | InlinePragma     { _pragmaPhase :: AnnMaybe PhaseControl a
                      , _pragmaConlike :: AnnMaybe ConlikeAnnot a
@@ -131,13 +132,12 @@ data Rule a
          }
  
 -- | Annotation allows you to connect an expression to any declaration. 
-data Annotation a
-  = NameAnnotation   { _annotateType :: AnnMaybe TypeKeyword a
-                     , _annotateName :: Ann Name a
-                     , _annotateExpr :: Ann Expr a
-                     }
-  | ModuleAnnotation { _annotateExpr :: Ann Expr a 
-                     }
+data AnnotationSubject a
+  = NameAnnotation { _annotateName :: Ann Name a
+                   } -- ^ The definition with the given name is annotated
+  | TypeAnnotation { _annotateName :: Ann Name a 
+                   } -- ^ A type with the given name is annotated
+  | ModuleAnnotation -- ^ The whole module is annotated
 
 -- | Formulas of minimal annotations declaring which functions should be defined.
 data MinimalFormula a

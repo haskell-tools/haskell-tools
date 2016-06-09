@@ -26,6 +26,7 @@ import Data.Maybe
 import Data.IORef
 import Data.Function hiding ((&))
 import Data.List
+import Data.Char
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
@@ -287,6 +288,11 @@ copyAnnot f at = (\(Ann i a) -> Ann i (f (Ann i a))) <$> at
 foldLocs :: [SrcSpan] -> SrcSpan
 foldLocs = foldl combineSrcSpans noSrcSpan
 
+-- | The location after the given string
+advanceStr :: String -> SrcLoc -> SrcLoc
+advanceStr str (RealSrcLoc l) = RealSrcLoc $ foldl advanceSrcLoc l str
+advanceStr _ l = l
+
 -- | Update column information in a source location
 updateCol :: (Int -> Int) -> SrcLoc -> SrcLoc
 updateCol f loc@(UnhelpfulLoc _) = loc
@@ -310,5 +316,15 @@ trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]
 trfScopedSequence f (def:rest) = (:) <$> f def <*> addToScope def (trfScopedSequence f rest)
 trfScopedSequence f [] = pure []
 
-
+-- | Splits a given string at whitespaces while calculating the source location of the fragments
+splitLocated :: Located String -> [Located String]
+splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing
+  where splitLocated' :: String -> RealSrcLoc -> Maybe (RealSrcLoc, String) -> [Located String]
+        splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c 
+          = L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing
+        splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing
+        splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))
+        splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))
+        splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
+        splitLocated' [] currLoc Nothing = []
                 

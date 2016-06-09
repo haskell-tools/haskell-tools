@@ -73,7 +73,7 @@ makeReferences ''FieldUpdate
 makeReferences ''Bracket
 makeReferences ''TopLevelPragma
 makeReferences ''Rule
-makeReferences ''Annotation
+makeReferences ''AnnotationSubject
 makeReferences ''MinimalFormula
 makeReferences ''ExprPragma
 makeReferences ''SourceRange

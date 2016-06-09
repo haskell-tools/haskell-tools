@@ -150,16 +150,6 @@ trfText' :: RangeAnnot a => StringLiteral -> Trf (AST.StringNode a)
 trfText' = pure . AST.StringNode . unpackFS . sl_fs
 
 
-splitLocated :: Located String -> [Located String]
-splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing
-  where splitLocated' :: String -> RealSrcLoc -> Maybe (RealSrcLoc, String) -> [Located String]
-        splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c 
-          = L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing
-        splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing
-        splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))
-        splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))
-        splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
-        splitLocated' [] currLoc Nothing = []
 
 trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList r)
 trfExportList loc = trfMaybeDefault " " "" (trfLoc trfExportList') (pure loc)

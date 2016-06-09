@@ -93,7 +93,7 @@ deriveStructTrav ''FieldUpdate
 deriveStructTrav ''Bracket
 deriveStructTrav ''TopLevelPragma
 deriveStructTrav ''Rule
-deriveStructTrav ''Annotation
+deriveStructTrav ''AnnotationSubject
 deriveStructTrav ''MinimalFormula
 deriveStructTrav ''ExprPragma
 deriveStructTrav ''SourceRange
