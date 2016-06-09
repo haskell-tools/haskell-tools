@@ -92,20 +92,20 @@ extractExprIds = catMaybes . map (\case (L l (HsVar (L _ n))) -> Just (L l n); _
 
 trfModule :: Located (HsModule RdrName) -> Trf (Ann AST.Module RangeInfo)
 trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
-  \(HsModule name exports imports decls deprec haddock) -> 
-    AST.Module <$> trfPragmas deprec haddock
-               <*> trfModuleHead name exports
+  \(HsModule name exports imports decls deprec _) -> 
+    AST.Module <$> trfFilePragmas
+               <*> trfModuleHead name exports deprec
                <*> trfImports imports
                <*> trfDecls decls
        
 trfModuleRename :: Module -> Ann AST.Module RangeInfo -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
 trfModuleRename mod rangeMod (gr,imports,exps,_) 
   = addModuleInfo mod <=< (trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
-      \hsMod@(HsModule name exports _ decls deprec haddock) -> 
+      \hsMod@(HsModule name exports _ decls deprec _) -> 
         setOriginalNames originalNames
-          $ AST.Module <$> trfPragmas deprec haddock
+          $ AST.Module <$> trfFilePragmas
                        <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                                       _                       -> Nothing)
+                                                                       _                       -> Nothing) deprec
                        <*> (orderAnnList <$> (trfImports imports))
                        <*> trfDeclsGroup gr)
   where addModuleInfo :: Module -> Ann AST.Module RangeWithName -> Trf (Ann AST.Module RangeWithName)
@@ -116,24 +116,39 @@ trfModuleRename mod rangeMod (gr,imports,exps,_)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
 
         
-trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ModuleHead r) 
-trfModuleHead (Just mn) exports 
+trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModuleHead r) 
+trfModuleHead (Just mn) exports modPrag
   = makeJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])
                          (AST.ModuleHead <$> trfModuleName mn 
-                                         <*> trfExportList (srcSpanEnd $ getLoc mn) exports))
-trfModuleHead Nothing _ = nothing "" "" moduleHeadPos
+                                         <*> trfExportList (srcSpanEnd $ getLoc mn) exports
+                                         <*> trfModulePragma modPrag))
+trfModuleHead _ Nothing _ = nothing "" "" moduleHeadPos
   where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
                                                  _ -> atTheStart
 
-trfPragmas :: RangeAnnot a => Maybe (Located WarningTxt) -> Maybe LHsDocString -> Trf (AnnList AST.ModulePragma a)
-trfPragmas _ _ = do languagePragmas <- asks (fromMaybe [] . (Map.lookup "LANGUAGE") . pragmaComms)
-                    makeList "" atTheStart (mapM trfLanguagePragma languagePragmas)
+trfFilePragmas :: RangeAnnot a => Trf (AnnList AST.FilePragma a)
+trfFilePragmas = do pragmas <- asks pragmaComms
+                    languagePragmas <- mapM trfLanguagePragma (fromMaybe [] $ (Map.lookup "LANGUAGE") pragmas)
+                    optionsPragmas <- mapM trfOptionsPragma (fromMaybe [] $ (Map.lookup "OPTIONS_GHC") pragmas)
+                    makeList "" atTheStart $ pure $ orderDefs $ languagePragmas ++ optionsPragmas
 
-trfLanguagePragma :: RangeAnnot a => Located String -> Trf (Ann AST.ModulePragma a)
+trfLanguagePragma :: RangeAnnot a => Located String -> Trf (Ann AST.FilePragma a)
 trfLanguagePragma lstr@(L l str) = annLoc (pure l) (AST.LanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems) 
                                                                                          (mapM (trfLoc (pure . AST.LanguageExtension)) extensions))
   where pragmaElems = splitLocated lstr
         extensions = init $ drop 2 pragmaElems
+
+trfOptionsPragma :: RangeAnnot a => Located String -> Trf (Ann AST.FilePragma a)
+trfOptionsPragma (L l str) = annLoc (pure l) (AST.OptionsPragma <$> annCont (pure $ AST.StringNode str))
+
+trfModulePragma :: RangeAnnot a => Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModulePragma a)
+trfModulePragma = trfMaybeDefault " " "" (trfLoc $ \case WarningTxt _ txts -> AST.ModuleWarningPragma <$> trfAnnList " " trfText' txts
+                                                         DeprecatedTxt _ txts -> AST.ModuleDeprecatedPragma <$> trfAnnList " " trfText' txts) 
+                                  (before AnnWhere)
+
+trfText' :: RangeAnnot a => StringLiteral -> Trf (AST.StringNode a)
+trfText' = pure . AST.StringNode . unpackFS . sl_fs
+
 
 splitLocated :: Located String -> [Located String]
 splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing

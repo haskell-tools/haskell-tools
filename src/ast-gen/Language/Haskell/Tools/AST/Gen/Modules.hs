@@ -13,15 +13,15 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkModule :: TemplateAnnot a => [Ann ModulePragma a] -> Maybe (Ann ModuleHead a) 
+mkModule :: TemplateAnnot a => [Ann FilePragma a] -> Maybe (Ann ModuleHead a)
                             -> [Ann ImportDecl a] -> [Ann Decl a] -> Ann Module a
-mkModule pragmas head imps decls 
+mkModule filePrags head imps decls 
   = mkAnn (child <> "\n" <> child <> "\n" <> child <> "\n" <> child) 
-      $ Module (mkAnnList (listSep "\n") pragmas) (mkAnnMaybe opt head)
+      $ Module (mkAnnList (listSep "\n") filePrags) (mkAnnMaybe opt head)
                (mkAnnList indentedList imps) (mkAnnList indentedList decls)
                
-mkModuleHead :: TemplateAnnot a => Ann SimpleName a -> Maybe (Ann ExportSpecList a) -> Ann ModuleHead a
-mkModuleHead n es = mkAnn (child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es)
+mkModuleHead :: TemplateAnnot a => Ann SimpleName a -> Maybe (Ann ExportSpecList a) -> Maybe (Ann ModulePragma a) -> Ann ModuleHead a
+mkModuleHead n es pr = mkAnn (child <> child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es) (mkAnnMaybe opt pr)
 
 mkExportSpecList :: TemplateAnnot a => [Ann ExportSpec a] -> Ann ExportSpecList a
 mkExportSpecList = mkAnn ("(" <> child <> ")") . ExportSpecList . mkAnnList (listSep ", ")

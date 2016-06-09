@@ -56,6 +56,8 @@ data Type a
                  } -- ^ Strict type marked with "!".
   | TyUnpack     { _typeInner :: Ann Type a
                  } -- ^ Type marked with UNPACK pragma.
+  | TyNoUnpack   { _typeInner :: Ann Type a
+                 } -- ^ Type marked with NOUNPACK pragma.
   | TyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
   | TyNamedWildc { _typeWildcardName :: Ann Name a
                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@

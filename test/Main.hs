@@ -50,6 +50,7 @@ main = runTestTT $ TestList $ map makeReprintTest (languageTests
         
 languageTests =
   [ "Decl.AmbiguousFields"
+  , "Decl.AnnPragma"
   , "Decl.ClosedTypeFamily"
   , "Decl.CtorOp"
   , "Decl.DataFamily"
@@ -100,6 +101,7 @@ languageTests =
   , "Expr.TupleSections"
   --, "Expr.UnicodeSyntax"
   , "Module.Simple"
+  , "Module.GhcOptionsPragma"
   , "Module.Export"
   , "Module.NamespaceExport"
   , "Module.Import"

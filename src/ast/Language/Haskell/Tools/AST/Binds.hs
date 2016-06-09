@@ -92,18 +92,44 @@ data RhsGuard a
 
 -- | Top level pragmas
 data TopLevelPragma a
-  = RulePragma    { _pragmaRule :: AnnList Rule a 
+  = RulePragma       { _pragmaRule :: AnnList Rule a 
+                     }
+  | DeprPragma       { _pragmaObjects :: AnnList Name a
+                     , _pragmaMessage :: Ann StringNode a
+                     }
+  | WarningPragma    { _pragmaObjects :: AnnList Name a
+                     , _pragmaMessage :: Ann StringNode a
+                     }
+  | AnnPragma        { _pragmaAnnotation :: Ann Annotation a 
+                     }
+  | InlinePragma     { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _inlineDef :: Ann Name a 
+                     }
+  | NoInlinePragma   { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _noInlineDef :: Ann Name a 
+                     }
+  | InlinablePragma  { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _inlinableDef :: Ann Name a 
+                     }
+  | LinePragma       { _pragmaLineNum :: Ann LineNumber a
+                     , _pragmaFileName :: AnnMaybe StringNode a 
+                     }
+  | SpecializePragma { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _specializeDef :: Ann Name a 
+                     , _specializeType :: Ann Type a 
+                     }
+
+data ClassBodyPragma a 
+  = MinimalPragma { _pragmaFormula :: AnnMaybe MinimalFormula a 
                   }
-  | DeprPragma    { _pragmaObjects :: AnnList Name a
-                  , _pragmaMessage :: Ann StringNode a
-                  }
-  | WarningPragma { _pragmaObjects :: AnnList Name a
-                  , _pragmaMessage :: Ann StringNode a
-                  }
-  | AnnPragma     { _pragmaAnnotation :: Ann Annotation a 
-                  }
-  | MinimalPragma { _pragmaFormula :: AnnMaybe MinimalFormula a 
-                  }
+
+data ClassInstancePragma a 
+  = SpecializeInstancePragma { _instancePragmaPhase :: AnnMaybe PhaseControl a
+                             , _specializeInstanceDef :: Ann Name a 
+                             , _specializeInstanceType :: Ann Type a 
+                             }
  
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 data Rule a

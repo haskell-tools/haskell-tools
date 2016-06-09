@@ -46,6 +46,7 @@ deriveStructTrav ''ExportSpec
 deriveStructTrav ''IESpec
 deriveStructTrav ''SubSpec
 deriveStructTrav ''ModulePragma
+deriveStructTrav ''FilePragma
 deriveStructTrav ''ImportDecl
 deriveStructTrav ''ImportSpec
 deriveStructTrav ''ImportQualified
@@ -173,8 +174,10 @@ deriveStructTrav ''OverlapPragma
 deriveStructTrav ''CallConv
 deriveStructTrav ''ArrowAppl
 deriveStructTrav ''Safety
+deriveStructTrav ''ConlikeAnnot
 deriveStructTrav ''Assoc
 deriveStructTrav ''Precedence
+deriveStructTrav ''LineNumber
 deriveStructTrav ''PhaseControl
 deriveStructTrav ''PhaseNumber
 deriveStructTrav ''PhaseInvert

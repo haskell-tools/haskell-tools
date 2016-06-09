@@ -1,0 +1,1 @@
+module Module.WarningPragma {-# WARNING "this module is dangerous" #-} where
