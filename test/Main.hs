@@ -119,6 +119,7 @@ languageTests =
   , "Type.Forall"
   , "Type.Primitives"
   , "Type.TypeOperators"
+  , "Type.Unpack"
   , "Type.Wildcard"
   , "Refactor.CommentHandling.CommentTypes"
   , "Refactor.CommentHandling.BlockComments"

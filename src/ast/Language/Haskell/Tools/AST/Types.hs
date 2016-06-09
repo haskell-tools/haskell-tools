@@ -53,11 +53,13 @@ data Type a
   | TyQuasiQuote { _typeQQ :: QuasiQuote a
                  } -- ^ a Template Haskell quasi-quote type (@ [quoter| ... ] @).
   | TyBang       { _typeInner :: Ann Type a
-                 } -- ^ Strict type marked with "!".
+                 } -- ^ Strict type marked with @!@.
+  | TyLazy       { _typeInner :: Ann Type a
+                 } -- ^ Lazy type marked with @~@. (Should only be used if @Strict@ or @StrictData@ language extension is used)
   | TyUnpack     { _typeInner :: Ann Type a
-                 } -- ^ Type marked with UNPACK pragma.
+                 } -- ^ Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
   | TyNoUnpack   { _typeInner :: Ann Type a
-                 } -- ^ Type marked with NOUNPACK pragma.
+                 } -- ^ Strict type marked with NOUNPACK pragma. (Usually contains the bang mark.)
   | TyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
   | TyNamedWildc { _typeWildcardName :: Ann Name a
                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
