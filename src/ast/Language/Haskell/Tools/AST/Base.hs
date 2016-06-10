@@ -95,9 +95,14 @@ data Role a
   | Representational
   | Phantom
   
+data ConlikeAnnot a = ConlikeAnnot
+
 -- | Numeric precedence of an operator
 data Precedence a
   = Precedence { _precedenceValue :: Int } 
+
+data LineNumber a
+  = LineNumber { _lineNumber :: Int } 
      
 -- | Controls the activation of a rewrite rule (@ [1] @)
 data PhaseControl a

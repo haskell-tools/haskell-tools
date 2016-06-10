@@ -8,7 +8,7 @@ import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Decls
 
 data Module a 
-  = Module { _modPragmas :: AnnList ModulePragma a
+  = Module { _filePragmas :: AnnList FilePragma a
            , _modHead :: AnnMaybe ModuleHead a
            , _modImports :: AnnList ImportDecl a
            , _modDecl :: AnnList Decl a
@@ -18,6 +18,7 @@ data Module a
 data ModuleHead a
   = ModuleHead { _mhName :: Ann SimpleName a
                , _mhExports :: AnnMaybe ExportSpecList a
+               , _mhPragma :: AnnMaybe ModulePragma a
                }
 
 -- | A list of export specifications surrounded by parentheses
@@ -42,15 +43,19 @@ data SubSpec a
   = SubSpecAll -- @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
   | SubSpecList { _essList :: AnnList Name a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
            
--- | Pragmas that affect the whole module           
-data ModulePragma a
+-- | Pragmas that must be used before defining the module         
+data FilePragma a
   = LanguagePragma { _lpPragmas :: AnnList LanguageExtension a 
                    }  -- ^ LANGUAGE pragma
-  | OptionsPragma { _opTool :: AnnMaybe SimpleName a
-                  , _opStr :: Ann StringNode a
+  | OptionsPragma {  _opStr :: Ann StringNode a
                   } -- ^ OPTIONS pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
-  | AnnModulePragma { _ampExpr :: Ann Expr a 
-                    } -- ^ ANN pragma with module scope
+                        
+-- | Pragmas that must be used after the module head  
+data ModulePragma a
+  = ModuleWarningPragma { _modWarningStr :: AnnList StringNode a 
+                        }  -- ^ a warning pragma attached to the module
+  | ModuleDeprecatedPragma {  _modDeprecatedPragma :: AnnList StringNode a
+                           } -- ^ a deprecated pragma attached to the module
              
 data LanguageExtension a = LanguageExtension { _langExt :: String }
 

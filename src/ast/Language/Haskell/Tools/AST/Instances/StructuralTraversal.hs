@@ -46,6 +46,7 @@ deriveStructTrav ''ExportSpec
 deriveStructTrav ''IESpec
 deriveStructTrav ''SubSpec
 deriveStructTrav ''ModulePragma
+deriveStructTrav ''FilePragma
 deriveStructTrav ''ImportDecl
 deriveStructTrav ''ImportSpec
 deriveStructTrav ''ImportQualified
@@ -92,7 +93,7 @@ deriveStructTrav ''FieldUpdate
 deriveStructTrav ''Bracket
 deriveStructTrav ''TopLevelPragma
 deriveStructTrav ''Rule
-deriveStructTrav ''Annotation
+deriveStructTrav ''AnnotationSubject
 deriveStructTrav ''MinimalFormula
 deriveStructTrav ''ExprPragma
 deriveStructTrav ''SourceRange
@@ -173,8 +174,10 @@ deriveStructTrav ''OverlapPragma
 deriveStructTrav ''CallConv
 deriveStructTrav ''ArrowAppl
 deriveStructTrav ''Safety
+deriveStructTrav ''ConlikeAnnot
 deriveStructTrav ''Assoc
 deriveStructTrav ''Precedence
+deriveStructTrav ''LineNumber
 deriveStructTrav ''PhaseControl
 deriveStructTrav ''PhaseNumber
 deriveStructTrav ''PhaseInvert

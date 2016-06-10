@@ -28,6 +28,7 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Types
+import Language.Haskell.Tools.AST.FromGHC.Exprs
 import Language.Haskell.Tools.AST.FromGHC.Patterns
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Binds
@@ -111,6 +112,10 @@ trfDecl = trfLoc $ \case
   ForD (ForeignExport name (hsib_body -> typ) _ (CExport (L l (CExportStatic _ _ ccall)) _)) 
     -> AST.ForeignExport <$> annLoc (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.SpliceDecl <$> (annCont $ trfSplice' spl)
+  AnnD (HsAnnotation stxt subject expr) 
+    -> AST.PragmaDecl <$> annCont (AST.AnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
+  d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
+
 
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.GDataDecl <$> trfDataKeyword nd
@@ -136,6 +141,24 @@ trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
 trfSig (FixSig fs) = AST.FixityDecl <$> (annCont $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
   = AST.PatTypeSigDecl <$> annCont (AST.PatternTypeSignature <$> trfName id <*> trfType (hsib_body typ))
+trfSig (InlineSig name (InlinePragma _ Inlinable _ phase _)) 
+  = AST.PragmaDecl <$> annCont (AST.InlinablePragma <$> trfPhase (pure $ srcSpanStart $ getLoc name) phase <*> trfName name)
+trfSig (InlineSig name (InlinePragma src inl _ phase cl)) 
+  = do rng <- asks contRange
+       let parts = map getLoc $ splitLocated (L rng src)
+       AST.PragmaDecl <$> annCont ((case inl of Inline -> AST.InlinePragma; NoInline -> AST.NoInlinePragma) 
+                                     <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
+                                     <*> trfConlike parts cl 
+                                     <*> trfName name)
+trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase)) 
+  = AST.PragmaDecl <$> annCont (AST.SpecializePragma <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
+                                                     <*> trfName name 
+                                                     <*> (orderAnnList <$> trfAnnList ", " trfType' types))
+trfSig s = error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
+
+trfConlike :: RangeAnnot a => [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybe AST.ConlikeAnnot a)
+trfConlike parts ConLike = makeJust <$> annLoc (pure $ parts !! 2) (pure AST.ConlikeAnnot)
+trfConlike parts FunLike = nothing " " "" (pure $ srcSpanEnd $ parts !! 1)
 
 trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.ConDecl r)
 trfConDecl = trfLoc trfConDecl'
@@ -287,6 +310,7 @@ trfClassElemSig = trfLoc $ \case
   ClassOpSig True [name] typ -> AST.ClsDefSig <$> trfName name <*> trfType (hsib_body typ)
   ClassOpSig False names typ -> AST.ClsSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                            <*> trfType (hsib_body typ))
+  MinimalSig _ formula -> AST.ClsMinimal <$> trfMinimalFormula formula
   s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily r)
@@ -326,6 +350,7 @@ trfClassInstSig = trfLoc $ \case
                                            <*> trfType (hswc_body $ hsib_body typ))
   ClassOpSig _ names typ -> AST.InstBodyTypeSig <$> (annCont $ AST.TypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                                 <*> trfType (hsib_body typ))
+  SpecInstSig _ typ -> AST.SpecializeInstance <$> trfType (hsib_body typ)
   s -> error ("Illegal class instance signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
           
 trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl r)
@@ -384,3 +409,11 @@ trfFamilyResultSig (L l fr) Nothing = case fr of
   KindSig k -> makeJust <$> (annLoc (pure l) $ AST.TypeFamilyKind <$> trfKindSig' k)
 trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps))) 
   = makeJust <$> (annLoc (pure l) $ AST.TypeFamilyInjectivity <$> (annCont $ AST.InjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))
+
+trfAnnotationSubject :: TransformName n r => SourceText -> AnnProvenance n -> SrcLoc -> Trf (Ann AST.AnnotationSubject r)
+trfAnnotationSubject stxt subject payloadEnd
+  = do payloadStart <- advanceStr stxt <$> atTheStart
+       case subject of ValueAnnProvenance name@(L l _) -> annLoc (pure l) (AST.NameAnnotation <$> trfName name)
+                       TypeAnnProvenance name@(L l _) -> annLoc (pure $ mkSrcSpan payloadStart (srcSpanEnd l)) 
+                                                                (AST.TypeAnnotation <$> trfName name)
+                       ModuleAnnProvenance -> annLoc (pure $ mkSrcSpan payloadStart payloadEnd) (pure AST.ModuleAnnotation)

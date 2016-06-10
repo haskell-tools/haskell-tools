@@ -92,19 +92,36 @@ data RhsGuard a
 
 -- | Top level pragmas
 data TopLevelPragma a
-  = RulePragma    { _pragmaRule :: AnnList Rule a 
-                  }
-  | DeprPragma    { _pragmaObjects :: AnnList Name a
-                  , _pragmaMessage :: Ann StringNode a
-                  }
-  | WarningPragma { _pragmaObjects :: AnnList Name a
-                  , _pragmaMessage :: Ann StringNode a
-                  }
-  | AnnPragma     { _pragmaAnnotation :: Ann Annotation a 
-                  }
-  | MinimalPragma { _pragmaFormula :: AnnMaybe MinimalFormula a 
-                  }
- 
+  = RulePragma       { _pragmaRule :: AnnList Rule a 
+                     }
+  | DeprPragma       { _pragmaObjects :: AnnList Name a
+                     , _pragmaMessage :: Ann StringNode a
+                     }
+  | WarningPragma    { _pragmaObjects :: AnnList Name a
+                     , _pragmaMessage :: Ann StringNode a
+                     }
+  | AnnPragma        { _annotationSubject :: Ann AnnotationSubject a 
+                     , _annotateExpr :: Ann Expr a
+                     }
+  | InlinePragma     { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _inlineDef :: Ann Name a 
+                     }
+  | NoInlinePragma   { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _noInlineDef :: Ann Name a 
+                     }
+  | InlinablePragma  { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _inlinableDef :: Ann Name a 
+                     }
+  | LinePragma       { _pragmaLineNum :: Ann LineNumber a
+                     , _pragmaFileName :: AnnMaybe StringNode a 
+                     }
+  | SpecializePragma { _pragmaPhase :: AnnMaybe PhaseControl a
+                     , _specializeDef :: Ann Name a 
+                     , _specializeType :: AnnList Type a 
+                     }
+
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 data Rule a
   = Rule { _ruleName :: Ann StringNode a -- ^ User name of the rule
@@ -115,13 +132,12 @@ data Rule a
          }
  
 -- | Annotation allows you to connect an expression to any declaration. 
-data Annotation a
-  = NameAnnotation   { _annotateType :: AnnMaybe TypeKeyword a
-                     , _annotateName :: Ann Name a
-                     , _annotateExpr :: Ann Expr a
-                     }
-  | ModuleAnnotation { _annotateExpr :: Ann Expr a 
-                     }
+data AnnotationSubject a
+  = NameAnnotation { _annotateName :: Ann Name a
+                   } -- ^ The definition with the given name is annotated
+  | TypeAnnotation { _annotateName :: Ann Name a 
+                   } -- ^ A type with the given name is annotated
+  | ModuleAnnotation -- ^ The whole module is annotated
 
 -- | Formulas of minimal annotations declaring which functions should be defined.
 data MinimalFormula a
@@ -129,9 +145,7 @@ data MinimalFormula a
                  }
   | MinimalParen { _minimalInner :: Ann MinimalFormula a 
                  }
-  | MinimalOr    { _minimalLhs :: Ann MinimalFormula a
-                 , _minimalRhs :: Ann MinimalFormula a
+  | MinimalOr    { _minimalOrs :: AnnList MinimalFormula a
                  } -- ^ One of the minimal formulas are needed (@ min1 | min2 @)
-  | MinimalAnd   { _minimalLhs :: Ann MinimalFormula a
-                 , _minimalRhs :: Ann MinimalFormula a
+  | MinimalAnd   { _minimalAnds :: AnnList MinimalFormula a
                  } -- ^ Both of the minimal formulas are needed (@ min1 , min2 @)

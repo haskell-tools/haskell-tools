@@ -1,0 +1,1 @@
+module Module.DeprecatedPragma {-# DEPRECATED "this module is deprecated" #-} where

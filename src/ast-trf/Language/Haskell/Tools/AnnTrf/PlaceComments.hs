@@ -32,7 +32,7 @@ getNormalComments = Map.map (filter (not . isPragma . unLoc))
 getPragmaComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map String [Located String]
 getPragmaComments comms = Map.fromListWith (++) $ map (\(L l (AnnBlockComment str)) -> (getPragmaCommand str, [L l str])) 
                                                 $ filter (isPragma . unLoc) $ concat $ map snd $ Map.toList comms 
-  where getPragmaCommand = takeWhile isAlphaNum . dropWhile isSpace . drop 3
+  where getPragmaCommand = takeWhile (\c -> isAlphaNum c || c == '_') . dropWhile isSpace . drop 3
 
 isPragma :: AnnotationComment -> Bool
 isPragma (AnnBlockComment str) = startswith "{-#" str && endswith "#-}" str
