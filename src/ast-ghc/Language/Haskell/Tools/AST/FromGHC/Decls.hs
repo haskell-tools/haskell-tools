@@ -141,10 +141,19 @@ trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
 trfSig (FixSig fs) = AST.FixityDecl <$> (annCont $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
   = AST.PatTypeSigDecl <$> annCont (AST.PatternTypeSignature <$> trfName id <*> trfType (hsib_body typ))
-trfSig (InlineSig name (InlinePragma src Inline _ phase cl)) 
+trfSig (InlineSig name (InlinePragma _ Inlinable _ phase _)) 
+  = AST.PragmaDecl <$> annCont (AST.InlinablePragma <$> trfPhase (pure $ srcSpanStart $ getLoc name) phase <*> trfName name)
+trfSig (InlineSig name (InlinePragma src inl _ phase cl)) 
   = do rng <- asks contRange
        let parts = map getLoc $ splitLocated (L rng src)
-       AST.PragmaDecl <$> annCont (AST.InlinePragma <$> trfPhase phase <*> trfConlike parts cl <*> trfName name)
+       AST.PragmaDecl <$> annCont ((case inl of Inline -> AST.InlinePragma; NoInline -> AST.NoInlinePragma) 
+                                     <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
+                                     <*> trfConlike parts cl 
+                                     <*> trfName name)
+trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase)) 
+  = AST.PragmaDecl <$> annCont (AST.SpecializePragma <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
+                                                     <*> trfName name 
+                                                     <*> (orderAnnList <$> trfAnnList ", " trfType' types))
 trfSig s = error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
 
 trfConlike :: RangeAnnot a => [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybe AST.ConlikeAnnot a)

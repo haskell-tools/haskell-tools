@@ -133,7 +133,7 @@ trfFixitySig (FixitySig names (Fixity _ prec dir))
 trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.Rule r)
 trfRewriteRule = trfLoc $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ right _) ->
   AST.Rule <$> trfFastString (L nameLoc ruleName) 
-           <*> focusBefore AnnForall (trfPhase act)
+           <*> trfPhase (before AnnForall) act
            <*> makeNonemptyList " " (mapM trfRuleBndr bndrs)
            <*> trfExpr left
            <*> trfExpr right

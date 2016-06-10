@@ -119,7 +119,7 @@ data TopLevelPragma a
                      }
   | SpecializePragma { _pragmaPhase :: AnnMaybe PhaseControl a
                      , _specializeDef :: Ann Name a 
-                     , _specializeType :: Ann Type a 
+                     , _specializeType :: AnnList Type a 
                      }
 
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
