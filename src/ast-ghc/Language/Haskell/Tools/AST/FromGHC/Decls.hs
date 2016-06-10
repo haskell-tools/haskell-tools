@@ -147,8 +147,8 @@ trfSig (InlineSig name (InlinePragma src inl _ phase cl))
   = do rng <- asks contRange
        let parts = map getLoc $ splitLocated (L rng src)
        AST.PragmaDecl <$> annCont ((case inl of Inline -> AST.InlinePragma; NoInline -> AST.NoInlinePragma) 
-                                     <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
-                                     <*> trfConlike parts cl 
+                                     <$> trfConlike parts cl 
+                                     <*> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
                                      <*> trfName name)
 trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase)) 
   = AST.PragmaDecl <$> annCont (AST.SpecializePragma <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
