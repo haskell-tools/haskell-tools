@@ -174,8 +174,10 @@ trfRole = trfLoc $ \case Just Nominal -> pure AST.Nominal
          
 trfPhase :: RangeAnnot a => Activation -> Trf (AnnMaybe AST.PhaseControl a)
 trfPhase AlwaysActive = nothing "" "" atTheEnd
-trfPhase (ActiveAfter _ pn) = makeJust <$> annCont (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
-trfPhase (ActiveBefore _ pn) = makeJust <$> annCont (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+trfPhase (ActiveAfter _ pn) = makeJust <$> annLoc (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLocBack AnnCloseS) 
+                                                  (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase (ActiveBefore _ pn) = makeJust <$> annLoc (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLocBack AnnCloseS)
+                                                   (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
 
 trfPhaseNum :: RangeAnnot a => PhaseNum -> Trf (Ann AST.PhaseNumber a)
 trfPhaseNum i = annLoc (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 

@@ -182,10 +182,13 @@ makeJust e = AnnMaybe (toOptAnnot "" "" noSrcLoc) (Just e)
 -- | Annotates a node with the given location and focuses on the given source span.
 annLoc :: RangeAnnot a => Trf SrcSpan -> Trf (b a) -> Trf (Ann b a)
 annLoc locm nodem = do loc <- locm
-                       node <- local (\s -> s { contRange = loc }) nodem
+                       node <- focusOn loc nodem
                        return (Ann (toNodeAnnot loc) node)
 
 -- * Focus manipulation
+
+focusOn :: SrcSpan -> Trf a -> Trf a
+focusOn sp = local (\s -> s { contRange = sp })
 
 -- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a

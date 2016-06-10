@@ -141,6 +141,15 @@ trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
 trfSig (FixSig fs) = AST.FixityDecl <$> (annCont $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
   = AST.PatTypeSigDecl <$> annCont (AST.PatternTypeSignature <$> trfName id <*> trfType (hsib_body typ))
+trfSig (InlineSig name (InlinePragma src Inline _ phase cl)) 
+  = do rng <- asks contRange
+       let parts = map getLoc $ splitLocated (L rng src)
+       AST.PragmaDecl <$> annCont (AST.InlinePragma <$> trfPhase phase <*> trfConlike parts cl <*> trfName name)
+trfSig s = error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
+
+trfConlike :: RangeAnnot a => [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybe AST.ConlikeAnnot a)
+trfConlike parts ConLike = makeJust <$> annLoc (pure $ parts !! 2) (pure AST.ConlikeAnnot)
+trfConlike parts FunLike = nothing " " "" (pure $ srcSpanEnd $ parts !! 1)
 
 trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.ConDecl r)
 trfConDecl = trfLoc trfConDecl'
