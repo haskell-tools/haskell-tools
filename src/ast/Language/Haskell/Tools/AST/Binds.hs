@@ -103,12 +103,12 @@ data TopLevelPragma a
   | AnnPragma        { _annotationSubject :: Ann AnnotationSubject a 
                      , _annotateExpr :: Ann Expr a
                      }
-  | InlinePragma     { _pragmaPhase :: AnnMaybe PhaseControl a
-                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+  | InlinePragma     { _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _pragmaPhase :: AnnMaybe PhaseControl a
                      , _inlineDef :: Ann Name a 
                      }
-  | NoInlinePragma   { _pragmaPhase :: AnnMaybe PhaseControl a
-                     , _pragmaConlike :: AnnMaybe ConlikeAnnot a
+  | NoInlinePragma   { _pragmaConlike :: AnnMaybe ConlikeAnnot a
+                     , _pragmaPhase :: AnnMaybe PhaseControl a
                      , _noInlineDef :: Ann Name a 
                      }
   | InlinablePragma  { _pragmaPhase :: AnnMaybe PhaseControl a
