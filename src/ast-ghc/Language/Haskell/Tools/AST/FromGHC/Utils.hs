@@ -171,6 +171,11 @@ trfAnnList :: RangeAnnot i => String -> (a -> Trf (b i)) -> [Located a] -> Trf (
 trfAnnList sep _ [] = makeList sep atTheEnd (pure [])
 trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f) ls)
 
+trfAnnList' :: RangeAnnot i => String -> (Located a -> Trf (Ann b i)) -> [Located a] -> Trf (AnnList b i)
+trfAnnList' sep _ [] = makeList sep atTheEnd (pure [])
+trfAnnList' sep f ls = makeList sep (pure $ noSrcLoc) (mapM f ls)
+
+
 -- | Creates a place for a list of nodes that cannot be empty.
 nonemptyAnnList :: RangeAnnot i => [Ann e i] -> AnnList e i
 nonemptyAnnList = AnnList (toListAnnot "" "" "" noSrcLoc)

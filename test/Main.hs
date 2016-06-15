@@ -198,6 +198,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.RecordPatternSynonyms", "4:16-4:17", "xx")
   , ("Refactor.RenameDefinition.ClassMember", "7:3-7:4", "q")
   , ("Refactor.RenameDefinition.LocalFunction", "4:5-4:6", "g")
+  , ("Refactor.RenameDefinition.LayoutAware", "3:1-3:2", "main")
   , ("Refactor.RenameDefinition.Arg", "4:3-4:4", "y")
   , ("Refactor.RenameDefinition.FunTypeVar", "3:6-3:7", "x")
   , ("Refactor.RenameDefinition.FunTypeVarLocal", "5:10-5:11", "b")
@@ -216,6 +217,7 @@ extractBindingTests =
   [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
   , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
+  , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
   , ("Refactor.ExtractBinding.Records", "5:6-5:38", "plus")
   , ("Refactor.ExtractBinding.RecordWildcards", "6:6-6:28", "plus")
   ]

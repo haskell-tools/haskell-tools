@@ -66,15 +66,16 @@ trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
 trfExpr' (SectionL expr (unLoc -> HsVar op)) = AST.LeftSection <$> trfExpr expr <*> trfOperator op
 trfExpr' (SectionR (unLoc -> HsVar op) expr) = AST.RightSection <$> trfOperator op <*> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
-  = wrap <$> between AnnOpenP AnnCloseP (trfAnnList ", " (trfExpr' . unLoc . (\(Present e) -> e)) tupArgs)
+  = wrap <$> between AnnOpenP AnnCloseP (trfAnnList' ", " (trfExpr . (\(Present e) -> e) . unLoc) tupArgs)
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
 trfExpr' (ExplicitTuple tupArgs box)
   = wrap <$> between AnnOpenP AnnCloseP
                (do locs <- elemLocs
                    makeList ", " atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
-        trfTupSecElem :: TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
-        trfTupSecElem (Present e, l) = annLoc (pure l) (AST.Present <$> annCont (trfExpr' (unLoc e)))
+        trfTupSecElem :: forall n r . TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
+        trfTupSecElem (Present e, l) 
+          = annLoc (pure l) (AST.Present <$> (addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< annCont (trfExpr' (unLoc e))))
         trfTupSecElem (Missing _, l) = annLoc (pure l) (pure AST.Missing)
         
         elemLocs :: Trf [SrcSpan]
@@ -107,8 +108,8 @@ trfExpr' (HsDo MonadComp (unLoc -> stmts) _)
   = AST.ListComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
 trfExpr' (HsDo PArrComp (unLoc -> stmts) _)
   = AST.ParArrayComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
-trfExpr' (ExplicitList _ _ exprs) = AST.List <$> trfAnnList ", " trfExpr' exprs
-trfExpr' (ExplicitPArr _ exprs) = AST.ParArray <$> trfAnnList ", " trfExpr' exprs
+trfExpr' (ExplicitList _ _ exprs) = AST.List <$> trfAnnList' ", " trfExpr exprs
+trfExpr' (ExplicitPArr _ exprs) = AST.ParArray <$> trfAnnList' ", " trfExpr exprs
 trfExpr' (RecordCon name _ _ fields) = AST.RecCon <$> trfName name <*> trfFieldInits fields
 trfExpr' (RecordUpd expr fields _ _ _ _) = AST.RecUpdate <$> trfExpr expr <*> trfAnnList ", " trfFieldUpdate fields
 trfExpr' (ExprWithTySig expr typ) = AST.TypeSig <$> trfExpr expr <*> trfType (hswc_body $ hsib_body typ)
@@ -158,18 +159,18 @@ trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt
 trfAlt = trfLoc trfAlt'
 
 trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.Alt r)
-trfAlt' = gTrfAlt' trfExpr'
+trfAlt' = gTrfAlt' trfExpr
 
-gTrfAlt' :: TransformName n r => (ge n -> Trf (ae r)) -> Match n (Located (ge n)) -> Trf (AST.Alt' ae r)
+gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> Match n (Located (ge n)) -> Trf (AST.Alt' ae r)
 gTrfAlt' te (Match _ [pat] typ (GRHSs rhss (unLoc -> locBinds)))
   = AST.Alt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds locBinds
   
 trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.CaseRhs r)
-trfCaseRhss = gTrfCaseRhss trfExpr'
+trfCaseRhss = gTrfCaseRhss trfExpr
 
-gTrfCaseRhss :: TransformName n r => (ge n -> Trf (ae r)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) r)
+gTrfCaseRhss :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) r)
 gTrfCaseRhss te [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLocBack AnnRarrow) 
-                                                 (AST.UnguardedCaseRhs <$> trfLoc te body)
+                                                 (AST.UnguardedCaseRhs <$> te body)
 gTrfCaseRhss te rhss = annLoc (pure $ collectLocs rhss) 
                               (AST.GuardedCaseRhss <$> trfAnnList ";" (gTrfGuardedCaseRhs' te) rhss)
   
@@ -177,10 +178,10 @@ trfGuardedCaseRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (A
 trfGuardedCaseRhs = trfLoc trfGuardedCaseRhs' 
 
 trfGuardedCaseRhs' :: TransformName n r => GRHS n (LHsExpr n) -> Trf (AST.GuardedCaseRhs r)
-trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr'
+trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr
 
-gTrfGuardedCaseRhs' :: TransformName n r => (ge n -> Trf (ae r)) -> GRHS n (Located (ge n)) -> Trf (AST.GuardedCaseRhs' ae r)
-gTrfGuardedCaseRhs' te (GRHS guards body) = AST.GuardedCaseRhs <$> trfAnnList " " trfRhsGuard' guards <*> trfLoc te body
+gTrfGuardedCaseRhs' :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> GRHS n (Located (ge n)) -> Trf (AST.GuardedCaseRhs' ae r)
+gTrfGuardedCaseRhs' te (GRHS guards body) = AST.GuardedCaseRhs <$> trfAnnList " " trfRhsGuard' guards <*> te body
 
 trfCmdTop :: TransformName n r => Located (HsCmdTop n) -> Trf (Ann AST.Cmd r)
 trfCmdTop (L _ (HsCmdTop cmd _ _ _)) = trfCmd cmd
@@ -201,7 +202,7 @@ trfCmd' (HsCmdLam (MG (unLoc -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [
   = AST.LambdaCmd <$> trfAnnList " " trfPattern' pats <*> trfCmd body
 trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG (unLoc -> alts) _ _ _)) 
-  = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd')) alts) 
+  = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd)) alts) 
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
 trfCmd' (HsCmdLet (unLoc -> binds) cmd) = AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd
-trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd')) stmts)
+trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd)) stmts)
