@@ -41,6 +41,7 @@ import Var as GHC
 import PatSyn as GHC
 import Type as GHC
 import Unique as GHC
+import CoAxiom as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo
                                   , SemanticInfo(..), semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan)
@@ -57,6 +58,8 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
         replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
         replaceSemanticInfo (ScopeInfo sc) = return $ ScopeInfo sc
+        replaceSemanticInfo (DefinitionInfo (Just n)) = getType n >> return (DefinitionInfo (Just n))
+        replaceSemanticInfo (DefinitionInfo Nothing) = return $ DefinitionInfo Nothing
         replaceSemanticInfo (AmbiguousNameInfo sc d rdr l) = return $ NameInfo sc d (locMapping ! l)
         replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
         replaceSemanticInfo (NameInfo sc def ni) = NameInfo sc def <$> getType' ni
@@ -70,7 +73,7 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
                                    return (Just id)
               Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
               Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (createPatSynType ps)
-              Just (ATyCon tc) -> do modify (tyConTyVars tc ++)
+              Just (ATyCon tc) -> do modify (++ getTypeVariables tc)
                                      return $ Just $ mkVanillaGlobal name (tyConKind tc)
               Nothing -> case Map.lookup name mapping of 
                            Just id -> do modify (universeBi (varType id) ++)
@@ -81,6 +84,11 @@ addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replace
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
         locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
+
+getTypeVariables :: GHC.TyCon -> [Id]
+getTypeVariables tc
+  = tyConTyVars tc ++ maybe [] (\case (ClosedSynFamilyTyCon ax) -> maybe [] (concatMap cab_tvs . fromBranches . co_ax_branches) ax
+                                      _ -> []) (famTyConFlav_maybe tc)
 
 extractTypes :: LHsBinds Id -> [Id]
 extractTypes = concatMap universeBi . bagToList

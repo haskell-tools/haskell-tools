@@ -69,7 +69,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)
-trfDecl = trfLoc $ \case
+trfDecl = addDefInfo $ trfLoc $ \case
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _)) 
     -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) 
                                 <*> trfFamilyKind kindSig 
@@ -116,6 +116,8 @@ trfDecl = trfLoc $ \case
     -> AST.PragmaDecl <$> annCont (AST.AnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
   d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
 
+addDefInfo :: forall n r . TransformName n r => (Located (HsDecl n) -> Trf (Ann AST.Decl r)) -> Located (HsDecl n) -> Trf (Ann AST.Decl r)
+addDefInfo f d = AST.annotation .- addSemanticInfo (AST.DefinitionInfo (listToMaybe $ hsGetNames d) :: AST.SemanticInfo n) <$> f d
 
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.GDataDecl <$> trfDataKeyword nd
@@ -242,7 +244,7 @@ trfTypeEqs (Just eqs) = makeNonemptyList "\n" (mapM trfTypeEq eqs)
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn r)
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
-  -> AST.TypeEqn <$> focusBefore AnnEqual (combineTypes name (hsib_body pats)) <*> trfType rhs
+  -> AST.TypeEqn <$> define (focusBefore AnnEqual (combineTypes name (hsib_body pats))) <*> trfType rhs
   where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.Type r)
         combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
           = annCont $ AST.TyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
@@ -268,14 +270,14 @@ createDeclHead name (hsq_explicit -> lhs : rhs : rest)
   -- infix declaration
   = wrapDeclHead rest
       $ annLoc (addParenLocs $ getLoc lhs `combineSrcSpans` getLoc rhs) 
-               (AST.DHInfix <$> trfTyVar lhs <*> trfOperator name <*> trfTyVar rhs)
+               (AST.DHInfix <$> define (trfTyVar lhs) <*> trfOperator name <*> define (trfTyVar rhs))
 createDeclHead name vars = wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.DeclHead (trfName name))
 
 wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.DeclHead r) -> Trf (Ann AST.DeclHead r)
 wrapDeclHead vars base
   = foldl (\t p -> do typ <- t 
                       annLoc (addParenLocs $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
-                             (AST.DHApp typ <$> trfTyVar p)
+                             (AST.DHApp typ <$> define (trfTyVar p))
           ) base vars
 
 -- | Get the parentheses directly before and after (for parenthesized application)

@@ -93,6 +93,7 @@ data SemanticInfo n
                       , _ambiguousName :: RdrName
                       , _ambiguousLocation :: SrcSpan
                       }
+  | DefinitionInfo { _defInfoName :: Maybe Name }
   -- | ImplicitImports [ImportDecl]
   -- | ImplicitFieldUpdates [ImportDecl]
   deriving (Eq, Data)
