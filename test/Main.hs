@@ -203,6 +203,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.FunTypeVar", "3:6-3:7", "x")
   , ("Refactor.RenameDefinition.FunTypeVarLocal", "5:10-5:11", "b")
   , ("Refactor.RenameDefinition.ClassTypeVar", "3:9-3:10", "f")
+  , ("Refactor.RenameDefinition.TypeOperators", "4:13-4:15", "x1")
   ]
 
 wrongRenameDefinitionTests =

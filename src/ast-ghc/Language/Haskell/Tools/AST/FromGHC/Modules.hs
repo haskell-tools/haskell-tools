@@ -26,6 +26,7 @@ import ApiAnnotation as GHC
 import RdrName as GHC
 import Name as GHC hiding (varName)
 import Id as GHC
+import TysWiredIn as GHC
 import SrcLoc as GHC
 import FastString as GHC
 import Module as GHC
@@ -53,34 +54,30 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
 addTypeInfos :: LHsBinds Id -> Ann AST.Module RangeWithName -> Ghc (Ann AST.Module RangeWithType)
-addTypeInfos bnds mod = evalStateT (traverseDown (return ()) (return ()) replaceNodeInfo mod) []
-  where replaceNodeInfo :: RangeWithName -> StateT [GHC.Var] Ghc RangeWithType
+addTypeInfos bnds mod = traverseDown (return ()) (return ()) replaceNodeInfo mod
+  where replaceNodeInfo :: RangeWithName -> Ghc RangeWithType
         replaceNodeInfo = semanticInfo !~ replaceSemanticInfo
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
         replaceSemanticInfo (ScopeInfo sc) = return $ ScopeInfo sc
-        replaceSemanticInfo (DefinitionInfo (Just n)) = getType n >> return (DefinitionInfo (Just n))
-        replaceSemanticInfo (DefinitionInfo Nothing) = return $ DefinitionInfo Nothing
         replaceSemanticInfo (AmbiguousNameInfo sc d rdr l) = return $ NameInfo sc d (locMapping ! l)
         replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
         replaceSemanticInfo (NameInfo sc def ni) = NameInfo sc def <$> getType' ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType' access <*> mapM getType' used
         
-        getType' :: GHC.Name -> StateT [GHC.Id] Ghc GHC.Id
+        getType' :: GHC.Name -> Ghc GHC.Id
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found") <$> getType name
         getType name 
-          = lift (lookupName name) >>= \case
-              Just (AnId id) -> do modify (universeBi (varType id) ++)
-                                   return (Just id)
+          = lookupName name >>= \case
+              Just (AnId id) -> return (Just id)
               Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
               Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (createPatSynType ps)
-              Just (ATyCon tc) -> do modify (++ getTypeVariables tc)
-                                     return $ Just $ mkVanillaGlobal name (tyConKind tc)
+              Just (ATyCon tc) -> return $ Just $ mkVanillaGlobal name (tyConKind tc)
               Nothing -> case Map.lookup name mapping of 
-                           Just id -> do modify (universeBi (varType id) ++)
-                                         return (Just id)
-                           -- here we compare on occurrence names, because GHC does some re-naming
-                           -- this is not a problem, because every time the closest name will be added
-                           Nothing -> gets (find (\v -> nameOccName (GHC.varName v) == nameOccName name))
+                           Just id -> return (Just id)
+                           Nothing | isTyVarName name
+                                      -- unit type is for cases we don't know the kind
+                                   -> return $ Just $ mkVanillaGlobal name unitTy
+                           Nothing -> return Nothing
         mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
         locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res

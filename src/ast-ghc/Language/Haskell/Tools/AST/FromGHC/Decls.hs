@@ -69,7 +69,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)
-trfDecl = addDefInfo $ trfLoc $ \case
+trfDecl = trfLoc $ \case
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _)) 
     -> AST.ClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) 
                                 <*> trfFamilyKind kindSig 
@@ -115,9 +115,6 @@ trfDecl = addDefInfo $ trfLoc $ \case
   AnnD (HsAnnotation stxt subject expr) 
     -> AST.PragmaDecl <$> annCont (AST.AnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
   d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
-
-addDefInfo :: forall n r . TransformName n r => (Located (HsDecl n) -> Trf (Ann AST.Decl r)) -> Located (HsDecl n) -> Trf (Ann AST.Decl r)
-addDefInfo f d = AST.annotation .- addSemanticInfo (AST.DefinitionInfo (listToMaybe $ hsGetNames d) :: AST.SemanticInfo n) <$> f d
 
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.GDataDecl <$> trfDataKeyword nd
