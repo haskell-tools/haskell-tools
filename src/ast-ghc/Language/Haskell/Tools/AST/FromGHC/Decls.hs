@@ -267,7 +267,7 @@ createDeclHead name (hsq_explicit -> lhs : rhs : rest)
   -- infix declaration
   = wrapDeclHead rest
       $ annLoc (addParenLocs $ getLoc lhs `combineSrcSpans` getLoc rhs) 
-               (AST.DHInfix <$> defineTypeVars (trfTyVar lhs) <*> trfOperator name <*> defineTypeVars (trfTyVar rhs))
+               (AST.DHInfix <$> defineTypeVars (trfTyVar lhs) <*> define (trfOperator name) <*> defineTypeVars (trfTyVar rhs))
 createDeclHead name vars = defineTypeVars $ wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.DeclHead (trfName name))
 
 wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.DeclHead r) -> Trf (Ann AST.DeclHead r)

@@ -65,10 +65,8 @@ nameValid n str | str `elem` reservedNames = False
                         , "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type", "where", "_"
                         , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
                         ]
-nameValid n (':' : opCtrNameRest)
-  = isDataSymOcc n && all isOperatorChar opCtrNameRest
 nameValid n (c : optNameRest) | isOperatorChar c
-  = isSymOcc n && not (isDataSymOcc n) && all isOperatorChar optNameRest
+  = isSymOcc n && all isOperatorChar optNameRest
 nameValid n (c : nameRest) | isUpper c
                            = not (isSymOcc n) && (isTcOcc n || isDataOcc n) && all (\c -> isIdStartChar c || isDigit c) nameRest
 nameValid n (c : nameRest) | isIdStartChar c 
