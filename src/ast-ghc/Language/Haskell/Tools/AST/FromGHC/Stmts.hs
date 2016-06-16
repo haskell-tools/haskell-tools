@@ -64,7 +64,7 @@ extractActualStmt = \case
   TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
     -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe "," "" trfExpr by)
   TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by } 
-    -> addAnnotation by using (AST.GroupStmt <$> (makeJust <$> trfExpr using) <*> trfMaybe "," "" trfExpr by)
+    -> addAnnotation by using (AST.GroupStmt <$> trfMaybe "," "" trfExpr by <*> (makeJust <$> trfExpr using))
   where addAnnotation by using
           = annLoc (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
                       <$> tokenLocBack AnnThen)
