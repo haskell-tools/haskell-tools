@@ -212,6 +212,7 @@ wrongRenameDefinitionTests =
   , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "F")
   , ("Refactor.RenameDefinition.WrongName", "6:6-6:7", "x")
   , ("Refactor.RenameDefinition.WrongName", "6:10-6:11", "x")
+  , ("Refactor.RenameDefinition.IllegalQualRename", "4:30-4:34", "Bl")
   ]
 
 extractBindingTests =

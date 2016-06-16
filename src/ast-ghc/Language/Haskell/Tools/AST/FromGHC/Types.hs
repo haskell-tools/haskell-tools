@@ -31,17 +31,19 @@ import Language.Haskell.Tools.AST.FromGHC.Literals
 
 import Language.Haskell.Tools.AST as AST
 
+import Debug.Trace
+
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
 trfType = trfLoc trfType'
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
 trfType' = trfType'' . cleanHsType where
   trfType'' (HsForAllTy [] typ) = trfType' (unLoc typ)
-  trfType'' (HsForAllTy bndrs typ) = AST.TyForall <$> define (trfBindings bndrs) 
-                                                 <*> addToScope bndrs (trfType typ)
+  trfType'' (HsForAllTy bndrs typ) = AST.TyForall <$> defineTypeVars (trfBindings bndrs) 
+                                                  <*> addToScope bndrs (trfType typ)
   trfType'' (HsQualTy ctx typ) = AST.TyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx) 
-                                          <*> trfType typ
-  trfType'' (HsTyVar name) = AST.TyVar <$> define (trfName name)
+                                           <*> trfType typ
+  trfType'' (HsTyVar name) = AST.TyVar <$> transformingPossibleVar name (trfName name)
   trfType'' (HsAppsTy apps) | Just (head, args) <- getAppsTyHead_maybe apps 
     = foldl (\core t -> AST.TyApp <$> annLoc (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
   trfType'' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
@@ -72,9 +74,10 @@ trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar r
 trfTyVar = trfLoc trfTyVar' 
   
 trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
-trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> trfName name
+trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> typeVarTransform (trfName name)
                                            <*> (nothing " " "" atTheEnd)
-trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> trfName name <*> trfKindSig (Just kind)
+trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> typeVarTransform (trfName name) 
+                                                  <*> trfKindSig (Just kind)
   
 trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
 trfCtx sp (L l []) = nothing " " "" sp

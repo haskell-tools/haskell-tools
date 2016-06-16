@@ -136,7 +136,7 @@ trfVal (PatSynBind psb) = AST.PatternSynonymDecl <$> annCont (trfPatternSynonym 
 trfVal bind = AST.ValueBinding <$> (annCont $ trfBind' bind)
 
 trfSig :: TransformName n r => Sig n -> Trf (AST.Decl r)
-trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> (annCont $ trfTypeSig' ts)
+trfSig (ts @ (TypeSig {})) = AST.TypeSigDecl <$> defineTypeVars (annCont $ trfTypeSig' ts)
 trfSig (FixSig fs) = AST.FixityDecl <$> (annCont $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
   = AST.PatTypeSigDecl <$> annCont (AST.PatternTypeSignature <$> trfName id <*> trfType (hsib_body typ))
@@ -241,7 +241,7 @@ trfTypeEqs (Just eqs) = makeNonemptyList "\n" (mapM trfTypeEq eqs)
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn r)
 trfTypeEq = trfLoc $ \(TyFamEqn name pats rhs) 
-  -> AST.TypeEqn <$> define (focusBefore AnnEqual (combineTypes name (hsib_body pats))) <*> trfType rhs
+  -> AST.TypeEqn <$> defineTypeVars (focusBefore AnnEqual (combineTypes name (hsib_body pats))) <*> trfType rhs
   where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.Type r)
         combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
           = annCont $ AST.TyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
@@ -267,14 +267,14 @@ createDeclHead name (hsq_explicit -> lhs : rhs : rest)
   -- infix declaration
   = wrapDeclHead rest
       $ annLoc (addParenLocs $ getLoc lhs `combineSrcSpans` getLoc rhs) 
-               (AST.DHInfix <$> define (trfTyVar lhs) <*> trfOperator name <*> define (trfTyVar rhs))
-createDeclHead name vars = wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.DeclHead (trfName name))
+               (AST.DHInfix <$> defineTypeVars (trfTyVar lhs) <*> trfOperator name <*> defineTypeVars (trfTyVar rhs))
+createDeclHead name vars = defineTypeVars $ wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.DeclHead (trfName name))
 
 wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.DeclHead r) -> Trf (Ann AST.DeclHead r)
 wrapDeclHead vars base
   = foldl (\t p -> do typ <- t 
                       annLoc (addParenLocs $ combineSrcSpans (getRange $ _annotation typ) (getLoc p)) 
-                             (AST.DHApp typ <$> define (trfTyVar p))
+                             (AST.DHApp typ <$> trfTyVar p)
           ) base vars
 
 -- | Get the parentheses directly before and after (for parenthesized application)

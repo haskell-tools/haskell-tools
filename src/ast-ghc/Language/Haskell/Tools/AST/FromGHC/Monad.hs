@@ -4,12 +4,16 @@ module Language.Haskell.Tools.AST.FromGHC.Monad where
 
 import SrcLoc
 import GHC
+import Name
 import ApiAnnotation
+import Outputable (ppr, showSDocUnsafe)
 import Control.Monad.Reader
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Data.Map as Map
 import Data.Maybe
+
+import Debug.Trace
 
 -- | The (immutable) data for the transformation
 data TrfInput
@@ -18,6 +22,7 @@ data TrfInput
              , contRange :: SrcSpan -- ^ The focus of the transformation
              , localsInScope :: [[GHC.Name]] -- ^ Local names visible
              , defining :: Bool
+             , definingTypeVars :: Bool
              , originalNames :: Map SrcSpan RdrName
              }
       
@@ -28,11 +33,23 @@ trfInit annots comments
              , contRange = noSrcSpan
              , localsInScope = []
              , defining = False
+             , definingTypeVars = False
              , originalNames = empty
              }
 
 define :: Trf a -> Trf a
 define = local (\s -> s { defining = True })
+
+defineTypeVars :: Trf a -> Trf a
+defineTypeVars = local (\s -> s { definingTypeVars = True })
+
+typeVarTransform :: Trf a -> Trf a
+typeVarTransform = local (\s -> s { defining = defining s || definingTypeVars s })
+
+transformingPossibleVar :: HsHasName n => n -> Trf a -> Trf a
+transformingPossibleVar n = case hsGetNames n of 
+  [name] | isVarName name || isTyVarName name -> typeVarTransform
+  _                                           -> id
 
 addToScope :: HsHasName e => e -> Trf a -> Trf a
 addToScope e = local (\s -> s { localsInScope = hsGetNames e : localsInScope s }) 

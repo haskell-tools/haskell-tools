@@ -117,7 +117,8 @@ trfTypeSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.TypeSignature
 trfTypeSig = trfLoc trfTypeSig'
 
 trfTypeSig' :: TransformName n r => Sig n -> Trf (AST.TypeSignature r)
-trfTypeSig' (TypeSig names typ) = AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType (hswc_body $ hsib_body typ)
+trfTypeSig' (TypeSig names typ) 
+  = defineTypeVars $ AST.TypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType (hswc_body $ hsib_body typ)
   
 trfFixitySig :: TransformName n r => FixitySig n -> Trf (AST.FixitySignature r)
 trfFixitySig (FixitySig names (Fixity _ prec dir)) 
