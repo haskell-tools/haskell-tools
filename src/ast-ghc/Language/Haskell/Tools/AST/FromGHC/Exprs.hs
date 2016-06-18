@@ -62,9 +62,9 @@ trfExpr' (OpApp e1 (unLoc -> HsVar op) _ e2)
 trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList <$> trfNameStr "-"))
                                       <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
+trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfOperator op
+trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.RightSection <$> trfOperator op <*> trfExpr expr
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
-trfExpr' (SectionL expr (unLoc -> HsVar op)) = AST.LeftSection <$> trfExpr expr <*> trfOperator op
-trfExpr' (SectionR (unLoc -> HsVar op) expr) = AST.RightSection <$> trfOperator op <*> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
   = wrap <$> between AnnOpenP AnnCloseP (trfAnnList' ", " (trfExpr . (\(Present e) -> e) . unLoc) tupArgs)
   where wrap = if box == Boxed then AST.Tuple else AST.UnboxedTuple
