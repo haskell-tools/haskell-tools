@@ -18,3 +18,6 @@ mkApp f e = mkAnn (child <> " " <> child) (App f e)
 
 mkVar :: TemplateAnnot a => Ann Name a -> Ann Expr a
 mkVar = mkAnn child . Var
+
+mkParen :: TemplateAnnot a => Ann Expr a -> Ann Expr a
+mkParen = mkAnn ("(" <> child <> ")") . Paren

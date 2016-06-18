@@ -1,8 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables
+           , LambdaCase
+           #-}
 module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition, renameDefinition') where
 
 import Name hiding (Name)
-import GHC (Ghc)
+import GHC (Ghc, TyThing(..), lookupName)
 import qualified GHC
 import OccName
 import SrcLoc
@@ -29,11 +31,12 @@ renameDefinition' sp str mod
 
 renameDefinition :: forall n . (NamedThing n, Data n) => GHC.Name -> String -> Ann Module (STWithNames n) -> RefactoredModule n
 renameDefinition toChange newName mod
-  = if not (nameValid (getOccName toChange) newName) 
-       then refactError "The new name is not valid"
-       else do (res,defFound) <- runStateT (biplateRef !~ changeName toChange newName $ mod) False
-               if not defFound then refactError "The definition to rename was not found"
-                               else return res
+  = do nameCls <- classifyName toChange
+       if not (nameValid nameCls newName) 
+          then refactError "The new name is not valid"
+          else do (res,defFound) <- runStateT (biplateRef !~ changeName toChange newName $ mod) False
+                  if not defFound then refactError "The definition to rename was not found"
+                                  else return res
   where
     changeName :: GHC.Name -> String -> Ann SimpleName (STWithNames n) -> StateT Bool (Refactor n) (Ann SimpleName (STWithNames n))
     changeName toChange str elem 
@@ -56,8 +59,22 @@ conflicts _ _ [] = False
 sameNamespace :: GHC.Name -> GHC.Name -> Bool
 sameNamespace n1 n2 = occNameSpace (getOccName n1) == occNameSpace (getOccName n2)
 
+data NameClass = Variable | Ctor | ValueOperator | DataCtorOperator | SynonymOperator
+
+classifyName :: GHC.Name -> Refactor n NameClass
+classifyName n = lookupName n >>= return . \case 
+    Just (AnId id) | isop     -> ValueOperator
+    Just (AnId id)            -> Variable
+    Just (AConLike id) | isop -> DataCtorOperator
+    Just (AConLike id)        -> Ctor
+    Just (ATyCon id) | isop   -> SynonymOperator
+    Just (ATyCon id)          -> Ctor
+    Nothing | isop            -> ValueOperator
+    Nothing                   -> Variable
+  where isop = isSymOcc (getOccName n) 
+
 -- TODO: change between operator and normal names
-nameValid :: OccName -> String -> Bool
+nameValid :: NameClass -> String -> Bool
 nameValid n "" = False
 nameValid n str | str `elem` reservedNames = False
   where -- TODO: names reserved by extensions
@@ -65,14 +82,23 @@ nameValid n str | str `elem` reservedNames = False
                         , "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type", "where", "_"
                         , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
                         ]
-nameValid n (c : optNameRest) | isOperatorChar c
-  = isSymOcc n && all isOperatorChar optNameRest
-nameValid n (c : nameRest) | isUpper c
-                           = not (isSymOcc n) && (isTcOcc n || isDataOcc n) && all (\c -> isIdStartChar c || isDigit c) nameRest
-nameValid n (c : nameRest) | isIdStartChar c 
-                           = not (isSymOcc n) && (isVarOcc n || isTvOcc n) && all (\c -> isIdStartChar c || isDigit c) nameRest
+-- Operators that are data constructors (must start with ':')
+nameValid DataCtorOperator (':' : nameRest)
+  = all isOperatorChar nameRest
+-- Type families and synonyms that are operators (can start with ':')
+nameValid SynonymOperator (c : nameRest)
+  = isOperatorChar c && all isOperatorChar nameRest
+-- Normal value operators (cannot start with ':')
+nameValid ValueOperator (c : nameRest)
+  = isOperatorChar c && c /= ':' && all isOperatorChar nameRest
+-- Data and type constructors (start with uppercase)
+nameValid Ctor (c : nameRest)
+  = isUpper c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
+-- Variables and type variables (start with lowercase)
+nameValid Variable (c : nameRest)
+  = isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
 nameValid _ _ = False
 
-isIdStartChar c = isLetter c || c == '\'' || c == '_'
-isOperatorChar c = isPunctuation c || isSymbol c
+isIdStartChar c = (isLetter c && isAscii c) || c == '\'' || c == '_'
+isOperatorChar c = (isPunctuation c || isSymbol c) && isAscii c
 

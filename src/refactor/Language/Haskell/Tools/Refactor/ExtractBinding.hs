@@ -41,23 +41,42 @@ extractBinding selectDecl selectExpr name mod
            then refactError "The given name causes name conflict."
            else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
                    case st of Just def -> return $ element & modDecl .- insertWhere (mkValueBinding def) isTheDecl (const True) $ res
-                              Nothing -> return res
+                              Nothing -> refactError "There is no applicable expression to extract."
 
 extractThatBind :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
 extractThatBind name e 
-  | Paren {} <- e ^. element
-  = do modified <- doExtract name (fromJust $ e ^? element & exprInner)
-       element & exprInner != modified $ e
-  | Var {} <- e ^. element
-  = lift $ refactError "The selected expression is too simple to be extracted."
-extractThatBind name e = doExtract name e
+  = do ret <- get
+       if (isJust ret) then return e 
+          else case (e ^. element) of
+            Paren {} -> do modified <- doExtract name (fromJust $ e ^? element & exprInner)
+                           element & exprInner != modified $ e
+            Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
+            el | isParenLikeExpr el -> mkParen <$> doExtract name e
+            el -> doExtract name e
+
+-- | All expressions that are bound stronger than function application.
+isParenLikeExpr :: Expr a -> Bool
+isParenLikeExpr (If {}) = True
+isParenLikeExpr (Paren {}) = True
+isParenLikeExpr (List {}) = True
+isParenLikeExpr (ParArray {}) = True
+isParenLikeExpr (LeftSection {}) = True
+isParenLikeExpr (RightSection {}) = True
+isParenLikeExpr (RecCon {}) = True
+isParenLikeExpr (RecUpdate {}) = True
+isParenLikeExpr (Enum {}) = True
+isParenLikeExpr (ParArrayEnum {}) = True
+isParenLikeExpr (ListComp {}) = True
+isParenLikeExpr (ParArrayComp {}) = True
+isParenLikeExpr (BracketExpr {}) = True
+isParenLikeExpr (Splice {}) = True
+isParenLikeExpr (QuasiQuoteExpr {}) = True
+isParenLikeExpr _ = False
 
 doExtract :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-doExtract name e = do ret <- get
-                      if (isJust ret) then return e
-                         else do params <- lift $ getExternalBinds e
-                                 put (Just (generateBind name params e))
-                                 return (generateCall name params)
+doExtract name e = do params <- lift $ getExternalBinds e
+                      put (Just (generateBind name params e))
+                      return (generateCall name params)
 
 getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
 getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef)
@@ -94,5 +113,5 @@ generateBind name args e = mkFunctionBind [mkMatch (mkNormalMatchLhs (mkNormalNa
 isValidBindingName :: String -> Bool
 isValidBindingName [] = False
 isValidBindingName (firstChar:rest) = isIdStartChar firstChar && all isIdChar rest
-  where isIdStartChar c = (isLetter c && isLower c) || c == '\'' || c == '_'
-        isIdChar c = isLetter c || c == '\'' || c == '_' || isDigit c
+  where isIdStartChar c = (isLetter c && isLower c && isAscii c) || c == '\'' || c == '_'
+        isIdChar c = (isLetter c && isAscii c) || c == '\'' || c == '_' || isDigit c
