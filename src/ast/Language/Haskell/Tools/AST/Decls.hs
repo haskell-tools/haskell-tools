@@ -221,7 +221,7 @@ data ConDecl a
                  , _conDeclFields :: AnnList FieldDecl a
                  } -- ^ record data constructor (@ C { _n1 :: t1, _n2 :: t2 } @)
   | InfixConDecl { _conDeclLhs :: Ann Type a
-                 , _conDeclName :: Ann Name a
+                 , _conDeclOp :: Ann Operator a
                  , _conDeclRhs :: Ann Type a
                  } -- ^ infix data constructor (@ t1 :+: t2 @)
   

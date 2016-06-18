@@ -168,7 +168,7 @@ trfConDecl' (ConDeclH98 { con_name = name, con_details = PrefixCon args })
 trfConDecl' (ConDeclH98 { con_name = name, con_details = RecCon (unLoc -> flds) })
   = AST.RecordDecl <$> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDeclH98 { con_name = name, con_details = InfixCon t1 t2 })
-  = AST.InfixConDecl <$> trfType t1 <*> define (trfName name) <*> trfType t2
+  = AST.InfixConDecl <$> trfType t1 <*> define (trfOperator name) <*> trfType t2
 
 trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.GadtConDecl r)
 trfGADTConDecl = trfLoc $ \(ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
