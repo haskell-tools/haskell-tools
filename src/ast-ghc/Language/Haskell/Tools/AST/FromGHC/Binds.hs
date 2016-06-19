@@ -79,7 +79,7 @@ trfRhss rhss = annLoc (pure $ collectLocs rhss)
                       
 trfGuardedRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedRhs r)
 trfGuardedRhs = trfLoc $ \(GRHS guards body) 
-  -> AST.GuardedRhs . nonemptyAnnList <$> trfScopedSequence trfRhsGuard guards <*> trfExpr body
+  -> AST.GuardedRhs . nonemptyAnnList <$> trfScopedSequence trfRhsGuard guards <*> addToScope guards (trfExpr body)
   
 trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.RhsGuard r)
 trfRhsGuard = trfLoc trfRhsGuard'
@@ -92,7 +92,7 @@ trfRhsGuard' (LetStmt (unLoc -> binds)) = AST.GuardLet <$> trfLocalBinds binds
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybe AST.LocalBinds r)
 trfWhereLocalBinds EmptyLocalBinds = nothing "" "" atTheEnd
 trfWhereLocalBinds binds
-  = makeJust <$> annLoc (combineSrcSpans (getBindLocs binds) <$> tokenLoc AnnWhere) (AST.LocalBinds <$> trfLocalBinds binds)
+  = makeJust <$> annLoc (combineSrcSpans (getBindLocs binds) <$> tokenLoc AnnWhere) (AST.LocalBinds <$> addToScope binds (trfLocalBinds binds))
 
 getBindLocs :: HsLocalBinds n -> SrcSpan
 getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs

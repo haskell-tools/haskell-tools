@@ -93,7 +93,7 @@ trfExpr' (ExplicitTuple tupArgs box)
 trfExpr' (HsCase expr (unLoc . mg_alts -> cases)) = AST.Case <$> trfExpr expr <*> (makeIndentedList (focusBeforeIfPresent AnnCloseC atTheEnd) (mapM trfAlt cases))
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
-trfExpr' (HsLet (unLoc -> binds) expr) = AST.Let <$> addToScope binds (trfLocalBinds binds) <*> addToScope binds (trfExpr expr)
+trfExpr' (HsLet (unLoc -> binds) expr) = addToScope binds (AST.Let <$> trfLocalBinds binds <*> trfExpr expr)
 trfExpr' (HsDo DoExpr (unLoc -> stmts) _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
                                                    <*> makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)
 trfExpr' (HsDo MDoExpr (unLoc -> [unLoc -> RecStmt { recS_stmts = stmts }, lastStmt]) _) 
@@ -204,5 +204,5 @@ trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG (unLoc -> alts) _ _ _)) 
   = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd)) alts) 
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
-trfCmd' (HsCmdLet (unLoc -> binds) cmd) = AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd
+trfCmd' (HsCmdLet (unLoc -> binds) cmd) = addToScope binds (AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd)
 trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd)) stmts)
