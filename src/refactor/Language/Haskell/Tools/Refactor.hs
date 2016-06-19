@@ -92,6 +92,7 @@ performCommand rf mod = runRefactor mod $ selectCommand rf
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName s = case splitOn " " s of 
   [""] -> NoRefactor
+  ("CheckSource":_) -> NoRefactor
   ("OrganizeImports":_) -> OrganizeImports
   ("GenerateExports":_) -> GenerateExports
   ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
