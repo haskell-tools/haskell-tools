@@ -208,7 +208,7 @@ renameDefinitionTests =
 
 wrongRenameDefinitionTests =
   [ ("Refactor.RenameDefinition.LibraryFunction", "4:5-4:7", "identity")
-  , ("Refactor.RenameDefinition.NameClash", "4:1-4:2", "g")
+  , ("Refactor.RenameDefinition.NameClash", "5:9-5:10", "h")
   , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "F")
   , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "++")
   , ("Refactor.RenameDefinition.WrongName", "7:6-7:7", "x")

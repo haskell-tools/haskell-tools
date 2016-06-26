@@ -29,3 +29,10 @@ mkMatch lhs rhs locs
 
 mkNormalMatchLhs :: TemplateAnnot a => Ann Name a -> [Ann Pattern a] -> Ann MatchLhs a
 mkNormalMatchLhs n pats = mkAnn (child <> child) $ NormalLhs n (mkAnnList (listSepBefore " " " ") pats)
+
+mkLocalValBind :: TemplateAnnot a => Ann ValueBind a -> Ann LocalBind a
+mkLocalValBind = mkAnn child . LocalValBind
+
+mkLocalBinds :: TemplateAnnot a => Int -> [Ann LocalBind a] -> AnnMaybe LocalBinds a
+mkLocalBinds col = mkAnnMaybe (optBefore ("\n" ++ replicate (col - 1) ' ' ++ "where ")) 
+                     . Just . mkAnn child . LocalBinds . mkAnnList indentedList
