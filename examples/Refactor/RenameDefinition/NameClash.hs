@@ -7,3 +7,5 @@ f = g
 
         h :: Int -> Int
         h = id
+
+test = f

@@ -204,11 +204,14 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.FunTypeVarLocal", "5:10-5:11", "b")
   , ("Refactor.RenameDefinition.ClassTypeVar", "3:9-3:10", "f")
   , ("Refactor.RenameDefinition.TypeOperators", "4:13-4:15", "x1")
+  , ("Refactor.RenameDefinition.NoPrelude", "4:1-4:2", "map")
+  , ("Refactor.RenameDefinition.UnusedDef", "3:1-3:2", "map")
   ]
 
 wrongRenameDefinitionTests =
   [ ("Refactor.RenameDefinition.LibraryFunction", "4:5-4:7", "identity")
   , ("Refactor.RenameDefinition.NameClash", "5:9-5:10", "h")
+  , ("Refactor.RenameDefinition.NameClash", "3:1-3:2", "map")
   , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "F")
   , ("Refactor.RenameDefinition.WrongName", "4:1-4:2", "++")
   , ("Refactor.RenameDefinition.WrongName", "7:6-7:7", "x")

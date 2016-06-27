@@ -205,7 +205,8 @@ demoRefactor command workingDir moduleName =
     let annots = pm_annotations $ tm_parsed_module t
 
     -- liftIO $ putStrLn $ show annots
-    -- liftIO $ putStrLn "==========="
+    liftIO $ putStrLn $ show (pm_parsed_source p)
+    liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     --liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"

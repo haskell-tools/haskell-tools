@@ -65,7 +65,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
         trfBindOrSig (getBindsAndSigs -> (sigs, binds))
           = (++) <$> mapM (trfLoc trfVal) (bagToList binds)
                  <*> mapM (trfLoc trfSig) sigs
-        addAllToScope = addToScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
+        addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl r)

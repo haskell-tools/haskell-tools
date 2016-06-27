@@ -100,7 +100,8 @@ instance InspectableName n => AssocData (SemanticInfo n) where
                                                , ("isDefined", show defined)
                                                , ("namesInScope", inspectScope locals) 
                                                ]
-  toAssoc (ModuleInfo mod) = [("moduleName", showSDocUnsafe (ppr mod))]
+  toAssoc (ModuleInfo mod imps) = [("moduleName", showSDocUnsafe (ppr mod))
+                                  ,("implicitImports", concat (intersperse ", " (map inspect imps)))]
   toAssoc (ImportInfo mod avail imported) = [ ("moduleName", showSDocUnsafe (ppr mod)) 
                                             , ("availableNames", concat (intersperse ", " (map inspect avail))) 
                                             , ("importedNames", concat (intersperse ", " (map inspect imported))) 

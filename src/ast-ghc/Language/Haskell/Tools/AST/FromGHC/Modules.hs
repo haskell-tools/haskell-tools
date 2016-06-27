@@ -2,6 +2,7 @@
            , ViewPatterns
            , FlexibleContexts
            , ScopedTypeVariables
+           , TypeApplications
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
@@ -43,6 +44,8 @@ import PatSyn as GHC
 import Type as GHC
 import Unique as GHC
 import CoAxiom as GHC
+import DynFlags as GHC
+import Language.Haskell.TH.LanguageExtensions
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), RangeWithName, RangeWithType, RangeInfo
                                   , SemanticInfo(..), semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan)
@@ -60,7 +63,7 @@ addTypeInfos bnds mod = traverseDown (return ()) (return ()) replaceNodeInfo mod
         replaceSemanticInfo NoSemanticInfo = return NoSemanticInfo
         replaceSemanticInfo (ScopeInfo sc) = return $ ScopeInfo sc
         replaceSemanticInfo (AmbiguousNameInfo sc d rdr l) = return $ NameInfo sc d (locMapping ! l)
-        replaceSemanticInfo (ModuleInfo mod) = return (ModuleInfo mod)
+        replaceSemanticInfo (ModuleInfo mod imps) = ModuleInfo mod <$> mapM getType' imps
         replaceSemanticInfo (NameInfo sc def ni) = NameInfo sc def <$> getType' ni
         replaceSemanticInfo (ImportInfo mod access used) = ImportInfo mod <$> mapM getType' access <*> mapM getType' used
         
@@ -104,23 +107,26 @@ trfModule = trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere An
                <*> trfDecls decls
        
 trfModuleRename :: Module -> Ann AST.Module RangeInfo -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) -> Located (HsModule RdrName) -> Trf (Ann AST.Module RangeWithName)
-trfModuleRename mod rangeMod (gr,imports,exps,_) 
-  = addModuleInfo mod <=< (trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
-      \hsMod@(HsModule name exports _ decls deprec _) -> 
-        setOriginalNames originalNames
-          $ AST.Module <$> trfFilePragmas
-                       <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                                       _                       -> Nothing) deprec
-                       <*> (orderAnnList <$> (trfImports imports))
-                       <*> trfDeclsGroup gr)
-  where addModuleInfo :: Module -> Ann AST.Module RangeWithName -> Trf (Ann AST.Module RangeWithName)
-        addModuleInfo m = AST.semantics != ModuleInfo m
-
-        originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
+trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod = do 
+  prelude <- lift (xopt ImplicitPrelude . ms_hspp_opts <$> getModSummary (moduleName mod))
+  (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (mod, [])
+  let addModuleInfo :: Module -> Ann AST.Module RangeWithName -> Trf (Ann AST.Module RangeWithName)
+      addModuleInfo m = AST.semantics != ModuleInfo m preludeImports
+  addModuleInfo mod =<< trfLocCorrect (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' preludeImports) hsMod
+        
+  where originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
         getSourceAndInfo :: Ann AST.SimpleName RangeInfo -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
-
         
+        trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
+          transformedImports <- orderAnnList <$> (trfImports imports)
+          setOriginalNames originalNames
+            $ AST.Module <$> trfFilePragmas
+                         <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                                         _                       -> Nothing) deprec
+                         <*> return transformedImports
+                         <*> addToScope (concat @[] (transformedImports ^? AST.annList&semantics&AST.importedNames) ++ preludeImports) (trfDeclsGroup gr)
+
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModuleHead r) 
 trfModuleHead (Just mn) exports modPrag
   = makeJust <$> (annLoc (tokensLoc [AnnModule, AnnWhere])

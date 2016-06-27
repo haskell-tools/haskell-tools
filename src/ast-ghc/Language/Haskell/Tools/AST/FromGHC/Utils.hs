@@ -75,19 +75,25 @@ instance {-# OVERLAPPABLE #-} SemanticAnnot RangeInfo n where
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)
-addImportData' imp = lift $ 
-  do eps <- getSession >>= liftIO . readIORef . hsc_EPS
-     mod <- findModule (mkModuleName . nameString $ imp ^. element&importModule&element) 
-                       (fmap mkFastString $ imp ^? element&importPkg&annJust&element&stringNodeStr)
-     -- load exported names from interface file
-     let ifaceNames = concatMap availNames $ maybe [] mi_exports 
-                                           $ flip lookupModuleEnv mod 
-                                           $ eps_PIT eps
-     loadedNames <- maybe [] modInfoExports <$> getModuleInfo mod
-     let importedNames = ifaceNames ++ loadedNames
-     names <- filterM (checkImportVisible (imp ^. element)) importedNames
+addImportData' imp = 
+  do (mod,importedNames) <- getImportedNames (nameString $ imp ^. element&importModule&element)
+                                             (imp ^? element&importPkg&annJust&element&stringNodeStr)
+     names <- lift $ filterM (checkImportVisible (imp ^. element)) importedNames
      return $ annotation .- addSemanticInfo (ImportInfo mod importedNames names) $ imp
 
+-- | Get names that are imported from a given import
+getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [GHC.Name])
+getImportedNames name pkg = lift $ do
+  eps <- getSession >>= liftIO . readIORef . hsc_EPS
+  mod <- findModule (mkModuleName name) (fmap mkFastString pkg)
+  -- load exported names from interface file
+  let ifaceNames = concatMap availNames $ maybe [] mi_exports 
+                                        $ flip lookupModuleEnv mod 
+                                        $ eps_PIT eps
+  loadedNames <- maybe [] modInfoExports <$> getModuleInfo mod
+  return (mod, ifaceNames ++ loadedNames)
+
+-- | Check is a given name is imported from an import with given import specification.
 checkImportVisible :: GhcMonad m => AST.ImportDecl RangeWithName -> GHC.Name -> m Bool
 checkImportVisible imp name
   | importIsExact imp 
