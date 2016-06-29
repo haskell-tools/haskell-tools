@@ -38,7 +38,7 @@ extractBinding :: Simple Traversal (Ann Module STWithId) (Ann ValueBind STWithId
 extractBinding selectDecl selectExpr name mod
   = let conflicting = any @[] (isConflicting name) (mod ^? selectDecl & biplateRef)
         exprRange = head (mod ^? selectDecl & selectExpr & annotation & sourceInfo & sourceTemplateRange)
-        declRange = head (mod ^? selectDecl & annotation & sourceInfo & sourceTemplateRange)
+        declRange = last (mod ^? selectDecl & annotation & sourceInfo & sourceTemplateRange)
      in if conflicting
            then refactError "The given name causes name conflict."
            else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
@@ -78,7 +78,7 @@ insertLocalBind declRng toInsert locals
   | isAnnNothing locals
   , RealSrcSpan rng <- declRng = -- creates the new where clause indented 2 spaces from the declaration
                                  mkLocalBinds (srcLocCol (realSrcSpanStart rng) + 2) [mkLocalValBind toInsert]
-  | otherwise = annJust & element & localBinds .- insertWhere (mkLocalValBind toInsert) (const True) (const False) $ locals
+  | otherwise = annJust & element & localBinds .- insertWhere (mkLocalValBind toInsert) (const True) isNothing $ locals
 
 -- | All expressions that are bound stronger than function application.
 isParenLikeExpr :: Expr a -> Bool

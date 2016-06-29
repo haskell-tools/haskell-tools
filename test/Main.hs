@@ -226,6 +226,8 @@ wrongRenameDefinitionTests =
 extractBindingTests =
   [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
   , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
+  , ("Refactor.ExtractBinding.AddToExisting", "3:10-3:12", "b")
+  , ("Refactor.ExtractBinding.LocalDefinition", "4:13-4:16", "y")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
   , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
   , ("Refactor.ExtractBinding.Records", "5:6-5:38", "plus")
