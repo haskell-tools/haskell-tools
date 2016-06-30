@@ -29,24 +29,34 @@ import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-main :: IO Counts
-main = runTestTT $ TestList $ map makeReprintTest (languageTests 
-                                                     ++ organizeImportTests 
-                                                     ++ map fst generateSignatureTests 
-                                                     ++ generateExportsTests
-                                                     ++ map (\(mod,_,_) -> mod) renameDefinitionTests
-                                                     ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
-                                                     ++ map (\(mod,_,_) -> mod) extractBindingTests
-                                                     ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests)
-                                ++ map makeCpphsTest cppHsTests
-                                ++ map makeInstanceControlTest instanceControlTests
-                                ++ map makeOrganizeImportsTest organizeImportTests
-                                ++ map makeGenerateSignatureTest generateSignatureTests
-                                ++ map makeGenerateExportsTest generateExportsTests
-                                ++ map makeRenameDefinitionTest renameDefinitionTests
-                                ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-                                ++ map makeExtractBindingTest extractBindingTests
-                                ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+main = run nightlyTests
+
+run :: [Test] -> IO Counts
+run = runTestTT . TestList
+
+nightlyTests :: [Test]
+nightlyTests = unitTests 
+                 ++ map makeCpphsTest cppHsTests
+                 ++ map makeInstanceControlTest instanceControlTests
+
+unitTests :: [Test]
+unitTests = map makeReprintTest checkTestCases
+              ++ map makeOrganizeImportsTest organizeImportTests
+              ++ map makeGenerateSignatureTest generateSignatureTests
+              ++ map makeGenerateExportsTest generateExportsTests
+              ++ map makeRenameDefinitionTest renameDefinitionTests
+              ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+              ++ map makeExtractBindingTest extractBindingTests
+              ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+  where checkTestCases = languageTests 
+                          ++ organizeImportTests 
+                          ++ map fst generateSignatureTests 
+                          ++ generateExportsTests
+                          ++ map (\(mod,_,_) -> mod) renameDefinitionTests
+                          ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
+                          ++ map (\(mod,_,_) -> mod) extractBindingTests
+                          ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
+
         
 languageTests =
   [ "Decl.AmbiguousFields"
@@ -230,8 +240,8 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.LocalDefinition", "4:13-4:16", "y")
   , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
   , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
-  , ("Refactor.ExtractBinding.Records", "5:6-5:38", "plus")
-  , ("Refactor.ExtractBinding.RecordWildcards", "6:6-6:28", "plus")
+  , ("Refactor.ExtractBinding.Records", "5:5-5:39", "plus")
+  , ("Refactor.ExtractBinding.RecordWildcards", "6:5-6:27", "plus")
   ]
 
 wrongExtractBindingTests = 

@@ -38,10 +38,11 @@ extractBinding :: Simple Traversal (Ann Module STWithId) (Ann ValueBind STWithId
 extractBinding selectDecl selectExpr name mod
   = let conflicting = any @[] (isConflicting name) (mod ^? selectDecl & biplateRef)
         exprRange = head (mod ^? selectDecl & selectExpr & annotation & sourceInfo & sourceTemplateRange)
+        decl = last (mod ^? selectDecl)
         declRange = last (mod ^? selectDecl & annotation & sourceInfo & sourceTemplateRange)
      in if conflicting
            then refactError "The given name causes name conflict."
-           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name $ mod) Nothing
+           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
                    case st of Just def -> return $ evalState (selectDecl&element !~ addLocalBinding declRange exprRange def $ res) False
                               Nothing -> refactError "There is no applicable expression to extract."
 
@@ -51,16 +52,18 @@ isConflicting name used
       && (GHC.occNameString . GHC.getOccName <$> (used ^? semantics & nameInfo)) == Just name
 
 -- Replaces the selected expression with a call and generates the called binding.
-extractThatBind :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-extractThatBind name e 
+extractThatBind :: String -> Ann Expr STWithId -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
+extractThatBind name cont e 
   = do ret <- get
        if (isJust ret) then return e 
           else case (e ^. element) of
-            Paren {} -> do modified <- doExtract name (fromJust $ e ^? element & exprInner)
-                           element & exprInner != modified $ e
+            Paren {} -> do modified <- doExtract name cont (fromJust $ e ^? element & exprInner)
+                           if hasParameter then element & exprInner != modified $ e
+                                           else return modified
             Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
-            el | isParenLikeExpr el -> mkParen <$> doExtract name e
-            el -> doExtract name e
+            el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
+            el -> doExtract name cont e
+  where hasParameter = not (null (getExternalBinds cont e))
 
 addLocalBinding :: SrcSpan -> SrcSpan -> Ann ValueBind STWithId -> ValueBind STWithId -> State Bool (ValueBind STWithId)
 addLocalBinding declRange exprRange local bind 
@@ -99,36 +102,41 @@ isParenLikeExpr (Splice {}) = True
 isParenLikeExpr (QuasiQuoteExpr {}) = True
 isParenLikeExpr _ = False
 
-doExtract :: String -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-doExtract name e = do params <- lift $ getExternalBinds e
-                      put (Just (generateBind name params e))
-                      return (generateCall name params)
+doExtract :: String -> Ann Expr STWithId -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
+doExtract name cont e = do let params = getExternalBinds cont e
+                           put (Just (generateBind name params e))
+                           return (generateCall name params)
 
 -- | Gets the values that have to be passed to the extracted definition
-getExternalBinds :: Ann Expr STWithId -> Refactor GHC.Id [Ann Name STWithId]
-getExternalBinds expr = map exprToName . keepFirsts <$> filterM isApplicableName (expr ^? uniplateRef)
-  where isApplicableName name@(fmap GHC.varName . getExprNameInfo -> Just nm) 
-          = ((nm `elem` namesDefinedOutside) &&) <$> isLocalName nm 
-        isApplicableName _ = return False
+getExternalBinds :: Ann Expr STWithId -> Ann Expr STWithId -> [Ann Name STWithId]
+getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableName (expr ^? uniplateRef)
+  where isApplicableName name@(fmap GHC.varName . getExprNameInfo -> Just nm) = inScopeForOriginal nm && notInScopeForExtracted nm
+        isApplicableName _ = False
 
         getExprNameInfo :: Ann Expr STWithId -> Maybe GHC.Var
         getExprNameInfo expr = (listToMaybe $ expr ^? element & (exprName&element&simpleName &+& exprOperator&element&operatorName) 
                                                               & semantics&nameInfo)
 
+        -- | Creates the parameter value to pass the name (operators are passed in parentheses)
         exprToName :: Ann Expr STWithId -> Ann Name STWithId
-        exprToName e | Just n <- e ^? element & exprName                     = n
+        exprToName e | Just n <- e ^? element & exprName                               = n
                      | Just op <- e ^? element & exprOperator & element & operatorName = mkParenName op
+        
+        notInScopeForExtracted :: GHC.Name -> Bool
+        notInScopeForExtracted n = notElem @[] n (cont ^? semantics & scopedLocals & traversal & traversal)
 
-        namesDefinedOutside :: [GHC.Name]
-        namesDefinedOutside = expr ^? semantics & scopedLocals & traversal & traversal
-
-        allNames :: [Ann SimpleName STWithId]
-        allNames = expr ^? biplateRef
-
-        isLocalName n = isNothing <$> GHC.lookupName n
+        inScopeForOriginal :: GHC.Name -> Bool
+        inScopeForOriginal n = elem @[] n (expr ^? semantics & scopedLocals & traversal & traversal)
 
         keepFirsts (e:rest) = e : keepFirsts (filter (/= e) rest)
         keepFirsts [] = []
+
+actualContainingExpr :: SrcSpan -> Simple Traversal (Ann ValueBind STWithId) (Ann Expr STWithId)
+actualContainingExpr (RealSrcSpan rng) = element & accessRhs & element & accessExpr
+  where accessRhs :: Simple Traversal (ValueBind STWithId) (Ann Rhs STWithId)
+        accessRhs = valBindRhs &+& funBindMatches & annList & filtered (isInside rng) & element & matchRhs
+        accessExpr :: Simple Traversal (Rhs STWithId) (Ann Expr STWithId)
+        accessExpr = rhsExpr &+& rhsGuards & annList & filtered (isInside rng) & element & guardExpr
 
 -- | Generates the expression that calls the local binding
 generateCall :: String -> [Ann Name STWithId] -> Ann Expr STWithId
