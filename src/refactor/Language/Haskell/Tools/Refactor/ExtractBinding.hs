@@ -57,9 +57,8 @@ extractThatBind name cont e
   = do ret <- get
        if (isJust ret) then return e 
           else case (e ^. element) of
-            Paren {} -> do modified <- doExtract name cont (fromJust $ e ^? element & exprInner)
-                           if hasParameter then element & exprInner != modified $ e
-                                           else return modified
+            Paren {} | hasParameter -> element & exprInner !~ doExtract name cont $ e
+                     | otherwise -> doExtract name cont (fromJust $ e ^? element & exprInner)
             Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
             el -> doExtract name cont e
@@ -103,9 +102,14 @@ isParenLikeExpr (QuasiQuoteExpr {}) = True
 isParenLikeExpr _ = False
 
 doExtract :: String -> Ann Expr STWithId -> Ann Expr STWithId -> StateT (Maybe (Ann ValueBind STWithId)) (Refactor GHC.Id) (Ann Expr STWithId)
-doExtract name cont e = do let params = getExternalBinds cont e
-                           put (Just (generateBind name params e))
-                           return (generateCall name params)
+doExtract name cont e@((^. element) -> lam@(Lambda {}))
+  = do let params = getExternalBinds cont e
+       put (Just (generateBind name (map mkVarPat params ++ (lam ^? exprBindings&annList)) (fromJust $ lam ^? exprInner)))
+       return (generateCall name params)
+doExtract name cont e 
+  = do let params = getExternalBinds cont e
+       put (Just (generateBind name (map mkVarPat params) e))
+       return (generateCall name params)
 
 -- | Gets the values that have to be passed to the extracted definition
 getExternalBinds :: Ann Expr STWithId -> Ann Expr STWithId -> [Ann Name STWithId]
@@ -143,9 +147,9 @@ generateCall :: String -> [Ann Name STWithId] -> Ann Expr STWithId
 generateCall name args = foldl (\e a -> mkApp e (mkVar a)) (mkVar $ mkNormalName $ mkSimpleName name) args
 
 -- | Generates the local binding for the selected expression
-generateBind :: String -> [Ann Name STWithId] -> Ann Expr STWithId -> Ann ValueBind STWithId
+generateBind :: String -> [Ann Pattern STWithId] -> Ann Expr STWithId -> Ann ValueBind STWithId
 generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing
-generateBind name args e = mkFunctionBind [mkMatch (mkNormalMatchLhs (mkNormalName $ mkSimpleName name) (map mkVarPat args)) (mkUnguardedRhs e) Nothing]
+generateBind name args e = mkFunctionBind [mkMatch (mkNormalMatchLhs (mkNormalName $ mkSimpleName name) args) (mkUnguardedRhs e) Nothing]
 
 isValidBindingName :: String -> Bool
 isValidBindingName [] = False
