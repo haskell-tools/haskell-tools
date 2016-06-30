@@ -1,16 +1,14 @@
 name:                haskell-tools-ast-fromghc
-version:             0.1.1.0
-synopsis:            Haskell AST for efficient tooling
--- description:         
+version:             0.1.2.0
+synopsis:            Creating the Haskell-Tools AST from GHC's representations
+description:         This package collects information from various representations of a Haskell program in GHC 
 homepage:            https://github.com/nboldi/haskell-tools
--- license:             
--- license-file:        LICENSE
+license:             BSD3
+license-file:        LICENSE
 author:              Boldizsar Nemeth
 maintainer:          nboldi@elte.hu
--- copyright:           
 category:            Language
 build-type:          Simple
--- extra-source-files:  
 cabal-version:       >=1.10
 
 library
@@ -34,7 +32,7 @@ library
   build-depends:       base              >=4.9 && <5.0
                      , ghc               >=8.0 && <8.1
                      , haskell-tools-ast >=0.1 && <0.2
-                     , references        >=0.3
+                     , references        >=0.3.2 && <1.0
                      , bytestring        >=0.10 && <1.0
                      , safe              >=0.3
                      , uniplate          >=1.6  && <2.0
@@ -43,5 +41,4 @@ library
                      , split             >=0.2 && <0.3
                      , structural-traversal >=0.1 && <0.2
                      , template-haskell  >=2.11 && <3.0
-  -- hs-source-dirs:      
   default-language:    Haskell2010

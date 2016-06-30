@@ -1,43 +1,30 @@
 name:                haskell-tools-test
-version:             0.1.0.0
-synopsis:            Tests for the Haskell-tools 
--- description:         
-homepage:            https://github.com/nboldi/haskell-tools
--- license:             
--- license-file:        LICENSE
+version:             0.1.2.0
+synopsis:            Tests for Haskell-Tools
+description:         Tests for Haskell-Tools 
+homepage:            https://github.com/haskell-tools/haskell-tools
+license:             BSD3
+license-file:        LICENSE
 author:              Boldizsar Nemeth
 maintainer:          nboldi@elte.hu
--- copyright:           
 category:            Language
 build-type:          Simple
--- extra-source-files:  
 cabal-version:       >=1.10
-
-executable haskell-tools-test-main
-  hs-source-dirs:      .
-  main-is:             Main.hs
-  build-depends:       base >=4.8 && <4.9
-                     , HUnit
-                     , ghc
-                     , ghc-paths
-                     , transformers
-                     , haskell-tools-ast ==0.1.*
-                     , haskell-tools-ast-trf ==0.1.*
-                     , haskell-tools-prettyprint ==0.1.*
-                     , structural-traversal >=0.1 && <0.2
-  default-language:    Haskell2010
 
 test-suite haskell-tools-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      .
   main-is:             Main.hs
-  build-depends:       base >=4.8 && <4.9
-                     , HUnit
-                     , ghc
-                     , ghc-paths
-                     , transformers
-                     , haskell-tools-ast ==0.1.*
-                     , haskell-tools-ast-trf ==0.1.*
-                     , haskell-tools-prettyprint ==0.1.*
-                     , structural-traversal >=0.1 && <0.2
+  build-depends:       base                      >=4.9   && <5.0
+                     , HUnit                     >=1.3   && <2.0
+                     , ghc                       >=8.0   && <8.1
+                     , ghc-paths                 >=0.1   && <0.2
+                     , transformers              >=0.5   && <0.6
+                     , either                    >=4.0 && <5.0
+                     , haskell-tools-ast         >=0.1.2 && <2.0
+                     , haskell-tools-ast-ghc     >=0.1.2 && <2.0
+                     , haskell-tools-ast-trf     >=0.1.2 && <2.0
+                     , haskell-tools-prettyprint >=0.1.2 && <2.0
+                     , haskell-tools-refactor    >=0.1.2 && <2.0
+                     , structural-traversal      >=0.1   && <0.2
   default-language:    Haskell2010

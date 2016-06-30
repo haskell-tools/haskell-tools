@@ -1,16 +1,14 @@
 name:                haskell-tools-ast-trf
-version:             0.1.1.0
-synopsis:            Annotation transformation on the Haskell AST
--- description:         
+version:             0.1.2.0
+synopsis:            Conversions on Haskell-Tools AST to prepare for refactorings
+description:         Converts the Haskell-Tools AST between different versions to have source annotations that help refactorings. Have transformations that convert from ranges to range templates and then to source templates. Also have a transformation to put comments to their places.
 homepage:            https://github.com/nboldi/haskell-tools
--- license:             
--- license-file:        LICENSE
+license:             BSD3
+license-file:        LICENSE
 author:              Boldizsar Nemeth
 maintainer:          nboldi@elte.hu
--- copyright:           
 category:            Language
 build-type:          Simple
--- extra-source-files:  
 cabal-version:       >=1.10
 
 library
@@ -20,14 +18,13 @@ library
                      , Language.Haskell.Tools.AnnTrf.SourceTemplate
                      , Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
                      , Language.Haskell.Tools.AnnTrf.PlaceComments  
-  build-depends:       base                 >=4.9 && <5.0
-                     , ghc                  >=8.0 && <8.1
-                     , haskell-tools-ast    >=0.1 && <1.0
-                     , uniplate             >=1.6 && <2.0
-                     , references           >=0.1 && <1.0
-                     , structural-traversal >=0.1 && <1.0
-                     , mtl                  >=2.2 && <2.3
-                     , containers           >=0.5 && <0.6
-                     , MissingH             >=1.3 && <2.0
-  -- hs-source-dirs:      
+  build-depends:       base                 >=4.9   && <5.0
+                     , ghc                  >=8.0   && <8.1
+                     , haskell-tools-ast    >=0.1   && <1.0
+                     , uniplate             >=1.6   && <2.0
+                     , references           >=0.3.2 && <1.0
+                     , structural-traversal >=0.1   && <1.0
+                     , mtl                  >=2.2   && <2.3
+                     , containers           >=0.5   && <0.6
+                     , MissingH             >=1.3   && <2.0
   default-language:    Haskell2010

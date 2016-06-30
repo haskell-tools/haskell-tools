@@ -1,16 +1,15 @@
 name:                haskell-tools-ast
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            Haskell AST for efficient tooling
--- description:         
+description:         A representation of a Haskell Syntax tree that contain source-related and semantic annotations. These annotations help developer tools to work with the defined program. The source information enables refactoring and program transformation tools to change the source code without losing the original format (layout, comments) of the source. Semantic information helps analyzing the program. The representation is different from the GHC's syntax tree. It contains information from all representations in GHC (different version of syntax trees, lexical and module-level information).
+
 homepage:            https://github.com/nboldi/haskell-tools
--- license:             
--- license-file:        LICENSE
+license:             BSD3
+license-file:        LICENSE
 author:              Boldizsar Nemeth
 maintainer:          nboldi@elte.hu
--- copyright:           
 category:            Language
 build-type:          Simple
--- extra-source-files:  
 cabal-version:       >=1.10
 
 library
@@ -39,10 +38,9 @@ library
                      , Language.Haskell.Tools.AST.Utils.OrdSrcSpan
                      , Language.Haskell.Tools.AST.Utils.GHCInstances
                      
-  build-depends:       base                 >=4.9 && <5.0
-                     , ghc                  >=8.0 && <8.1
-                     , references           >=0.3 && <1.0
-                     , uniplate             >=1.6 && <2.0
-                     , structural-traversal >=0.1 && <0.2
-  -- hs-source-dirs:      
+  build-depends:       base                 >=4.9   && <5.0
+                     , ghc                  >=8.0   && <8.1
+                     , references           >=0.3.2 && <1.0
+                     , uniplate             >=1.6   && <2.0
+                     , structural-traversal >=0.1   && <0.2
   default-language:    Haskell2010
