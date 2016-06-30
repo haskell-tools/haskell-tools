@@ -46,32 +46,30 @@ instance RangeAnnot (NodeInfo (SemanticInfo n) SpanInfo) where
   toIndentedListAnnot bef aft sep = NodeInfo NoSemanticInfo . ListPos bef aft sep True
   toOptAnnot bef aft = NodeInfo NoSemanticInfo . OptionalPos bef aft
 
-data SemanticsPhantom n = SemanticsPhantom
-
 -- | Annotations that carry semantic information
 class SemanticAnnot annot n where
   addSemanticInfo :: SemanticInfo n -> annot -> annot
   addScopeData :: annot -> Trf annot
-  addImportData :: SemanticsPhantom n -> Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
+  addImportData :: Ann AST.ImportDecl annot -> Trf (Ann AST.ImportDecl annot)
   
 instance SemanticAnnot RangeWithName GHC.Name where
   addSemanticInfo si = semanticInfo .= si
   addScopeData = semanticInfo !~ (\case NoSemanticInfo -> do locals <- asks localsInScope
                                                              return $ ScopeInfo locals
                                         inf -> return inf)
-  addImportData _ = addImportData'
+  addImportData = addImportData'
 
 instance {-# OVERLAPPING #-} SemanticAnnot RangeInfo RdrName where
   addSemanticInfo si = semanticInfo .= si
   addScopeData = semanticInfo !~ (\case NoSemanticInfo -> do locals <- asks localsInScope
                                                              return $ ScopeInfo locals
                                         inf -> return inf)
-  addImportData _ = pure
+  addImportData = pure
 
 instance {-# OVERLAPPABLE #-} SemanticAnnot RangeInfo n where
   addSemanticInfo si = id
   addScopeData = pure
-  addImportData _ = pure
+  addImportData = pure
   
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 addImportData' :: Ann AST.ImportDecl RangeWithName -> Trf (Ann AST.ImportDecl RangeWithName)

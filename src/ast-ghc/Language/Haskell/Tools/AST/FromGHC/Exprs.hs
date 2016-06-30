@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
            , ScopedTypeVariables
+           , TypeApplications
+           , AllowAmbiguousTypes
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
@@ -40,12 +42,12 @@ import Debug.Trace
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
 -- correction for empty cases (TODO: put of and {} inside)
 trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> []))) 
-  = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
-trfExpr e = addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< trfLoc trfExpr' e
+  = addScopeInfo @n =<< annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+trfExpr e = addScopeInfo @n =<< trfLoc trfExpr' e
 
-addScopeInfo :: forall n r . TransformName n r => SemanticsPhantom n -> Ann AST.Expr r -> Trf (Ann AST.Expr r)
-addScopeInfo _ expr = do scope <- asks localsInScope
-                         return $ AST.annotation .- addSemanticInfo (AST.ScopeInfo scope :: AST.SemanticInfo n) $ expr
+addScopeInfo :: forall n r . TransformName n r => Ann AST.Expr r -> Trf (Ann AST.Expr r)
+addScopeInfo expr = do scope <- asks localsInScope
+                       return $ AST.annotation .- addSemanticInfo (AST.ScopeInfo scope :: AST.SemanticInfo n) $ expr
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
 trfExpr' (HsVar name) = AST.Var <$> trfName name
@@ -75,7 +77,7 @@ trfExpr' (ExplicitTuple tupArgs box)
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
         trfTupSecElem :: forall n r . TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
         trfTupSecElem (Present e, l) 
-          = annLoc (pure l) (AST.Present <$> (addScopeInfo (SemanticsPhantom :: SemanticsPhantom n) =<< annCont (trfExpr' (unLoc e))))
+          = annLoc (pure l) (AST.Present <$> (addScopeInfo @n =<< annCont (trfExpr' (unLoc e))))
         trfTupSecElem (Missing _, l) = annLoc (pure l) (pure AST.Missing)
         
         elemLocs :: Trf [SrcSpan]
