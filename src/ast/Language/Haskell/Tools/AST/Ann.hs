@@ -94,8 +94,6 @@ data SemanticInfo n
                       , _ambiguousName :: RdrName
                       , _ambiguousLocation :: SrcSpan
                       }
-  -- | ImplicitImports [ImportDecl]
-  -- | ImplicitFieldUpdates [ImportDecl]
   deriving (Eq, Data)
 
 instance Outputable n => Show (SemanticInfo n) where
