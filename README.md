@@ -38,9 +38,9 @@ Plans:
   - Wider variety of refactorings and Template Haskell support in the spring of 2017
 
 Contents: This repository contains 6 packages that provide different functionality.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast.svg?maxAge=2592000)]() **haskell-tools-ast** contains the representations of our syntax tree and utility functions.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-fromghc.svg?maxAge=2592000)]() **haskell-tools-ast-fromghc** contains how can our AST be generated from the different representations of GHC.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-trf.svg?maxAge=2592000)]() **haskell-tools-ast-trf** contains transformations that can be performed to make the syntax tree ready for rewriting.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-gen.svg?maxAge=2592000)]() **haskell-tools-ast-gen** contains functions for generating parts of the syntax tree.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-prettyprint.svg?maxAge=2592000)]() **haskell-tools-prettyprint** enables us to pretty print the AST in its original form.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg?maxAge=2592000)]() **haskell-tools-refactor** defines the actual refactorings.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-ast) **haskell-tools-ast** contains the representations of our syntax tree and utility functions.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-fromghc.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-ast-fromghc) **haskell-tools-ast-fromghc** contains how can our AST be generated from the different representations of GHC.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-trf.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-ast-trf) **haskell-tools-ast-trf** contains transformations that can be performed to make the syntax tree ready for rewriting.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-gen.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-ast-gen) **haskell-tools-ast-gen** contains functions for generating parts of the syntax tree.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-prettyprint.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-prettyprint) **haskell-tools-prettyprint** enables us to pretty print the AST in its original form.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg?maxAge=2592000)](http://hackage.haskell.org/package/haskell-tools-refactor) **haskell-tools-refactor** defines the actual refactorings.
