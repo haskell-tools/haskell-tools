@@ -1,11 +1,11 @@
 # haskell-tools
 
 The goal of this project is to create developer tools for the functional programming language Haskell. Currently this repository contains the ht-refact tool, a refactoring tool for Haskell. There are 5 implemented refactorings: 
-  - Rename definition: Can rename bindings, data types, constructors, fields, type variables, etc. Respects scoping.
-  - Extract binding: Extracts the selected expression as a local binding.
-  - Generate type signature: Generates the type signature for a function. Useful for declaring the type if it is complex.
-  - Organize imports: Sorts the imports into alphabetical order and narrows the set of imported definitions to the ones that are really used.
-  - Generate exports: Generate an export list for the module that contains all definitions in it. Useful for narrowing the list of exported definitions to the ones that need to be public.
+  - **Rename definition**: Can rename bindings, data types, constructors, fields, type variables, etc. Respects scoping.
+  - **Extract binding**: Extracts the selected expression as a local binding.
+  - **Generate type signature**: Generates the type signature for a function. Useful for declaring the type if it is complex.
+  - **Organize imports**: Sorts the imports into alphabetical order and narrows the set of imported definitions to the ones that are really used.
+  - **Generate exports**: Generate an export list for the module that contains all definitions in it. Useful for narrowing the list of exported definitions to the ones that need to be public.
 
 ## [Check out our demo](http://haskelltools.org)
 
@@ -36,3 +36,11 @@ Plans:
   - Refactorings on multiple modules by the summer of 2016
   - Editor support in the winter of 2016
   - Wider variety of refactorings and Template Haskell support in the spring of 2017
+
+Contents: This repository contains 6 packages that provide different functionality.
+  - haskell-tools-ast [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast.svg?maxAge=2592000)]() contains the representations of our syntax tree and utility functions.
+  - haskell-tools-fromghc [![Hackage](https://img.shields.io/hackage/v/haskell-tools-fromghc.svg?maxAge=2592000)]() contains how can our AST be generated from the different representations of GHC.
+  - haskell-tools-trf [![Hackage](https://img.shields.io/hackage/v/haskell-tools-trf.svg?maxAge=2592000)]() contains transformations that can be performed to make the syntax tree ready for rewriting.
+  - haskell-tools-gen [![Hackage](https://img.shields.io/hackage/v/haskell-tools-gen.svg?maxAge=2592000)]() contains functions for generating parts of the syntax tree.
+  - haskell-tools-ppr [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ppr.svg?maxAge=2592000)]() enables us to pretty print the AST in its original form.
+  - haskell-tools-refactor [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg?maxAge=2592000)]() defines the actual refactorings.
