@@ -33,7 +33,7 @@ getLocIndices = snd . flip execState (0, empty) .
                              RangeListElem _ _ _ _ seps -> mapM_ (modify . insertElem) seps
                              _                          -> return ()
                       ) . (^. sourceInfo&rangeTemplateElems))
-  where insertElem sp = (\(i,m) -> (i+1, insert (OrdSrcSpan sp) i m))
+  where insertElem sp (i,m) = (i+1, insert (OrdSrcSpan sp) i m)
                              
                              
 -- | Partitions the source file in the order where the parts are used in the AST

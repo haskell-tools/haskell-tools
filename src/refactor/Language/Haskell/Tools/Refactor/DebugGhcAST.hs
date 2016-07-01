@@ -2,6 +2,7 @@
            , TypeSynonymInstances 
            , FlexibleInstances 
            #-}
+-- | A module for showing GHC's syntax tree representation.
 module Language.Haskell.Tools.Refactor.DebugGhcAST where
 
 import Language.Haskell.Tools.Refactor.RangeDebug

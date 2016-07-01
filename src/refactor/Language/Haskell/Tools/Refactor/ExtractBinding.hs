@@ -152,7 +152,4 @@ generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName na
 generateBind name args e = mkFunctionBind [mkMatch (mkNormalMatchLhs (mkNormalName $ mkSimpleName name) args) (mkUnguardedRhs e) Nothing]
 
 isValidBindingName :: String -> Bool
-isValidBindingName [] = False
-isValidBindingName (firstChar:rest) = isIdStartChar firstChar && all isIdChar rest
-  where isIdStartChar c = (isLetter c && isLower c && isAscii c) || c == '\'' || c == '_'
-        isIdChar c = (isLetter c && isAscii c) || c == '\'' || c == '_' || isDigit c
+isValidBindingName = nameValid Variable

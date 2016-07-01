@@ -14,8 +14,8 @@ data RoseTree a = RoseTree { roseInfo :: a
                            } deriving Functor
 
 instance Show a => Show (RoseTree a) where
-  show sr = show' 0 sr
-    where show' i (RoseTree {roseInfo,roseChildren})
+  show = show' 0
+    where show' i RoseTree{roseInfo,roseChildren}
              = "\n" ++ replicate (2*i) '#'
                     ++ show roseInfo 
                     ++ concatMap (show' (i+1)) roseChildren

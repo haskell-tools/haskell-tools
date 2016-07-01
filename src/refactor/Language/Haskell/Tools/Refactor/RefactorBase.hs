@@ -2,6 +2,7 @@
            , TypeFamilies
            , ViewPatterns
            , StandaloneDeriving
+           , LambdaCase
            #-}
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
@@ -9,7 +10,7 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import GHC (Ghc, GhcMonad(..))
+import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
 import Exception (ExceptionMonad(..))
 import DynFlags (HasDynFlags(..))
 import qualified Name as GHC
@@ -21,6 +22,7 @@ import Control.Reference hiding (element)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
+import Data.Char
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Control.Monad.Writer
@@ -136,3 +138,53 @@ referenceBy makeName name imps =
                       Nothing -> nameElements (imp ^. element&importModule&element) -- fully qualified import
                       Just asName -> nameElements asName -- the name given by as clause
               else [] -- unqualified import
+
+-- | Different classes of definitions that have different kind of names.
+data NameClass = Variable         -- ^ Normal value definitions: functions, variables
+               | Ctor             -- ^ Data constructors 
+               | ValueOperator    -- ^ Functions with operator-like names
+               | DataCtorOperator -- ^ Constructors with operator-like names
+               | SynonymOperator  -- ^ Type definitions with operator-like names
+
+-- | Get which category does a given name belong to
+classifyName :: GHC.Name -> Refactor n NameClass
+classifyName n = lookupName n >>= return . \case 
+    Just (AnId id) | isop     -> ValueOperator
+    Just (AnId id)            -> Variable
+    Just (AConLike id) | isop -> DataCtorOperator
+    Just (AConLike id)        -> Ctor
+    Just (ATyCon id) | isop   -> SynonymOperator
+    Just (ATyCon id)          -> Ctor
+    Nothing | isop            -> ValueOperator
+    Nothing                   -> Variable
+  where isop = GHC.isSymOcc (GHC.getOccName n) 
+
+
+-- | Check if a given name is valid for a given kind of definition
+nameValid :: NameClass -> String -> Bool
+nameValid n "" = False
+nameValid n str | str `elem` reservedNames = False
+  where -- TODO: names reserved by extensions
+        reservedNames = [ "case", "class", "data", "default", "deriving", "do", "else", "if", "import", "in", "infix"
+                        , "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type", "where", "_"
+                        , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
+                        ]
+-- Operators that are data constructors (must start with ':')
+nameValid DataCtorOperator (':' : nameRest)
+  = all isOperatorChar nameRest
+-- Type families and synonyms that are operators (can start with ':')
+nameValid SynonymOperator (c : nameRest)
+  = isOperatorChar c && all isOperatorChar nameRest
+-- Normal value operators (cannot start with ':')
+nameValid ValueOperator (c : nameRest)
+  = isOperatorChar c && c /= ':' && all isOperatorChar nameRest
+-- Data and type constructors (start with uppercase)
+nameValid Ctor (c : nameRest)
+  = isUpper c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
+-- Variables and type variables (start with lowercase)
+nameValid Variable (c : nameRest)
+  = isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
+nameValid _ _ = False
+
+isIdStartChar c = (isLetter c && isAscii c) || c == '\'' || c == '_'
+isOperatorChar c = (isPunctuation c || isSymbol c) && isAscii c

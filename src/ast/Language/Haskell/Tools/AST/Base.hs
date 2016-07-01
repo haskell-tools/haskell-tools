@@ -1,6 +1,5 @@
 
 {-# LANGUAGE TypeFamilies
-           , KindSignatures
            , MultiParamTypeClasses
            , FlexibleInstances
            #-}

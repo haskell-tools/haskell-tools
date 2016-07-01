@@ -48,7 +48,7 @@ printRose' (RoseTree [ChildListElem bef aft _ indented seps] children)
       
 printRose' (RoseTree [OptionalChildElem _ _] []) = return empty
 printRose' (RoseTree [OptionalChildElem bef aft] [child]) = putString bef >+< printRose' child >+< putString aft
-printRose' (RoseTree [OptionalChildElem _ _] _) = error ("More than one child element in an optional node.")
+printRose' (RoseTree [OptionalChildElem _ _] _) = error "More than one child element in an optional node."
 printRose' (RoseTree [] []) = return empty 
 printRose' r@(RoseTree (ChildElem : rest) []) = error ("More child elem in template than actual children. In: " ++ show r)
 printRose' r@(RoseTree [] children) = error ("Not all children are used to pretty printing. In: " ++ show r) 
@@ -64,7 +64,7 @@ advanceStr s loc = foldl advanceSrcLoc loc s
 untilReaches :: String -> RealSrcLoc -> RealSrcLoc -> (String, Int)
 untilReaches s start end 
   = let ls = splitOn "\n" s 
-     in case ls of _:_:_ -> (concatMap (++"\n") (init ls) ++) 
+     in case ls of _:_:_ -> (unlines (init ls) ++) 
                               `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end 
                    _ -> (s, srcLocCol start)
   where

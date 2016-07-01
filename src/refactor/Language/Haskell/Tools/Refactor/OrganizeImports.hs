@@ -38,9 +38,11 @@ organizeImports mod
                                 $ map (^? (annotation&semanticInfo&nameInfo))
                                 $ (universeBi (mod ^. element&modHead) ++ universeBi (mod ^. element&modDecl) :: [Ann SimpleName (STWithNames n)])
         
+-- | Sorts the imports in alphabetical order
 sortImports :: [Ann ImportDecl (STWithNames n)] -> [Ann ImportDecl (STWithNames n)]
 sortImports = sortBy (ordByOccurrence `on` (^. element&importModule&element))
 
+-- | Modify an import to only import  names that are used.
 narrowImports :: forall n . NamedThing n => [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Refactor n [Ann ImportDecl (STWithNames n)]
 narrowImports usedNames imps = foldM (narrowOneImport usedNames) imps imps 
   where narrowOneImport :: [GHC.Name] -> [Ann ImportDecl (STWithNames n)] -> Ann ImportDecl (STWithNames n) -> Refactor n [Ann ImportDecl (STWithNames n)]
@@ -62,6 +64,7 @@ narrowImport usedNames otherModules imp
   where actuallyImported = map getName (fromJust (imp ^? annotation&semanticInfo&importedNames)) `intersect` usedNames
         Just importedMod = imp ^? annotation&semanticInfo&importedModule
     
+-- | Narrows the import specification (explicitely imported elements)
 narrowImportSpecs :: forall n . NamedThing n => [GHC.Name] -> AnnList IESpec (STWithNames n) -> Refactor n (AnnList IESpec (STWithNames n))
 narrowImportSpecs usedNames 
   = (annList&element !~ narrowSpecSubspec usedNames) 

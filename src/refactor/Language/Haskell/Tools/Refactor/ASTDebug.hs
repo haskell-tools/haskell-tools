@@ -11,6 +11,7 @@
            , ViewPatterns
            , ScopedTypeVariables
            #-}
+-- | A module for displaying the AST in a tree view.
 module Language.Haskell.Tools.Refactor.ASTDebug where
 
 import GHC.Generics

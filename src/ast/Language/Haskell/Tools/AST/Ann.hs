@@ -57,9 +57,9 @@ makeReferences ''SpanInfo
 -- | Extracts the concrete range corresponding to a given span.
 -- In case of lists and optional elements, it may not contain the elements inside.
 spanRange :: SpanInfo -> SrcSpan
-spanRange (NodeSpan sp) = sp
-spanRange (ListPos {_listPos = pos}) = srcLocSpan pos
-spanRange (OptionalPos {_optionalPos = pos}) = srcLocSpan pos
+spanRange (NodeSpan sp)                   = sp
+spanRange ListPos{_listPos = pos}         = srcLocSpan pos
+spanRange OptionalPos{_optionalPos = pos} = srcLocSpan pos
   
 class HasRange annot where
   getRange :: annot -> SrcSpan
@@ -119,7 +119,7 @@ annList = annListElems & traversal
 
 -- | An optional AST element
 data AnnMaybe e a = AnnMaybe { _annMaybeAnnot :: a 
-                             , _annMaybe :: (Maybe (Ann e a))
+                             , _annMaybe :: Maybe (Ann e a)
                              }
                              
 makeReferences ''AnnMaybe

@@ -6,6 +6,7 @@
            , MultiParamTypeClasses
            , TypeFamilies
            #-}
+-- | A module for displaying debug info about the source annotations of the syntax tree in different phases.
 module Language.Haskell.Tools.Refactor.RangeDebug where
 
 import GHC.Generics

@@ -1,9 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables
-           , StandaloneDeriving
-           , DeriveDataTypeable 
            , FlexibleContexts 
            , LambdaCase 
            #-}
+-- | This transformation expands nodes to contain the comments that should be attached to them. After this, a
+-- normalizing transformation should be performed that expands parents to contain their children.
 module Language.Haskell.Tools.AnnTrf.PlaceComments where
 
 import qualified Data.Map as Map
@@ -31,7 +31,7 @@ getNormalComments = Map.map (filter (not . isPragma . unLoc))
 
 getPragmaComments :: Map.Map SrcSpan [Located AnnotationComment] -> Map.Map String [Located String]
 getPragmaComments comms = Map.fromListWith (++) $ map (\(L l (AnnBlockComment str)) -> (getPragmaCommand str, [L l str])) 
-                                                $ filter (isPragma . unLoc) $ concat $ map snd $ Map.toList comms 
+                                                $ filter (isPragma . unLoc) $ concatMap snd $ Map.toList comms 
   where getPragmaCommand = takeWhile (\c -> isAlphaNum c || c == '_') . dropWhile isSpace . drop 3
 
 isPragma :: AnnotationComment -> Bool
@@ -46,13 +46,12 @@ placeComments :: (StructuralTraversable node, Data sema, Data (node (NodeInfo se
               -> Ann node (NodeInfo sema SpanInfo)
 placeComments comms mod
   = resizeAnnots (concatMap (map nextSrcLoc . snd) (Map.toList comms)) mod
-  where sortedElemStarts = Set.fromList $ map srcSpanStart (allElemSpans mod)
-        sortedElemEnds = Set.fromList $ map srcSpanEnd (allElemSpans mod)
+  where spans = allElemSpans mod
+        sortedElemStarts = Set.fromList $ map srcSpanStart spans
+        sortedElemEnds = Set.fromList $ map srcSpanEnd spans
         nextSrcLoc comm@(L sp _) 
-          = let after = case Set.lookupLE (srcSpanStart sp) sortedElemEnds of Just x  -> x
-                                                                              Nothing -> noSrcLoc
-                before = case Set.lookupGE (srcSpanEnd sp) sortedElemStarts of Just x  -> x
-                                                                               Nothing -> noSrcLoc
+          = let after = fromMaybe noSrcLoc (Set.lookupLE (srcSpanStart sp) sortedElemEnds)
+                before = fromMaybe noSrcLoc (Set.lookupGE (srcSpanEnd sp) sortedElemStarts)
              in ((after,before),comm)
   
 allElemSpans :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) -> [SrcSpan]
@@ -82,6 +81,7 @@ type ExpandType elem sema = Ann elem (NodeInfo sema SpanInfo)
                               -> State [((SrcLoc, SrcLoc), Located AnnotationComment)]
                                        (Ann elem (NodeInfo sema SpanInfo))
 
+-- | Expands tree elements to contain the comments that should be attached to them.
 expandAnnot :: forall elem sema . ExpandType elem sema
 expandAnnot elem
   = do let Just sp = elem ^? annotation&sourceInfo&nodeSpan
@@ -104,7 +104,7 @@ expandAnnot elem
 applicableComments :: SrcLoc -> SrcLoc 
                    -> [((SrcLoc, SrcLoc), Located AnnotationComment)] 
                    -> [((SrcLoc, SrcLoc), Located AnnotationComment)]
-applicableComments start end comments = filter applicableComment comments
+applicableComments start end = filter applicableComment
   where -- A comment that starts with | binds to the next documented element
         applicableComment ((_, before), L _ comm) 
           | isCommentOnNext comm = before == start
@@ -113,11 +113,11 @@ applicableComments start end comments = filter applicableComment comments
           | isCommentOnPrev comm = after == end
         -- All other comment binds to the previous definition if it is on the same line
         applicableComment ((after, _), L (RealSrcSpan loc) _) 
-          | after == end && (srcLocLine $ realSrcSpanStart loc) == getLineLocDefault end = True
+          | after == end && srcLocLine (realSrcSpanStart loc) == getLineLocDefault end = True
         -- or the next one if that is on the next line and the columns line up
         applicableComment ((_, before), L (RealSrcSpan loc) _) 
-          | before == start && (srcLocLine $ realSrcSpanEnd loc) + 1 == getLineLocDefault start
-                            && (srcLocCol $ realSrcSpanStart loc) == getLineColDefault start
+          | before == start && srcLocLine (realSrcSpanEnd loc) + 1 == getLineLocDefault start
+                            && srcLocCol (realSrcSpanStart loc) == getLineColDefault start
           = True
         applicableComment _ = False
         
@@ -130,12 +130,14 @@ applicableComments start end comments = filter applicableComment comments
 -- * GHC mistakenly parses -- ^ and -- | comments as simple line comments.
 -- These functions check if a given comment is attached to the previous or next comment.
 
+-- | Checks if a doc comment belongs to the next definition.
 isCommentOnNext :: AnnotationComment -> Bool
 isCommentOnNext (AnnDocCommentNext _) = True
 isCommentOnNext (AnnLineComment s) = firstNonspaceCharIs '|' s
 isCommentOnNext (AnnBlockComment s) = firstNonspaceCharIs '|' s
 isCommentOnNext _ = False
 
+-- | Checks if a doc comment belongs to the previous definition.
 isCommentOnPrev :: AnnotationComment -> Bool
 isCommentOnPrev (AnnDocCommentPrev _) = True
 isCommentOnPrev (AnnLineComment s) = firstNonspaceCharIs '^' s

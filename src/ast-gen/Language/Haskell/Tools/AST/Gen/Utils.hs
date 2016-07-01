@@ -20,16 +20,19 @@ noth :: TemplateAnnot a => AnnMaybe e a
 noth = AnnMaybe (fromTemplate opt) Nothing
 
 mkAnn :: TemplateAnnot a => SourceTemplate -> e a -> Ann e a
-mkAnn temp e = Ann (fromTemplate temp) e
+mkAnn temp = Ann (fromTemplate temp)
 
+-- | Annotation for a simple wrapper AST node
 wrapperAnn :: TemplateAnnot a => e a -> Ann e a
 wrapperAnn = mkAnn child
 
+-- | Transforms the list of elements to an AnnList with the given source template.
 mkAnnList :: TemplateAnnot a => SourceTemplate -> [Ann e a] -> AnnList e a
-mkAnnList temp ls = AnnList (fromTemplate temp) ls
+mkAnnList temp = AnnList (fromTemplate temp)
 
+-- | Transforms the Maybe element to an AnnMaybe with the given source template.
 mkAnnMaybe :: TemplateAnnot a => SourceTemplate -> Maybe (Ann e a) -> AnnMaybe e a
-mkAnnMaybe temp mb = AnnMaybe (fromTemplate temp) mb
+mkAnnMaybe temp = AnnMaybe (fromTemplate temp)
   
 instance TemplateAnnot (NodeInfo (SemanticInfo n) SourceTemplate) where
   fromTemplate = NodeInfo NoSemanticInfo

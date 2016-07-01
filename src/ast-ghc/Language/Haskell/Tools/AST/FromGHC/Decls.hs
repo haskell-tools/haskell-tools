@@ -116,6 +116,9 @@ trfDecl = trfLoc $ \case
     -> AST.PragmaDecl <$> annCont (AST.AnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
   d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
 
+trfGADT :: TransformName n r => NewOrData -> Located n -> LHsQTyVars n -> Located (HsContext n) 
+                                 -> Maybe (Located (HsKind n)) -> [Located (ConDecl n)] 
+                                 -> Maybe (Located [LHsSigType n]) -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.Decl r)
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.GDataDecl <$> trfDataKeyword nd
                   <*> trfCtx (after ctxTok) ctx
@@ -124,6 +127,9 @@ trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
                   <*> makeIndentedListBefore " where " consLoc (mapM trfGADTConDecl cons)
                   <*> trfMaybe "" "" trfDerivings derivs
 
+trfDataDef :: TransformName n r => NewOrData -> Located n -> LHsQTyVars n -> Located (HsContext n) 
+                                     -> [Located (ConDecl n)] -> Maybe (Located [LHsSigType n]) 
+                                     -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.Decl r)
 trfDataDef nd name vars ctx cons derivs ctxTok consLoc
   = AST.DataDecl <$> trfDataKeyword nd
                  <*> trfCtx (after ctxTok) ctx

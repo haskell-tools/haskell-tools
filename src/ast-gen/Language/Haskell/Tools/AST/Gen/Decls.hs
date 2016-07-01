@@ -1,4 +1,6 @@
--- | Generation of declaration-level AST fragments for refactorings
+-- | Generation of declaration-level AST fragments for refactorings.
+-- The bindings defined here create a the annotated version of the AST constructor with the same name.
+-- For example, @mkTypeSignature@ creates the annotated version of the @TypeSignature@ AST constructor.
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Haskell.Tools.AST.Gen.Decls where
 

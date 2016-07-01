@@ -16,6 +16,8 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 generateExports :: GHC.NamedThing n => Ann Module (STWithNames n) -> RefactoredModule n
 generateExports mod = return (element & modHead & annJust & element & mhExports & annMaybe .= Just (createExports (getTopLevels mod)) $ mod)
 
+-- | Get all the top-level definitions with flags that mark if they can contain other top-level definitions 
+-- (classes and data declarations).
 getTopLevels :: Ann Module (STWithNames n) -> [(n, Bool)]
 getTopLevels mod = catMaybes $ map (\d -> fmap (,exportContainOthers d) (getTopLevelDeclName d)) (mod ^? element & modDecl & annList & element)
   where exportContainOthers :: Decl (STWithNames n) -> Bool
@@ -38,6 +40,7 @@ getTopLevelDeclName (d @ ValueBinding {}) = listToMaybe (d ^? declValBind & bind
 getTopLevelDeclName (d @ ForeignImport {}) = listToMaybe (d ^? declName & element & simpleName & semantics & nameInfo)
 getTopLevelDeclName _ = Nothing
 
+-- | Create the export for a give name.
 createExports :: GHC.NamedThing n => [(n, Bool)] -> Ann ExportSpecList (STWithNames n)
 createExports elems = mkExportSpecList $ map (mkExportSpec . createExport) elems
   where createExport (n, False) = mkIeSpec (mkUnqualName' (GHC.getName n)) Nothing

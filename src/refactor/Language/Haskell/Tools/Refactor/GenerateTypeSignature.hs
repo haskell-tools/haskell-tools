@@ -32,10 +32,14 @@ type STWithId = STWithNames GHC.Id
 generateTypeSignature' :: RealSrcSpan -> Ann Module STWithId -> RefactoredModule GHC.Id
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
 
-generateTypeSignature :: Simple Traversal (Ann Module STWithId) (AnnList Decl STWithId)
-                           -> Simple Traversal (Ann Module STWithId) (AnnList LocalBind STWithId)
+-- | Perform the refactoring on either local or top-level definition
+generateTypeSignature :: Simple Traversal (Ann Module STWithId) (AnnList Decl STWithId) 
+                                -- ^ Access for a top-level definition if it is the selected definition
+                           -> Simple Traversal (Ann Module STWithId) (AnnList LocalBind STWithId) 
+                                -- ^ Access for a definition list if it contains the selected definition
                            -> (forall d . (Show (d (NodeInfo STWithId SourceTemplate)), Data (d STWithId), Typeable d, BindingElem d) 
-                                => AnnList d STWithId -> Maybe (Ann ValueBind STWithId))
+                                => AnnList d STWithId -> Maybe (Ann ValueBind STWithId)) 
+                                -- ^ Selector for either local or top-level declaration in the definition list
                            -> Ann Module STWithId -> RefactoredModule GHC.Id
 generateTypeSignature topLevelRef localRef vbAccess
   = flip evalStateT False .
@@ -60,9 +64,11 @@ genTypeSig vbAccess ls
                    return $ insertWhere (wrapperAnn $ createTypeSig typeSig) (const True) isTheBind ls
   | otherwise = return ls
 
+
 generateTSFor :: GHC.Name -> GHC.Type -> RefactorId (Ann TypeSignature STWithId)
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) <$> generateTypeFor (-1) (dropForAlls t)
 
+-- | Generates the source-level type for a GHC internal type
 generateTypeFor :: Int -> GHC.Type -> RefactorId (Ann AST.Type STWithId) 
 generateTypeFor prec t 
   -- context
@@ -118,6 +124,7 @@ generateTypeFor prec t
           = mkClassAssert <$> referenceName (getTCId tc) <*> mapM (generateTypeFor 0) types
         -- TODO: infix things
     
+-- | Check whether the definition already has a type signature
 typeSignatureAlreadyExist :: forall d . BindingElem d => AnnList d STWithId -> Ann ValueBind STWithId -> Bool
 typeSignatureAlreadyExist ls vb = 
   getBindingName vb `elem` concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element)

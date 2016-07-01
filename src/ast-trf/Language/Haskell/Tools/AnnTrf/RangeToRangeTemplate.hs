@@ -1,9 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables
            , LambdaCase
-           , FlexibleContexts 
-           , TemplateHaskell 
-           , DeriveDataTypeable 
+           , FlexibleContexts
            #-}
+-- | Transform a syntax tree with ranges to a syntax tree that has range templates. Cuts the ranges of children
+-- from the ranges of their parents and replaces it with placeholders.
 module Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate (cutUpRanges, fixRanges) where
 
 import Language.Haskell.Tools.AST
@@ -52,8 +52,8 @@ fixRanges node = evalState (traverseUp desc asc f node) [[],[]]
 -- | Expand a list or optional node to contain its children
 expandAsNodeInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
 expandAsNodeInfo ns@(NodeSpan _) _ = ns
-expandAsNodeInfo (OptionalPos {_optionalPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
-expandAsNodeInfo (ListPos {_listPos = loc}) sps = NodeSpan (RealSrcSpan $ collectSpanRanges loc sps)
+expandAsNodeInfo OptionalPos{_optionalPos = loc} sps = NodeSpan (RealSrcSpan (collectSpanRanges loc sps))
+expandAsNodeInfo ListPos{_listPos = loc} sps = NodeSpan (RealSrcSpan (collectSpanRanges loc sps))
 
 -- | Expand a simple node to contain its children
 expandToContain :: [SpanInfo] -> SpanInfo -> SpanInfo
@@ -90,7 +90,7 @@ collectSpanRanges _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealS
 -- | Cuts out all elements from a list, the rest is the list of separators
 getSeparators :: RealSrcSpan -> [SpanInfo] -> [RealSrcSpan]
 getSeparators sp infos@(_:_:_)
-  = catMaybes $ map getRangeElemSpan (cutOutElem infos (NodeSpan (RealSrcSpan sp)) ^. rangeTemplateElems)
+  = mapMaybe getRangeElemSpan (cutOutElem infos (NodeSpan (RealSrcSpan sp)) ^. rangeTemplateElems)
 -- at least two elements needed or there can be no separators
 getSeparators sp _ = []
                      

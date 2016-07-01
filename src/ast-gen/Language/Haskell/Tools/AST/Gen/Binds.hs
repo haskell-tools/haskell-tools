@@ -1,4 +1,6 @@
--- | Generation of binding-level AST fragments for refactorings
+-- | Generation of binding-level AST fragments for refactorings.
+-- The bindings defined here create a the annotated version of the AST constructor with the same name.
+-- For example, @mkMatch@ creates the annotated version of the @Match@ constructor.
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Haskell.Tools.AST.Gen.Binds where
 

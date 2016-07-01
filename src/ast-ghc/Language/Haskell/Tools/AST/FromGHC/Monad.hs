@@ -1,5 +1,5 @@
--- | The transformation monad carries the range in focus and the src map that
--- contains the tokens in the file.
+-- | The transformation monad carries the necessary information that is passed top-down
+-- during the conversion from GHC AST to our representation.
 module Language.Haskell.Tools.AST.FromGHC.Monad where
 
 import SrcLoc
@@ -15,15 +15,18 @@ import Data.Maybe
 
 import Debug.Trace
 
+-- | The transformation monad type
+type Trf = ReaderT TrfInput Ghc
+
 -- | The (immutable) data for the transformation
 data TrfInput
   = TrfInput { srcMap :: SourceMap -- ^ The lexical tokens of the source file
              , pragmaComms :: Map String [Located String] -- ^ Pragma comments
              , contRange :: SrcSpan -- ^ The focus of the transformation
              , localsInScope :: [[GHC.Name]] -- ^ Local names visible
-             , defining :: Bool
-             , definingTypeVars :: Bool
-             , originalNames :: Map SrcSpan RdrName
+             , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
+             , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
+             , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
              }
       
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
@@ -37,25 +40,32 @@ trfInit annots comments
              , originalNames = empty
              }
 
+-- | Perform the transformation taking names as defined.
 define :: Trf a -> Trf a
 define = local (\s -> s { defining = True })
 
+-- | Perform the transformation taking type variable names as defined.
 defineTypeVars :: Trf a -> Trf a
 defineTypeVars = local (\s -> s { definingTypeVars = True })
 
+-- | Transform as type variables
 typeVarTransform :: Trf a -> Trf a
 typeVarTransform = local (\s -> s { defining = defining s || definingTypeVars s })
 
+-- | Transform a name as a type variable if it is one.
 transformingPossibleVar :: HsHasName n => n -> Trf a -> Trf a
 transformingPossibleVar n = case hsGetNames n of 
   [name] | isVarName name || isTyVarName name -> typeVarTransform
   _                                           -> id
 
+-- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
 addToScope e = local (\s -> s { localsInScope = hsGetNames e : localsInScope s }) 
 
+-- | Perform the transformation putting the given definitions in the current scope.
 addToCurrentScope :: HsHasName e => e -> Trf a -> Trf a
-addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (hsGetNames e ++ lastScope):rest })
+addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (hsGetNames e ++ lastScope):rest
+                                                                               []             -> [hsGetNames e] })
 
 -- | Performs the transformation given the tokens of the source file
 runTrf :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> Trf a -> Ghc a
@@ -64,8 +74,7 @@ runTrf annots comments trf = runReaderT trf (trfInit annots comments)
 setOriginalNames :: Map SrcSpan RdrName -> Trf a -> Trf a
 setOriginalNames names = local (\s -> s { originalNames = names })
 
+-- | Get the original format of a name (before scoping).
 getOriginalName :: RdrName -> Trf String
 getOriginalName n = do sp <- asks contRange
                        asks (rdrNameStr . fromMaybe n . (Map.lookup sp) . originalNames)
-                          
-type Trf = ReaderT TrfInput Ghc
