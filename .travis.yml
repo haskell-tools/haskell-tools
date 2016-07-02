@@ -34,9 +34,7 @@ install:
 
  # list all dependencies for all packages
  - rm -f installplan.txt
- - cd test/require; cabal install --only-dependencies --dry -v > ../../installplan.txt; cd ../..
-
- - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
+ - cd test/require; cabal install --only-dependencies --dry > ../../installplan.txt; cd ../..
 
 # check whether current requested install-plan matches cached package-db snapshot
  - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
@@ -50,7 +48,7 @@ install:
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
 
-     cd test/require; cabal install --only-dependencies -v --dry > ../../installplan.txt; cd ../..;
+     cd test/require; cabal install --only-dependencies --dry > ../../installplan.txt; cd ../..;
      cd test/require; cabal install --only-dependencies; cd ../..;
    fi
 
