@@ -51,7 +51,7 @@ install:
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
 
      cd test/require; cabal install --only-dependencies -v --dry > ../../installplan.txt; cd ../..;
-     cd test/require; cabal install --only-dependencies;
+     cd test/require; cabal install --only-dependencies; cd ../..;
    fi
 
 # snapshot package-db on cache miss
