@@ -17,9 +17,9 @@ Installation
   - Install haskell-tools-refactor: `cabal install haskell-tools-refactor`
 
 Test:
-  - The test folder contains the test package.
-  - The test suite contains both unit and nightly tests.
-  - It can be run or from GHCi. After loading it with `ghci -package ghc -isrc\ast;src\ast-ghc;src\ast-trf;src\ast-ppr;src\ast-gen;src\refactor;test Main` (from root, on Windows), you can run the tests by `run unitTests` or `run nightlyTests`
+  - The test folder contains the test package. The test suite contains both unit and nightly tests.
+  - Run it with `cabal configure --enable-tests; cabal test`.
+  - Continous integration is backed by Travis-CI. Status: [![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools.svg?maxAge=2592000)](https://travis-ci.org/haskell-tools/haskell-tools)
 
 Using GHCi:
   - `ghci -package ghc -isrc\ast;src\ast-ghc;src\ast-trf;src\ast-ppr;src\ast-gen;src\refactor Language.Haskell.Tools.Refactor` (from root, on Windows)
