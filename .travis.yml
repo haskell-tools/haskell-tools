@@ -34,13 +34,13 @@ install:
 
  # list all dependencies for all packages
  - rm -f installplan.txt
- - cd src/ast & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd src/ast-ghc & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd src/ast-trf & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd src/ast-ppr & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd src/ast-gen & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd src/refactor & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ../..
- - cd test & cabal install --only-dependencies --dry -v >> ../../installplan.txt & cd ..
+ - cd src/ast; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd src/ast-ghc; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd src/ast-trf; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd src/ast-ppr; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd src/ast-gen; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd src/refactor; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ../..
+ - cd test; cabal install --only-dependencies --dry -v >> ../../installplan.txt; cd ..
 
  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
 
@@ -56,13 +56,13 @@ install:
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
 
-     cd src/ast & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd src/ast-ghc & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd src/ast-trf & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd src/ast-ppr & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd src/ast-gen & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd src/refactor & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
-     cd test & cabal install --only-dependencies --enable-tests -v >> ../../installplan.txt & cd ..
+     cd src/ast; cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd src/ast-ghc; cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd src/ast-trf;  cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd src/ast-ppr; cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd src/ast-gen; cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd src/refactor; cabal install --only-dependencies -v >> ../../installplan.txt; cd ../..
+     cd test; cabal install --only-dependencies --enable-tests -v >> ../../installplan.txt; cd ..
    fi
 
 # snapshot package-db on cache miss
