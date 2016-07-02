@@ -55,7 +55,6 @@ install:
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
 
-     ## install all dependencies for all packages
      cd src/ast & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
      cd src/ast-ghc & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
      cd src/ast-trf & cabal install --only-dependencies -v >> ../../installplan.txt & cd ../..
