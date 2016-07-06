@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Either.Combinators
 import Test.HUnit hiding (test)
 import System.IO
+import System.Exit
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -32,7 +33,10 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 main = run nightlyTests
 
 run :: [Test] -> IO Counts
-run = runTestTT . TestList
+run tests = do results <- runTestTT $ TestList tests
+               if errors results + failures results > 0 
+                  then exitFailure
+                  else exitSuccess
 
 nightlyTests :: [Test]
 nightlyTests = unitTests 
@@ -57,6 +61,7 @@ unitTests = map makeReprintTest checkTestCases
                           ++ map (\(mod,_,_) -> mod) extractBindingTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
 
+rootDir = "../examples"
         
 languageTests =
   [ "Decl.AmbiguousFields"
@@ -140,8 +145,7 @@ languageTests =
   ]
 
 cppHsTests = 
-  [ "Main"
-  , "Language.Preprocessor.Cpphs"
+  [ "Language.Preprocessor.Cpphs"
   , "Language.Preprocessor.Unlit"
   , "Language.Preprocessor.Cpphs.CppIfdef"
   , "Language.Preprocessor.Cpphs.HashDefine"
@@ -248,32 +252,32 @@ wrongExtractBindingTests =
    
 makeOrganizeImportsTest :: String -> Test
 makeOrganizeImportsTest mod 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports "examples" mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports rootDir mod
 
 makeGenerateSignatureTest :: (String, String) -> Test
 makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (generateTypeSignature' rng) "examples" mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (generateTypeSignature' rng) rootDir mod
 
 makeGenerateExportsTest :: String -> Test
 makeGenerateExportsTest mod 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed generateExports "examples" mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed generateExports rootDir mod
 
 makeRenameDefinitionTest :: (String, String, String) -> Test
 makeRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (renameDefinition' rng newName) "examples" mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (renameDefinition' rng newName) rootDir mod
 
 
 makeWrongRenameDefinitionTest :: (String, String, String) -> Test
 makeWrongRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkTransformFails (renameDefinition' rng newName) "examples" mod
+  = TestLabel mod $ TestCase $ checkTransformFails (renameDefinition' rng newName) rootDir mod
 
 makeExtractBindingTest :: (String, String, String) -> Test
 makeExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (extractBinding' rng newName) "examples" mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (extractBinding' rng newName) rootDir mod
   
 makeWrongExtractBindingTest :: (String, String, String) -> Test
 makeWrongExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkTransformFails (extractBinding' rng newName) "examples" mod
+  = TestLabel mod $ TestCase $ checkTransformFails (extractBinding' rng newName) rootDir mod
 
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
@@ -296,16 +300,16 @@ checkTransformFails transform workingDir moduleName
 
 standardizeLineEndings = filter (/= '\r')
        
-toFileName mod = "examples\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"
+toFileName mod = rootDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"
        
 makeReprintTest :: String -> Test       
-makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples" mod)
+makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted rootDir mod)
 
 makeCpphsTest :: String -> Test       
-makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples/CppHs" mod)
+makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir ++ "/CppHs") mod)
 
 makeInstanceControlTest :: String -> Test       
-makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted "examples/InstanceControl" mod)
+makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir ++ "/InstanceControl") mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 
