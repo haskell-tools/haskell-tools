@@ -241,10 +241,7 @@ demoRefactor command workingDir moduleName =
         liftIO $ putStrLn "==========="
         liftIO $ putStrLn transformProblem
         liftIO $ putStrLn "==========="
-    
-printSemaInfo :: (StructuralTraversable node, Outputable n) => node (NodeInfo (SemanticInfo n) src) -> Ghc (node (NodeInfo (SemanticInfo n) src))
-printSemaInfo = traverseUp (return ()) (return ()) (\n@(NodeInfo s _) -> liftIO (print s) >> return n)
-      
+  
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
 deriving instance Generic RangeTemplate

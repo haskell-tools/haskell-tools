@@ -33,7 +33,6 @@ install:
  - sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
 
  # list all dependencies for all packages
- - rm -f installplan.txt
  - cd test/require; cabal install --only-dependencies --dry > ../../installplan.txt; cd ../..
 
 # check whether current requested install-plan matches cached package-db snapshot
