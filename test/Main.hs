@@ -31,13 +31,12 @@ import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-main = run nightlyTests
+main = run unitTests
 
 run :: [Test] -> IO Counts
 run tests = do results <- runTestTT $ TestList tests
                if errors results + failures results > 0 
-                  then do putStrLn ("\nTEST RESULTS: " ++ show results)
-                          exitFailure
+                  then exitFailure
                   else exitSuccess
 
 nightlyTests :: [Test]
@@ -63,7 +62,7 @@ unitTests = map makeReprintTest checkTestCases
                           ++ map (\(mod,_,_) -> mod) extractBindingTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
 
-rootDir = "../examples"
+rootDir = ".." </> "examples"
         
 languageTests =
   [ "Decl.AmbiguousFields"
