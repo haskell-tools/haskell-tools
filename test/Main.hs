@@ -31,7 +31,7 @@ import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-main = run unitTests
+main = run nightlyTests
 
 run :: [Test] -> IO Counts
 run tests = do results <- runTestTT $ TestList tests
@@ -317,6 +317,7 @@ checkCorrectlyPrinted workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
+       putStrLn $ "\nRunning checkCorrectlyPrinted on " ++ moduleName ++ " in " ++ workingDir
        (actual, actual', actual'') <- runGhc (Just libdir) $ do
          parsed <- parse workingDir moduleName
          actual <- prettyPrint <$> parseAST parsed
