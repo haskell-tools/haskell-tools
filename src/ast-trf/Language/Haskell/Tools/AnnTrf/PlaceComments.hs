@@ -40,10 +40,10 @@ isPragma _ = False
 
 -- | Puts comments in the nodes they should be attached to. Leaves the AST in a state where parent nodes
 -- does not contain all of their children.
-placeComments :: (StructuralTraversable node, Data sema, Data (node (NodeInfo sema SpanInfo)), Typeable node)
+placeComments :: (Data sema)
               => Map.Map SrcSpan [Located AnnotationComment] 
-              -> Ann node (NodeInfo sema SpanInfo) 
-              -> Ann node (NodeInfo sema SpanInfo)
+              -> Ann Module (NodeInfo sema SpanInfo) 
+              -> Ann Module (NodeInfo sema SpanInfo)
 placeComments comms mod
   = resizeAnnots (concatMap (map nextSrcLoc . snd) (Map.toList comms)) mod
   where spans = allElemSpans mod
@@ -58,28 +58,61 @@ allElemSpans :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) 
 allElemSpans = execWriter . traverseDown (return ()) (return ()) 
                              (\ni -> maybe (return ()) (tell . (:[])) (ni ^? sourceInfo&nodeSpan))
                                                  
-resizeAnnots :: forall node sema . (Data sema, Data (node (NodeInfo sema SpanInfo)), Typeable node) 
+resizeAnnots :: forall sema . (Data sema) 
                   => [((SrcLoc, SrcLoc), Located AnnotationComment)]
-                  -> Ann node (NodeInfo sema SpanInfo) 
-                  -> Ann node (NodeInfo sema SpanInfo) 
+              -> Ann Module (NodeInfo sema SpanInfo) 
+              -> Ann Module (NodeInfo sema SpanInfo)
 resizeAnnots comments elem
   = flip evalState comments $ 
         -- if a comment that could be attached to more than one documentable element (possibly nested) 
         -- the order of different documentable elements here decide which will be chosen
         
-        transformBiM (expandAnnot :: ExpandType ImportDecl sema)
-          >=> transformBiM (expandAnnotToFunArgs :: ExpandType TypeSignature sema)
-          >=> transformBiM (expandAnnot :: ExpandType Decl sema)
-          >=> transformBiM (expandAnnot :: ExpandType ClassElement sema)
-          >=> transformBiM (expandAnnot :: ExpandType ConDecl sema)
-          >=> transformBiM (expandAnnot :: ExpandType FieldDecl sema)
-          >=> transformBiM (expandAnnot :: ExpandType LocalBind sema)
-          >=> transformBiM (expandAnnot :: ExpandType Module sema)
+        element&modImports&annList !~ expandAnnot
+          >=> element&modDecl&annList !~ expandTopLevelDecl -- (expandAnnotToFunArgs :: ExpandType TypeSignature sema)
+          >=> expandAnnot
       $ elem
 
 type ExpandType elem sema = Ann elem (NodeInfo sema SpanInfo) 
                               -> State [((SrcLoc, SrcLoc), Located AnnotationComment)]
                                        (Ann elem (NodeInfo sema SpanInfo))
+
+expandTopLevelDecl :: ExpandType Decl sema
+expandTopLevelDecl
+  = element & declBody & annJust & element & cbElements & annList !~ expandClsElement
+      >=> element & declCons & annList !~ expandConDecl
+      >=> element & declGadt & annList !~ expandGadtConDecl
+      >=> element & declTypeSig !~ expandTypeSig
+      >=> expandAnnot
+
+expandTypeSig :: ExpandType TypeSignature sema
+expandTypeSig
+  = element & tsType & typeParams !~ expandAnnot >=> expandAnnot
+
+expandClsElement :: ExpandType ClassElement sema
+expandClsElement
+  = element & ceTypeSig !~ expandTypeSig
+      >=> element & ceBind !~ expandValueBind
+      >=> expandAnnot
+
+expandValueBind :: ExpandType ValueBind sema
+expandValueBind
+  = element & valBindLocals & annJust & element & localBinds & annList !~ expandLocalBind 
+      >=> element & funBindMatches & annList & element & matchBinds & annJust & element & localBinds & annList !~ expandLocalBind
+      >=> expandAnnot
+
+expandLocalBind :: ExpandType LocalBind sema
+expandLocalBind
+  = element & localVal !~ expandValueBind 
+      >=> element & localSig !~ expandTypeSig 
+      >=> expandAnnot
+
+expandConDecl :: ExpandType ConDecl sema
+expandConDecl
+  = element & conDeclFields & annList !~ expandAnnot >=> expandAnnot
+
+expandGadtConDecl :: ExpandType GadtConDecl sema
+expandGadtConDecl
+  = element & gadtConType & element & gadtConRecordFields & annList !~ expandAnnot >=> expandAnnot
 
 -- | Expands tree elements to contain the comments that should be attached to them.
 expandAnnot :: forall elem sema . ExpandType elem sema
@@ -147,6 +180,3 @@ isCommentOnPrev _ = False
 -- the comment string contains the -- or {- characters
 firstNonspaceCharIs :: Char -> String -> Bool
 firstNonspaceCharIs c s = Just c == listToMaybe (dropWhile isSpace (drop 2 s))
-
-expandAnnotToFunArgs :: ExpandType TypeSignature sema
-expandAnnotToFunArgs = element&tsType&typeParams !~ expandAnnot
