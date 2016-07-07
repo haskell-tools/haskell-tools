@@ -14,6 +14,7 @@ import Data.Either.Combinators
 import Test.HUnit hiding (test)
 import System.IO
 import System.Exit
+import System.FilePath
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -282,7 +283,7 @@ makeWrongExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName)
 checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
-       expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ "_res.hs") ReadMode
+       expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ "_res.hs") ReadMode
        expected <- hGetContents expectedHandle
        transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
                                               =<< parseTyped 
@@ -300,21 +301,21 @@ checkTransformFails transform workingDir moduleName
 
 standardizeLineEndings = filter (/= '\r')
        
-toFileName mod = rootDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) mod ++ ".hs"
+toFileName mod = rootDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted rootDir mod)
 
 makeCpphsTest :: String -> Test       
-makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir ++ "/CppHs") mod)
+makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir </> "CppHs") mod)
 
 makeInstanceControlTest :: String -> Test       
-makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir ++ "/InstanceControl") mod)
+makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir </> "InstanceControl") mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 
   = do -- need to use binary or line endings will be translated
-       expectedHandle <- openBinaryFile (workingDir ++ "\\" ++ map (\case '.' -> '\\'; c -> c) moduleName ++ ".hs") ReadMode
+       expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
        (actual, actual', actual'') <- runGhc (Just libdir) $ do
          parsed <- parse workingDir moduleName
