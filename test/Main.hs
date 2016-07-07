@@ -36,7 +36,8 @@ main = run nightlyTests
 run :: [Test] -> IO Counts
 run tests = do results <- runTestTT $ TestList tests
                if errors results + failures results > 0 
-                  then exitFailure
+                  then do print results
+                          exitFailure
                   else exitSuccess
 
 nightlyTests :: [Test]
