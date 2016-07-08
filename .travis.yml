@@ -67,18 +67,22 @@ install:
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
 script:
- - cd src/ast && cabal install && cabal check && cabal sdist && cd ../..
- - cd src/ast-trf && cabal install && cabal check && cabal sdist && cd ../..
- - cd src/ast-ppr && cabal install && cabal check && cabal sdist && cd ../..
- - cd src/ast-ghc && cabal install && cabal check && cabal sdist && cd ../..
- - cd src/ast-gen && cabal install && cabal check && cabal sdist && cd ../..
- - cd src/refactor && cabal install && cabal check && cabal sdist && cd ../..
+ # install all components
+ - cd src/ast && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/ast-trf && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/ast-ppr && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/ast-ghc && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/ast-gen && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/refactor && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+
+ # run test
  - cd test
- - cabal configure --enable-tests -v2  # -v2 provides useful information for debugging
- - cabal build   # this builds all libraries and executables (including tests/benchmarks)
- - cabal test --log=/dev/stdout --show-details=streaming
+ - cabal configure --enable-coverage -v2  # -v2 provides useful information for debugging
+ - cabal build
+ - dist/build/haskell-tools-test-exec/haskell-tools-test-exec # run the tests as an executable (better for coverage)
  - cd ..
 
+ # check if generated tarballs are usable
  - cabal install --force-reinstalls src/ast/dist/*-*.tar.gz
  - cabal install --force-reinstalls src/ast-trf/dist/*-*.tar.gz
  - cabal install --force-reinstalls src/ast-ppr/dist/*-*.tar.gz
@@ -86,3 +90,23 @@ script:
  - cabal install --force-reinstalls src/ast-gen/dist/*-*.tar.gz
  - cabal install --force-reinstalls src/refactor/dist/*-*.tar.gz
 # EOF
+
+after_script:
+  - cd test
+
+  # move the tix file to where it will be expected
+  - mkdir -p dist/hpc/vanilla/tix/haskell-tools-test-exec
+  - mv -T haskell-tools-test-exec.tix dist/hpc/vanilla/tix/haskell-tools-test-exec/haskell-tools-test-exec.tix
+
+  # copy mix files to test dir for coverage
+  - TEST_VERSION="$(cat haskell-tools-test.cabal | sed -n 's/^version:[ \n]*\([0-9.]*\)/\1/p')"
+  - mkdir -p dist/hpc/vanilla/mix/haskell-tools-test-$TEST_VERSION
+  - cp -r -t dist/hpc/vanilla/mix/haskell-tools-test-$TEST_VERSION ../src/*/dist/hpc/vanilla/mix/*/*
+
+  # copy source files to dir for coverage
+
+  - CATEGORY="$(cat haskell-tools-test.cabal | sed -n 's/^category:[ \n]*\([a-zA-Z]*\)/\1/p')"
+  - cp -r -t . ../src/*/$CATEGORY
+
+  # send coveralls report
+  - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test --repo-token=evVaJSdhT3mFWlBuNINeuXtLc86FXYFml haskell-tools-test-exec
