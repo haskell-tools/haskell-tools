@@ -31,9 +31,10 @@ import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-main = run unitTests
+main :: IO ()
+main = run nightlyTests
 
-run :: [Test] -> IO Counts
+run :: [Test] -> IO ()
 run tests = do results <- runTestTT $ TestList tests
                if errors results + failures results > 0 
                   then exitFailure
