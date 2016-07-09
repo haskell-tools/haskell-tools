@@ -20,6 +20,8 @@ Test:
   - The test folder contains the test package. The test suite contains both unit and nightly tests.
   - Run it with `cabal configure --enable-tests; cabal test`.
   - Continous integration is backed by Travis-CI. Status: [![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools.svg?maxAge=2592000)](https://travis-ci.org/haskell-tools/haskell-tools)
+  - Test coverage is automatically calculated, but is currently very low due to not all tests running, and lot of generated fields/instances/references not being used by any refactoring: [![Coverage Status](https://coveralls.io/repos/github/haskell-tools/haskell-tools/badge.svg)](https://coveralls.io/github/haskell-tools/haskell-tools)
+
 
 Using GHCi:
   - `ghci -package ghc -isrc\ast;src\ast-ghc;src\ast-trf;src\ast-ppr;src\ast-gen;src\refactor Language.Haskell.Tools.Refactor` (from root, on Windows)
