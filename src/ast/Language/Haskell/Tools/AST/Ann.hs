@@ -3,149 +3,267 @@
            , TemplateHaskell
            , DeriveDataTypeable
            , StandaloneDeriving
+           , KindSignatures
+           , TypeFamilies
+           , MultiParamTypeClasses
+           , UndecidableInstances
            #-}
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
 
 import Data.Data
 import Control.Reference
-import SrcLoc
-import Name
+import SrcLoc as GHC
+import Id as GHC
+import qualified Name as GHC
 import RdrName
 import Module
 import Id
 import Outputable
 import Language.Haskell.Tools.AST.Utils.GHCInstances
+import Language.Haskell.Tools.AST.SemaInfoTypes
 
--- | An element of the AST keeping extra information.
-data Ann elem annot
--- The type parameters are organized this way because we want the annotation type to
--- be more flexible, but the annotation is the first parameter because it eases 
--- pattern matching.
-  = Ann { _annotation :: annot -- ^ The extra information for the AST part
-        , _element    :: elem annot -- ^ The original AST part
-        }
-        
-makeReferences ''Ann
-        
--- | Semantic and source code related information for an AST node.
-data NodeInfo sema src 
-  = NodeInfo { _semanticInfo :: sema
-             , _sourceInfo :: src
-             }
-  deriving (Eq, Show, Data)
-             
-makeReferences ''NodeInfo
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Modules as AST
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Base as AST
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Exprs as AST
 
--- | Location info for different types of nodes
-data SpanInfo 
-  = NodeSpan { _nodeSpan :: SrcSpan }
-  | ListPos { _listBefore :: String
-            , _listAfter :: String
-            , _listDefaultSep :: String
-            , _listIndented :: Bool
-            , _listPos :: SrcLoc 
-            }
-  | OptionalPos { _optionalBefore :: String
-                , _optionalAfter :: String 
-                , _optionalPos :: SrcLoc 
-                }
-  deriving (Eq, Show, Data)
+-- * Annotation type resolution
 
-makeReferences ''SpanInfo
+data RangeStage
+
+deriving instance Data RangeStage
+
+data  RngTemplateStage
+  
+deriving instance Data RngTemplateStage
+
+data SrcTemplateStage
+
+deriving instance Data SrcTemplateStage
+
+data Dom name
+
+data IdDom
+
+deriving instance (Data name, Typeable name) => Data (Dom name)
+
+deriving instance Data IdDom
+
+type SemanticInfo (domain :: *) (node :: * -> * -> *) = SemanticInfo' domain (SemaInfoClassify node)
+
+data SameInfoNameCls
+data SameInfoExprCls
+data SameInfoImportCls
+data SameInfoModuleCls
+data SameInfoDefaultCls
+
+type family SemaInfoClassify (node :: * -> * -> *) where
+  SemaInfoClassify SimpleName = SameInfoNameCls
+  SemaInfoClassify Expr       = SameInfoExprCls
+  SemaInfoClassify ImportDecl = SameInfoImportCls
+  SemaInfoClassify AST.Module = SameInfoModuleCls
+  SemaInfoClassify a          = SameInfoDefaultCls
+
+type family SemanticInfo' (domain :: *) (nodecls :: *)
+
+type instance SemanticInfo' (Dom n) SameInfoNameCls = NameInfo n
+type instance SemanticInfo' (Dom n) SameInfoExprCls = ScopeInfo
+type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
+type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
+type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
+
+
+type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
+type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
+type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
+type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
+type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
+
+-- | Class for domain configuration markers
+class ( Typeable d
+      , Data d
+      , Data (SemanticInfo' d SameInfoNameCls)
+      , Data (SemanticInfo' d SameInfoExprCls)
+      , Data (SemanticInfo' d SameInfoImportCls)
+      , Data (SemanticInfo' d SameInfoModuleCls)
+      , Data (SemanticInfo' d SameInfoDefaultCls)
+      , Show (SemanticInfo' d SameInfoNameCls)
+      , Show (SemanticInfo' d SameInfoExprCls)
+      , Show (SemanticInfo' d SameInfoImportCls)
+      , Show (SemanticInfo' d SameInfoModuleCls)
+      , Show (SemanticInfo' d SameInfoDefaultCls)
+      ) => Domain d where
+
+instance ( Typeable d
+         , Data d
+         , Data (SemanticInfo' d SameInfoNameCls)
+         , Data (SemanticInfo' d SameInfoExprCls)
+         , Data (SemanticInfo' d SameInfoImportCls)
+         , Data (SemanticInfo' d SameInfoModuleCls)
+         , Data (SemanticInfo' d SameInfoDefaultCls)
+         , Show (SemanticInfo' d SameInfoNameCls)
+         , Show (SemanticInfo' d SameInfoExprCls)
+         , Show (SemanticInfo' d SameInfoImportCls)
+         , Show (SemanticInfo' d SameInfoModuleCls)
+         , Show (SemanticInfo' d SameInfoDefaultCls)
+         ) => Domain d where
+
+
+class ( Data (SemanticInfo' d (SemaInfoClassify e))
+      , Show (SemanticInfo' d (SemaInfoClassify e))
+      , Domain d
+      ) => DomainWith e d where
+
+instance ( Data (SemanticInfo' d (SemaInfoClassify e))
+         , Show (SemanticInfo' d (SemaInfoClassify e))
+         , Domain d
+         ) => DomainWith e d where
 
 -- | Extracts the concrete range corresponding to a given span.
 -- In case of lists and optional elements, it may not contain the elements inside.
-spanRange :: SpanInfo -> SrcSpan
-spanRange (NodeSpan sp)                   = sp
-spanRange ListPos{_listPos = pos}         = srcLocSpan pos
-spanRange OptionalPos{_optionalPos = pos} = srcLocSpan pos
-  
-class HasRange annot where
-  getRange :: annot -> SrcSpan
-  
-instance HasRange (NodeInfo sema SpanInfo) where 
-  getRange = spanRange . (^. sourceInfo)
-  
-type RangeInfo = NodeInfo (SemanticInfo RdrName) SpanInfo
-type RangeWithName = NodeInfo (SemanticInfo Name) SpanInfo
-type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo
+class HasRange a where
+  getRange :: a -> SrcSpan
 
--- | Semantic information for an AST node. Semantic information is
--- currently heterogeneous.
-data SemanticInfo n
-  = NoSemanticInfo -- ^ Semantic info type for any node not 
-                   -- carrying additional semantic information
-  | ScopeInfo { _scopedLocals :: [[Name]] 
-              }
-  | NameInfo { _scopedLocals :: [[Name]]
-             , _isDefined :: Bool
-             , _nameInfo :: n
-             } -- ^ Info corresponding to a name
-  | ModuleInfo { _defModuleName :: Module 
-               , _importedNames :: [n] -- ^ Implicitely imported names
-               } -- ^ Info for the module element
-  | ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module
-               , _availableNames :: [n] -- ^ Names available from the imported module
-               , _importedNames :: [n] -- ^ Names actually imported from the module.
-               } -- ^ Info corresponding to an import declaration
-  | AmbiguousNameInfo { _scopedLocals :: [[Name]]
-                      , _isDefined :: Bool
-                      , _ambiguousName :: RdrName
-                      , _ambiguousLocation :: SrcSpan
-                      }
-  deriving (Eq, Data)
+-- | Class for source information stages
+class ( Typeable stage
+      , Data stage
+      , Data (SpanInfo stage)
+      , Data (ListInfo stage)
+      , Data (OptionalInfo stage)
+      , Show (SpanInfo stage)
+      , Show (ListInfo stage)
+      , Show (OptionalInfo stage)
+      , HasRange (SpanInfo stage)
+      , HasRange (ListInfo stage)
+      , HasRange (OptionalInfo stage)
+      ) 
+         => SourceInfo stage where
+  -- | Type of source info for normal AST elements
+  data SpanInfo stage :: *
+  -- | Type of source info for lists of AST elements
+  data ListInfo stage :: *
+  -- | Type of source info for optional AST elements
+  data OptionalInfo stage :: *
 
-instance Outputable n => Show (SemanticInfo n) where
-  show NoSemanticInfo = "NoSemanticInfo"
-  show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
-  show (NameInfo locals defined nameInfo) = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
-  show (ModuleInfo mod imp) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr imp) ++ ")"
-  show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
 
-makeReferences ''SemanticInfo
+instance SourceInfo RangeStage where
+  data SpanInfo RangeStage = NodeSpan { _nodeSpan :: GHC.SrcSpan }
+    deriving (Show, Data)
+  data ListInfo RangeStage = ListPos  { _listBefore :: String
+                                      , _listAfter :: String
+                                      , _listDefaultSep :: String
+                                      , _listIndented :: Bool
+                                      , _listPos :: GHC.SrcLoc 
+                                      }
+    deriving (Show, Data)
+  data OptionalInfo RangeStage = OptionalPos { _optionalBefore :: String
+                                             , _optionalAfter :: String 
+                                             , _optionalPos :: SrcLoc 
+                                             }
+    deriving (Show, Data)
+
+-- TODO: reference support for this
+
+nodeSpan :: Simple Lens (SpanInfo RangeStage) GHC.SrcSpan
+nodeSpan = lens _nodeSpan (\v s -> s { _nodeSpan = v })
+
+
+
+-- * Annotations
+
+-- | An element of the AST keeping extra information.
+data Ann elem dom stage
+-- The type parameters are organized this way because we want the annotation type to
+-- be more flexible, but the annotation is the first parameter because it eases 
+-- pattern matching.
+  = Ann { _annotation :: NodeInfo (SemanticInfo dom elem) (SpanInfo stage) -- ^ The extra information for the AST part
+        , _element    :: elem dom stage -- ^ The original AST part
+        }
+        
+makeReferences ''Ann
+
 
 -- | A list of AST elements
-data AnnList e a = AnnList { _annListAnnot :: a 
-                           , _annListElems :: [Ann e a]
-                           }
+data AnnList elem dom stage = AnnList { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnList elem)) (ListInfo stage) 
+                                      , _annListElems :: [Ann elem dom stage]
+                                      }
                            
 makeReferences ''AnnList
         
-annList :: Traversal (AnnList e a) (AnnList e' a) (Ann e a) (Ann e' a)                          
+annList :: Traversal (AnnList e d s) (AnnList e d s) (Ann e d s) (Ann e d s)                          
 annList = annListElems & traversal
 
 -- | An optional AST element
-data AnnMaybe e a = AnnMaybe { _annMaybeAnnot :: a 
-                             , _annMaybe :: Maybe (Ann e a)
-                             }
+data AnnMaybe elem dom stage = AnnMaybe { _annMaybeAnnot :: NodeInfo (SemanticInfo dom (AnnMaybe elem)) (OptionalInfo stage)
+                                        , _annMaybe :: Maybe (Ann elem dom stage)
+                                        }
                              
 makeReferences ''AnnMaybe
                           
-annJust :: Partial (AnnMaybe e a) (AnnMaybe e' a) (Ann e a) (Ann e' a)                          
+annJust :: Partial (AnnMaybe e d s) (AnnMaybe e d s) (Ann e d s) (Ann e d s)                          
 annJust = annMaybe & just
 
 -- | An empty list of AST elements
-annNil :: a -> AnnList e a
+annNil :: NodeInfo (SemanticInfo d (AnnList e)) (ListInfo s) -> AnnList e d s
 annNil a = AnnList a []
 
-isAnnNothing :: AnnMaybe e a -> Bool
+isAnnNothing :: AnnMaybe e d s -> Bool
 isAnnNothing (AnnMaybe _ Nothing) = True
 isAnnNothing (AnnMaybe _ _) = False
 
 -- | A non-existing AST part
-annNothing :: a -> AnnMaybe e a
+annNothing :: NodeInfo (SemanticInfo d (AnnMaybe e)) (OptionalInfo s) -> AnnMaybe e d s
 annNothing a = AnnMaybe a Nothing
 
   
-class HasAnnot node where
-  getAnnot :: node a -> a
+--class HasAnnot node where
+--  getAnnot :: node a -> a
 
-instance HasAnnot (Ann e) where
-  getAnnot = (^. annotation)
+--instance HasAnnot (Ann e) where
+--  getAnnot = (^. annotation)
   
-instance HasAnnot (AnnList e) where
-  getAnnot = (^. annListAnnot)
+--instance HasAnnot (AnnList e) where
+--  getAnnot = (^. annListAnnot)
   
-instance HasAnnot (AnnMaybe e) where
-  getAnnot = (^. annMaybeAnnot)
+--instance HasAnnot (AnnMaybe e) where
+--  getAnnot = (^. annMaybeAnnot)
+
+        
+
+-- * Info types
+
+
+
+
+
+instance HasRange (SpanInfo RangeStage) where
+  getRange (NodeSpan sp) = sp
+
+instance HasRange (ListInfo RangeStage) where
+  getRange ListPos{_listPos = pos} = srcLocSpan pos
+
+instance HasRange (OptionalInfo RangeStage) where
+  getRange OptionalPos{_optionalPos = pos} = srcLocSpan pos
+
+instance SourceInfo stage => HasRange (Ann elem dom stage) where
+  getRange (Ann a _) = getRange (a ^. sourceInfo)
+
+class SemanticTraversal a where
+  semaTraverse :: Applicative f => SemaTrf f dom1 dom2 -> a dom1 st -> f (a dom2 st)
+
+data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameInfoNameCls -> f (SemanticInfo' dom2 SameInfoNameCls)
+                                   , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)
+                                   , trfSemaImportCls :: SemanticInfo' dom1 SameInfoImportCls -> f (SemanticInfo' dom2 SameInfoImportCls)
+                                   , trfSemaModuleCls :: SemanticInfo' dom1 SameInfoModuleCls -> f (SemanticInfo' dom2 SameInfoModuleCls)
+                                   , trfSemaDefault :: SemanticInfo' dom1 SameInfoDefaultCls -> f (SemanticInfo' dom2 SameInfoDefaultCls)
+                                   }
+
+--class HasRange annot where
+--  getRange :: annot -> SrcSpan
+  
+--instance HasRange (NodeInfo sema SpanInfo) where 
+--  getRange = spanRange . (^. sourceInfo)
+  
+--type RangeInfo = NodeInfo (SemanticInfo RdrName) SpanInfo
+--type RangeWithName = NodeInfo (SemanticInfo Name) SpanInfo
+--type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo

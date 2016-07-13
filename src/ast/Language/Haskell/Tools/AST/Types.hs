@@ -8,77 +8,77 @@ import Language.Haskell.Tools.AST.Kinds
 import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
 
 -- | Type variable declaration
-data TyVar a 
-  = TyVarDecl { _tyVarName :: Ann Name a
-              , _tyVarKind :: AnnMaybe KindConstraint a
+data TyVar dom stage
+  = TyVarDecl { _tyVarName :: Ann Name dom stage
+              , _tyVarKind :: AnnMaybe KindConstraint dom stage
               }
 
 -- | Haskell types
-data Type a
-  = TyForall     { _typeBounded :: AnnList TyVar a
-                 , _typeType :: Ann Type a
+data Type dom stage
+  = TyForall     { _typeBounded :: AnnList TyVar dom stage
+                 , _typeType :: Ann Type dom stage
                  } -- ^ Forall types (@ forall x y . type @)
-  | TyCtx        { _typeCtx :: Ann Context a
-                 , _typeType :: Ann Type a
+  | TyCtx        { _typeCtx :: Ann Context dom stage
+                 , _typeType :: Ann Type dom stage
                  } -- ^ Type with a context (@ forall x y . type @)
-  | TyFun        { _typeParam :: Ann Type a
-                 , _typeResult :: Ann Type a
+  | TyFun        { _typeParam :: Ann Type dom stage
+                 , _typeResult :: Ann Type dom stage
                  } -- ^ Function types (@ a -> b @)
-  | TyTuple      { _typeElements :: AnnList Type a
+  | TyTuple      { _typeElements :: AnnList Type dom stage
                  } -- ^ Tuple types (@ (a,b) @)
-  | TyUnbTuple   { _typeElements :: AnnList Type a 
+  | TyUnbTuple   { _typeElements :: AnnList Type dom stage
                  } -- ^ Unboxed tuple types (@ (#a,b#) @)
-  | TyList       { _typeElement :: Ann Type a 
+  | TyList       { _typeElement :: Ann Type dom stage
                  } -- ^ List type with special syntax (@ [a] @)
-  | TyParArray   { _typeElement :: Ann Type a
+  | TyParArray   { _typeElement :: Ann Type dom stage
                  } -- ^ Parallel array type (@ [:a:] @)
-  | TyApp        { _typeCon :: Ann Type a
-                 , _typeArg :: Ann Type a
+  | TyApp        { _typeCon :: Ann Type dom stage
+                 , _typeArg :: Ann Type dom stage
                  } -- ^ Type application (@ F a @)
-  | TyVar        { _typeName :: Ann Name a
+  | TyVar        { _typeName :: Ann Name dom stage
                  } -- ^ type variable or constructor (@ a @)
-  | TyParen      { _typeInner :: Ann Type a
+  | TyParen      { _typeInner :: Ann Type dom stage
                  } -- ^ type surrounded by parentheses (@ (T a) @)
-  | TyInfix      { _typeLeft :: Ann Type a 
-                 , _typeOperator :: Ann Operator a
-                 , _typeRight :: Ann Type a
+  | TyInfix      { _typeLeft :: Ann Type dom stage
+                 , _typeOperator :: Ann Operator dom stage
+                 , _typeRight :: Ann Type dom stage
                  } -- ^ Infix type constructor (@ (a <: b) @)
-  | TyKinded     { _typeInner :: Ann Type a
-                 , _typeKind :: Ann Kind a
+  | TyKinded     { _typeInner :: Ann Type dom stage
+                 , _typeKind :: Ann Kind dom stage
                  } -- ^ Type with explicit kind signature (@ _a :: * @)
-  | TyPromoted   { _tpPromoted :: Ann (Promoted Type) a
+  | TyPromoted   { _tpPromoted :: Ann (Promoted Type) dom stage
                  } -- A promoted data type with @-XDataKinds@ (@ 3 @, @ Left @, @ 'Left @).
-  | TySplice     { _tsSplice :: Splice a
+  | TySplice     { _tsSplice :: Splice dom stage
                  } -- ^ a Template Haskell splice type (@ $(genType) @).
-  | TyQuasiQuote { _typeQQ :: QuasiQuote a
+  | TyQuasiQuote { _typeQQ :: QuasiQuote dom stage
                  } -- ^ a Template Haskell quasi-quote type (@ [quoter| ... ] @).
-  | TyBang       { _typeInner :: Ann Type a
+  | TyBang       { _typeInner :: Ann Type dom stage
                  } -- ^ Strict type marked with @!@.
-  | TyLazy       { _typeInner :: Ann Type a
+  | TyLazy       { _typeInner :: Ann Type dom stage
                  } -- ^ Lazy type marked with @~@. (Should only be used if @Strict@ or @StrictData@ language extension is used)
-  | TyUnpack     { _typeInner :: Ann Type a
+  | TyUnpack     { _typeInner :: Ann Type dom stage
                  } -- ^ Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
-  | TyNoUnpack   { _typeInner :: Ann Type a
+  | TyNoUnpack   { _typeInner :: Ann Type dom stage
                  } -- ^ Strict type marked with NOUNPACK pragma. (Usually contains the bang mark.)
   | TyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
-  | TyNamedWildc { _typeWildcardName :: Ann Name a
+  | TyNamedWildc { _typeWildcardName :: Ann Name dom stage
                  } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
 
 -- One or more assertions
-data Context a
-  = ContextOne   { _contextAssertion :: Ann Assertion a
+data Context dom stage
+  = ContextOne   { _contextAssertion :: Ann Assertion dom stage
                  } -- ^ One assertion (@ C a => ... @)
-  | ContextMulti { _contextAssertions :: AnnList Assertion a 
+  | ContextMulti { _contextAssertions :: AnnList Assertion dom stage
                  } -- ^ A set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
 
 -- | A single assertion in the context
-data Assertion a
-  = ClassAssert { _assertClsName :: Ann Name a
-                , _assertTypes :: AnnList Type a
+data Assertion dom stage
+  = ClassAssert { _assertClsName :: Ann Name dom stage
+                , _assertTypes :: AnnList Type dom stage
                 } -- ^ Class assertion (@Cls x@)
-  | InfixAssert { _assertLhs :: Ann Type a
-                , _assertOp :: Ann Operator a
-                , _assertRhs :: Ann Type a
+  | InfixAssert { _assertLhs :: Ann Type dom stage
+                , _assertOp :: Ann Operator dom stage
+                , _assertRhs :: Ann Type dom stage
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
                  
                  

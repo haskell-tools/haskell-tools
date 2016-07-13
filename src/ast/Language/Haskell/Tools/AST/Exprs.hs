@@ -11,206 +11,206 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Binds (LocalBind, LocalBinds, RhsGuard)
 
 -- | Haskell expressions
-data Expr a
-  = Var            { _exprName :: Ann Name a 
+data Expr dom stage
+  = Var            { _exprName :: Ann Name dom stage 
                    } -- ^ A variable or a data constructor (@ a @)
-  | Lit            { _exprLit :: Ann Literal a
+  | Lit            { _exprLit :: Ann Literal dom stage
                    } -- ^ Primitive literal
-  | InfixApp       { _exprLhs :: Ann Expr a
-                   , _exprOperator :: Ann Operator a
-                   , _exprRhs :: Ann Expr a
+  | InfixApp       { _exprLhs :: Ann Expr dom stage
+                   , _exprOperator :: Ann Operator dom stage
+                   , _exprRhs :: Ann Expr dom stage
                    } -- ^ Infix operator application (@ a + b @)
-  | PrefixApp      { _exprOperator :: Ann Operator a
-                   , _exprRhs :: Ann Expr a
+  | PrefixApp      { _exprOperator :: Ann Operator dom stage
+                   , _exprRhs :: Ann Expr dom stage
                    } -- ^ Prefix operator application (@ -x @)
-  | App            { _exprFun :: Ann Expr a
-                   , _exprArg :: Ann Expr a
+  | App            { _exprFun :: Ann Expr dom stage
+                   , _exprArg :: Ann Expr dom stage
                    } -- ^ Function application (@ f 4 @)
                    -- unary minus omitted
-  | Lambda         { _exprBindings :: AnnList Pattern a -- ^ at least one
-                   , _exprInner :: Ann Expr a
+  | Lambda         { _exprBindings :: AnnList Pattern dom stage -- ^ at least one
+                   , _exprInner :: Ann Expr dom stage
                    } -- ^ Lambda expression (@ \a b -> a + b @)
-  | Let            { _exprFunBind :: AnnList LocalBind a -- ^ nonempty
-                   , _exprInner :: Ann Expr a
+  | Let            { _exprFunBind :: AnnList LocalBind dom stage -- ^ nonempty
+                   , _exprInner :: Ann Expr dom stage
                    } -- ^ Local binding (@ let x = 2; y = 3 in e x y @)
-  | If             { _exprCond :: Ann Expr a
-                   , _exprThen :: Ann Expr a
-                   , _exprElse :: Ann Expr a
+  | If             { _exprCond :: Ann Expr dom stage
+                   , _exprThen :: Ann Expr dom stage
+                   , _exprElse :: Ann Expr dom stage
                    } -- ^ If expression (@ if a then b else c @)
-  | MultiIf        { _exprIfAlts :: AnnList GuardedCaseRhs a 
+  | MultiIf        { _exprIfAlts :: AnnList GuardedCaseRhs dom stage
                    } -- ^ Multi way if expressions with @MultiWayIf@ extension (@ if | guard1 -> expr1; guard2 -> expr2 @)
-  | Case           { _exprCase :: Ann Expr a
-                   , _exprAlts :: AnnList Alt a
+  | Case           { _exprCase :: Ann Expr dom stage
+                   , _exprAlts :: AnnList Alt dom stage
                    } -- ^ Pattern matching expression (@ case expr of pat1 -> expr1; pat2 -> expr2 @)
-  | Do             { _doKind :: Ann DoKind a
-                   , _exprStmts :: AnnList Stmt a
+  | Do             { _doKind :: Ann DoKind dom stage
+                   , _exprStmts :: AnnList Stmt dom stage
                    } -- ^ Do-notation expressions (@ do x <- act1; act2 @)
-  | Tuple          { _tupleElems :: AnnList Expr a
+  | Tuple          { _tupleElems :: AnnList Expr dom stage
                    } -- ^ Tuple expression (@ (e1, e2, e3) @)
-  | UnboxedTuple   { _tupleElems :: AnnList Expr a 
+  | UnboxedTuple   { _tupleElems :: AnnList Expr dom stage
                    } -- ^ Unboxed tuple expression (@ (# e1, e2, e3 #) @)
-  | TupleSection   { _tupleSectionElems :: AnnList TupSecElem a
+  | TupleSection   { _tupleSectionElems :: AnnList TupSecElem dom stage
                    } -- ^ Tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
-  | UnboxedTupSec  { _tupleSectionElems :: AnnList TupSecElem a 
+  | UnboxedTupSec  { _tupleSectionElems :: AnnList TupSecElem dom stage
                    }
-  | List           { _listElems :: AnnList Expr a 
+  | List           { _listElems :: AnnList Expr dom stage
                    } -- ^ List expression: @[1,2,3]@
-  | ParArray       { _listElems :: AnnList Expr a 
+  | ParArray       { _listElems :: AnnList Expr dom stage
                    } -- ^ Parallel array expression: @[: 1,2,3 :]@
-  | Paren          { _exprInner :: Ann Expr a 
+  | Paren          { _exprInner :: Ann Expr dom stage
                    }
-  | LeftSection    { _exprLhs :: Ann Expr a
-                   , _exprOperator :: Ann Operator a
+  | LeftSection    { _exprLhs :: Ann Expr dom stage
+                   , _exprOperator :: Ann Operator dom stage
                    } -- ^ Left operator section: @(1+)@
-  | RightSection   { _exprOperator :: Ann Operator a
-                   , _exprRhs :: Ann Expr a
+  | RightSection   { _exprOperator :: Ann Operator dom stage
+                   , _exprRhs :: Ann Expr dom stage
                    } -- ^ Right operator section: @(+1)@
-  | RecCon         { _exprRecName :: Ann Name a
-                   , _exprRecFields :: AnnList FieldUpdate a
+  | RecCon         { _exprRecName :: Ann Name dom stage
+                   , _exprRecFields :: AnnList FieldUpdate dom stage
                    } -- ^ Record value construction: @Point { x = 3, y = -2 }@
-  | RecUpdate      { _exprInner :: Ann Expr a
-                   , _exprRecFields :: AnnList FieldUpdate a
+  | RecUpdate      { _exprInner :: Ann Expr dom stage
+                   , _exprRecFields :: AnnList FieldUpdate dom stage
                    } -- ^ Record value  update: @p1 { x = 3, y = -2 }@
-  | Enum           { _enumFrom :: Ann Expr a
-                   , _enumThen :: AnnMaybe Expr a
-                   , _enumTo :: AnnMaybe Expr a
+  | Enum           { _enumFrom :: Ann Expr dom stage
+                   , _enumThen :: AnnMaybe Expr dom stage
+                   , _enumTo :: AnnMaybe Expr dom stage
                    } -- ^ Enumeration expression (@ [1,3..10] @)
-  | ParArrayEnum   { _enumFrom :: Ann Expr a
-                   , _enumThen :: AnnMaybe Expr a
-                   , _enumToFix :: Ann Expr a
+  | ParArrayEnum   { _enumFrom :: Ann Expr dom stage
+                   , _enumThen :: AnnMaybe Expr dom stage
+                   , _enumToFix :: Ann Expr dom stage
                    } -- ^ Parallel array enumeration (@ [: 1,3 .. 10 :] @)
-  | ListComp       { _compExpr :: Ann Expr a
-                   , _compBody :: AnnList ListCompBody a -- ^ Can only have 1 element without @ParallelListComp@
+  | ListComp       { _compExpr :: Ann Expr dom stage
+                   , _compBody :: AnnList ListCompBody dom stage -- ^ Can only have 1 element without @ParallelListComp@
                    } -- ^ List comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
-  | ParArrayComp   { _compExpr :: Ann Expr a
-                   , _compBody :: AnnList ListCompBody a
+  | ParArrayComp   { _compExpr :: Ann Expr dom stage
+                   , _compBody :: AnnList ListCompBody dom stage
                    } -- ^ Parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
-  | TypeSig        { _exprInner :: Ann Expr a
-                   , _exprSig :: Ann Type a
+  | TypeSig        { _exprInner :: Ann Expr dom stage
+                   , _exprSig :: Ann Type dom stage
                    } -- ^ Explicit type signature (@ _x :: Int @)
-  | ExplTypeApp    { _exprInner :: Ann Expr a
-                   , _exprType :: Ann Type a
+  | ExplTypeApp    { _exprInner :: Ann Expr dom stage
+                   , _exprType :: Ann Type dom stage
                    } -- ^ Explicit type application (@ show \@Integer (read "5") @)
-  | VarQuote       { _quotedName :: Ann Name a 
+  | VarQuote       { _quotedName :: Ann Name dom stage
                    } -- ^ @'x@ for template haskell reifying of expressions
-  | TypeQuote      { _quotedName :: Ann Name a 
+  | TypeQuote      { _quotedName :: Ann Name dom stage
                    } -- ^ @''T@ for template haskell reifying of types
-  | BracketExpr    { _bracket :: Ann Bracket a 
+  | BracketExpr    { _bracket :: Ann Bracket dom stage
                    } -- ^ Template haskell bracket expression
-  | Splice         { _innerExpr :: Ann Splice a 
+  | Splice         { _innerExpr :: Ann Splice dom stage
                    } -- ^ Template haskell splice expression, for example: @$(gen a)@ or @$x@
-  | QuasiQuoteExpr { _exprQQ :: Ann QuasiQuote a 
+  | QuasiQuoteExpr { _exprQQ :: Ann QuasiQuote dom stage
                    } -- ^ Template haskell quasi-quotation: @[$quoter|str]@
-  | ExprPragma     { _exprPragma :: Ann ExprPragma a
+  | ExprPragma     { _exprPragma :: Ann ExprPragma dom stage
                    }
   -- Arrows
-  | Proc           { _procPattern :: Ann Pattern a
-                   , _procExpr :: Ann Cmd a
+  | Proc           { _procPattern :: Ann Pattern dom stage
+                   , _procExpr :: Ann Cmd dom stage
                    } -- ^ Arrow definition: @proc a -> f -< a+1@
-  | ArrowApp       { _exprLhs :: Ann Expr a
-                   , _arrowAppl :: Ann ArrowAppl a
-                   , _exprRhs :: Ann Expr a
+  | ArrowApp       { _exprLhs :: Ann Expr dom stage
+                   , _arrowAppl :: Ann ArrowAppl dom stage
+                   , _exprRhs :: Ann Expr dom stage
                    } -- ^ Arrow application: @f -< a+1@
-  | LamCase        { _exprAlts :: AnnList Alt a
+  | LamCase        { _exprAlts :: AnnList Alt dom stage
                    } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
-  | StaticPtr      { _exprInner :: Ann Expr a
+  | StaticPtr      { _exprInner :: Ann Expr dom stage
                    } -- ^ Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
   -- XML expressions omitted
                    
 -- | Field update expressions
-data FieldUpdate a 
-  = NormalFieldUpdate { _fieldName :: Ann Name a
-                      , _fieldValue :: Ann Expr a
+data FieldUpdate dom stage
+  = NormalFieldUpdate { _fieldName :: Ann Name dom stage
+                      , _fieldValue :: Ann Expr dom stage
                       } -- ^ Update of a field (@ x = 1 @)
-  | FieldPun          { _fieldUpdateName :: Ann Name a 
+  | FieldPun          { _fieldUpdateName :: Ann Name dom stage
                       } -- ^ Update the field to the value of the same name (@ x @)
   | FieldWildcard     -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last update. Cannot be used in a record update expression.
       
 -- | An element of a tuple section that can be an expression or missing (indicating a value from a parameter)
-data TupSecElem a
-  = Present { _tupSecExpr :: Ann Expr a 
+data TupSecElem dom stage
+  = Present { _tupSecExpr :: Ann Expr dom stage
             } -- ^ An existing element in a tuple section
   | Missing -- ^ A missing element in a tuple section
   
 -- | Clause of case expression          
-data Alt' expr a
-  = Alt { _altPattern :: Ann Pattern a
-        , _altRhs :: Ann (CaseRhs' expr) a
-        , _altBinds :: AnnMaybe LocalBinds a
+data Alt' expr dom stage
+  = Alt { _altPattern :: Ann Pattern dom stage
+        , _altRhs :: Ann (CaseRhs' expr) dom stage
+        , _altBinds :: AnnMaybe LocalBinds dom stage
         }
 type Alt = Alt' Expr
 type CmdAlt = Alt' Cmd
 
   
 -- | Right hand side of a match (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
-data CaseRhs' expr a
-  = UnguardedCaseRhs { _rhsCaseExpr :: Ann expr a 
+data CaseRhs' expr dom stage
+  = UnguardedCaseRhs { _rhsCaseExpr :: Ann expr dom stage
                      }
-  | GuardedCaseRhss  { _rhsCaseGuards :: AnnList (GuardedCaseRhs' expr) a 
+  | GuardedCaseRhss  { _rhsCaseGuards :: AnnList (GuardedCaseRhs' expr) dom stage
                      }
 type CaseRhs = CaseRhs' Expr
 type CmdCaseRhs = CaseRhs' Cmd
                      
 -- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
-data GuardedCaseRhs' expr a
-  = GuardedCaseRhs { _caseGuardStmts :: AnnList RhsGuard a -- ^ Cannot be empty.
-                   , _caseGuardExpr :: Ann expr a
+data GuardedCaseRhs' expr dom stage
+  = GuardedCaseRhs { _caseGuardStmts :: AnnList RhsGuard dom stage -- ^ Cannot be empty.
+                   , _caseGuardExpr :: Ann expr dom stage
                    } 
 type GuardedCaseRhs = GuardedCaseRhs' Expr
 type CmdGuardedCaseRhs = GuardedCaseRhs' Cmd
                
 -- | Pragmas that can be applied to expressions
-data ExprPragma a
-  = CorePragma      { _pragmaStr :: Ann StringNode a 
+data ExprPragma dom stage
+  = CorePragma      { _pragmaStr :: Ann StringNode dom stage
                     }
-  | SccPragma       { _pragmaStr :: Ann StringNode a 
+  | SccPragma       { _pragmaStr :: Ann StringNode dom stage
                     }
-  | GeneratedPragma { _pragmaSrcRange :: Ann SourceRange a 
+  | GeneratedPragma { _pragmaSrcRange :: Ann SourceRange dom stage
                     }
 
 -- | In-AST source ranges (for generated pragmas)
-data SourceRange a
-  = SourceRange { _srFileName :: Ann StringNode a
-                , _srFromLine :: Ann Number a
-                , _srFromCol :: Ann Number a
-                , _srToLine :: Ann Number a
-                , _srToCol :: Ann Number a
+data SourceRange dom stage
+  = SourceRange { _srFileName :: Ann StringNode dom stage
+                , _srFromLine :: Ann Number dom stage
+                , _srFromCol :: Ann Number dom stage
+                , _srToLine :: Ann Number dom stage
+                , _srToCol :: Ann Number dom stage
                 }  
                 
-data Number a 
+data Number dom stage
   = Number { _numberInteger :: Integer 
            }
         
-data Cmd a
-  = ArrowAppCmd   { _cmdLhs :: Ann Expr a
-                  , _cmdArrowOp :: Ann ArrowAppl a
-                  , _cmdRhs :: Ann Expr a
+data Cmd dom stage
+  = ArrowAppCmd   { _cmdLhs :: Ann Expr dom stage
+                  , _cmdArrowOp :: Ann ArrowAppl dom stage
+                  , _cmdRhs :: Ann Expr dom stage
                   }
-  | ArrowFormCmd  { _cmdExpr :: Ann Expr a
-                  , _cmdInnerCmds :: AnnList Cmd a
+  | ArrowFormCmd  { _cmdExpr :: Ann Expr dom stage
+                  , _cmdInnerCmds :: AnnList Cmd dom stage
                   }
-  | AppCmd        { _cmdInnerCmd :: Ann Cmd a
-                  , _cmdApplied :: Ann Expr a
+  | AppCmd        { _cmdInnerCmd :: Ann Cmd dom stage
+                  , _cmdApplied :: Ann Expr dom stage
                   }
-  | InfixCmd      { _cmdLeftCmd :: Ann Cmd a
-                  , _cmdOperator :: Ann Name a
-                  , _cmdRightCmd :: Ann Cmd a
+  | InfixCmd      { _cmdLeftCmd :: Ann Cmd dom stage
+                  , _cmdOperator :: Ann Name dom stage
+                  , _cmdRightCmd :: Ann Cmd dom stage
                   }
-  | LambdaCmd     { _cmdBindings :: AnnList Pattern a -- ^ at least one
-                  , _cmdInner :: Ann Cmd a
+  | LambdaCmd     { _cmdBindings :: AnnList Pattern dom stage -- ^ at least one
+                  , _cmdInner :: Ann Cmd dom stage
                   }
-  | ParenCmd      { _cmdInner :: Ann Cmd a
+  | ParenCmd      { _cmdInner :: Ann Cmd dom stage
                   }
-  | CaseCmd       { _cmdExpr :: Ann Expr a 
-                  , _cmdAlts :: AnnList CmdAlt a
+  | CaseCmd       { _cmdExpr :: Ann Expr dom stage
+                  , _cmdAlts :: AnnList CmdAlt dom stage
                   }
-  | IfCmd         { _cmdExpr :: Ann Expr a 
-                  , _cmdThen :: Ann Cmd a
-                  , _cmdElse :: Ann Cmd a
+  | IfCmd         { _cmdExpr :: Ann Expr dom stage
+                  , _cmdThen :: Ann Cmd dom stage
+                  , _cmdElse :: Ann Cmd dom stage
                   }
-  | LetCmd        { _cmdBinds :: AnnList LocalBind a -- ^ nonempty
-                  , _cmdInner :: Ann Cmd a
+  | LetCmd        { _cmdBinds :: AnnList LocalBind dom stage -- ^ nonempty
+                  , _cmdInner :: Ann Cmd dom stage
                   }
-  | DoCmd         { _cmdStmts :: AnnList (Stmt' Cmd) a
+  | DoCmd         { _cmdStmts :: AnnList (Stmt' Cmd) dom stage
                   }
  

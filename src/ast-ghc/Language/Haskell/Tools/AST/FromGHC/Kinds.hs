@@ -1,4 +1,6 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns
+           , TypeFamilies 
+           #-}
 module Language.Haskell.Tools.AST.FromGHC.Kinds where
 
 import SrcLoc as GHC
@@ -19,22 +21,22 @@ import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..))
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), Dom, RangeStage, SemanticInfo, NoSemanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint r)
+trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybe AST.KindConstraint (Dom r) RangeStage)
 trfKindSig = trfMaybe "" "" trfKindSig'
 
-trfKindSig' :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.KindConstraint r)
-trfKindSig' k = annLoc (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
-                       (AST.KindConstraint <$> trfLoc trfKind' k)
+trfKindSig' :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.KindConstraint (Dom r) RangeStage)
+trfKindSig' k = annLocNoSema (combineSrcSpans (getLoc k) <$> (tokenBefore (srcSpanStart (getLoc k)) AnnDcolon)) 
+                             (AST.KindConstraint <$> trfLocNoSema trfKind' k)
 
-trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind r)
-trfKind = trfLoc (trfKind' . cleanHsType)
+trfKind :: TransformName n r => Located (HsKind n) -> Trf (Ann AST.Kind (Dom r) RangeStage)
+trfKind = trfLocNoSema (trfKind' . cleanHsType)
 
-trfKind' :: TransformName n r => HsKind n -> Trf (AST.Kind r)
+trfKind' ::TransformName n r => HsKind n -> Trf (AST.Kind (Dom r) RangeStage)
 trfKind' = trfKind'' . cleanHsType where
   trfKind'' (HsTyVar (rdrName . unLoc -> Exact n)) 
     | isWiredInName n && occNameString (nameOccName n) == "*"
@@ -48,12 +50,13 @@ trfKind' = trfKind'' . cleanHsType where
   trfKind'' (HsListTy kind) = AST.KindList <$> trfKind kind
   trfKind'' (HsAppsTy [unLoc -> HsAppPrefix t]) = trfKind' (unLoc t)
   trfKind'' (HsAppsTy [unLoc -> HsAppInfix n]) = AST.KindVar <$> trfName n
-  trfKind'' pt@(HsExplicitListTy {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
-  trfKind'' pt@(HsExplicitTupleTy {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
-  trfKind'' pt@(HsTyLit {}) = AST.KindPromoted <$> annCont (trfPromoted' trfKind' pt) 
+  trfKind'' pt@(HsExplicitListTy {}) = AST.KindPromoted <$> annContNoSema (trfPromoted' trfKind' pt) 
+  trfKind'' pt@(HsExplicitTupleTy {}) = AST.KindPromoted <$> annContNoSema (trfPromoted' trfKind' pt) 
+  trfKind'' pt@(HsTyLit {}) = AST.KindPromoted <$> annContNoSema (trfPromoted' trfKind' pt) 
   trfKind'' k = error ("Illegal kind: " ++ showSDocUnsafe (ppr k) ++ " (ctor: " ++ show (toConstr k) ++ ")")
 
-trfPromoted' :: TransformName n r => (HsType n -> Trf (a r)) -> HsType n -> Trf (AST.Promoted a r)
+trfPromoted' :: (TransformName n r, SemanticInfo (Dom r) a ~ NoSemanticInfo) 
+                  => (HsType n -> Trf (a (Dom r) RangeStage)) -> HsType n -> Trf (AST.Promoted a (Dom r) RangeStage)
 trfPromoted' f (HsTyLit (HsNumTy _ int)) = pure $ AST.PromotedInt int
 trfPromoted' f (HsTyLit (HsStrTy _ str)) = pure $ AST.PromotedString (unpackFS str)
 trfPromoted' f (HsTyVar name) = AST.PromotedCon <$> trfName name

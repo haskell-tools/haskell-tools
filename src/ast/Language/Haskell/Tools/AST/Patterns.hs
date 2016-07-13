@@ -10,60 +10,60 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
 
         
 -- | Representation of patterns for pattern bindings
-data Pattern a
-  = VarPat        { _patternName :: Ann Name a 
+data Pattern dom stage
+  = VarPat        { _patternName :: Ann Name dom stage
                   } -- ^ Pattern name binding
-  | LitPat        { _patternLiteral :: Ann Literal a 
+  | LitPat        { _patternLiteral :: Ann Literal dom stage
                   } -- ^ Literal pattern
-  | InfixPat      { _patternLhs :: Ann Pattern a
-                  , _patternOperator :: Ann Operator a
-                  , _patternRhs :: Ann Pattern a
+  | InfixPat      { _patternLhs :: Ann Pattern dom stage
+                  , _patternOperator :: Ann Operator dom stage
+                  , _patternRhs :: Ann Pattern dom stage
                   } -- ^ Infix constructor application pattern (@ a :+: b @)
-  | AppPat        { _patternName :: Ann Name a
-                  , _patternArgs :: AnnList Pattern a
+  | AppPat        { _patternName :: Ann Name dom stage
+                  , _patternArgs :: AnnList Pattern dom stage
                   } -- ^ Constructor application pattern (@ Point x y @)
-  | TuplePat      { _patternElems :: AnnList Pattern a
+  | TuplePat      { _patternElems :: AnnList Pattern dom stage
                   } -- ^ Tuple pattern (@ (x,y) @)
-  | UnboxTuplePat { _patternElems :: AnnList Pattern a
+  | UnboxTuplePat { _patternElems :: AnnList Pattern dom stage
                   } -- ^ Unboxed tuple pattern (@ (# x, y #) @)
-  | ListPat       { _patternElems :: AnnList Pattern a 
+  | ListPat       { _patternElems :: AnnList Pattern dom stage
                   } -- ^ List pattern (@ [1,2,a,x] @)
-  | ParArrPat     { _patternElems :: AnnList Pattern a 
+  | ParArrPat     { _patternElems :: AnnList Pattern dom stage
                   } -- ^ Parallel array pattern (@ [:1,2,a,x:] @)
-  | ParenPat      { _patternInner :: Ann Pattern a 
+  | ParenPat      { _patternInner :: Ann Pattern dom stage
                   } -- ^ Parenthesised patterns
-  | RecPat        { _patternName :: Ann Name a
-                  , _patternFields :: AnnList PatternField a
+  | RecPat        { _patternName :: Ann Name dom stage
+                  , _patternFields :: AnnList PatternField dom stage
                   } -- ^ Record pattern (@ Point { x = 3, y } @)
-  | AsPat         { _patternName :: Ann Name a
-                  , _patternInner :: Ann Pattern a
+  | AsPat         { _patternName :: Ann Name dom stage
+                  , _patternInner :: Ann Pattern dom stage
                   } -- ^ As-pattern (explicit name binding) (@ ls\@(hd:_) @)
   | WildPat       -- ^ Wildcard pattern: (@ _ @)
-  | IrrPat        { _patternInner :: Ann Pattern a 
+  | IrrPat        { _patternInner :: Ann Pattern dom stage
                   } -- ^ Irrefutable pattern (@ ~(x:_) @)
-  | BangPat       { _patternInner :: Ann Pattern a 
+  | BangPat       { _patternInner :: Ann Pattern dom stage
                   } -- ^ Bang pattern (@ !x @)
-  | TypeSigPat    { _patternInner :: Ann Pattern a
-                  , _patternType :: Ann Type a
+  | TypeSigPat    { _patternInner :: Ann Pattern dom stage
+                  , _patternType :: Ann Type dom stage
                   } -- ^ Pattern with explicit type signature (@ __ :: Int @)
-  | ViewPat       { _patternExpr :: Ann Expr a
-                  , _patternInner :: Ann Pattern a
+  | ViewPat       { _patternExpr :: Ann Expr dom stage
+                  , _patternInner :: Ann Pattern dom stage
                   } -- ^ View pattern (@ f -> Just 1 @)
   -- regular list pattern omitted
   -- xml patterns omitted
-  | SplicePat     { _patternSplice :: Ann Splice a 
+  | SplicePat     { _patternSplice :: Ann Splice dom stage
                   } -- ^ Splice patterns: @$(generateX inp)@
-  | QuasiQuotePat { _patQQ :: Ann QuasiQuote a 
+  | QuasiQuotePat { _patQQ :: Ann QuasiQuote dom stage
                   } -- ^ Quasi-quoted patterns: @[| 1 + 2 |]@
-  | NPlusKPat     { _patternName :: Ann Name a
-                  , _patternLit :: Ann Literal a
+  | NPlusKPat     { _patternName :: Ann Name dom stage
+                  , _patternLit :: Ann Literal dom stage
                   }
                   
 -- Field specification of a record pattern
-data PatternField a 
-  = NormalFieldPattern   { _fieldPatternName :: Ann Name a
-                         , _fieldPattern :: Ann Pattern a
+data PatternField dom stage
+  = NormalFieldPattern   { _fieldPatternName :: Ann Name dom stage
+                         , _fieldPattern :: Ann Pattern dom stage
                          } -- ^ Named field pattern (@ p = Point 3 2 @)
-  | FieldPunPattern      { _fieldPatternName :: Ann Name a 
+  | FieldPunPattern      { _fieldPatternName :: Ann Name dom stage
                          } -- ^ Named field pun (@ p @)
   | FieldWildcardPattern -- ^ Wildcard field pattern (@ .. @)
