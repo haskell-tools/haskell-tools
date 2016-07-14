@@ -7,3 +7,4 @@ import Language.Haskell.Tools.AST.Instances.Show
 import Language.Haskell.Tools.AST.Instances.Generic
 -- TODO: source traversal
 --import Language.Haskell.Tools.AST.Instances.StructuralTraversal
+import Language.Haskell.Tools.AST.Instances.SemanticTraversal

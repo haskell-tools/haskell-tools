@@ -7,6 +7,9 @@
            , TypeFamilies
            , MultiParamTypeClasses
            , UndecidableInstances
+           , AllowAmbiguousTypes
+           , TypeApplications
+           , ScopedTypeVariables
            #-}
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
@@ -248,8 +251,27 @@ instance HasRange (OptionalInfo RangeStage) where
 instance SourceInfo stage => HasRange (Ann elem dom stage) where
   getRange (Ann a _) = getRange (a ^. sourceInfo)
 
-class SemanticTraversal a where
-  semaTraverse :: Applicative f => SemaTrf f dom1 dom2 -> a dom1 st -> f (a dom2 st)
+class ApplySemaChange cls where 
+  appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
+
+instance ApplySemaChange SameInfoNameCls where appSemaChange = trfSemaNameCls
+instance ApplySemaChange SameInfoExprCls where appSemaChange = trfSemaExprCls
+instance ApplySemaChange SameInfoImportCls where appSemaChange = trfSemaImportCls
+instance ApplySemaChange SameInfoModuleCls where appSemaChange = trfSemaModuleCls
+instance ApplySemaChange SameInfoDefaultCls where appSemaChange = trfSemaDefault
+
+
+class ApplySemaChange (SemaInfoClassify a) => SemanticTraversal a where
+  semaTraverse :: Monad f => SemaTrf f dom1 dom2 -> a dom1 st -> f (a dom2 st)
+
+instance forall e . (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (Ann e) where
+  semaTraverse f (Ann (NodeInfo sema src) e) = Ann <$> (NodeInfo <$> appSemaChange @(SemaInfoClassify e) f sema <*> pure src) <*> semaTraverse f e
+
+instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (AnnList e) where
+  semaTraverse f (AnnList (NodeInfo sema src) e) = AnnList <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> mapM (semaTraverse f) e
+
+instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (AnnMaybe e) where
+  semaTraverse f (AnnMaybe (NodeInfo sema src) e) = AnnMaybe <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> sequence (fmap (semaTraverse f) e)
 
 data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameInfoNameCls -> f (SemanticInfo' dom2 SameInfoNameCls)
                                    , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)

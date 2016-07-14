@@ -32,7 +32,8 @@ library
                      , Language.Haskell.Tools.AST.Instances.Show
                      , Language.Haskell.Tools.AST.Instances.Data
                      , Language.Haskell.Tools.AST.Instances.Generic
-                     , Language.Haskell.Tools.AST.Instances.StructuralTraversal
+                     , Language.Haskell.Tools.AST.Instances.SemanticTraversal
+                     , Language.Haskell.Tools.AST.TH.SemanticTraversal
                      , Language.Haskell.Tools.AST.References
                      , Language.Haskell.Tools.AST.Helpers
                      , Language.Haskell.Tools.AST.Utils.OrdSrcSpan
