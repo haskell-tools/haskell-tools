@@ -40,6 +40,9 @@ data  RngTemplateStage
   
 deriving instance Data RngTemplateStage
 
+-- | A stage where the annotation controls how the original source code can be
+-- retrieved from the AST. A source template is assigned to each node.
+-- It has holes where the content of an other node should be printed.
 data SrcTemplateStage
 
 deriving instance Data SrcTemplateStage
@@ -150,13 +153,13 @@ class ( Typeable stage
 
 
 instance SourceInfo RangeStage where
-  data SpanInfo RangeStage = NodeSpan { _nodeSpan :: GHC.SrcSpan }
+  data SpanInfo RangeStage = NodeSpan { _nodeSpan :: SrcSpan }
     deriving (Show, Data)
   data ListInfo RangeStage = ListPos  { _listBefore :: String
                                       , _listAfter :: String
                                       , _listDefaultSep :: String
                                       , _listIndented :: Bool
-                                      , _listPos :: GHC.SrcLoc 
+                                      , _listPos :: SrcLoc 
                                       }
     deriving (Show, Data)
   data OptionalInfo RangeStage = OptionalPos { _optionalBefore :: String
@@ -165,12 +168,17 @@ instance SourceInfo RangeStage where
                                              }
     deriving (Show, Data)
 
--- TODO: reference support for this
 
-nodeSpan :: Simple Lens (SpanInfo RangeStage) GHC.SrcSpan
-nodeSpan = lens _nodeSpan (\v s -> s { _nodeSpan = v })
+class SourceInfo stage 
+   => RangeInfo stage where
+  nodeSpan :: Simple Lens (SpanInfo stage) GHC.SrcSpan
+  listPos :: Simple Lens (ListInfo stage) GHC.SrcLoc
+  optionalPos :: Simple Lens (OptionalInfo stage) GHC.SrcLoc
 
-
+instance RangeInfo RangeStage where
+  nodeSpan = lens _nodeSpan (\v s -> s { _nodeSpan = v })
+  listPos = lens _listPos (\v s -> s { _listPos = v })
+  optionalPos = lens _optionalPos (\v s -> s { _optionalPos = v })
 
 -- * Annotations
 
@@ -218,26 +226,8 @@ isAnnNothing (AnnMaybe _ _) = False
 annNothing :: NodeInfo (SemanticInfo d (AnnMaybe e)) (OptionalInfo s) -> AnnMaybe e d s
 annNothing a = AnnMaybe a Nothing
 
-  
---class HasAnnot node where
---  getAnnot :: node a -> a
-
---instance HasAnnot (Ann e) where
---  getAnnot = (^. annotation)
-  
---instance HasAnnot (AnnList e) where
---  getAnnot = (^. annListAnnot)
-  
---instance HasAnnot (AnnMaybe e) where
---  getAnnot = (^. annMaybeAnnot)
-
-        
 
 -- * Info types
-
-
-
-
 
 instance HasRange (SpanInfo RangeStage) where
   getRange (NodeSpan sp) = sp
@@ -260,9 +250,18 @@ instance ApplySemaChange SameInfoImportCls where appSemaChange = trfSemaImportCl
 instance ApplySemaChange SameInfoModuleCls where appSemaChange = trfSemaModuleCls
 instance ApplySemaChange SameInfoDefaultCls where appSemaChange = trfSemaDefault
 
-
-class ApplySemaChange (SemaInfoClassify a) => SemanticTraversal a where
+-- | A class for traversing semantic information in an AST
+class ApplySemaChange (SemaInfoClassify a) 
+   => SemanticTraversal a where
   semaTraverse :: Monad f => SemaTrf f dom1 dom2 -> a dom1 st -> f (a dom2 st)
+
+-- | A transformation on the possible semantic informations for a given domain
+data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameInfoNameCls -> f (SemanticInfo' dom2 SameInfoNameCls)
+                                   , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)
+                                   , trfSemaImportCls :: SemanticInfo' dom1 SameInfoImportCls -> f (SemanticInfo' dom2 SameInfoImportCls)
+                                   , trfSemaModuleCls :: SemanticInfo' dom1 SameInfoModuleCls -> f (SemanticInfo' dom2 SameInfoModuleCls)
+                                   , trfSemaDefault :: SemanticInfo' dom1 SameInfoDefaultCls -> f (SemanticInfo' dom2 SameInfoDefaultCls)
+                                   }
 
 instance forall e . (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (Ann e) where
   semaTraverse f (Ann (NodeInfo sema src) e) = Ann <$> (NodeInfo <$> appSemaChange @(SemaInfoClassify e) f sema <*> pure src) <*> semaTraverse f e
@@ -273,19 +272,40 @@ instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => Semantic
 instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (AnnMaybe e) where
   semaTraverse f (AnnMaybe (NodeInfo sema src) e) = AnnMaybe <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> sequence (fmap (semaTraverse f) e)
 
-data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameInfoNameCls -> f (SemanticInfo' dom2 SameInfoNameCls)
-                                   , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)
-                                   , trfSemaImportCls :: SemanticInfo' dom1 SameInfoImportCls -> f (SemanticInfo' dom2 SameInfoImportCls)
-                                   , trfSemaModuleCls :: SemanticInfo' dom1 SameInfoModuleCls -> f (SemanticInfo' dom2 SameInfoModuleCls)
-                                   , trfSemaDefault :: SemanticInfo' dom1 SameInfoDefaultCls -> f (SemanticInfo' dom2 SameInfoDefaultCls)
-                                   }
+-- | A class for traversing source information in an AST
+class SourceInfoTraversal a where
+  sourceInfoTraverseUp :: Monad f => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
+  sourceInfoTraverseDown :: Monad f => SourceInfoTrf f st1 st2 -> f () -> f () -> a dom st1 -> f (a dom st2)
+  sourceInfoTraverse :: Monad f => SourceInfoTrf f st1 st2 -> a dom st1 -> f (a dom st2)
 
---class HasRange annot where
---  getRange :: annot -> SrcSpan
-  
---instance HasRange (NodeInfo sema SpanInfo) where 
---  getRange = spanRange . (^. sourceInfo)
-  
---type RangeInfo = NodeInfo (SemanticInfo RdrName) SpanInfo
---type RangeWithName = NodeInfo (SemanticInfo Name) SpanInfo
---type RangeWithType = NodeInfo (SemanticInfo Id) SpanInfo
+-- | A transformation on the possible source informations
+data SourceInfoTrf f st1 st2 = SourceInfoTrf { trfSpanInfo :: SpanInfo st1 -> f (SpanInfo st2)
+                                             , trfListInfo :: ListInfo st1 -> f (ListInfo st2)
+                                             , trfOptionalInfo :: OptionalInfo st1 -> f (OptionalInfo st2)
+                                             }
+
+instance SourceInfoTraversal e => SourceInfoTraversal (Ann e) where
+  sourceInfoTraverse trf (Ann (NodeInfo sema src) e) 
+    = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> sourceInfoTraverse trf e
+  sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e) 
+    = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> (desc *> sourceInfoTraverseUp trf desc asc e <* asc)
+  sourceInfoTraverseDown trf desc asc (Ann (NodeInfo sema src) e) 
+    = flip Ann <$> (desc *> sourceInfoTraverseDown trf desc asc e <* asc) <*> (NodeInfo sema <$> trfSpanInfo trf src)
+
+instance SourceInfoTraversal e => SourceInfoTraversal (AnnList e) where
+  sourceInfoTraverse trf (AnnList (NodeInfo sema src) e) 
+    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> mapM (sourceInfoTraverse trf) e
+  sourceInfoTraverseUp trf desc asc (AnnList (NodeInfo sema src) e) 
+    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc)
+  sourceInfoTraverseDown trf desc asc (AnnList (NodeInfo sema src) e) 
+    = flip AnnList <$> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
+
+instance SourceInfoTraversal e => SourceInfoTraversal (AnnMaybe e) where
+  sourceInfoTraverse trf (AnnMaybe (NodeInfo sema src) e) 
+    = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> sequence (fmap (sourceInfoTraverse trf) e)
+  sourceInfoTraverseUp trf desc asc (AnnMaybe (NodeInfo sema src) e) 
+    = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> (desc *> sequence (fmap (sourceInfoTraverseUp trf desc asc) e) <* asc)
+  sourceInfoTraverseDown trf desc asc (AnnMaybe (NodeInfo sema src) e) 
+    = flip AnnMaybe <$> (desc *> sequence (fmap (sourceInfoTraverseDown trf desc asc) e) <* asc) <*> (NodeInfo sema <$> trfOptionalInfo trf src)
+
+

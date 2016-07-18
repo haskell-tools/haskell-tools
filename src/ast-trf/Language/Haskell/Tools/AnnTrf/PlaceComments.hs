@@ -40,10 +40,9 @@ isPragma _ = False
 
 -- | Puts comments in the nodes they should be attached to. Leaves the AST in a state where parent nodes
 -- does not contain all of their children.
-placeComments :: (Data sema)
-              => Map.Map SrcSpan [Located AnnotationComment] 
-              -> Ann Module (NodeInfo sema SpanInfo) 
-              -> Ann Module (NodeInfo sema SpanInfo)
+placeComments :: RangeInfo stage => Map.Map SrcSpan [Located AnnotationComment] 
+              -> Ann Module dom stage
+              -> Ann Module dom stage
 placeComments comms mod
   = resizeAnnots (concatMap (map nextSrcLoc . snd) (Map.toList comms)) mod
   where spans = allElemSpans mod
@@ -54,29 +53,25 @@ placeComments comms mod
                 before = fromMaybe noSrcLoc (Set.lookupGE (srcSpanEnd sp) sortedElemStarts)
              in ((after,before),comm)
   
-allElemSpans :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) -> [SrcSpan]
-allElemSpans = execWriter . traverseDown (return ()) (return ()) 
-                             (\ni -> maybe (return ()) (tell . (:[])) (ni ^? sourceInfo&nodeSpan))
+allElemSpans :: (SourceInfoTraversal node, RangeInfo stage) => Ann node dom stage -> [SrcSpan]
+allElemSpans = execWriter . sourceInfoTraverse (SourceInfoTrf (\ni -> tell [ni ^. nodeSpan] >> pure ni) pure pure)
                                                  
-resizeAnnots :: forall sema . (Data sema) 
-                  => [((SrcLoc, SrcLoc), Located AnnotationComment)]
-              -> Ann Module (NodeInfo sema SpanInfo) 
-              -> Ann Module (NodeInfo sema SpanInfo)
+resizeAnnots :: RangeInfo stage => [((SrcLoc, SrcLoc), Located AnnotationComment)]
+              -> Ann Module dom stage
+              -> Ann Module dom stage
 resizeAnnots comments elem
   = flip evalState comments $ 
         -- if a comment that could be attached to more than one documentable element (possibly nested) 
         -- the order of different documentable elements here decide which will be chosen
         
-        element&modImports&annList !~ expandAnnot
-          >=> element&modDecl&annList !~ expandTopLevelDecl -- (expandAnnotToFunArgs :: ExpandType TypeSignature sema)
-          >=> expandAnnot
+        element&modImports&annList !~ expandAnnot -- expand imports to cover their comments
+          >=> element&modDecl&annList !~ expandTopLevelDecl -- expand declarations to cover their comments
+          >=> expandAnnot -- expand the module itself to cover its comments
       $ elem
 
-type ExpandType elem sema = Ann elem (NodeInfo sema SpanInfo) 
-                              -> State [((SrcLoc, SrcLoc), Located AnnotationComment)]
-                                       (Ann elem (NodeInfo sema SpanInfo))
+type ExpandType elem dom stage = Ann elem dom stage -> State [((SrcLoc, SrcLoc), Located AnnotationComment)] (Ann elem dom stage)
 
-expandTopLevelDecl :: ExpandType Decl sema
+expandTopLevelDecl :: RangeInfo stage => ExpandType Decl dom stage
 expandTopLevelDecl
   = element & declBody & annJust & element & cbElements & annList !~ expandClsElement
       >=> element & declCons & annList !~ expandConDecl
@@ -84,38 +79,38 @@ expandTopLevelDecl
       >=> element & declTypeSig !~ expandTypeSig
       >=> expandAnnot
 
-expandTypeSig :: ExpandType TypeSignature sema
+expandTypeSig :: RangeInfo stage => ExpandType TypeSignature dom stage
 expandTypeSig
   = element & tsType & typeParams !~ expandAnnot >=> expandAnnot
 
-expandClsElement :: ExpandType ClassElement sema
+expandClsElement :: RangeInfo stage => ExpandType ClassElement dom stage
 expandClsElement
   = element & ceTypeSig !~ expandTypeSig
       >=> element & ceBind !~ expandValueBind
       >=> expandAnnot
 
-expandValueBind :: ExpandType ValueBind sema
+expandValueBind :: RangeInfo stage => ExpandType ValueBind dom stage
 expandValueBind
   = element & valBindLocals & annJust & element & localBinds & annList !~ expandLocalBind 
       >=> element & funBindMatches & annList & element & matchBinds & annJust & element & localBinds & annList !~ expandLocalBind
       >=> expandAnnot
 
-expandLocalBind :: ExpandType LocalBind sema
+expandLocalBind :: RangeInfo stage => ExpandType LocalBind dom stage
 expandLocalBind
   = element & localVal !~ expandValueBind 
       >=> element & localSig !~ expandTypeSig 
       >=> expandAnnot
 
-expandConDecl :: ExpandType ConDecl sema
+expandConDecl :: RangeInfo stage => ExpandType ConDecl dom stage
 expandConDecl
   = element & conDeclFields & annList !~ expandAnnot >=> expandAnnot
 
-expandGadtConDecl :: ExpandType GadtConDecl sema
+expandGadtConDecl :: RangeInfo stage => ExpandType GadtConDecl dom stage
 expandGadtConDecl
   = element & gadtConType & element & gadtConRecordFields & annList !~ expandAnnot >=> expandAnnot
 
 -- | Expands tree elements to contain the comments that should be attached to them.
-expandAnnot :: forall elem sema . ExpandType elem sema
+expandAnnot :: forall elem dom stage . RangeInfo stage => ExpandType elem dom stage
 expandAnnot elem
   = do let Just sp = elem ^? annotation&sourceInfo&nodeSpan
        applicable <- gets (applicableComments (srcSpanStart sp) (srcSpanEnd sp))
@@ -129,7 +124,7 @@ expandAnnot elem
          modify (filter (not . (\case RealSrcSpan s -> newSpan `containsSpan` s; _ -> True) . getLoc . snd))
          return $ nodeSp .= newSp $ elem
        else return elem
-  where nodeSp :: Simple Partial (Ann elem (NodeInfo sema SpanInfo)) SrcSpan
+  where nodeSp :: Simple Partial (Ann elem dom stage) SrcSpan
         nodeSp = annotation&sourceInfo&nodeSpan
         
 -- This classification does not prefer inline comments to previous line comments, this is implicitely done

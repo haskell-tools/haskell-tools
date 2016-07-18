@@ -22,13 +22,6 @@ import Language.Haskell.Tools.AST.Ann
 
 -- Modules
 deriveSemanticTraversal ''Module
-
-
---instance SemanticTraversal Module where
---  semaTraverse f (Module pragmas head imports decls) 
---    = Module <$> semaTraverse f pragmas <*> semaTraverse f head <*> semaTraverse f imports <*> semaTraverse f decls
-
-
 deriveSemanticTraversal ''ModuleHead
 deriveSemanticTraversal ''ExportSpecList
 deriveSemanticTraversal ''ExportSpec

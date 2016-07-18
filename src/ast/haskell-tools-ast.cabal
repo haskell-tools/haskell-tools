@@ -33,6 +33,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.Data
                      , Language.Haskell.Tools.AST.Instances.Generic
                      , Language.Haskell.Tools.AST.Instances.SemanticTraversal
+                     , Language.Haskell.Tools.AST.Instances.SourceInfoTraversal
                      , Language.Haskell.Tools.AST.TH.SemanticTraversal
                      , Language.Haskell.Tools.AST.References
                      , Language.Haskell.Tools.AST.Helpers
@@ -43,5 +44,4 @@ library
                      , ghc                  >=8.0   && <8.1
                      , references           >=0.3.2 && <1.0
                      , uniplate             >=1.6   && <2.0
-                     , structural-traversal >=0.1   && <0.2
   default-language:    Haskell2010
