@@ -78,7 +78,6 @@ type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
 type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
 type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
 
-
 type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
@@ -88,30 +87,28 @@ type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
 -- | Class for domain configuration markers
 class ( Typeable d
       , Data d
+      , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
       , Data (SemanticInfo' d SameInfoNameCls)
       , Data (SemanticInfo' d SameInfoExprCls)
       , Data (SemanticInfo' d SameInfoImportCls)
       , Data (SemanticInfo' d SameInfoModuleCls)
-      , Data (SemanticInfo' d SameInfoDefaultCls)
       , Show (SemanticInfo' d SameInfoNameCls)
       , Show (SemanticInfo' d SameInfoExprCls)
       , Show (SemanticInfo' d SameInfoImportCls)
       , Show (SemanticInfo' d SameInfoModuleCls)
-      , Show (SemanticInfo' d SameInfoDefaultCls)
       ) => Domain d where
 
 instance ( Typeable d
          , Data d
+         , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
          , Data (SemanticInfo' d SameInfoNameCls)
          , Data (SemanticInfo' d SameInfoExprCls)
          , Data (SemanticInfo' d SameInfoImportCls)
          , Data (SemanticInfo' d SameInfoModuleCls)
-         , Data (SemanticInfo' d SameInfoDefaultCls)
          , Show (SemanticInfo' d SameInfoNameCls)
          , Show (SemanticInfo' d SameInfoExprCls)
          , Show (SemanticInfo' d SameInfoImportCls)
          , Show (SemanticInfo' d SameInfoModuleCls)
-         , Show (SemanticInfo' d SameInfoDefaultCls)
          ) => Domain d where
 
 
