@@ -4,6 +4,7 @@
            , StandaloneDeriving
            , DeriveGeneric
            , UndecidableInstances 
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor.ASTDebug.Instances where
 
@@ -15,121 +16,135 @@ import Control.Reference
 import Language.Haskell.Tools.AST
 
 -- Annotations
-instance (ASTDebug e a, Show (e a)) => ASTDebug (Ann e) a where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= a $ astDebug' e
+instance {-# OVERLAPPING #-} (ASTDebug SimpleName dom st) => ASTDebug (Ann SimpleName) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (NameInfoType (a ^. semanticInfo)) $ astDebug' e
+
+instance {-# OVERLAPPING #-} (ASTDebug Expr dom st) => ASTDebug (Ann Expr) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ExprInfoType (a ^. semanticInfo)) $ astDebug' e
+
+instance {-# OVERLAPPING #-} (ASTDebug ImportDecl dom st) => ASTDebug (Ann ImportDecl) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ImportInfoType (a ^. semanticInfo)) $ astDebug' e
+
+instance {-# OVERLAPPING #-} (ASTDebug Module dom st) => ASTDebug (Ann Module) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ModuleInfoType (a ^. semanticInfo)) $ astDebug' e
+
+instance {-# OVERLAPPABLE #-} (ASTDebug e dom st) => ASTDebug (Ann e) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= DefaultInfoType NoSemanticInfo $ astDebug' e
+
+instance (SemaInfoClassify (AnnList e) ~ SameInfoDefaultCls, ASTDebug e dom st) => ASTDebug (AnnList e) dom st where
+  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (a ^. semanticInfo)) (concatMap astDebug' ls))]
   
-instance (ASTDebug e a, Show (e a)) => ASTDebug (AnnList e) a where
-  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" a (concatMap astDebug' ls))]
-  
-instance (ASTDebug e a, Show (e a)) => ASTDebug (AnnMaybe e) a where
-  astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" a (maybe [] astDebug' e))]
-  
+instance (SemaInfoClassify (AnnMaybe e) ~ SameInfoDefaultCls, ASTDebug e dom st) => ASTDebug (AnnMaybe e) dom st where
+  astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" (DefaultInfoType (a ^. semanticInfo)) (maybe [] astDebug' e))]
+
 -- Modules
-instance (Generic a, Show a) => ASTDebug Module a
-instance (Generic a, Show a) => ASTDebug ModuleHead a
-instance (Generic a, Show a) => ASTDebug ExportSpecList a
-instance (Generic a, Show a) => ASTDebug ExportSpec a
-instance (Generic a, Show a) => ASTDebug IESpec a
-instance (Generic a, Show a) => ASTDebug SubSpec a
-instance (Generic a, Show a) => ASTDebug ModulePragma a
-instance (Generic a, Show a) => ASTDebug FilePragma a
-instance (Generic a, Show a) => ASTDebug ImportDecl a
-instance (Generic a, Show a) => ASTDebug ImportSpec a
-instance (Generic a, Show a) => ASTDebug ImportQualified a
-instance (Generic a, Show a) => ASTDebug ImportSource a
-instance (Generic a, Show a) => ASTDebug ImportSafe a
-instance (Generic a, Show a) => ASTDebug TypeNamespace a
-instance (Generic a, Show a) => ASTDebug ImportRenaming a
+instance (Domain dom, SourceInfo st) => ASTDebug Module dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ModuleHead dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ExportSpecList dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ExportSpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug IESpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug SubSpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ModulePragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FilePragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportDecl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportSpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportQualified dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportSource dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportSafe dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeNamespace dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ImportRenaming dom st
 
 -- Declarations
-instance (Generic a, Show a) => ASTDebug Decl a
-instance (Generic a, Show a) => ASTDebug ClassBody a
-instance (Generic a, Show a) => ASTDebug ClassElement a
-instance (Generic a, Show a) => ASTDebug DeclHead a
-instance (Generic a, Show a) => ASTDebug InstBody a
-instance (Generic a, Show a) => ASTDebug InstBodyDecl a
-instance (Generic a, Show a) => ASTDebug GadtConDecl a
-instance (Generic a, Show a) => ASTDebug GadtConType a
-instance (Generic a, Show a) => ASTDebug GadtField a
-instance (Generic a, Show a) => ASTDebug FunDeps a
-instance (Generic a, Show a) => ASTDebug FunDep a
-instance (Generic a, Show a) => ASTDebug ConDecl a
-instance (Generic a, Show a) => ASTDebug FieldDecl a
-instance (Generic a, Show a) => ASTDebug Deriving a
-instance (Generic a, Show a) => ASTDebug InstanceRule a
-instance (Generic a, Show a) => ASTDebug InstanceHead a
-instance (Generic a, Show a) => ASTDebug TypeEqn a
-instance (Generic a, Show a) => ASTDebug KindConstraint a
-instance (Generic a, Show a) => ASTDebug TyVar a
-instance (Generic a, Show a) => ASTDebug Type a
-instance (Generic a, Show a) => ASTDebug Kind a
-instance (Generic a, Show a) => ASTDebug Context a
-instance (Generic a, Show a) => ASTDebug Assertion a
-instance (Generic a, Show a) => ASTDebug Expr a
-instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) => ASTDebug (Stmt' expr) a
-instance (Generic a, Show a) => ASTDebug CompStmt a
-instance (Generic a, Show a) => ASTDebug ValueBind a
-instance (Generic a, Show a) => ASTDebug Pattern a
-instance (Generic a, Show a) => ASTDebug PatternField a
-instance (Generic a, Show a) => ASTDebug Splice a
-instance (Generic a, Show a) => ASTDebug QQString a
-instance (Generic a, Show a) => ASTDebug Match a
-instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) => ASTDebug (Alt' expr) a
-instance (Generic a, Show a) => ASTDebug Rhs a
-instance (Generic a, Show a) => ASTDebug GuardedRhs a
-instance (Generic a, Show a) => ASTDebug FieldUpdate a
-instance (Generic a, Show a) => ASTDebug Bracket a
-instance (Generic a, Show a) => ASTDebug TopLevelPragma a
-instance (Generic a, Show a) => ASTDebug Rule a
-instance (Generic a, Show a) => ASTDebug AnnotationSubject a
-instance (Generic a, Show a) => ASTDebug MinimalFormula a
-instance (Generic a, Show a) => ASTDebug ExprPragma a
-instance (Generic a, Show a) => ASTDebug SourceRange a
-instance (Generic a, Show a) => ASTDebug Number a
-instance (Generic a, Show a) => ASTDebug QuasiQuote a
-instance (Generic a, Show a) => ASTDebug RhsGuard a
-instance (Generic a, Show a) => ASTDebug LocalBind a
-instance (Generic a, Show a) => ASTDebug LocalBinds a
-instance (Generic a, Show a) => ASTDebug FixitySignature a
-instance (Generic a, Show a) => ASTDebug TypeSignature a
-instance (Generic a, Show a) => ASTDebug ListCompBody a
-instance (Generic a, Show a) => ASTDebug TupSecElem a
-instance (Generic a, Show a) => ASTDebug TypeFamily a
-instance (Generic a, Show a) => ASTDebug TypeFamilySpec a
-instance (Generic a, Show a) => ASTDebug InjectivityAnn a
-instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) => ASTDebug (CaseRhs' expr) a
-instance (Generic a, Show a, ASTDebug expr a, Show (expr a), Generic (expr a)) => ASTDebug (GuardedCaseRhs' expr) a
-instance (Generic a, Show a) => ASTDebug PatternSynonym a
-instance (Generic a, Show a) => ASTDebug PatSynRhs a
-instance (Generic a, Show a) => ASTDebug PatSynLhs a
-instance (Generic a, Show a) => ASTDebug PatSynWhere a
-instance (Generic a, Show a) => ASTDebug PatternTypeSignature a
-instance (Generic a, Show a) => ASTDebug Role a
-instance (Generic a, Show a) => ASTDebug Cmd a
-instance (Generic a, Show a) => ASTDebug LanguageExtension a
-instance (Generic a, Show a) => ASTDebug MatchLhs a
+instance (Domain dom, SourceInfo st) => ASTDebug Decl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ClassBody dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ClassElement dom st
+instance (Domain dom, SourceInfo st) => ASTDebug DeclHead dom st
+instance (Domain dom, SourceInfo st) => ASTDebug InstBody dom st
+instance (Domain dom, SourceInfo st) => ASTDebug InstBodyDecl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug GadtConDecl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug GadtConType dom st
+instance (Domain dom, SourceInfo st) => ASTDebug GadtField dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FunDeps dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FunDep dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ConDecl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FieldDecl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Deriving dom st
+instance (Domain dom, SourceInfo st) => ASTDebug InstanceRule dom st
+instance (Domain dom, SourceInfo st) => ASTDebug InstanceHead dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeEqn dom st
+instance (Domain dom, SourceInfo st) => ASTDebug KindConstraint dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TyVar dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Type dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Kind dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Context dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Assertion dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Expr dom st
+instance (Domain dom, SourceInfo st) => ASTDebug (Stmt' Expr) dom st
+instance (Domain dom, SourceInfo st) => ASTDebug (Stmt' Cmd) dom st
+instance (Domain dom, SourceInfo st) => ASTDebug CompStmt dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ValueBind dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Pattern dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatternField dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Splice dom st
+instance (Domain dom, SourceInfo st) => ASTDebug QQString dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Match dom st
+instance (Domain dom, SourceInfo st, ASTDebug expr dom st, Generic (expr dom st)) => ASTDebug (Alt' expr) dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Rhs dom st
+instance (Domain dom, SourceInfo st) => ASTDebug GuardedRhs dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FieldUpdate dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Bracket dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TopLevelPragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Rule dom st
+instance (Domain dom, SourceInfo st) => ASTDebug AnnotationSubject dom st
+instance (Domain dom, SourceInfo st) => ASTDebug MinimalFormula dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ExprPragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug SourceRange dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Number dom st
+instance (Domain dom, SourceInfo st) => ASTDebug QuasiQuote dom st
+instance (Domain dom, SourceInfo st) => ASTDebug RhsGuard dom st
+instance (Domain dom, SourceInfo st) => ASTDebug LocalBind dom st
+instance (Domain dom, SourceInfo st) => ASTDebug LocalBinds dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FixitySignature dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeSignature dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ListCompBody dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TupSecElem dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeFamily dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeFamilySpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug InjectivityAnn dom st
+instance (Domain dom, SourceInfo st, ASTDebug expr dom st, Generic (expr dom st)) => ASTDebug (CaseRhs' expr) dom st
+instance (Domain dom, SourceInfo st, ASTDebug expr dom st, Generic (expr dom st)) => ASTDebug (GuardedCaseRhs' expr) dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatternSynonym dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatSynRhs dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatSynLhs dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatSynWhere dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PatternTypeSignature dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Role dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Cmd dom st
+instance (Domain dom, SourceInfo st) => ASTDebug LanguageExtension dom st
+instance (Domain dom, SourceInfo st) => ASTDebug MatchLhs dom st
 
 -- Literal
-instance (Generic a, Show a) => ASTDebug Literal a
-instance (Generic a, Show a, ASTDebug k a, Show (k a), Generic (k a)) => ASTDebug (Promoted k) a
+instance (Domain dom, SourceInfo st) => ASTDebug Literal dom st
+instance (Domain dom, SourceInfo st, ASTDebug k dom st, Generic (k dom st)) => ASTDebug (Promoted k) dom st
 
 -- Base
-instance (Generic a, Show a) => ASTDebug Operator a
-instance (Generic a, Show a) => ASTDebug Name a
-instance (Generic a, Show a) => ASTDebug SimpleName a
-instance (Generic a, Show a) => ASTDebug UnqualName a
-instance (Generic a, Show a) => ASTDebug StringNode a
-instance (Generic a, Show a) => ASTDebug DataOrNewtypeKeyword a
-instance (Generic a, Show a) => ASTDebug DoKind a
-instance (Generic a, Show a) => ASTDebug TypeKeyword a
-instance (Generic a, Show a) => ASTDebug OverlapPragma a
-instance (Generic a, Show a) => ASTDebug CallConv a
-instance (Generic a, Show a) => ASTDebug ArrowAppl a
-instance (Generic a, Show a) => ASTDebug Safety a
-instance (Generic a, Show a) => ASTDebug ConlikeAnnot a
-instance (Generic a, Show a) => ASTDebug Assoc a
-instance (Generic a, Show a) => ASTDebug Precedence a
-instance (Generic a, Show a) => ASTDebug LineNumber a
-instance (Generic a, Show a) => ASTDebug PhaseControl a
-instance (Generic a, Show a) => ASTDebug PhaseNumber a
-instance (Generic a, Show a) => ASTDebug PhaseInvert a
+instance (Domain dom, SourceInfo st) => ASTDebug Operator dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Name dom st
+instance (Domain dom, SourceInfo st) => ASTDebug SimpleName dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ModuleName dom st
+instance (Domain dom, SourceInfo st) => ASTDebug UnqualName dom st
+instance (Domain dom, SourceInfo st) => ASTDebug StringNode dom st
+instance (Domain dom, SourceInfo st) => ASTDebug DataOrNewtypeKeyword dom st
+instance (Domain dom, SourceInfo st) => ASTDebug DoKind dom st
+instance (Domain dom, SourceInfo st) => ASTDebug TypeKeyword dom st
+instance (Domain dom, SourceInfo st) => ASTDebug OverlapPragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug CallConv dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ArrowAppl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Safety dom st
+instance (Domain dom, SourceInfo st) => ASTDebug ConlikeAnnot dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Assoc dom st
+instance (Domain dom, SourceInfo st) => ASTDebug Precedence dom st
+instance (Domain dom, SourceInfo st) => ASTDebug LineNumber dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PhaseControl dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PhaseNumber dom st
+instance (Domain dom, SourceInfo st) => ASTDebug PhaseInvert dom st
