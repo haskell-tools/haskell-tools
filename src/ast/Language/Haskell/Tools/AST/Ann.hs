@@ -15,6 +15,7 @@
 module Language.Haskell.Tools.AST.Ann where
 
 import Data.Data
+import Control.Monad.Identity
 import Control.Reference
 import SrcLoc as GHC
 import Id as GHC
@@ -238,6 +239,12 @@ instance HasRange (OptionalInfo RangeStage) where
 instance SourceInfo stage => HasRange (Ann elem dom stage) where
   getRange (Ann a _) = getRange (a ^. sourceInfo)
 
+instance SourceInfo stage => HasRange (AnnList elem dom stage) where
+  getRange (AnnList a _) = getRange (a ^. sourceInfo)
+
+instance SourceInfo stage => HasRange (AnnMaybe elem dom stage) where
+  getRange (AnnMaybe a _) = getRange (a ^. sourceInfo)
+
 class ApplySemaChange cls where 
   appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
 
@@ -304,5 +311,4 @@ instance SourceInfoTraversal e => SourceInfoTraversal (AnnMaybe e) where
     = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> (desc *> sequence (fmap (sourceInfoTraverseUp trf desc asc) e) <* asc)
   sourceInfoTraverseDown trf desc asc (AnnMaybe (NodeInfo sema src) e) 
     = flip AnnMaybe <$> (desc *> sequence (fmap (sourceInfoTraverseDown trf desc asc) e) <* asc) <*> (NodeInfo sema <$> trfOptionalInfo trf src)
-
 

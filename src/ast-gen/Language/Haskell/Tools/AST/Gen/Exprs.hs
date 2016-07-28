@@ -17,14 +17,11 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkApp :: (Domain dom, SemanticInfo dom Expr ~ NoSemanticInfo) 
-      => Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
+mkApp :: Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkApp f e = mkAnn (child <> " " <> child) (App f e)
 
-mkVar :: (Domain dom, SemanticInfo dom Expr ~ NoSemanticInfo) 
-      => Ann Name dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
+mkVar :: Ann Name dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkVar = mkAnn child . Var
 
-mkParen :: (Domain dom, SemanticInfo dom Expr ~ NoSemanticInfo) 
-        => Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
+mkParen :: Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkParen = mkAnn ("(" <> child <> ")") . Paren

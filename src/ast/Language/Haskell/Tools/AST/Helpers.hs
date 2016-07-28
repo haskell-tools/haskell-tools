@@ -67,7 +67,7 @@ importQualifiers imp
   = (if isAnnNothing (imp ^. importQualified) then [[]] else [])
       ++ [imp ^? importAs&annJust&element&importRename&element&moduleNameString]
         
-bindingName :: (SemanticInfo dom SimpleName ~ NameInfo n) => Simple Traversal (Ann ValueBind dom stage) (NameInfo n)
+bindingName :: (SemanticInfo dom SimpleName ~ ni) => Simple Traversal (Ann ValueBind dom stage) ni
 bindingName = element&(valBindPat&element&patternName&element&simpleName 
                         &+& funBindMatches&annList&element&matchLhs&element
                               &(matchLhsName&element&simpleName &+& matchLhsOperator&element&operatorName))
@@ -90,8 +90,8 @@ typeParams = fromTraversal typeParamsTrav
 semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
 semantics = annotation&semanticInfo
 
-dhNames :: (SemanticInfo dom SimpleName ~ NameInfo n) => Simple Traversal (Ann DeclHead dom stage) n
-dhNames = declHeadNames & semantics & nameInfo
+dhNames :: (SemanticInfo dom SimpleName ~ k) => Simple Traversal (Ann DeclHead dom stage) k
+dhNames = declHeadNames & semantics
 
 -- | A type class for transformations that work on both top-level and local definitions
 class BindingElem d where
@@ -122,8 +122,8 @@ instance BindingElem LocalBind where
   isBinding (LocalValBind _) = True
   isBinding _ = False
 
-bindName :: (BindingElem d, SemanticInfo dom SimpleName ~ NameInfo n) => Simple Traversal (d dom stage) n
-bindName = (valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics) & nameInfo
+bindName :: (BindingElem d, SemanticInfo dom SimpleName ~ k) => Simple Traversal (d dom stage) k
+bindName = valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics
 
 valBindsInList :: BindingElem d => Simple Traversal (AnnList d dom stage) (Ann ValueBind dom stage)
 valBindsInList = annList & element & valBind
@@ -135,12 +135,12 @@ getValBindInList sp ls = case ls ^? valBindsInList & filtered (isInside sp) of
   _ -> error "getValBindInList: Multiple nodes"
 
 -- | Get all nodes that contain a given source range
-nodesContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) 
-                => RealSrcSpan -> Simple Traversal (Ann node dom stage) (Ann inner dom stage)
+nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage), SourceInfo stage) 
+                => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 nodesContaining rng = biplateRef & filtered (isInside rng) 
 
 -- | Return true if the node contains a given range
-isInside :: HasRange (Ann inner dom stage) => RealSrcSpan -> Ann inner dom stage -> Bool
+isInside :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
 isInside rng nd = case getRange nd of RealSrcSpan sp -> sp `containsSpan` rng
                                       _              -> False
 

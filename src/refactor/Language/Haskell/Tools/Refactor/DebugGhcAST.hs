@@ -34,15 +34,6 @@ import OccName
 instance Show a => Show (Located a) where
   show (L l a) = "L(" ++ shortShowSpan l ++ ") (" ++ show a ++ ")"
 
-shortShowSpan :: SrcSpan -> String
-shortShowSpan (UnhelpfulSpan _) = "??-??" 
-shortShowSpan sp@(RealSrcSpan _) 
-  = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
-      
-shortShowLoc :: SrcLoc -> String
-shortShowLoc (UnhelpfulLoc _) = "??"
-shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
-
 deriving instance Show (ABExport RdrName)
 deriving instance Show (AmbiguousFieldOcc RdrName)
 deriving instance Show (AnnDecl RdrName)

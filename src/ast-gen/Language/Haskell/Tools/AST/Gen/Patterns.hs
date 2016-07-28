@@ -17,10 +17,8 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkVarPat :: (Domain dom, SemanticInfo dom Pattern ~ NoSemanticInfo) 
-         => Ann Name dom SrcTemplateStage -> Ann Pattern dom SrcTemplateStage
+mkVarPat :: Ann Name dom SrcTemplateStage -> Ann Pattern dom SrcTemplateStage
 mkVarPat = mkAnn child . VarPat
 
-mkAppPat :: (Domain dom, SemanticInfo dom Pattern ~ NoSemanticInfo) 
-         => Ann Name dom SrcTemplateStage -> [Ann Pattern dom SrcTemplateStage] -> Ann Pattern dom SrcTemplateStage
+mkAppPat :: Ann Name dom SrcTemplateStage -> [Ann Pattern dom SrcTemplateStage] -> Ann Pattern dom SrcTemplateStage
 mkAppPat n pat = mkAnn (child <> child) $ AppPat n (mkAnnList (listSepBefore " " " ") pat)

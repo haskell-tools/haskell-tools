@@ -17,51 +17,41 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkModule :: (Domain dom, SemanticInfo dom Module ~ NoSemanticInfo) 
-         => [Ann FilePragma dom SrcTemplateStage] -> Maybe (Ann ModuleHead dom SrcTemplateStage)
-                               -> [Ann ImportDecl dom SrcTemplateStage] -> [Ann Decl dom SrcTemplateStage] -> Ann Module dom SrcTemplateStage
+mkModule :: [Ann FilePragma dom SrcTemplateStage] -> Maybe (Ann ModuleHead dom SrcTemplateStage)
+              -> [Ann ImportDecl dom SrcTemplateStage] -> [Ann Decl dom SrcTemplateStage] -> Ann Module dom SrcTemplateStage
 mkModule filePrags head imps decls 
   = mkAnn (child <> "\n" <> child <> "\n" <> child <> "\n" <> child) 
       $ Module (mkAnnList (listSep "\n") filePrags) (mkAnnMaybe opt head)
                (mkAnnList indentedList imps) (mkAnnList indentedList decls)
                
-mkModuleHead :: (Domain dom, SemanticInfo dom ModuleHead ~ NoSemanticInfo) 
-             => Ann ModuleName dom SrcTemplateStage -> Maybe (Ann ExportSpecList dom SrcTemplateStage) 
+mkModuleHead :: Ann ModuleName dom SrcTemplateStage -> Maybe (Ann ExportSpecList dom SrcTemplateStage) 
                   -> Maybe (Ann ModulePragma dom SrcTemplateStage) -> Ann ModuleHead dom SrcTemplateStage
 mkModuleHead n es pr = mkAnn (child <> child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es) (mkAnnMaybe opt pr)
 
-mkExportSpecList :: (Domain dom, SemanticInfo dom ExportSpecList ~ NoSemanticInfo) 
-                 => [Ann ExportSpec dom SrcTemplateStage] -> Ann ExportSpecList dom SrcTemplateStage
+mkExportSpecList :: [Ann ExportSpec dom SrcTemplateStage] -> Ann ExportSpecList dom SrcTemplateStage
 mkExportSpecList = mkAnn ("(" <> child <> ")") . ExportSpecList . mkAnnList (listSep ", ")
 
-mkModuleExport :: (Domain dom, SemanticInfo dom ExportSpec ~ NoSemanticInfo) 
-               => Ann ModuleName dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
+mkModuleExport :: Ann ModuleName dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
 mkModuleExport = mkAnn ("module " <> child) . ModuleExport
 
-mkExportSpec :: (Domain dom, SemanticInfo dom ExportSpec ~ NoSemanticInfo) 
-             => Ann IESpec dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
+mkExportSpec :: Ann IESpec dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
 mkExportSpec = mkAnn child . DeclExport
 
-mkImportSpecList :: (Domain dom, SemanticInfo dom ImportSpec ~ NoSemanticInfo) 
-                 => [Ann IESpec dom SrcTemplateStage] -> Ann ImportSpec dom SrcTemplateStage
+mkImportSpecList :: [Ann IESpec dom SrcTemplateStage] -> Ann ImportSpec dom SrcTemplateStage
 mkImportSpecList = mkAnn ("(" <> child <> ")") . ImportSpecList . mkAnnList (listSep ", ")
 
-mkIeSpec :: (Domain dom, SemanticInfo dom IESpec ~ NoSemanticInfo) 
-         => Ann Name dom SrcTemplateStage -> Maybe (Ann SubSpec dom SrcTemplateStage) -> Ann IESpec dom SrcTemplateStage
+mkIeSpec :: Ann Name dom SrcTemplateStage -> Maybe (Ann SubSpec dom SrcTemplateStage) -> Ann IESpec dom SrcTemplateStage
 mkIeSpec name ss = mkAnn (child <> child) (IESpec name (mkAnnMaybe opt ss))
         
-mkSubList :: (Domain dom, SemanticInfo dom SubSpec ~ NoSemanticInfo) 
-          => [Ann Name dom SrcTemplateStage] -> Ann SubSpec dom SrcTemplateStage
+mkSubList :: [Ann Name dom SrcTemplateStage] -> Ann SubSpec dom SrcTemplateStage
 mkSubList = mkAnn ("(" <> child <> ")") . SubSpecList . mkAnnList (listSep ", ")
 
-mkSubAll :: (Domain dom, SemanticInfo dom SubSpec ~ NoSemanticInfo) 
-         => Ann SubSpec dom SrcTemplateStage
+mkSubAll :: Ann SubSpec dom SrcTemplateStage
 mkSubAll = mkAnn "(..)" SubSpecAll
 
 -- TODO: mk pragmas
 
-mkImportDecl :: (Domain dom, SemanticInfo dom ImportDecl ~ NoSemanticInfo) 
-             => Bool -> Bool -> Bool -> Maybe String -> Ann ModuleName dom SrcTemplateStage 
+mkImportDecl :: Bool -> Bool -> Bool -> Maybe String -> Ann ModuleName dom SrcTemplateStage 
                      -> Maybe (Ann ImportRenaming dom SrcTemplateStage) -> Maybe (Ann ImportSpec dom SrcTemplateStage) 
                      -> Ann ImportDecl dom SrcTemplateStage       
 mkImportDecl source qualified safe pkg name rename spec

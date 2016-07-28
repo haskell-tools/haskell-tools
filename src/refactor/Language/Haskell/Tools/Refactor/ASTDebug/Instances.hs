@@ -17,25 +17,25 @@ import Language.Haskell.Tools.AST
 
 -- Annotations
 instance {-# OVERLAPPING #-} (ASTDebug SimpleName dom st) => ASTDebug (Ann SimpleName) dom st where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (NameInfoType (a ^. semanticInfo)) $ astDebug' e
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (NameInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
 instance {-# OVERLAPPING #-} (ASTDebug Expr dom st) => ASTDebug (Ann Expr) dom st where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ExprInfoType (a ^. semanticInfo)) $ astDebug' e
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ExprInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
 instance {-# OVERLAPPING #-} (ASTDebug ImportDecl dom st) => ASTDebug (Ann ImportDecl) dom st where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ImportInfoType (a ^. semanticInfo)) $ astDebug' e
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ImportInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
 instance {-# OVERLAPPING #-} (ASTDebug Module dom st) => ASTDebug (Ann Module) dom st where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ModuleInfoType (a ^. semanticInfo)) $ astDebug' e
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ModuleInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
 instance {-# OVERLAPPABLE #-} (ASTDebug e dom st) => ASTDebug (Ann e) dom st where
-  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= DefaultInfoType NoSemanticInfo $ astDebug' e
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= DefaultInfoType (getRange (a ^. sourceInfo)) $ astDebug' e
 
-instance (SemaInfoClassify (AnnList e) ~ SameInfoDefaultCls, ASTDebug e dom st) => ASTDebug (AnnList e) dom st where
-  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (a ^. semanticInfo)) (concatMap astDebug' ls))]
+instance (ASTDebug e dom st) => ASTDebug (AnnList e) dom st where
+  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
   
-instance (SemaInfoClassify (AnnMaybe e) ~ SameInfoDefaultCls, ASTDebug e dom st) => ASTDebug (AnnMaybe e) dom st where
-  astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" (DefaultInfoType (a ^. semanticInfo)) (maybe [] astDebug' e))]
+instance (ASTDebug e dom st) => ASTDebug (AnnMaybe e) dom st where
+  astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" (DefaultInfoType (getRange (a ^. sourceInfo))) (maybe [] astDebug' e))]
 
 -- Modules
 instance (Domain dom, SourceInfo st) => ASTDebug Module dom st

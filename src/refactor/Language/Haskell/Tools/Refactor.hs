@@ -4,6 +4,8 @@
            , ScopedTypeVariables
            , BangPatterns
            , MultiWayIf
+           , FlexibleContexts
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor where
 
@@ -68,10 +70,6 @@ import StringBuffer
 
 import Debug.Trace
     
-
-type TemplateWithNames = NodeInfo (SemanticInfo GHC.Name) SourceTemplate
-type TemplateWithTypes = NodeInfo (SemanticInfo GHC.Id) SourceTemplate
-
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
                      | GenerateExports
@@ -80,7 +78,8 @@ data RefactorCommand = NoRefactor
                      | ExtractBinding RealSrcSpan String
     deriving Show
 
-performCommand :: RefactorCommand -> Ann AST.Module TemplateWithTypes -> Ghc (Either String (Ann AST.Module TemplateWithTypes))
+performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
+               => RefactorCommand -> Ann AST.Module dom SrcTemplateStage -> Ghc (Either String (Ann AST.Module dom SrcTemplateStage))
 performCommand rf mod = runRefactor mod $ selectCommand rf
   where selectCommand  NoRefactor = return
         selectCommand OrganizeImports = organizeImports
@@ -166,7 +165,7 @@ loadModule workingDir moduleName
        load LoadAllTargets
        getModSummary $ mkModuleName moduleName
     
-parseTyped :: ModSummary -> Ghc (Ann AST.Module TemplateWithTypes)
+parseTyped :: ModSummary -> Ghc (Ann AST.Module IdDom SrcTemplateStage)
 parseTyped modSum = do
   p <- parseModule modSum
   tc <- typecheckModule p
@@ -174,20 +173,20 @@ parseTyped modSum = do
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
                    runTrf (fst annots) (getPragmaComments $ snd annots)
                      $ trfModuleRename (ms_mod $ modSum) parseTrf
                          (fromJust $ tm_renamed_source tc) 
                          (pm_parsed_source p)))
 
-parseRenamed :: ModSummary -> Ghc (Ann AST.Module TemplateWithNames)
+parseRenamed :: ModSummary -> Ghc (Ann AST.Module (Dom GHC.Name) SrcTemplateStage)
 parseRenamed modSum = do
   p <- parseModule modSum
   tc <- typecheckModule p
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
-    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
+    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
             runTrf (fst annots) (getPragmaComments $ snd annots)
               $ trfModuleRename (ms_mod $ modSum) parseTrf
                   (fromJust $ tm_renamed_source tc) 
@@ -211,20 +210,20 @@ demoRefactor command workingDir moduleName =
     --liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
-    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
-    liftIO $ putStrLn $ rangeDebug parseTrf
+    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
+    liftIO $ putStrLn $ srcInfoDebug parseTrf
     liftIO $ putStrLn "=========== typed:"
     transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
-    liftIO $ putStrLn $ rangeDebug transformed
+    liftIO $ putStrLn $ srcInfoDebug transformed
     liftIO $ putStrLn "=========== ranges fixed:"
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
-    liftIO $ putStrLn $ rangeDebug commented
+    liftIO $ putStrLn $ srcInfoDebug commented
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
-    liftIO $ putStrLn $ templateDebug cutUp
+    liftIO $ putStrLn $ srcInfoDebug cutUp
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
-    liftIO $ putStrLn $ sourceTemplateDebug sourced
+    liftIO $ putStrLn $ srcInfoDebug sourced
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
@@ -232,7 +231,7 @@ demoRefactor command workingDir moduleName =
     case transformed of 
       Right correctlyTransformed -> do
         liftIO $ putStrLn "=========== transformed AST:"
-        liftIO $ putStrLn $ sourceTemplateDebug correctlyTransformed
+        liftIO $ putStrLn $ srcInfoDebug correctlyTransformed
         liftIO $ putStrLn "=========== transformed & prettyprinted:"
         let prettyPrinted = prettyPrint correctlyTransformed
         liftIO $ putStrLn prettyPrinted
@@ -244,7 +243,3 @@ demoRefactor command workingDir moduleName =
   
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
-deriving instance Generic RangeTemplate
-deriving instance Generic (SemanticInfo n)
-deriving instance Generic SourceTemplate
-deriving instance Generic SpanInfo

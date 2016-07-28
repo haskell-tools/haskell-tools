@@ -18,11 +18,9 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 
-mkTypeSignature :: (Domain dom, SemanticInfo dom Decl ~ NoSemanticInfo) 
-                => Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann TypeSignature dom SrcTemplateStage
+mkTypeSignature :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann TypeSignature dom SrcTemplateStage
 mkTypeSignature n t = mkAnn (child <> " :: " <> child) (TypeSignature (mkAnnList (listSep ", ") [n]) t)
 
-mkValueBinding :: (Domain dom, SemanticInfo dom Decl ~ NoSemanticInfo) 
-               => Ann ValueBind dom SrcTemplateStage -> Ann Decl dom SrcTemplateStage
+mkValueBinding :: Ann ValueBind dom SrcTemplateStage -> Ann Decl dom SrcTemplateStage
 mkValueBinding = mkAnn child . ValueBinding
 
