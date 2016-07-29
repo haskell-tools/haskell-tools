@@ -37,6 +37,10 @@ data RangeStage
 
 deriving instance Data RangeStage
 
+data NormRangeStage
+
+deriving instance Data NormRangeStage
+
 data  RngTemplateStage
   
 deriving instance Data RngTemplateStage
@@ -174,7 +178,32 @@ instance Show (ListInfo RangeStage) where
 
 instance Show (OptionalInfo RangeStage) where
   show sp = shortShowLoc (_optionalPos sp)
-  
+
+instance SourceInfo NormRangeStage where
+  data SpanInfo NormRangeStage = NormNodeInfo { _normNodeSpan :: SrcSpan }
+    deriving (Data)
+  data ListInfo NormRangeStage = NormListInfo { _normListBefore :: String
+                                              , _normListAfter :: String
+                                              , _normListDefaultSep :: String
+                                              , _normListIndented :: Bool
+                                              , _normListSpan :: SrcSpan 
+                                              }
+    deriving (Data)
+  data OptionalInfo NormRangeStage = NormOptInfo { _normOptBefore :: String
+                                                 , _normOptAfter :: String 
+                                                 , _normOptSpan :: SrcSpan 
+                                                 }
+    deriving (Data)
+
+instance Show (SpanInfo NormRangeStage) where
+  show (NormNodeInfo sp) = shortShowSpan sp
+
+instance Show (ListInfo NormRangeStage) where
+  show sp = shortShowSpan (_normListSpan sp)
+
+instance Show (OptionalInfo NormRangeStage) where
+  show sp = shortShowSpan (_normOptSpan sp)
+
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??" 
 shortShowSpan sp@(RealSrcSpan _) 
@@ -252,6 +281,15 @@ instance HasRange (ListInfo RangeStage) where
 
 instance HasRange (OptionalInfo RangeStage) where
   getRange OptionalPos{_optionalPos = pos} = srcLocSpan pos
+
+instance HasRange (SpanInfo NormRangeStage) where
+  getRange (NormNodeInfo sp) = sp
+
+instance HasRange (ListInfo NormRangeStage) where
+  getRange NormListInfo{_normListSpan = sp} = sp
+
+instance HasRange (OptionalInfo NormRangeStage) where
+  getRange NormOptInfo{_normOptSpan = sp} = sp
 
 instance SourceInfo stage => HasRange (Ann elem dom stage) where
   getRange (Ann a _) = getRange (a ^. sourceInfo)
