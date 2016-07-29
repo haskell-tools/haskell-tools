@@ -152,20 +152,37 @@ class ( Typeable stage
 
 instance SourceInfo RangeStage where
   data SpanInfo RangeStage = NodeSpan { _nodeSpan :: SrcSpan }
-    deriving (Show, Data)
+    deriving (Data)
   data ListInfo RangeStage = ListPos  { _listBefore :: String
                                       , _listAfter :: String
                                       , _listDefaultSep :: String
                                       , _listIndented :: Bool
                                       , _listPos :: SrcLoc 
                                       }
-    deriving (Show, Data)
+    deriving (Data)
   data OptionalInfo RangeStage = OptionalPos { _optionalBefore :: String
                                              , _optionalAfter :: String 
                                              , _optionalPos :: SrcLoc 
                                              }
-    deriving (Show, Data)
+    deriving (Data)
 
+instance Show (SpanInfo RangeStage) where
+  show (NodeSpan sp) = shortShowSpan sp
+
+instance Show (ListInfo RangeStage) where
+  show sp = shortShowLoc (_listPos sp)
+
+instance Show (OptionalInfo RangeStage) where
+  show sp = shortShowLoc (_optionalPos sp)
+  
+shortShowSpan :: SrcSpan -> String
+shortShowSpan (UnhelpfulSpan _) = "??-??" 
+shortShowSpan sp@(RealSrcSpan _) 
+  = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
+      
+shortShowLoc :: SrcLoc -> String
+shortShowLoc (UnhelpfulLoc _) = "??"
+shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
 
 class SourceInfo stage 
    => RangeInfo stage where
@@ -291,24 +308,24 @@ data SourceInfoTrf f st1 st2 = SourceInfoTrf { trfSpanInfo :: SpanInfo st1 -> f 
 instance SourceInfoTraversal e => SourceInfoTraversal (Ann e) where
   sourceInfoTraverse trf (Ann (NodeInfo sema src) e) 
     = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> sourceInfoTraverse trf e
-  sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e) 
-    = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> (desc *> sourceInfoTraverseUp trf desc asc e <* asc)
   sourceInfoTraverseDown trf desc asc (Ann (NodeInfo sema src) e) 
-    = flip Ann <$> (desc *> sourceInfoTraverseDown trf desc asc e <* asc) <*> (NodeInfo sema <$> trfSpanInfo trf src)
+    = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> (desc *> sourceInfoTraverseDown trf desc asc e <* asc)
+  sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e) 
+    = flip Ann <$> (desc *> sourceInfoTraverseUp trf desc asc e <* asc) <*> (NodeInfo sema <$> trfSpanInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnList e) where
   sourceInfoTraverse trf (AnnList (NodeInfo sema src) e) 
     = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> mapM (sourceInfoTraverse trf) e
-  sourceInfoTraverseUp trf desc asc (AnnList (NodeInfo sema src) e) 
-    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc)
   sourceInfoTraverseDown trf desc asc (AnnList (NodeInfo sema src) e) 
-    = flip AnnList <$> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
+    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc)
+  sourceInfoTraverseUp trf desc asc (AnnList (NodeInfo sema src) e) 
+    = flip AnnList <$> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnMaybe e) where
   sourceInfoTraverse trf (AnnMaybe (NodeInfo sema src) e) 
     = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> sequence (fmap (sourceInfoTraverse trf) e)
-  sourceInfoTraverseUp trf desc asc (AnnMaybe (NodeInfo sema src) e) 
-    = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> (desc *> sequence (fmap (sourceInfoTraverseUp trf desc asc) e) <* asc)
   sourceInfoTraverseDown trf desc asc (AnnMaybe (NodeInfo sema src) e) 
-    = flip AnnMaybe <$> (desc *> sequence (fmap (sourceInfoTraverseDown trf desc asc) e) <* asc) <*> (NodeInfo sema <$> trfOptionalInfo trf src)
+    = AnnMaybe <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> (desc *> sequence (fmap (sourceInfoTraverseDown trf desc asc) e) <* asc)
+  sourceInfoTraverseUp trf desc asc (AnnMaybe (NodeInfo sema src) e) 
+    = flip AnnMaybe <$> (desc *> sequence (fmap (sourceInfoTraverseUp trf desc asc) e) <* asc) <*> (NodeInfo sema <$> trfOptionalInfo trf src)
 

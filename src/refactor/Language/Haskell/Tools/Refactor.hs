@@ -38,7 +38,6 @@ import GHC.Paths ( libdir )
 import Data.List
 import Data.List.Split
 import GHC.Generics hiding (moduleName)
-import Data.StructuralTraversal
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Typeable
@@ -221,6 +220,8 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ srcInfoDebug cutUp
+    liftIO $ putStrLn $ show $ getLocIndices cutUp
+    liftIO $ putStrLn $ show $ mapLocIndices (fromJust $ ms_hspp_buf $ pm_mod_summary p) (getLocIndices cutUp)
     liftIO $ putStrLn "=========== sourced:"
     let sourced = rangeToSource (fromJust $ ms_hspp_buf $ pm_mod_summary p) cutUp
     liftIO $ putStrLn $ srcInfoDebug sourced

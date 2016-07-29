@@ -89,5 +89,5 @@ instance Show (OptionalInfo RngTemplateStage) where
   show RangeTemplateOpt{..} = "«?" ++ show _rngTmpOptBefore ++ " " ++ show _rngTmpOptAfter ++ "?»"
                        
 instance Show RangeTemplateElem where
-  show (RangeElem sp) = show sp
+  show (RangeElem sp) = shortShowSpan (RealSrcSpan sp)
   show RangeChildElem = "«.»"

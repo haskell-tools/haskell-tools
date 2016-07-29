@@ -12,10 +12,11 @@ import Data.Data
 import Data.List
 import Data.Maybe
 import Control.Reference hiding (element)
-import Data.StructuralTraversal
 import Control.Monad.State
 import SrcLoc
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
+
+import Debug.Trace
 
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
@@ -32,10 +33,11 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         asc  = modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
-        trf :: HasRange (x RangeStage) => ([SrcSpan] -> x RangeStage -> x RngTemplateStage) -> x RangeStage -> State [[SrcSpan]] (x RngTemplateStage)
+        trf :: (HasRange (x RangeStage), HasRange (x RngTemplateStage)) => ([SrcSpan] -> x RangeStage -> x RngTemplateStage) -> x RangeStage -> State [[SrcSpan]] (x RngTemplateStage)
         trf f ni = do (below : top : xs) <- get
-                      put ([] : (top ++ [ foldl1 combineSrcSpans (getRange ni : below) ]) : xs)
-                      return $ f below ni
+                      let res = f below ni
+                      put ([] : (top ++ [ getRange res ]) : xs)
+                      return res
 
 -- | Modifies ranges to contain their children
 fixRanges :: SourceInfoTraversal node 
@@ -46,10 +48,12 @@ fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToCon
         desc = modify ([]:)
         asc  = modify tail
         
-        trf :: HasRange (x RangeStage) => ([SrcSpan] -> x RangeStage -> x RangeStage) -> x RangeStage -> State [[SrcSpan]] (x RangeStage)
+        trf :: (HasRange (x RangeStage), HasRange (x RngTemplateStage)) => ([SrcSpan] -> x RangeStage -> x RangeStage) -> x RangeStage -> State [[SrcSpan]] (x RangeStage)
         trf f ni = do (below : top : xs) <- get
-                      put ([] : (top ++ [ foldl1 combineSrcSpans (getRange ni : below) ]) : xs)
-                      return (f below ni)
+                      let res = f below ni
+                      --trace ("\n### ni: " ++ show ni ++ "\nbelow:" ++ show below ++ "\ntotop:" ++ show (foldl1 combineSrcSpans (getRange ni : below)) ++ "\ncreated: " ++ show ((f below ni)))
+                      put ([] : (top ++ [ getRange res ]) : xs)
+                      return res
 
 -- | Expand a simple node to contain its children
 expandToContain :: [SrcSpan] -> SpanInfo RangeStage -> SpanInfo RangeStage

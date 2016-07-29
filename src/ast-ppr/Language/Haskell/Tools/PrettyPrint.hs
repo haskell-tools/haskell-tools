@@ -19,7 +19,6 @@ import Control.Reference
 import Data.Maybe
 import Data.List.Split
 import Data.Foldable
-import Data.StructuralTraversal
 import Data.Sequence hiding (null, replicate)
 import Language.Haskell.Tools.AST
 

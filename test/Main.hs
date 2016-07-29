@@ -281,7 +281,7 @@ makeWrongExtractBindingTest :: (String, String, String) -> Test
 makeWrongExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
   = TestLabel mod $ TestCase $ checkTransformFails (extractBinding' rng newName) rootDir mod
 
-checkCorrectlyTransformed :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
+checkCorrectlyTransformed :: (Ann AST.Module IdDom SrcTemplateStage -> Refactor IdDom (Ann AST.Module IdDom SrcTemplateStage)) -> String -> String -> IO ()
 checkCorrectlyTransformed transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ "_res.hs") ReadMode
@@ -292,7 +292,7 @@ checkCorrectlyTransformed transform workingDir moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings transformed)
        
-checkTransformFails :: (Ann AST.Module TemplateWithTypes -> Refactor GHC.Id (Ann AST.Module TemplateWithTypes)) -> String -> String -> IO ()
+checkTransformFails :: (Ann AST.Module IdDom SrcTemplateStage -> Refactor IdDom (Ann AST.Module IdDom SrcTemplateStage)) -> String -> String -> IO ()
 checkTransformFails transform workingDir moduleName
   = do -- need to use binary or line endings will be translated
        transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
@@ -328,13 +328,13 @@ checkCorrectlyPrinted workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
               
-parseAST :: ModSummary -> Ghc (Ann AST.Module (NodeInfo (SemanticInfo RdrName) SourceTemplate))
+parseAST :: ModSummary -> Ghc (Ann AST.Module (Dom RdrName) SrcTemplateStage)
 parseAST modSum = do
   p <- parseModule modSum
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule $ pm_parsed_source p)
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) $ pm_parsed_source p)
                                  
 parse :: String -> String -> Ghc ModSummary
 parse workingDir moduleName = do

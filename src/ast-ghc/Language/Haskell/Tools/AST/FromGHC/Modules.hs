@@ -15,7 +15,6 @@ import Data.IORef
 import Data.Data
 import Data.Generics.Uniplate.Operations
 import Data.Generics.Uniplate.Data
-import Data.StructuralTraversal
 import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.Writer

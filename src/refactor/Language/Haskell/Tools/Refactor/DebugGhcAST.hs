@@ -7,6 +7,7 @@ module Language.Haskell.Tools.Refactor.DebugGhcAST where
 
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST (shortShowSpan)
 
 import GHC
 import HsSyn

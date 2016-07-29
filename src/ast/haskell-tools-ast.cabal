@@ -26,6 +26,7 @@ library
                      , Language.Haskell.Tools.AST.Literals
                      , Language.Haskell.Tools.AST.Base
                      , Language.Haskell.Tools.AST.Ann
+                     , Language.Haskell.Tools.AST.SemaInfoTypes
                    
                      , Language.Haskell.Tools.AST.Instances
                      , Language.Haskell.Tools.AST.Instances.Eq
@@ -44,4 +45,6 @@ library
                      , ghc                  >=8.0   && <8.1
                      , references           >=0.3.2 && <1.0
                      , uniplate             >=1.6   && <2.0
+                     , mtl                  >=2.2   && <3.0
+                     , template-haskell     >=2.11  && <3.0
   default-language:    Haskell2010

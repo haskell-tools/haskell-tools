@@ -5,7 +5,6 @@ module Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate where
 
 import SrcLoc
 import StringBuffer
-import Data.StructuralTraversal
 import Data.Map
 import Data.Monoid
 import Control.Reference
@@ -52,14 +51,16 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
 applyFragments :: SourceInfoTraversal node => [String] -> Ann node dom RngTemplateStage
                                                        -> Ann node dom SrcTemplateStage
 applyFragments srcs = flip evalState srcs
-  . sourceInfoTraverse (SourceInfoTrf
+  . sourceInfoTraverseDown (SourceInfoTrf
      (\ni -> do template <- mapM getTextFor (ni ^. rngTemplateNodeElems)
                 return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) template)
      (\(RangeTemplateList rng bef aft sep indented seps) 
          -> do (own, rest) <- splitAt (length seps) <$> get 
                put rest
                return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented own))
-     (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft)))
-  where getTextFor (RangeElem sp) = do (src:rest) <- get
+     (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft))) 
+     (return ()) (return ())
+  where getTextFor RangeChildElem = return ChildElem
+        getTextFor (RangeElem sp) = do (src:rest) <- get
                                        put rest
                                        return (TextElem src)

@@ -20,15 +20,6 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 srcInfoDebug :: TreeDebug e dom st => e dom st -> String
 srcInfoDebug = treeDebug' 0
-
-shortShowSpan :: SrcSpan -> String
-shortShowSpan (UnhelpfulSpan _) = "??-??" 
-shortShowSpan sp@(RealSrcSpan _) 
-  = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
-      
-shortShowLoc :: SrcLoc -> String
-shortShowLoc (UnhelpfulLoc _) = "??"
-shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
       
 class (SourceInfo st, Domain dom, Show (e dom st))
         => TreeDebug e dom st where

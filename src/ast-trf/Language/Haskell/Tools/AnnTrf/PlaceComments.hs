@@ -17,7 +17,6 @@ import Data.Generics.Uniplate.Data
 import Control.Reference hiding (element)
 import Control.Monad.Writer
 import Control.Monad.State
-import Data.StructuralTraversal
 
 import SrcLoc
 import ApiAnnotation

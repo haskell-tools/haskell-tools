@@ -7,7 +7,6 @@
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
 
 import Control.Monad.State
-import Data.StructuralTraversal
 import Language.Haskell.Tools.AST
 
 -- | A rose tree containing additional node information         
