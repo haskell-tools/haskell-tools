@@ -5,6 +5,7 @@
            , ConstraintKinds
            , TypeFamilies
            , FlexibleContexts
+           , ViewPatterns
            #-}
 module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
@@ -16,6 +17,7 @@ import SrcLoc
 import Outputable
 
 import Control.Reference hiding (element)
+import qualified Control.Reference as Ref
 import Control.Monad.State
 import Control.Monad.Trans.Except
 import Data.Data
@@ -49,15 +51,16 @@ renameDefinition toChange newName mod
     changeName toChange str elem 
       = if | fmap getName (semanticsName (elem ^. semantics)) == Just toChange
                && semanticsDefining (elem ^. semantics) == False
-               && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (elem ^. semantics) ^? traversal&traversal)
+               && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (elem ^. semantics) ^? Ref.element 0 & traversal)
              -> lift $ refactError "The definition clashes with an existing one" -- name clash with an external definition
            | fmap getName (semanticsName (elem ^. semantics)) == Just toChange
              -> do modify (|| semanticsDefining (elem ^. semantics))
                    return $ element & unqualifiedName .= mkNamePart str $ elem
            | let namesInScope = semanticsScope (elem ^. semantics)
-                 actualName = maybe toChange getName (semanticsName (elem ^. semantics))
-              in str == occNameString (getOccName actualName) && sameNamespace toChange actualName 
-                   && conflicts toChange actualName namesInScope
+              in case semanticsName (elem ^. semantics) of 
+                   Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChange exprName
+                                                   && conflicts toChange exprName namesInScope
+                   Nothing -> False -- ambiguous names
              -> lift $ refactError "The definition clashes with an existing one" -- local name clash
            | otherwise -> return elem
 
