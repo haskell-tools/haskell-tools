@@ -37,6 +37,12 @@ printRose' :: RoseTree SrcTemplateStage -> PPState (Seq Char)
 -- warning: the length of the file should not exceed maxbound::Int
 printRose' (RoseTree (RoseSpan (SourceTemplateNode _ elems)) children) 
   = printTemplateElems elems children
+  where printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+        printTemplateElems (TextElem txt : rest) children = putString txt >+< printTemplateElems rest children
+        printTemplateElems (ChildElem : rest) (child : children) = printRose' child >+< printTemplateElems rest children
+        printTemplateElems [] [] = return empty
+        printTemplateElems _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
+        printTemplateElems [] _ = error $ "Not all children are used to pretty printing. (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
   
 printRose' (RoseTree (RoseList (SourceTemplateList {})) []) = return empty
 printRose' (RoseTree (RoseList (SourceTemplateList _ bef aft defSep indented [])) children) 
@@ -48,12 +54,7 @@ printRose' (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty
 printRose' (RoseTree (RoseOptional (SourceTemplateOpt _ bef aft)) [child]) = putString bef >+< printRose' child >+< putString aft
 printRose' (RoseTree (RoseOptional _) _) = error "More than one child element in an optional node."
     
-printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printTemplateElems (TextElem txt : rest) children = putString txt >+< printTemplateElems rest children
-printTemplateElems (ChildElem : rest) (child : children) = printRose' child >+< printTemplateElems rest children
-printTemplateElems [] [] = return empty
-printTemplateElems _ [] = error "More child elem in template than actual children."
-printTemplateElems [] _ = error "Not all children are used to pretty printing."
+
 
 putString :: String -> PPState (Seq Char)
 putString s = do modify $ advanceStr s

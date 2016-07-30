@@ -62,4 +62,4 @@ mkSimpleName n = mkAnn (child <> child)
                        (SimpleName emptyList (mkAnn (fromString n) (UnqualName n)))
 
 mkModuleName :: String -> Ann ModuleName dom SrcTemplateStage
-mkModuleName = mkAnn child . ModuleName
+mkModuleName s = mkAnn (fromString s) (ModuleName s)
