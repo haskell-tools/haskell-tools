@@ -35,17 +35,20 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Debug.Trace
 
+-- | Creates a semantic information for a name
 createNameInfo :: n -> Trf (NameInfo n)
 createNameInfo name = do locals <- asks localsInScope
                          isDefining <- asks defining
                          return (NameInfo locals isDefining name)
 
 
+-- | Creates a semantic information for an ambiguous name (caused by field disambiguation for example)
 createAmbigousNameInfo :: RdrName -> SrcSpan -> Trf (NameInfo n)
 createAmbigousNameInfo name span = do locals <- asks localsInScope
                                       isDefining <- asks defining
                                       return (AmbiguousNameInfo locals isDefining name span)
 
+-- | Creates a semantic information for an implicit name
 createImplicitNameInfo :: String -> Trf (NameInfo n)
 createImplicitNameInfo name = do locals <- asks localsInScope
                                  isDefining <- asks defining

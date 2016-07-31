@@ -33,27 +33,39 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.Exprs as AST
 
 -- * Annotation type resolution
 
+-- | A stage in which the nodes are marked with the ranges in the source
+-- files which contain the source code of the given AST element.
 data RangeStage
 
 deriving instance Data RangeStage
 
+-- | A stage in which the nodes are still marked with ranges, but these
+-- ranges are normalized. Optional and list elements also have ranges
+-- in that state.
 data NormRangeStage
 
 deriving instance Data NormRangeStage
 
+-- | A stage in which AST elements are marked with templates. These
+-- templates are hierarchical, and contain the places of the children
+-- elements of the node.
 data  RngTemplateStage
-  
+
 deriving instance Data RngTemplateStage
 
 -- | A stage where the annotation controls how the original source code can be
 -- retrieved from the AST. A source template is assigned to each node.
--- It has holes where the content of an other node should be printed.
+-- It has holes where the content of an other node should be printed and
+-- ranges for the source code of the node.
 data SrcTemplateStage
 
 deriving instance Data SrcTemplateStage
 
+-- | With this domain, semantic information can be parameterized. In practice
+-- it is only used if the compilation cannot proceed past the type checking phase.
 data Dom name
 
+-- Semantic information that contains types. Only normal names remain in this domain.
 data IdDom
 
 deriving instance (Data name, Typeable name) => Data (Dom name)
@@ -103,6 +115,11 @@ class ( Typeable d
       , Show (SemanticInfo' d SameInfoModuleCls)
       ) => Domain d where
 
+-- | A semantic domain for the AST. The semantic domain maps semantic information for
+-- the different types of nodes in the AST. The kind of semantic domain for an AST
+-- depends on which stages of the compilation did it pass. However after transforming
+-- the GHC representation to our AST, the domain keeps the same.
+-- The domain is not applied to the AST elements that are generated while refactoring.
 instance ( Typeable d
          , Data d
          , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
@@ -204,15 +221,19 @@ instance Show (ListInfo NormRangeStage) where
 instance Show (OptionalInfo NormRangeStage) where
   show sp = shortShowSpan (_normOptSpan sp)
 
+-- | A short form of showing a range, without file name, for debugging purposes.
 shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??" 
 shortShowSpan sp@(RealSrcSpan _) 
   = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
-      
+
+-- | A short form of showing a range, without file name, for debugging purposes.
 shortShowLoc :: SrcLoc -> String
 shortShowLoc (UnhelpfulLoc _) = "??"
 shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol loc)
 
+-- | A class for marking a source information stage. All programs, regardless of
+-- correct Haskell programs or not, must go through these stages to be refactored.
 class SourceInfo stage 
    => RangeInfo stage where
   nodeSpan :: Simple Lens (SpanInfo stage) GHC.SrcSpan
@@ -300,6 +321,7 @@ instance SourceInfo stage => HasRange (AnnList elem dom stage) where
 instance SourceInfo stage => HasRange (AnnMaybe elem dom stage) where
   getRange (AnnMaybe a _) = getRange (a ^. sourceInfo)
 
+-- | A class for changing semantic information throught the AST.
 class ApplySemaChange cls where 
   appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
 

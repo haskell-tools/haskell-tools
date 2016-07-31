@@ -67,6 +67,7 @@ srcTmpOptBefore = lens _srcTmpOptBefore (\v s -> s { _srcTmpOptBefore = v })
 srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
 srcTmpOptAfter = lens _srcTmpOptAfter (\v s -> s { _srcTmpOptAfter = v })
       
+-- | An element of a source template for a singleton AST node.
 data SourceTemplateElem
   = TextElem String -- ^ Source text belonging to the current node
   | ChildElem -- ^ Placeholder for the next children of the node

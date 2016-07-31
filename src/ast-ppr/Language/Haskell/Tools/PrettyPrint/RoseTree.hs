@@ -14,6 +14,7 @@ data RoseTree st = RoseTree { roseInfo :: RoseSourceInfo st
                             , roseChildren :: [RoseTree st]
                             }
 
+-- | Heterogenous representation of source information, for pretty printing
 data RoseSourceInfo st
   = RoseSpan (SpanInfo st)
   | RoseList (ListInfo st)

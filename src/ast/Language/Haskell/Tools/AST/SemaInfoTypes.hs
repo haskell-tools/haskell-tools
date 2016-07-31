@@ -91,6 +91,7 @@ makeReferences ''CNameInfo
 makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
 
+-- | Infos that may have a name that can be extracted
 class HasNameInfo si where
   semanticsName :: si -> Maybe Name
 
@@ -100,6 +101,7 @@ instance HasNameInfo (NameInfo Name) where
 instance HasNameInfo CNameInfo where
   semanticsName = fmap idName . (^? cnameInfo)
 
+-- | Infos that may have a typed name that can be extracted
 class HasIdInfo si where
   semanticsId :: si -> Maybe Id
 
@@ -109,6 +111,7 @@ instance HasIdInfo (NameInfo Id) where
 instance HasIdInfo CNameInfo where
   semanticsId = (^? cnameInfo)
 
+-- | Infos that contain the names that are available in theirs scope
 class HasScopeInfo si where
   semanticsScope :: si -> [[Name]]
 
@@ -121,6 +124,7 @@ instance HasScopeInfo CNameInfo where
 instance HasScopeInfo ScopeInfo where
   semanticsScope = (^. exprScopedLocals)
 
+-- | Infos that store if they were used to define a name
 class HasDefiningInfo si where
   semanticsDefining :: si -> Bool
 

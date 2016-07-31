@@ -66,8 +66,9 @@ rngTmpOptBefore = lens _rngTmpOptBefore (\v s -> s { _rngTmpOptBefore = v })
 rngTmpOptAfter :: Simple Lens (OptionalInfo RngTemplateStage) String
 rngTmpOptAfter = lens _rngTmpOptAfter (\v s -> s { _rngTmpOptAfter = v })
 
-data RangeTemplateElem = RangeElem RealSrcSpan
-                       | RangeChildElem
+-- | An element of a range template for a singleton AST node.
+data RangeTemplateElem = RangeElem RealSrcSpan -- ^ A range for the source code of the element
+                       | RangeChildElem        -- ^ The place for a child element
                        deriving Data
 
 getRangeElemSpan :: RangeTemplateElem -> Maybe RealSrcSpan
