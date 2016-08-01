@@ -1,5 +1,5 @@
 name:                haskell-tools-refactor
-version:             0.1.2.0
+version:             0.1.3.0
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -37,11 +37,11 @@ library
                      , time                      >=1.5 && <2.0
                      , filepath                  >=1.4 && <2.0
                      , either                    >=4.0 && <5.0
-                     , haskell-tools-ast         >=0.1.2 && <0.2
-                     , haskell-tools-ast-fromghc >=0.1.2 && <0.2
-                     , haskell-tools-ast-gen     >=0.1.2 && <0.2
-                     , haskell-tools-ast-trf     >=0.1.2 && <0.2
-                     , haskell-tools-prettyprint >=0.1.2 && <0.2
+                     , haskell-tools-ast         >=0.1.3 && <0.2
+                     , haskell-tools-ast-fromghc >=0.1.3 && <0.2
+                     , haskell-tools-ast-gen     >=0.1.3 && <0.2
+                     , haskell-tools-ast-trf     >=0.1.3 && <0.2
+                     , haskell-tools-prettyprint >=0.1.3 && <0.2
                      , template-haskell          >=2.0 && <3.0
   default-language:    Haskell2010
   
