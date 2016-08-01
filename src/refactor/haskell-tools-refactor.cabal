@@ -42,7 +42,6 @@ library
                      , haskell-tools-ast-gen     >=0.1.2 && <0.2
                      , haskell-tools-ast-trf     >=0.1.2 && <0.2
                      , haskell-tools-prettyprint >=0.1.2 && <0.2
-                     , structural-traversal      >=0.1 && <0.2
                      , template-haskell          >=2.0 && <3.0
   default-language:    Haskell2010
   

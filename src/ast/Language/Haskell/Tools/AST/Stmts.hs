@@ -8,31 +8,31 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.Exprs (Expr, Cmd)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Binds (LocalBind)
 
 -- | Normal monadic statements
-data Stmt' expr a
-  = BindStmt { _stmtPattern :: Ann Pattern a
-             , _stmtExpr :: Ann expr a
+data Stmt' expr dom stage
+  = BindStmt { _stmtPattern :: Ann Pattern dom stage
+             , _stmtExpr :: Ann expr dom stage
              } -- ^ Binding statement (@ x <- action @)
-  | ExprStmt { _stmtExpr :: Ann expr a 
+  | ExprStmt { _stmtExpr :: Ann expr dom stage
              } -- ^ Non-binding statement (@ action @)
-  | LetStmt  { _stmtBinds :: AnnList LocalBind a 
+  | LetStmt  { _stmtBinds :: AnnList LocalBind dom stage
              } -- ^ Let statement (@ let x = 3; y = 4 @)
-  | RecStmt  { _cmdStmtBinds :: AnnList (Stmt' expr) a 
+  | RecStmt  { _cmdStmtBinds :: AnnList (Stmt' expr) dom stage
              } -- ^ A recursive binding statement with (@ rec b <- f a c; c <- f b a @)
 type Stmt = Stmt' Expr
 
 -- | Body of a list comprehension: (@ | x <- [1..10] @)
-data ListCompBody a
-  = ListCompBody { _compStmts :: AnnList CompStmt a 
+data ListCompBody dom stage
+  = ListCompBody { _compStmts :: AnnList CompStmt dom stage
                  } 
          
 -- | List comprehension statement
-data CompStmt a
-  = CompStmt   { _compStmt :: Ann Stmt a 
+data CompStmt dom stage
+  = CompStmt   { _compStmt :: Ann Stmt dom stage
                } -- ^ Normal monadic statement of a list comprehension
-  | ThenStmt   { _thenExpr :: Ann Expr a 
-               , _byExpr :: AnnMaybe Expr a
+  | ThenStmt   { _thenExpr :: Ann Expr dom stage
+               , _byExpr :: AnnMaybe Expr dom stage
                } -- ^ Then statements by @TransformListComp@ (@ then sortWith by (x + y) @)
-  | GroupStmt  { _byExpr :: AnnMaybe Expr a
-               , _usingExpr :: AnnMaybe Expr a
+  | GroupStmt  { _byExpr :: AnnMaybe Expr dom stage
+               , _usingExpr :: AnnMaybe Expr dom stage
                } -- ^ Grouping statements by @TransformListComp@ (@ then group by (x + y) using groupWith @) 
                  -- Note: either byExpr or usingExpr must have a value

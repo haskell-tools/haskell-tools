@@ -1,7 +1,9 @@
 -- | Generation of pattern-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkVarPat@ creates the annotated version of the @VarPat@ AST constructor.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings 
+           , TypeFamilies
+           #-}
 module Language.Haskell.Tools.AST.Gen.Patterns where
 
 import qualified Name as GHC
@@ -15,8 +17,8 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkVarPat :: TemplateAnnot a => Ann Name a -> Ann Pattern a
+mkVarPat :: Ann Name dom SrcTemplateStage -> Ann Pattern dom SrcTemplateStage
 mkVarPat = mkAnn child . VarPat
 
-mkAppPat :: TemplateAnnot a => Ann Name a -> [Ann Pattern a] -> Ann Pattern a
+mkAppPat :: Ann Name dom SrcTemplateStage -> [Ann Pattern dom SrcTemplateStage] -> Ann Pattern dom SrcTemplateStage
 mkAppPat n pat = mkAnn (child <> child) $ AppPat n (mkAnnList (listSepBefore " " " ") pat)

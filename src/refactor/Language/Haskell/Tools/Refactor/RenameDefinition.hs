@@ -1,16 +1,23 @@
 {-# LANGUAGE ScopedTypeVariables
            , LambdaCase
            , MultiWayIf
+           , TypeApplications
+           , ConstraintKinds
+           , TypeFamilies
+           , FlexibleContexts
+           , ViewPatterns
            #-}
-module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition, renameDefinition') where
+module Language.Haskell.Tools.Refactor.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
 import Name hiding (Name)
 import GHC (Ghc, TyThing(..), lookupName)
 import qualified GHC
 import OccName
 import SrcLoc
+import Outputable
 
 import Control.Reference hiding (element)
+import qualified Control.Reference as Ref
 import Control.Monad.State
 import Control.Monad.Trans.Except
 import Data.Data
@@ -23,13 +30,16 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace
 
-renameDefinition' :: forall n . (NamedThing n, Data n) => RealSrcSpan -> String -> Ann Module (STWithNames n) -> RefactoredModule n
+type DomainRenameDefinition dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), Data (SemanticInfo' dom SameInfoNameCls)
+                                  , HasScopeInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls) )
+
+renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom
 renameDefinition' sp str mod
-  = case (getNodeContaining sp mod :: Maybe (Ann SimpleName (STWithNames n))) >>= (fmap getName . (^? semantics&nameInfo)) of 
+  = case (getNodeContaining sp mod :: Maybe (Ann SimpleName dom SrcTemplateStage)) >>= (fmap getName . (semanticsName =<<) . (^? semantics)) of 
       Just n -> renameDefinition n str mod
       Nothing -> refactError "No name is selected"
 
-renameDefinition :: forall n . (NamedThing n, Data n) => GHC.Name -> String -> Ann Module (STWithNames n) -> RefactoredModule n
+renameDefinition :: DomainRenameDefinition dom => GHC.Name -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom
 renameDefinition toChange newName mod 
     = do nameCls <- classifyName toChange
          (res,defFound) <- runStateT (biplateRef !~ changeName toChange newName $ mod) False
@@ -37,19 +47,20 @@ renameDefinition toChange newName mod
             | not defFound -> refactError "The definition to rename was not found"
             | otherwise -> return res
   where     
-    changeName :: GHC.Name -> String -> Ann SimpleName (STWithNames n) -> StateT Bool (Refactor n) (Ann SimpleName (STWithNames n))
+    changeName :: DomainRenameDefinition dom => GHC.Name -> String -> Ann SimpleName dom SrcTemplateStage -> StateT Bool (Refactor dom) (Ann SimpleName dom SrcTemplateStage)
     changeName toChange str elem 
-      = if | fmap getName (elem ^? semantics&nameInfo) == Just toChange
-               && (elem ^? semantics&isDefined) == Just False
-               && any ((str ==) . occNameString . getOccName) (maybe [] head (elem ^? semantics & scopedLocals))
+      = if | fmap getName (semanticsName (elem ^. semantics)) == Just toChange
+               && semanticsDefining (elem ^. semantics) == False
+               && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (elem ^. semantics) ^? Ref.element 0 & traversal)
              -> lift $ refactError "The definition clashes with an existing one" -- name clash with an external definition
-           | fmap getName (elem ^? semantics&nameInfo) == Just toChange
-             -> do modify (|| fromMaybe False (elem ^? semantics&isDefined)) 
+           | fmap getName (semanticsName (elem ^. semantics)) == Just toChange
+             -> do modify (|| semanticsDefining (elem ^. semantics))
                    return $ element & unqualifiedName .= mkNamePart str $ elem
-           | let namesInScope = fromMaybe [] (elem ^? semantics & scopedLocals)
-                 actualName = maybe toChange getName (elem ^? semantics & nameInfo)
-              in str == occNameString (getOccName actualName) && sameNamespace toChange actualName 
-                   && conflicts toChange actualName namesInScope
+           | let namesInScope = semanticsScope (elem ^. semantics)
+              in case semanticsName (elem ^. semantics) of 
+                   Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChange exprName
+                                                   && conflicts toChange exprName namesInScope
+                   Nothing -> False -- ambiguous names
              -> lift $ refactError "The definition clashes with an existing one" -- local name clash
            | otherwise -> return elem
 

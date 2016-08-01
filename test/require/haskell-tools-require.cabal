@@ -21,7 +21,6 @@ library
                      , containers           >=0.5   && <0.6
                      , references           >=0.3.2 && <1.0
                      , uniplate             >=1.6   && <2.0
-                     , structural-traversal >=0.1   && <0.2
                      , bytestring           >=0.10  && <1.0
                      , safe                 >=0.3   && <1.0
                      , uniplate             >=1.6   && <2.0

@@ -3,10 +3,14 @@
            , FlexibleInstances
            , ScopedTypeVariables
            , ViewPatterns
+           , LambdaCase
            #-}
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
 import Data.List
+import qualified Data.Map as Map
+import Data.Generics.Uniplate.Operations
+import Data.Generics.Uniplate.Data
 
 import GHC
 import Bag
@@ -15,9 +19,15 @@ import OccName
 import Name
 import Outputable
 import SrcLoc
+import ConLike
+import Id
+import PatSyn
+import Type
+import TysWiredIn
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
+  getFromNameUsing :: Applicative f => (Name -> Ghc (f Id)) -> Name -> Ghc (f name)
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
   nameFromId :: Id -> name
   unpackPostRn :: RdrName -> PostRn name name -> name
@@ -26,6 +36,7 @@ class OutputableBndr name => GHCName name where
 
 instance GHCName RdrName where
   rdrName = id
+  getFromNameUsing _ n = return $ pure (nameRdrName n)
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
   nameFromId = nameRdrName . getName
   unpackPostRn rdr _ = rdr
@@ -37,6 +48,7 @@ occName = rdrNameOcc . rdrName
     
 instance GHCName GHC.Name where
   rdrName = nameRdrName
+  getFromNameUsing f n = fmap nameFromId <$> f n
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
   nameFromId = getName
   unpackPostRn _ a = a
@@ -48,6 +60,32 @@ getFieldOccName (L l (FieldOcc (L _ rdr) postRn)) = L l (unpackPostRn rdr postRn
 
 getFieldOccName' :: GHCName n => FieldOcc n -> n
 getFieldOccName' (FieldOcc (L _ rdr) postRn) = unpackPostRn rdr postRn
+
+
+
+-- | Loading ids for top-level ghc names
+getTopLevelId :: GHC.Name -> Ghc (Maybe GHC.Id)
+getTopLevelId name = 
+    lookupName name >>= \case
+      Just (AnId id) -> return (Just id)
+      Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
+      Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (createPatSynType ps)
+      Just (ATyCon tc) -> return $ Just $ mkVanillaGlobal name (tyConKind tc)
+      Nothing -> return Nothing
+  where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
+
+-- | Loading ids for local ghc names
+getLocalId :: LHsBinds Id -> GHC.Name -> Ghc (Maybe GHC.Id)
+getLocalId bnds name = case Map.lookup name mapping of
+    Just id -> return (Just id)
+    Nothing | isTyVarName name
+               -- unit type is for cases we don't know the kind
+            -> return $ Just $ mkVanillaGlobal name unitTy
+    Nothing -> return Nothing
+  where mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
+        extractTypes :: LHsBinds Id -> [Id]
+        extractTypes = concatMap universeBi . bagToList
+
 
 
 class HsHasName a where

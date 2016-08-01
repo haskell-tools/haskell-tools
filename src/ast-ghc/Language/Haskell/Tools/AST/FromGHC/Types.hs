@@ -33,10 +33,10 @@ import Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type r)
-trfType = trfLoc trfType'
+trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type (Dom r) RangeStage)
+trfType = trfLocNoSema trfType'
 
-trfType' :: TransformName n r => HsType n -> Trf (AST.Type r)
+trfType' :: TransformName n r => HsType n -> Trf (AST.Type (Dom r) RangeStage)
 trfType' = trfType'' . cleanHsType where
   trfType'' (HsForAllTy [] typ) = trfType' (unLoc typ)
   trfType'' (HsForAllTy bndrs typ) = AST.TyForall <$> defineTypeVars (trfBindings bndrs) 
@@ -45,7 +45,7 @@ trfType' = trfType'' . cleanHsType where
                                            <*> trfType typ
   trfType'' (HsTyVar name) = AST.TyVar <$> transformingPossibleVar name (trfName name)
   trfType'' (HsAppsTy apps) | Just (head, args) <- getAppsTyHead_maybe apps 
-    = foldl (\core t -> AST.TyApp <$> annLoc (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
+    = foldl (\core t -> AST.TyApp <$> annLocNoSema (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
   trfType'' (HsAppTy t1 t2) = AST.TyApp <$> trfType t1 <*> trfType t2
   trfType'' (HsFunTy t1 t2) = AST.TyFun <$> trfType t1 <*> trfType t2
   trfType'' (HsListTy typ) = AST.TyList <$> trfType typ
@@ -61,46 +61,46 @@ trfType' = trfType'' . cleanHsType where
   trfType'' (HsBangTy (HsSrcBang _ SrcNoUnpack _) typ) = AST.TyNoUnpack <$> trfType typ
   trfType'' (HsBangTy (HsSrcBang _ _ SrcStrict) typ) = AST.TyBang <$> trfType typ
   trfType'' (HsBangTy (HsSrcBang _ _ SrcLazy) typ) = AST.TyLazy <$> trfType typ
-  trfType'' pt@(HsExplicitListTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
-  trfType'' pt@(HsExplicitTupleTy {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
-  trfType'' pt@(HsTyLit {}) = AST.TyPromoted <$> annCont (trfPromoted' trfType' pt) 
+  trfType'' pt@(HsExplicitListTy {}) = AST.TyPromoted <$> annContNoSema (trfPromoted' trfType' pt) 
+  trfType'' pt@(HsExplicitTupleTy {}) = AST.TyPromoted <$> annContNoSema (trfPromoted' trfType' pt) 
+  trfType'' pt@(HsTyLit {}) = AST.TyPromoted <$> annContNoSema (trfPromoted' trfType' pt) 
   trfType'' (HsWildCardTy _) = pure AST.TyWildcard -- TODO: named wildcards
   trfType'' t = error ("Illegal type: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
-trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar r)
+trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnList AST.TyVar (Dom r) RangeStage)
 trfBindings vars = trfAnnList "\n" trfTyVar' vars
   
-trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar r)
-trfTyVar = trfLoc trfTyVar' 
+trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.TyVar (Dom r) RangeStage)
+trfTyVar = trfLocNoSema trfTyVar' 
   
-trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar r)
+trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.TyVar (Dom r) RangeStage)
 trfTyVar' (UserTyVar name) = AST.TyVarDecl <$> typeVarTransform (trfName name)
                                            <*> (nothing " " "" atTheEnd)
 trfTyVar' (KindedTyVar name kind) = AST.TyVarDecl <$> typeVarTransform (trfName name) 
                                                   <*> trfKindSig (Just kind)
   
-trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybe AST.Context r)
+trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybe AST.Context (Dom r) RangeStage)
 trfCtx sp (L l []) = nothing " " "" sp
 trfCtx _ (L l [L _ (HsParTy t)]) 
-  = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                        (AST.ContextMulti <$> trfAnnList ", " trfAssertion' [t])
+  = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                              (AST.ContextMulti <$> trfAnnList ", " trfAssertion' [t])
 trfCtx _ (L l [t]) 
-  = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                        (AST.ContextOne <$> trfAssertion t)
-trfCtx _ (L l ctx) = makeJust <$> annLoc (combineSrcSpans l <$> tokenLoc AnnDarrow) 
-                                         (AST.ContextMulti <$> trfAnnList ", " trfAssertion' ctx) 
+  = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                              (AST.ContextOne <$> trfAssertion t)
+trfCtx _ (L l ctx) = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow) 
+                                               (AST.ContextMulti <$> trfAnnList ", " trfAssertion' ctx) 
   
-trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion r)
-trfAssertion = trfLoc trfAssertion'
+trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.Assertion (Dom r) RangeStage)
+trfAssertion = trfLocNoSema trfAssertion'
 
-trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion r)
+trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.Assertion (Dom r) RangeStage)
 trfAssertion' (cleanHsType -> HsParTy t) 
   = trfAssertion' (unLoc t)
 trfAssertion' (cleanHsType -> HsOpTy left op right) 
   = AST.InfixAssert <$> trfType left <*> trfOperator op <*> trfType right
 trfAssertion' (cleanHsType -> t) = case cleanHsType base of
    HsTyVar name -> AST.ClassAssert <$> trfName name <*> trfAnnList " " trfType' args
-   HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLoc (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
+   HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLocNoSema (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
    t -> error ("Illegal trf assertion: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)

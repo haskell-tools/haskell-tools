@@ -1,7 +1,9 @@
 -- | Generation of expression-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkApp@ creates the annotated version of the @App@ AST constructor.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings 
+           , TypeFamilies 
+           #-}
 module Language.Haskell.Tools.AST.Gen.Exprs where
 
 import qualified Name as GHC
@@ -15,11 +17,11 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkApp :: TemplateAnnot a => Ann Expr a -> Ann Expr a -> Ann Expr a
+mkApp :: Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkApp f e = mkAnn (child <> " " <> child) (App f e)
 
-mkVar :: TemplateAnnot a => Ann Name a -> Ann Expr a
+mkVar :: Ann Name dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkVar = mkAnn child . Var
 
-mkParen :: TemplateAnnot a => Ann Expr a -> Ann Expr a
+mkParen :: Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
 mkParen = mkAnn ("(" <> child <> ")") . Paren

@@ -7,88 +7,87 @@ import Language.Haskell.Tools.AST.Exprs
 import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Decls
 
-data Module a 
-  = Module { _filePragmas :: AnnList FilePragma a
-           , _modHead :: AnnMaybe ModuleHead a
-           , _modImports :: AnnList ImportDecl a
-           , _modDecl :: AnnList Decl a
+data Module dom stage
+  = Module { _filePragmas :: AnnList FilePragma dom stage
+           , _modHead :: AnnMaybe ModuleHead dom stage
+           , _modImports :: AnnList ImportDecl dom stage
+           , _modDecl :: AnnList Decl dom stage
            }
 
 -- | Module declaration with name and (optional) exports
-data ModuleHead a
-  = ModuleHead { _mhName :: Ann SimpleName a
-               , _mhExports :: AnnMaybe ExportSpecList a
-               , _mhPragma :: AnnMaybe ModulePragma a
+data ModuleHead dom stage
+  = ModuleHead { _mhName :: Ann ModuleName dom stage
+               , _mhExports :: AnnMaybe ExportSpecList dom stage
+               , _mhPragma :: AnnMaybe ModulePragma dom stage
                }
 
 -- | A list of export specifications surrounded by parentheses
-data ExportSpecList a
-  = ExportSpecList { _espExports :: AnnList ExportSpec a }
+data ExportSpecList dom stage
+  = ExportSpecList { _espExports :: AnnList ExportSpec dom stage }
   
 -- | Export specifier
-data ExportSpec a
-  = DeclExport { _exportDecl :: Ann IESpec a 
+data ExportSpec dom stage
+  = DeclExport { _exportDecl :: Ann IESpec dom stage
                } -- ^ Export a name and related names
-  | ModuleExport { _exportModuleName :: Ann SimpleName a 
+  | ModuleExport { _exportModuleName :: Ann ModuleName dom stage
                  } -- ^ The export of an imported module (@ module A @)
   
 -- | Marks a name to be imported or exported with related names (subspecifier)
-data IESpec a
-  = IESpec { _ieName :: Ann Name a
-           , _ieSubspec :: AnnMaybe SubSpec a
+data IESpec dom stage
+  = IESpec { _ieName :: Ann Name dom stage
+           , _ieSubspec :: AnnMaybe SubSpec dom stage
            }
   
 -- | Marks how related names will be imported or exported with a given name
-data SubSpec a
+data SubSpec dom stage
   = SubSpecAll -- @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-  | SubSpecList { _essList :: AnnList Name a } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
+  | SubSpecList { _essList :: AnnList Name dom stage } -- @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
            
 -- | Pragmas that must be used before defining the module         
-data FilePragma a
-  = LanguagePragma { _lpPragmas :: AnnList LanguageExtension a 
-                   }  -- ^ LANGUAGE pragma
-  | OptionsPragma {  _opStr :: Ann StringNode a
+data FilePragma dom stage
+  = LanguagePragma { _lpPragmas :: AnnList LanguageExtension dom stage
+                   }  -- ^ LANGUAGE pragmdom stage
+  | OptionsPragma {  _opStr :: Ann StringNode dom stage
                   } -- ^ OPTIONS pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
                         
 -- | Pragmas that must be used after the module head  
-data ModulePragma a
-  = ModuleWarningPragma { _modWarningStr :: AnnList StringNode a 
+data ModulePragma dom stage
+  = ModuleWarningPragma { _modWarningStr :: AnnList StringNode dom stage
                         }  -- ^ a warning pragma attached to the module
-  | ModuleDeprecatedPragma {  _modDeprecatedPragma :: AnnList StringNode a
+  | ModuleDeprecatedPragma {  _modDeprecatedPragma :: AnnList StringNode dom stage
                            } -- ^ a deprecated pragma attached to the module
              
-data LanguageExtension a = LanguageExtension { _langExt :: String }
+data LanguageExtension dom stage = LanguageExtension { _langExt :: String }
 
 -- | An import declaration: @import Module.Name@         
-data ImportDecl a
-  = ImportDecl { _importSource :: AnnMaybe ImportSource a
-               , _importQualified :: AnnMaybe ImportQualified a
-               , _importSafe :: AnnMaybe ImportSafe a
-               , _importPkg :: AnnMaybe StringNode a
-               , _importModule :: Ann SimpleName a
-               , _importAs :: AnnMaybe ImportRenaming a
-               , _importSpec :: AnnMaybe ImportSpec a
+data ImportDecl dom stage
+  = ImportDecl { _importSource :: AnnMaybe ImportSource dom stage
+               , _importQualified :: AnnMaybe ImportQualified dom stage
+               , _importSafe :: AnnMaybe ImportSafe dom stage
+               , _importPkg :: AnnMaybe StringNode dom stage
+               , _importModule :: Ann ModuleName dom stage
+               , _importAs :: AnnMaybe ImportRenaming dom stage
+               , _importSpec :: AnnMaybe ImportSpec dom stage
                }
 
 -- | Restriction on the imported names
-data ImportSpec a
-  = ImportSpecList { _importSpecList :: AnnList IESpec a 
+data ImportSpec dom stage
+  = ImportSpecList { _importSpecList :: AnnList IESpec dom stage
                    } -- ^ Restrict the import definition to ONLY import the listed names
-  | ImportSpecHiding { _importSpecHiding :: AnnList IESpec a 
+  | ImportSpecHiding { _importSpecHiding :: AnnList IESpec dom stage
                      } -- ^ Restrict the import definition to DONT import the listed names
                
 -- | Marks the import as qualified: @qualified@
-data ImportQualified a = ImportQualified
+data ImportQualified dom stage = ImportQualified
 
 -- | Marks the import as source: @{-# SOURCE #-}@
-data ImportSource a = ImportSource
+data ImportSource dom stage = ImportSource
 
 -- | Marks the import as safe: @safe@
-data ImportSafe a = ImportSafe
+data ImportSafe dom stage = ImportSafe
 
 -- | Marks an imported name to belong to the type namespace: @type@
-data TypeNamespace a = TypeNamespace
+data TypeNamespace dom stage = TypeNamespace
 
 -- | Renaming imports (@ as A @)
-data ImportRenaming a = ImportRenaming { _importRename :: Ann SimpleName a }
-               
+data ImportRenaming dom stage = ImportRenaming { _importRename :: Ann ModuleName dom stage }

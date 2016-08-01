@@ -108,6 +108,7 @@ makeReferences ''Promoted
 makeReferences ''Operator
 makeReferences ''Name
 makeReferences ''SimpleName
+makeReferences ''ModuleName
 makeReferences ''UnqualName
 makeReferences ''StringNode
 makeReferences ''DataOrNewtypeKeyword

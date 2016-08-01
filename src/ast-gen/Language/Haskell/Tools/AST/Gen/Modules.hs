@@ -1,7 +1,9 @@
 -- | Generation of Module-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkModule@ creates the annotated version of the @Module@ AST constructor.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings
+           , TypeFamilies
+           #-}
 module Language.Haskell.Tools.AST.Gen.Modules where
 
 import qualified Name as GHC
@@ -15,40 +17,43 @@ import Language.Haskell.Tools.AST.Gen.Base
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkModule :: TemplateAnnot a => [Ann FilePragma a] -> Maybe (Ann ModuleHead a)
-                            -> [Ann ImportDecl a] -> [Ann Decl a] -> Ann Module a
+mkModule :: [Ann FilePragma dom SrcTemplateStage] -> Maybe (Ann ModuleHead dom SrcTemplateStage)
+              -> [Ann ImportDecl dom SrcTemplateStage] -> [Ann Decl dom SrcTemplateStage] -> Ann Module dom SrcTemplateStage
 mkModule filePrags head imps decls 
   = mkAnn (child <> "\n" <> child <> "\n" <> child <> "\n" <> child) 
       $ Module (mkAnnList (listSep "\n") filePrags) (mkAnnMaybe opt head)
                (mkAnnList indentedList imps) (mkAnnList indentedList decls)
                
-mkModuleHead :: TemplateAnnot a => Ann SimpleName a -> Maybe (Ann ExportSpecList a) -> Maybe (Ann ModulePragma a) -> Ann ModuleHead a
+mkModuleHead :: Ann ModuleName dom SrcTemplateStage -> Maybe (Ann ExportSpecList dom SrcTemplateStage) 
+                  -> Maybe (Ann ModulePragma dom SrcTemplateStage) -> Ann ModuleHead dom SrcTemplateStage
 mkModuleHead n es pr = mkAnn (child <> child <> child) $ ModuleHead n (mkAnnMaybe (optBefore " ") es) (mkAnnMaybe opt pr)
 
-mkExportSpecList :: TemplateAnnot a => [Ann ExportSpec a] -> Ann ExportSpecList a
+mkExportSpecList :: [Ann ExportSpec dom SrcTemplateStage] -> Ann ExportSpecList dom SrcTemplateStage
 mkExportSpecList = mkAnn ("(" <> child <> ")") . ExportSpecList . mkAnnList (listSep ", ")
 
-mkModuleExport :: TemplateAnnot a => Ann SimpleName a -> Ann ExportSpec a
+mkModuleExport :: Ann ModuleName dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
 mkModuleExport = mkAnn ("module " <> child) . ModuleExport
 
-mkExportSpec :: TemplateAnnot a => Ann IESpec a -> Ann ExportSpec a
+mkExportSpec :: Ann IESpec dom SrcTemplateStage -> Ann ExportSpec dom SrcTemplateStage
 mkExportSpec = mkAnn child . DeclExport
 
-mkImportSpecList :: TemplateAnnot a => [Ann IESpec a] -> Ann ImportSpec a
+mkImportSpecList :: [Ann IESpec dom SrcTemplateStage] -> Ann ImportSpec dom SrcTemplateStage
 mkImportSpecList = mkAnn ("(" <> child <> ")") . ImportSpecList . mkAnnList (listSep ", ")
 
-mkIeSpec :: TemplateAnnot a => Ann Name a -> Maybe (Ann SubSpec a) -> Ann IESpec a
+mkIeSpec :: Ann Name dom SrcTemplateStage -> Maybe (Ann SubSpec dom SrcTemplateStage) -> Ann IESpec dom SrcTemplateStage
 mkIeSpec name ss = mkAnn (child <> child) (IESpec name (mkAnnMaybe opt ss))
         
-mkSubList :: TemplateAnnot a => [Ann Name a] -> Ann SubSpec a
+mkSubList :: [Ann Name dom SrcTemplateStage] -> Ann SubSpec dom SrcTemplateStage
 mkSubList = mkAnn ("(" <> child <> ")") . SubSpecList . mkAnnList (listSep ", ")
 
-mkSubAll :: TemplateAnnot a => Ann SubSpec a
+mkSubAll :: Ann SubSpec dom SrcTemplateStage
 mkSubAll = mkAnn "(..)" SubSpecAll
 
 -- TODO: mk pragmas
 
-mkImportDecl :: TemplateAnnot a => Bool -> Bool -> Bool -> Maybe String -> Ann SimpleName a -> Maybe (Ann ImportRenaming a) -> Maybe (Ann ImportSpec a) -> Ann ImportDecl a       
+mkImportDecl :: Bool -> Bool -> Bool -> Maybe String -> Ann ModuleName dom SrcTemplateStage 
+                     -> Maybe (Ann ImportRenaming dom SrcTemplateStage) -> Maybe (Ann ImportSpec dom SrcTemplateStage) 
+                     -> Ann ImportDecl dom SrcTemplateStage       
 mkImportDecl source qualified safe pkg name rename spec
   = mkAnn ("import " <> child <> child <> child <> child <> child <> child <> child) $
       ImportDecl (if source then justVal (mkAnn "{-# SOURCE #-} " ImportSource) else noth)

@@ -35,81 +35,84 @@ import CoAxiom as GHC
 import Bag as GHC
 import Data.Data (Data)
 
-import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..), SemanticInfo(..), annotation, semanticInfo)
+import Language.Haskell.Tools.AST (Ann(..), AnnList(..), AnnMaybe(..), SemanticInfo(..), RangeStage, Dom, annotation, semanticInfo)
+import Language.Haskell.Tools.AST (NoSemanticInfo(..))
 import qualified Language.Haskell.Tools.AST as AST
 
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
-trfOperator :: TransformName name res => Located name -> Trf (Ann AST.Operator res)
-trfOperator = trfLoc trfOperator'
+trfOperator :: TransformName n r => Located n -> Trf (Ann AST.Operator (Dom r) RangeStage)
+trfOperator = trfLocNoSema trfOperator'
 
-trfOperator' :: TransformName name res => name -> Trf (AST.Operator res)
+trfOperator' :: TransformName n r => n -> Trf (AST.Operator (Dom r) RangeStage)
 trfOperator' n
-  | isSymOcc (occName n) = AST.NormalOp <$> (addNameInfo n =<< annCont (trfSimpleName' n))
-  | otherwise = AST.BacktickOp <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
+  | isSymOcc (occName n) = AST.NormalOp <$> (annCont (createNameInfo (transformName n)) (trfSimpleName' n))
+  | otherwise = AST.BacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
-trfName :: TransformName name res => Located name -> Trf (Ann AST.Name res)
-trfName = trfLoc trfName'
+trfName :: TransformName n r => Located n -> Trf (Ann AST.Name (Dom r) RangeStage)
+trfName = trfLocNoSema trfName'
 
-trfName' :: TransformName name res => name -> Trf (AST.Name res)
+trfName' :: TransformName n r => n -> Trf (AST.Name (Dom r) RangeStage)
 trfName' n
-  | isSymOcc (occName n) = AST.ParenName <$> (addNameInfo n =<< annLoc loc (trfSimpleName' n))
-  | otherwise = AST.NormalName <$> (addNameInfo n =<< annCont (trfSimpleName' n))
+  | isSymOcc (occName n) = AST.ParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfSimpleName' n))
+  | otherwise = AST.NormalName <$> (annCont (createNameInfo (transformName n)) (trfSimpleName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
-trfAmbiguousFieldName :: TransformName n res => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.Name res)
+trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.Name (Dom r) RangeStage)
 trfAmbiguousFieldName all@(L l af) = trfAmbiguousFieldName' l af
 
-trfAmbiguousFieldName' :: forall n res . (TransformName n res) => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.Name res)
-trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLoc (pure l) $ trfName' (unpackPostRn @n rdr pr)
+trfAmbiguousFieldName' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.Name (Dom r) RangeStage)
+trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' (unpackPostRn @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
 trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _) 
   = do locals <- asks localsInScope
        isDefining <- asks defining
-       annLoc (pure l) 
+       annLocNoSema (pure l) 
          $ AST.NormalName 
-         <$> (annotation .- addSemanticInfo (AmbiguousNameInfo locals isDefining rdr l :: SemanticInfo n)) 
-         <$> (annLoc (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
+         <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
 
 class (DataId n, Eq n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
+  fromGHCName :: GHC.Name -> n 
 
 instance TransformableName RdrName where
   correctNameString = pure . rdrNameStr
+  fromGHCName = rdrName
 
 instance TransformableName GHC.Name where
   correctNameString n = getOriginalName (rdrName n)
-
+  fromGHCName = id
 
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC Name annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (RangeAnnot res, SemanticAnnot res name, SemanticAnnot res GHC.Name, TransformableName name, HsHasName name) 
+class (TransformableName name, HsHasName name, TransformableName res, HsHasName res, GHCName res) 
         => TransformName name res where
-instance TransformName RdrName AST.RangeInfo where
-instance (RangeAnnot r, SemanticAnnot r GHC.Name) => TransformName GHC.Name r where
+  -- | Demote a given name
+  transformName :: name -> res
 
-addNameInfo :: TransformName n r => n -> Ann AST.SimpleName r -> Trf (Ann AST.SimpleName r)
-addNameInfo name ast = do locals <- asks localsInScope
-                          isDefining <- asks defining
-                          return (annotation .- addSemanticInfo (NameInfo locals isDefining name) $ ast)
+instance {-# OVERLAPPABLE #-} (n ~ r, TransformableName n, HsHasName n) => TransformName n r where
+  transformName = id
 
-trfSimpleName :: TransformName name res => Located name -> Trf (Ann AST.SimpleName res)
-trfSimpleName name@(L l n) = addNameInfo n =<< annLoc (pure l) (trfSimpleName' n)
+instance {-# OVERLAPS #-} (TransformableName res, GHCName res, HsHasName res) => TransformName GHC.Name res where
+  transformName = fromGHCName
 
-trfSimpleName' :: TransformName name res => name -> Trf (AST.SimpleName res)
+trfSimpleName :: TransformName n r => Located n -> Trf (Ann AST.SimpleName (Dom r) RangeStage)
+trfSimpleName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfSimpleName' n)
+
+trfSimpleName' :: TransformName n r => n -> Trf (AST.SimpleName (Dom r) RangeStage)
 trfSimpleName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
 
 -- | Creates a qualified name from a name string
-trfNameStr :: RangeAnnot a => String -> Trf (AnnList AST.UnqualName a)
-trfNameStr str = (\loc -> AnnList (toListAnnot "" "" "." loc) $ trfNameStr' str loc) <$> atTheStart
+trfNameStr :: String -> Trf (AnnList AST.UnqualName (Dom r) RangeStage)
+trfNameStr str = makeList "." atTheStart (trfNameStr' str <$> atTheStart)
 
-trfNameStr' :: RangeAnnot a => String -> SrcLoc -> [Ann AST.UnqualName a]
+trfNameStr' :: String -> SrcLoc -> [Ann AST.UnqualName (Dom r) RangeStage]
 trfNameStr' str srcLoc = fst $
   foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                         in ( r ++ [Ann (toNodeAnnot $ mkSrcSpan loc nextLoc) (AST.UnqualName np)], advanceAllSrcLoc nextLoc "." ) ) 
+                         in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UnqualName np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([], srcLoc) (nameParts str)
   where -- | Move the source location according to a string
         advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
@@ -128,56 +131,56 @@ trfNameStr' str srcLoc = fst $
         nameParts' carry [] = [reverse carry]
         nameParts' carry str = error $ "nameParts': " ++ show carry ++ " " ++ show str
   
-trfModuleName :: RangeAnnot a => Located ModuleName -> Trf (Ann AST.SimpleName a)
-trfModuleName = trfLoc trfModuleName'
+trfModuleName :: Located ModuleName -> Trf (Ann AST.ModuleName (Dom r) RangeStage)
+trfModuleName = trfLocNoSema trfModuleName'
 
-trfModuleName' :: RangeAnnot a => ModuleName -> Trf (AST.SimpleName a)
-trfModuleName' = (AST.nameFromList <$>) . trfNameStr . moduleNameString
+trfModuleName' :: ModuleName -> Trf (AST.ModuleName (Dom r) RangeStage)
+trfModuleName' = pure . AST.ModuleName . moduleNameString
 
-trfFastString :: RangeAnnot a => Located FastString -> Trf (Ann AST.StringNode a)
-trfFastString = trfLoc $ pure . AST.StringNode . unpackFS
+trfFastString :: Located FastString -> Trf (Ann AST.StringNode (Dom r) RangeStage)
+trfFastString = trfLocNoSema $ pure . AST.StringNode . unpackFS
   
-trfDataKeyword :: RangeAnnot a => NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword a)
-trfDataKeyword NewType = annLoc (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
-trfDataKeyword DataType = annLoc (tokenLoc AnnData) (pure AST.DataKeyword)
+trfDataKeyword ::  NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword (Dom r) RangeStage)
+trfDataKeyword NewType = annLocNoSema (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
+trfDataKeyword DataType = annLocNoSema (tokenLoc AnnData) (pure AST.DataKeyword)
      
-trfCallConv :: RangeAnnot a => Located CCallConv -> Trf (Ann AST.CallConv a)
-trfCallConv = trfLoc trfCallConv'
+trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv (Dom r) RangeStage)
+trfCallConv = trfLocNoSema trfCallConv'
    
-trfCallConv' :: RangeAnnot a => CCallConv -> Trf (AST.CallConv a)
+trfCallConv' :: CCallConv -> Trf (AST.CallConv (Dom r) RangeStage)
 trfCallConv' CCallConv = pure AST.CCall
 trfCallConv' CApiConv = pure AST.CApi
 trfCallConv' StdCallConv = pure AST.StdCall
 -- trfCallConv' PrimCallConv = 
 trfCallConv' JavaScriptCallConv = pure AST.JavaScript
 
-trfSafety :: RangeAnnot a => SrcSpan -> Located Safety -> Trf (AnnMaybe AST.Safety a)
+trfSafety :: SrcSpan -> Located Safety -> Trf (AnnMaybe AST.Safety (Dom r) RangeStage)
 trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l 
-  = makeJust <$> trfLoc (pure . \case
+  = makeJust <$> trfLocNoSema (pure . \case
       PlaySafe -> AST.Safe
       PlayInterruptible -> AST.Interruptible
       PlayRisky -> AST.Unsafe) lsaf
   | otherwise = nothing " " "" (pure $ srcSpanEnd ccLoc)
 
-trfOverlap :: RangeAnnot a => Located OverlapMode -> Trf (Ann AST.OverlapPragma a)
-trfOverlap = trfLoc $ pure . \case
+trfOverlap :: Located OverlapMode -> Trf (Ann AST.OverlapPragma (Dom r) RangeStage)
+trfOverlap = trfLocNoSema $ pure . \case
   NoOverlap _ -> AST.DisableOverlap
   Overlappable _ -> AST.Overlappable
   Overlapping _ -> AST.Overlapping
   Overlaps _ -> AST.Overlaps
   Incoherent _ -> AST.IncoherentOverlap
 
-trfRole :: RangeAnnot a => Located (Maybe Role) -> Trf (Ann AST.Role a)
-trfRole = trfLoc $ \case Just Nominal -> pure AST.Nominal
-                         Just Representational -> pure AST.Representational
-                         Just GHC.Phantom -> pure AST.Phantom
+trfRole :: Located (Maybe Role) -> Trf (Ann AST.Role (Dom r) RangeStage)
+trfRole = trfLocNoSema $ \case Just Nominal -> pure AST.Nominal
+                               Just Representational -> pure AST.Representational
+                               Just GHC.Phantom -> pure AST.Phantom
          
-trfPhase :: RangeAnnot a => Trf SrcLoc -> Activation -> Trf (AnnMaybe AST.PhaseControl a)
+trfPhase :: Trf SrcLoc -> Activation -> Trf (AnnMaybe AST.PhaseControl (Dom r) RangeStage)
 trfPhase l AlwaysActive = nothing "" " " l
-trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLoc (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS) 
-                                                    (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
-trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLoc (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
-                                                     (AST.PhaseControl <$> (makeJust <$> annLoc (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS) 
+                                                          (AST.PhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
+                                                           (AST.PhaseControl <$> (makeJust <$> annLocNoSema (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
 
-trfPhaseNum :: RangeAnnot a => PhaseNum -> Trf (Ann AST.PhaseNumber a)
-trfPhaseNum i = annLoc (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 
+trfPhaseNum ::  PhaseNum -> Trf (Ann AST.PhaseNumber (Dom r) RangeStage)
+trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 

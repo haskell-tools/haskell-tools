@@ -1,7 +1,9 @@
 -- | Generation of declaration-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkTypeSignature@ creates the annotated version of the @TypeSignature@ AST constructor.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings
+           , TypeFamilies
+           #-}
 module Language.Haskell.Tools.AST.Gen.Decls where
 
 import qualified Name as GHC
@@ -16,9 +18,9 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 
-mkTypeSignature :: TemplateAnnot a => Ann Name a -> Ann Type a -> Ann TypeSignature a
+mkTypeSignature :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann TypeSignature dom SrcTemplateStage
 mkTypeSignature n t = mkAnn (child <> " :: " <> child) (TypeSignature (mkAnnList (listSep ", ") [n]) t)
 
-mkValueBinding :: TemplateAnnot a => Ann ValueBind a -> Ann Decl a
+mkValueBinding :: Ann ValueBind dom SrcTemplateStage -> Ann Decl dom SrcTemplateStage
 mkValueBinding = mkAnn child . ValueBinding
 

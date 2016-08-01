@@ -11,6 +11,7 @@ import Data.Data (toConstr)
 import Control.Monad.Reader
 import Control.Reference
 
+import GHC
 import SrcLoc as GHC
 import RdrName as GHC
 import HsTypes as GHC
@@ -22,6 +23,7 @@ import BasicTypes as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
 import Outputable as GHC
+import PrelNames as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -34,36 +36,38 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
-import Language.Haskell.Tools.AST (Ann(..), AnnList(..))
+import Language.Haskell.Tools.AST (Ann(..), AnnList(..), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr r)
+trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr (Dom r) RangeStage)
 -- correction for empty cases (TODO: put of and {} inside)
 trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> []))) 
-  = addScopeInfo @n =<< annLoc (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
-trfExpr e = addScopeInfo @n =<< trfLoc trfExpr' e
+  = annLoc createScopeInfo (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+trfExpr e = trfLoc trfExpr' createScopeInfo e
 
-addScopeInfo :: forall n r . TransformName n r => Ann AST.Expr r -> Trf (Ann AST.Expr r)
-addScopeInfo expr = do scope <- asks localsInScope
-                       return $ AST.annotation .- addSemanticInfo (AST.ScopeInfo scope :: AST.SemanticInfo n) $ expr
+createScopeInfo :: Trf AST.ScopeInfo
+createScopeInfo = do scope <- asks localsInScope
+                     return (AST.ScopeInfo scope)
 
-trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr r)
+trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr (Dom r) RangeStage)
 trfExpr' (HsVar name) = AST.Var <$> trfName name
 trfExpr' (HsRecFld fld) = AST.Var <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annCont (AST.NormalName <$> annCont (AST.nameFromList <$> trfNameStr (unpackFS ip)))
-trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annCont (trfOverloadedLit val)
-trfExpr' (HsLit val) = AST.Lit <$> annCont (trfLiteral' val)
+trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annContNoSema (AST.NormalName <$> annCont (createImplicitNameInfo (unpackFS ip)) (AST.nameFromList <$> trfNameStr (unpackFS ip)))
+trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annContNoSema (trfOverloadedLit val)
+trfExpr' (HsLit val) = AST.Lit <$> annContNoSema (trfLiteral' val)
 trfExpr' (HsLam (unLoc . mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] (unLoc -> EmptyLocalBinds))]))
   = AST.Lambda <$> (trfAnnList " " trfPattern' pats) <*> addToScope pats (trfExpr expr)
 trfExpr' (HsLamCase _ (unLoc . mg_alts -> matches)) = AST.LamCase <$> trfAnnList " " trfAlt' matches
 trfExpr' (HsApp e1 e2) = AST.App <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (unLoc -> HsVar op) _ e2) 
   = AST.InfixApp <$> trfExpr e1 <*> trfOperator op <*> trfExpr e2
-trfExpr' (NegApp e _) = AST.PrefixApp <$> annLoc loc (AST.NormalOp <$> annLoc loc (AST.nameFromList <$> trfNameStr "-"))
+trfExpr' (NegApp e _) = AST.PrefixApp <$> annLocNoSema loc (AST.NormalOp <$> annLoc info loc (AST.nameFromList <$> trfNameStr "-"))
                                       <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
+        info = createNameInfo =<< (fromMaybe (error "minus operation is not found") <$> lift negateOpName)
+        negateOpName = getFromNameUsing (\n -> (\case Just (AnId id) -> Just id; _ -> Nothing) <$> lookupName n) negateName
 trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfOperator op
 trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.RightSection <$> trfOperator op <*> trfExpr expr
 trfExpr' (HsPar expr) = AST.Paren <$> trfExpr expr
@@ -75,10 +79,10 @@ trfExpr' (ExplicitTuple tupArgs box)
                (do locs <- elemLocs
                    makeList ", " atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))
   where wrap = if box == Boxed then AST.TupleSection else AST.UnboxedTupSec
-        trfTupSecElem :: forall n r . TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem r)
+        trfTupSecElem :: forall n r . TransformName n r => (HsTupArg n, SrcSpan) -> Trf (Ann AST.TupSecElem (Dom r) RangeStage)
         trfTupSecElem (Present e, l) 
-          = annLoc (pure l) (AST.Present <$> (addScopeInfo @n =<< annCont (trfExpr' (unLoc e))))
-        trfTupSecElem (Missing _, l) = annLoc (pure l) (pure AST.Missing)
+          = annLocNoSema (pure l) (AST.Present <$> (annCont createScopeInfo (trfExpr' (unLoc e))))
+        trfTupSecElem (Missing _, l) = annLocNoSema (pure l) (pure AST.Missing)
         
         elemLocs :: Trf [SrcSpan]
         elemLocs = do r <- asks contRange
@@ -96,12 +100,12 @@ trfExpr' (HsCase expr (unLoc . mg_alts -> cases)) = AST.Case <$> trfExpr expr <*
 trfExpr' (HsIf _ expr thenE elseE) = AST.If <$> trfExpr expr <*> trfExpr thenE <*> trfExpr elseE
 trfExpr' (HsMultiIf _ parts) = AST.MultiIf <$> trfAnnList "" trfGuardedCaseRhs' parts
 trfExpr' (HsLet (unLoc -> binds) expr) = addToScope binds (AST.Let <$> trfLocalBinds binds <*> trfExpr expr)
-trfExpr' (HsDo DoExpr (unLoc -> stmts) _) = AST.Do <$> annLoc (tokenLoc AnnDo) (pure AST.DoKeyword) 
+trfExpr' (HsDo DoExpr (unLoc -> stmts) _) = AST.Do <$> annLocNoSema (tokenLoc AnnDo) (pure AST.DoKeyword) 
                                                    <*> makeNonemptyIndentedList (trfScopedSequence trfDoStmt stmts)
 trfExpr' (HsDo MDoExpr (unLoc -> [unLoc -> RecStmt { recS_stmts = stmts }, lastStmt]) _) 
-  = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
+  = AST.Do <$> annLocNoSema (tokenLoc AnnMdo) (pure AST.MDoKeyword)
            <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt (stmts ++ [lastStmt])))
-trfExpr' (HsDo MDoExpr (unLoc -> stmts) _) = AST.Do <$> annLoc (tokenLoc AnnMdo) (pure AST.MDoKeyword)
+trfExpr' (HsDo MDoExpr (unLoc -> stmts) _) = AST.Do <$> annLocNoSema (tokenLoc AnnMdo) (pure AST.MDoKeyword)
                                                     <*> addToScope stmts (makeNonemptyIndentedList (mapM trfDoStmt stmts))
 -- TODO: scoping
 trfExpr' (HsDo ListComp (unLoc -> stmts) _)
@@ -129,74 +133,72 @@ trfExpr' (PArrSeq _ (FromTo from to))
 trfExpr' (PArrSeq _ (FromThenTo from step to)) 
   = AST.ParArrayEnum <$> trfExpr from <*> (makeJust <$> trfExpr step) <*> trfExpr to
 -- TODO: SCC, CORE, GENERATED annotations
-trfExpr' (HsBracket brack) = AST.BracketExpr <$> annCont (trfBracket' brack)
-trfExpr' (HsRnBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
-trfExpr' (HsTcBracketOut brack _) = AST.BracketExpr <$> annCont (trfBracket' brack)
-trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = AST.QuasiQuoteExpr <$> annCont (trfQuasiQuotation' qq)
-trfExpr' (HsSpliceE splice) = AST.Splice <$> annCont (trfSplice' splice)
+trfExpr' (HsBracket brack) = AST.BracketExpr <$> annContNoSema (trfBracket' brack)
+trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = AST.QuasiQuoteExpr <$> annContNoSema (trfQuasiQuotation' qq)
+trfExpr' (HsSpliceE splice) = AST.Splice <$> annContNoSema (trfSplice' splice)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
 trfExpr' (HsStatic expr) = AST.StaticPtr <$> trfExpr expr
 trfExpr' (HsAppType expr typ) = AST.ExplTypeApp <$> trfExpr expr <*> trfType (hswc_body typ)
 trfExpr' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
-trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate r)
+trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate (Dom r) RangeStage)
 trfFieldInits (HsRecFields fields dotdot) 
   = do cont <- asks contRange
        makeList ", " (before AnnCloseC)
          $ ((++) <$> mapM trfFieldInit (filter ((cont /=) . getLoc) fields) 
-                  <*> (if isJust dotdot then (:[]) <$> annLoc (tokenLoc AnnDotdot) 
-                                                              (pure AST.FieldWildcard) 
+                  <*> (if isJust dotdot then (:[]) <$> annLocNoSema (tokenLoc AnnDotdot) 
+                                                                    (pure AST.FieldWildcard) 
                                         else pure []))
   
-trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate r)
-trfFieldInit = trfLoc $ \case
+trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (Dom r) RangeStage)
+trfFieldInit = trfLocNoSema $ \case
   HsRecField id _ True -> AST.FieldPun <$> trfName (getFieldOccName id)
   HsRecField id val False -> AST.NormalFieldUpdate <$> trfName (getFieldOccName id) <*> trfExpr val
   
-trfFieldUpdate :: TransformName n r => HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -> Trf (AST.FieldUpdate r)
+trfFieldUpdate :: TransformName n r => HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -> Trf (AST.FieldUpdate (Dom r) RangeStage)
 trfFieldUpdate (HsRecField id _ True) = AST.FieldPun <$> trfAmbiguousFieldName id
 trfFieldUpdate (HsRecField id val False) = AST.NormalFieldUpdate <$> trfAmbiguousFieldName id <*> trfExpr val
 
-trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt r)
-trfAlt = trfLoc trfAlt'
+trfAlt :: TransformName n r => Located (Match n (LHsExpr n)) -> Trf (Ann AST.Alt (Dom r) RangeStage)
+trfAlt = trfLocNoSema trfAlt'
 
-trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.Alt r)
+trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.Alt (Dom r) RangeStage)
 trfAlt' = gTrfAlt' trfExpr
 
-gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> Match n (Located (ge n)) -> Trf (AST.Alt' ae r)
+gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Match n (Located (ge n)) -> Trf (AST.Alt' ae (Dom r) RangeStage)
 gTrfAlt' te (Match _ [pat] typ (GRHSs rhss (unLoc -> locBinds)))
   = AST.Alt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds locBinds
   
-trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.CaseRhs r)
+trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.CaseRhs (Dom r) RangeStage)
 trfCaseRhss = gTrfCaseRhss trfExpr
 
-gTrfCaseRhss :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) r)
-gTrfCaseRhss te [unLoc -> GRHS [] body] = annLoc (combineSrcSpans (getLoc body) <$> tokenLocBack AnnRarrow) 
+gTrfCaseRhss :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) (Dom r) RangeStage)
+gTrfCaseRhss te [unLoc -> GRHS [] body] = annLocNoSema (combineSrcSpans (getLoc body) <$> tokenLocBack AnnRarrow) 
                                                  (AST.UnguardedCaseRhs <$> te body)
-gTrfCaseRhss te rhss = annLoc (pure $ collectLocs rhss) 
+gTrfCaseRhss te rhss = annLocNoSema (pure $ collectLocs rhss) 
                               (AST.GuardedCaseRhss <$> trfAnnList ";" (gTrfGuardedCaseRhs' te) rhss)
   
-trfGuardedCaseRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedCaseRhs r)
-trfGuardedCaseRhs = trfLoc trfGuardedCaseRhs' 
+trfGuardedCaseRhs :: TransformName n r => Located (GRHS n (LHsExpr n)) -> Trf (Ann AST.GuardedCaseRhs (Dom r) RangeStage)
+trfGuardedCaseRhs = trfLocNoSema trfGuardedCaseRhs' 
 
-trfGuardedCaseRhs' :: TransformName n r => GRHS n (LHsExpr n) -> Trf (AST.GuardedCaseRhs r)
+trfGuardedCaseRhs' :: TransformName n r => GRHS n (LHsExpr n) -> Trf (AST.GuardedCaseRhs (Dom r) RangeStage)
 trfGuardedCaseRhs' = gTrfGuardedCaseRhs' trfExpr
 
-gTrfGuardedCaseRhs' :: TransformName n r => (Located (ge n) -> Trf (Ann ae r)) -> GRHS n (Located (ge n)) -> Trf (AST.GuardedCaseRhs' ae r)
+gTrfGuardedCaseRhs' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> GRHS n (Located (ge n)) -> Trf (AST.GuardedCaseRhs' ae (Dom r) RangeStage)
 gTrfGuardedCaseRhs' te (GRHS guards body) = AST.GuardedCaseRhs <$> trfAnnList " " trfRhsGuard' guards <*> te body
 
-trfCmdTop :: TransformName n r => Located (HsCmdTop n) -> Trf (Ann AST.Cmd r)
+trfCmdTop :: TransformName n r => Located (HsCmdTop n) -> Trf (Ann AST.Cmd (Dom r) RangeStage)
 trfCmdTop (L _ (HsCmdTop cmd _ _ _)) = trfCmd cmd
 
-trfCmd :: TransformName n r => Located (HsCmd n) -> Trf (Ann AST.Cmd r)
-trfCmd = trfLoc trfCmd'
+trfCmd :: TransformName n r => Located (HsCmd n) -> Trf (Ann AST.Cmd (Dom r) RangeStage)
+trfCmd = trfLocNoSema trfCmd'
 
-trfCmd' :: TransformName n r => HsCmd n -> Trf (AST.Cmd r)
+trfCmd' :: TransformName n r => HsCmd n -> Trf (AST.Cmd (Dom r) RangeStage)
 trfCmd' (HsCmdArrApp left right _ typ dir) = AST.ArrowAppCmd <$> trfExpr left <*> op <*> trfExpr right 
-  where op = case (typ, dir) of (HsFirstOrderApp, False) -> annLoc (tokenLoc Annrarrowtail) (pure AST.RightAppl)
-                                (HsFirstOrderApp, True) -> annLoc (tokenLoc Annlarrowtail) (pure AST.LeftAppl)
-                                (HsHigherOrderApp, False) -> annLoc (tokenLoc AnnRarrowtail) (pure AST.RightHighApp)
-                                (HsHigherOrderApp, True) -> annLoc (tokenLoc AnnLarrowtail) (pure AST.LeftHighApp)
+  where op = case (typ, dir) of (HsFirstOrderApp, False) -> annLocNoSema (tokenLoc Annrarrowtail) (pure AST.RightAppl)
+                                (HsFirstOrderApp, True) -> annLocNoSema (tokenLoc Annlarrowtail) (pure AST.LeftAppl)
+                                (HsHigherOrderApp, False) -> annLocNoSema (tokenLoc AnnRarrowtail) (pure AST.RightHighApp)
+                                (HsHigherOrderApp, True) -> annLocNoSema (tokenLoc AnnLarrowtail) (pure AST.LeftHighApp)
                                                                        -- FIXME: needs a before 
 trfCmd' (HsCmdArrForm expr _ cmds) = AST.ArrowFormCmd <$> trfExpr expr <*> makeList " " (before AnnClose) (mapM trfCmdTop cmds)
 trfCmd' (HsCmdApp cmd expr) = AST.AppCmd <$> trfCmd cmd <*> trfExpr expr
@@ -204,7 +206,7 @@ trfCmd' (HsCmdLam (MG (unLoc -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [
   = AST.LambdaCmd <$> trfAnnList " " trfPattern' pats <*> trfCmd body
 trfCmd' (HsCmdPar cmd) = AST.ParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG (unLoc -> alts) _ _ _)) 
-  = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLoc (gTrfAlt' trfCmd)) alts) 
+  = AST.CaseCmd <$> trfExpr expr <*> makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfAlt' trfCmd)) alts) 
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.IfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
 trfCmd' (HsCmdLet (unLoc -> binds) cmd) = addToScope binds (AST.LetCmd <$> trfLocalBinds binds <*> trfCmd cmd)
-trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLoc (gTrfDoStmt' trfCmd)) stmts)
+trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.DoCmd <$> makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfDoStmt' trfCmd)) stmts)

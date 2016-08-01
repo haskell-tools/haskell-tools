@@ -19,41 +19,43 @@ import Control.Reference
 import Data.Maybe
 import Data.List.Split
 import Data.Foldable
-import Data.StructuralTraversal
 import Data.Sequence hiding (null, replicate)
+import Language.Haskell.Tools.AST
 
 -- | Pretty prints an AST by using source templates stored as node info
-prettyPrint :: (StructuralTraversable node) => node (NodeInfo sema SourceTemplate) -> String
+prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String
 prettyPrint = toList . printRose . toRoseTree
 
-printRose :: RoseTree (NodeInfo sema SourceTemplate) -> Seq Char      
-printRose rt = evalState (printRose' $ fmap (^. sourceInfo&sourceTemplateElems) rt) (mkRealSrcLoc (fsLit "") 1 1)
+printRose :: RoseTree SrcTemplateStage -> Seq Char      
+printRose rt = evalState (printRose' rt) (mkRealSrcLoc (fsLit "") 1 1)
        
 type PPState = State RealSrcLoc
-       
+
 -- | Pretty prints a rose tree according to the source templates remaining from the original AST
-printRose' :: RoseTree [SourceTemplateElem] -> PPState (Seq Char)
+printRose' :: RoseTree SrcTemplateStage -> PPState (Seq Char)
 -- simple implementation could be optimized a bit
 -- warning: the length of the file should not exceed maxbound::Int
-printRose' (RoseTree (TextElem txt : rest) children) 
-  = putString txt >+< printRose' (RoseTree rest children) 
-printRose' (RoseTree (ChildElem : rest) (child : children)) 
-  = printRose' child >+< printRose' (RoseTree rest children) 
+printRose' (RoseTree (RoseSpan (SourceTemplateNode _ elems)) children) 
+  = printTemplateElems elems children
+  where printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+        printTemplateElems (TextElem txt : rest) children = putString txt >+< printTemplateElems rest children
+        printTemplateElems (ChildElem : rest) (child : children) = printRose' child >+< printTemplateElems rest children
+        printTemplateElems [] [] = return empty
+        printTemplateElems _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
+        printTemplateElems [] _ = error $ "Not all children are used to pretty printing. (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
   
-printRose' (RoseTree [ChildListElem {}] []) = return empty
-printRose' (RoseTree [ChildListElem bef aft defSep indented []] children) 
+printRose' (RoseTree (RoseList (SourceTemplateList {})) []) = return empty
+printRose' (RoseTree (RoseList (SourceTemplateList _ bef aft defSep indented [])) children) 
   = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (repeat defSep) children >+< putString aft
-printRose' (RoseTree [ChildListElem bef aft _ indented seps] children) 
+printRose' (RoseTree (RoseList (SourceTemplateList _ bef aft _ indented seps)) children) 
   = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (seps ++ repeat (last seps)) children >+< putString aft
       
-printRose' (RoseTree [OptionalChildElem _ _] []) = return empty
-printRose' (RoseTree [OptionalChildElem bef aft] [child]) = putString bef >+< printRose' child >+< putString aft
-printRose' (RoseTree [OptionalChildElem _ _] _) = error "More than one child element in an optional node."
-printRose' (RoseTree [] []) = return empty 
-printRose' r@(RoseTree (ChildElem : rest) []) = error ("More child elem in template than actual children. In: " ++ show r)
-printRose' r@(RoseTree [] children) = error ("Not all children are used to pretty printing. In: " ++ show r) 
-printRose' r = error ("printRose': unexpected input: " ++ show r) 
+printRose' (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty
+printRose' (RoseTree (RoseOptional (SourceTemplateOpt _ bef aft)) [child]) = putString bef >+< printRose' child >+< putString aft
+printRose' (RoseTree (RoseOptional _) _) = error "More than one child element in an optional node."
     
+
+
 putString :: String -> PPState (Seq Char)
 putString s = do modify $ advanceStr s
                  return (fromList s)
@@ -80,10 +82,10 @@ mapFst f (a, x) = (f a, x)
 (>+<) :: PPState (Seq Char) -> PPState (Seq Char) -> PPState (Seq Char)
 (>+<) = liftM2 (><)
     
-printListWithSeps :: [String] -> [RoseTree [SourceTemplateElem]] -> PPState (Seq Char)
+printListWithSeps :: [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
 printListWithSeps = printListWithSeps' putString
 
-printListWithSepsIndented :: [String] -> [RoseTree [SourceTemplateElem]] -> PPState (Seq Char)
+printListWithSepsIndented :: [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
 printListWithSepsIndented seps children
   = do base <- get
        let putCorrectSep s = do curr <- get
@@ -91,7 +93,7 @@ printListWithSepsIndented seps children
                                 putString $ shortened ++ replicate (srcLocCol base - currCol) ' '
        printListWithSeps' putCorrectSep seps children
     
-printListWithSeps' :: (String -> PPState (Seq Char)) -> [String] -> [RoseTree [SourceTemplateElem]] -> PPState (Seq Char)
+printListWithSeps' :: (String -> PPState (Seq Char)) -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
 printListWithSeps' _ _ [] = return empty
 printListWithSeps' putCorrectSep _ [child] = printRose' child
 printListWithSeps' putCorrectSep (sep:seps) (child:children) 

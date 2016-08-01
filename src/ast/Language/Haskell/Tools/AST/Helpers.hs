@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleContexts 
            , LambdaCase 
            , RankNTypes 
-           , ScopedTypeVariables 
+           , ScopedTypeVariables
+           , TypeFamilies
            #-}
 
 -- | Helper functions for using the AST.
@@ -24,62 +25,59 @@ import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Types
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.References
+import Language.Haskell.Tools.AST.SemaInfoTypes
 
 import Debug.Trace
 
-ordByOccurrence :: SimpleName a -> SimpleName a -> Ordering
+ordByOccurrence :: SimpleName dom stage -> SimpleName dom stage -> Ordering
 ordByOccurrence = compare `on` nameElements
 
 -- | The occurrence of the name.
-nameString :: SimpleName a -> String
+nameString :: SimpleName dom stage -> String
 nameString = intercalate "." . nameElements
 
 -- | The qualifiers and the unqualified name
-nameElements :: SimpleName a -> [String]
+nameElements :: SimpleName dom stage -> [String]
 nameElements n = (n ^? qualifiers&annList&element&simpleNameStr) 
                     ++ [n ^. unqualifiedName&element&simpleNameStr]
 
 -- | The qualifier of the name
-nameQualifier :: SimpleName a -> [String]
+nameQualifier :: SimpleName dom stage -> [String]
 nameQualifier n = n ^? qualifiers&annList&element&simpleNameStr
          
 -- | Does the import declaration import only the explicitly listed elements?
-importIsExact :: ImportDecl a -> Bool
+importIsExact :: ImportDecl dom stage -> Bool
 importIsExact = isJust . (^? importSpec&annJust&element&importSpecList)  
   
 -- | Does the import declaration has a 'hiding' clause?
-importIsHiding :: ImportDecl a -> Bool
+importIsHiding :: ImportDecl dom stage -> Bool
 importIsHiding = isJust . (^? importSpec&annJust&element&importSpecHiding)
        
 -- | All elements that are explicitly listed to be imported in the import declaration
-importExacts :: Simple Traversal (ImportDecl a) (IESpec a)
+importExacts :: Simple Traversal (ImportDecl dom stage) (IESpec dom stage)
 importExacts = importSpec&annJust&element&importSpecList&annList&element
 
 -- | All elements that are hidden in an import
-importHidings :: Simple Traversal (ImportDecl a) (IESpec a)
+importHidings :: Simple Traversal (ImportDecl dom stage) (IESpec dom stage)
 importHidings = importSpec&annJust&element&importSpecList&annList&element
          
 -- | Possible qualifiers to use imported definitions         
-importQualifiers :: ImportDecl a -> [[String]]
+importQualifiers :: ImportDecl dom stage -> [[String]]
 importQualifiers imp 
   = (if isAnnNothing (imp ^. importQualified) then [[]] else [])
-      ++ maybe [] (\n -> [nameElements n]) 
-               (imp ^? importAs&annJust&element&importRename&element)
+      ++ [imp ^? importAs&annJust&element&importRename&element&moduleNameString]
         
-bindingSemantics :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) (SemanticInfo n)
-bindingSemantics = element&(valBindPat&element&patternName&element&simpleName 
-                             &+& funBindMatches&annList&element&matchLhs&element
-                                   &(matchLhsName&element&simpleName &+& matchLhsOperator&element&operatorName))
-                          &semantics
-
-bindingName :: Simple Traversal (Ann ValueBind (NodeInfo (SemanticInfo n) s)) n
-bindingName = bindingSemantics&nameInfo
+bindingName :: (SemanticInfo dom SimpleName ~ ni) => Simple Traversal (Ann ValueBind dom stage) ni
+bindingName = element&(valBindPat&element&patternName&element&simpleName 
+                        &+& funBindMatches&annList&element&matchLhs&element
+                              &(matchLhsName&element&simpleName &+& matchLhsOperator&element&operatorName))
+                     &semantics
                      
-declHeadNames :: Simple Traversal (Ann DeclHead a) (Ann SimpleName a)
+declHeadNames :: Simple Traversal (Ann DeclHead dom stage) (Ann SimpleName dom stage)
 declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames &+& dhOperator&element&operatorName)
 
                
-typeParams :: Simple Traversal (Ann Type a) (Ann Type a)
+typeParams :: Simple Traversal (Ann Type dom stage) (Ann Type dom stage)
 typeParams = fromTraversal typeParamsTrav
   where typeParamsTrav f (Ann a (TyFun p r)) = Ann a <$> (TyFun <$> f p <*> typeParamsTrav f r)
         typeParamsTrav f (Ann a (TyForall vs t)) = Ann a <$> (TyForall vs <$> typeParamsTrav f t)
@@ -89,20 +87,20 @@ typeParams = fromTraversal typeParamsTrav
         
 
 -- | Access the semantic information of an AST node.
-semantics :: Simple Lens (Ann a (NodeInfo sema src)) sema
+semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
 semantics = annotation&semanticInfo
 
-dhNames :: Simple Traversal (Ann DeclHead (NodeInfo (SemanticInfo n) src)) n
-dhNames = declHeadNames & semantics & nameInfo
+dhNames :: (SemanticInfo dom SimpleName ~ k) => Simple Traversal (Ann DeclHead dom stage) k
+dhNames = declHeadNames & semantics
 
 -- | A type class for transformations that work on both top-level and local definitions
 class BindingElem d where
-  sigBind :: Simple Partial (d a) (Ann TypeSignature a)
-  valBind :: Simple Partial (d a) (Ann ValueBind a)
-  createTypeSig :: Ann TypeSignature a -> d a
-  createBinding :: Ann ValueBind a -> d a
-  isTypeSig :: d a -> Bool
-  isBinding :: d a -> Bool
+  sigBind :: Simple Partial (d dom stage) (Ann TypeSignature dom stage)
+  valBind :: Simple Partial (d dom stage) (Ann ValueBind dom stage)
+  createTypeSig :: Ann TypeSignature dom stage -> d dom stage
+  createBinding :: Ann ValueBind dom stage -> d dom stage
+  isTypeSig :: d dom stage -> Bool
+  isBinding :: d dom stage -> Bool
   
 instance BindingElem Decl where
   sigBind = declTypeSig
@@ -124,48 +122,54 @@ instance BindingElem LocalBind where
   isBinding (LocalValBind _) = True
   isBinding _ = False
 
-bindName :: BindingElem d => Simple Traversal (d (NodeInfo (SemanticInfo n) src)) n
-bindName = valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics&nameInfo
+bindName :: (BindingElem d, SemanticInfo dom SimpleName ~ k) => Simple Traversal (d dom stage) k
+bindName = valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics
 
-valBindsInList :: BindingElem d => Simple Traversal (AnnList d a) (Ann ValueBind a)
+valBindsInList :: BindingElem d => Simple Traversal (AnnList d dom stage) (Ann ValueBind dom stage)
 valBindsInList = annList & element & valBind
      
-getValBindInList :: (BindingElem d, HasRange a) => RealSrcSpan -> AnnList d a -> Maybe (Ann ValueBind a)
+getValBindInList :: (BindingElem d, SourceInfo stage) => RealSrcSpan -> AnnList d dom stage -> Maybe (Ann ValueBind dom stage)
 getValBindInList sp ls = case ls ^? valBindsInList & filtered (isInside sp) of
   [] -> Nothing
   [n] -> Just n
   _ -> error "getValBindInList: Multiple nodes"
 
-nodesContaining :: forall node inner a . (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-                => RealSrcSpan -> Simple Traversal (node a) (inner a)
+-- | Get all nodes that contain a given source range
+nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage), SourceInfo stage) 
+                => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 nodesContaining rng = biplateRef & filtered (isInside rng) 
-              
-isInside :: (HasAnnot node, HasRange a) => RealSrcSpan -> node a -> Bool
-isInside rng nd = case getRange (getAnnot nd) of RealSrcSpan sp -> sp `containsSpan` rng
-                                                 _ -> False
-             
-nodesWithRange :: forall node inner a . (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-               => RealSrcSpan -> Simple Traversal (node a) (inner a)
-nodesWithRange rng = biplateRef & filtered (hasRange rng) 
-                                         
-hasRange :: (HasAnnot node, HasRange a) => RealSrcSpan -> node a -> Bool
-hasRange rng node = case getRange (getAnnot node) of RealSrcSpan sp -> sp == rng
-                                                     _ -> False
 
-getNodeContaining :: (Biplate (node a) (Ann inner a), HasAnnot node, HasRange a) 
-                  => RealSrcSpan -> node a -> Maybe (Ann inner a)
+-- | Return true if the node contains a given range
+isInside :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
+isInside rng nd = case getRange nd of RealSrcSpan sp -> sp `containsSpan` rng
+                                      _              -> False
+
+-- | Get the nodes that have exactly the given range 
+nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) 
+               => RealSrcSpan -> Simple Traversal (Ann node dom stage) (Ann inner dom stage)
+nodesWithRange rng = biplateRef & filtered (hasRange rng) 
+                    
+-- | True, if the node has the given range                     
+hasRange :: SourceInfo stage => RealSrcSpan -> Ann inner dom stage -> Bool
+hasRange rng node = case getRange node of RealSrcSpan sp -> sp == rng
+                                          _              -> False
+
+-- | Get the shortest source range that contains the given 
+getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage)) 
+                  => RealSrcSpan -> Ann node dom stage -> Maybe (Ann inner dom stage)
 getNodeContaining sp node = case node ^? nodesContaining sp of
   [] -> Nothing
-  results -> Just $ minimumBy (compareRangeLength `on` (getRange . (^. annotation))) results
+  results -> Just $ minimumBy (compareRangeLength `on` getRange) results
 
+-- | Compares two NESTED source spans based on their lengths
 compareRangeLength :: SrcSpan -> SrcSpan -> Ordering
 compareRangeLength (RealSrcSpan sp1) (RealSrcSpan sp2)
   = (lineDiff sp1 `compare` lineDiff sp2) `mappend` (colDiff sp1 `compare` colDiff sp2)
   where lineDiff sp = srcLocLine (realSrcSpanStart sp) - srcLocLine (realSrcSpanEnd sp)
         colDiff sp = srcLocCol (realSrcSpanStart sp) - srcLocCol (realSrcSpanEnd sp)
 
-getNode :: (Biplate (node a) (inner a), HasAnnot node, HasAnnot inner, HasRange a) 
-        => RealSrcSpan -> node a -> inner a
+getNode :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) 
+        => RealSrcSpan -> Ann node dom stage -> Ann inner dom stage
 getNode sp node = case node ^? nodesWithRange sp of
   [] -> error "getNode: The node cannot be found"
   [n] -> n

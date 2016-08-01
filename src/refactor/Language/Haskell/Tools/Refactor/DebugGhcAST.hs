@@ -7,6 +7,7 @@ module Language.Haskell.Tools.Refactor.DebugGhcAST where
 
 import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST (shortShowSpan)
 
 import GHC
 import HsSyn
@@ -33,8 +34,6 @@ import OccName
 
 instance Show a => Show (Located a) where
   show (L l a) = "L(" ++ shortShowSpan l ++ ") (" ++ show a ++ ")"
-
-
 
 deriving instance Show (ABExport RdrName)
 deriving instance Show (AmbiguousFieldOcc RdrName)

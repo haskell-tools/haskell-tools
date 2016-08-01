@@ -12,85 +12,91 @@ import Data.Data
 import Data.List
 import Data.Maybe
 import Control.Reference hiding (element)
-import Data.StructuralTraversal
 import Control.Monad.State
 import SrcLoc
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 
+import Debug.Trace
+
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
-cutUpRanges :: forall node sema . StructuralTraversable node 
-                 => Ann node (NodeInfo sema SpanInfo) 
-                 -> Ann node (NodeInfo sema RangeTemplate)
+cutUpRanges :: forall node dom . SourceInfoTraversal node 
+                 => Ann node dom NormRangeStage
+                 -> Ann node dom RngTemplateStage
 cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
-  where cutUpRanges' :: StructuralTraversable node => Ann node (NodeInfo sema SpanInfo) 
-                                                   -> State [[SpanInfo]] (Ann node (NodeInfo sema RangeTemplate))
-        cutUpRanges' = traverseUp desc asc f
+  where cutUpRanges' :: SourceInfoTraversal node => Ann node dom NormRangeStage
+                                                 -> State [[SrcSpan]] (Ann node dom RngTemplateStage)
+        cutUpRanges' = sourceInfoTraverseUp (SourceInfoTrf (trf cutOutElemSpan) (trf cutOutElemList) (trf cutOutElemOpt)) desc asc
         
         -- keep the stack to contain the children elements on the place of the parent element
         desc = modify ([]:)
         asc  = modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
-        f ni = do (below : top : xs) <- get
-                  put ([] : (top ++ [ expandAsNodeInfo (ni ^. sourceInfo) below ]) : xs)
-                  return (sourceInfo .- cutOutElem below $ ni)
+        trf :: (Show (x NormRangeStage), Show (x RngTemplateStage), HasRange (x NormRangeStage), HasRange (x RngTemplateStage)) 
+            => ([SrcSpan] -> x NormRangeStage -> x RngTemplateStage) -> x NormRangeStage -> State [[SrcSpan]] (x RngTemplateStage)
+        trf f ni = do (below : top : xs) <- get
+                      let res = f below ni
+                      put ([] : (top ++ [ getRange res ]) : xs)
+                      return res
 
 -- | Modifies ranges to contain their children
-fixRanges :: StructuralTraversable node 
-          => Ann node (NodeInfo sema SpanInfo) 
-          -> Ann node (NodeInfo sema SpanInfo)
-fixRanges node = evalState (traverseUp desc asc f node) [[],[]]
+fixRanges :: SourceInfoTraversal node 
+          => Ann node dom RangeStage 
+          -> Ann node dom NormRangeStage
+fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToContain) (trf expandListToContain) (trf expandOptToContain)) desc asc node) [[],[]]
   where -- keep the stack to contain the children elements on the place of the parent element
         desc = modify ([]:)
         asc  = modify tail
         
-        f ni = do (below : top : xs) <- get
-                  put ([] : (top ++ [ expandAsNodeToContain (ni ^. sourceInfo) below ]) : xs)
-                  return (sourceInfo .- expandToContain below $ ni)
-
--- | Expand a list or optional node to contain its children
-expandAsNodeInfo :: SpanInfo -> [SpanInfo] -> SpanInfo
-expandAsNodeInfo ns@(NodeSpan _) _ = ns
-expandAsNodeInfo OptionalPos{_optionalPos = loc} sps = NodeSpan (RealSrcSpan (collectSpanRanges loc sps))
-expandAsNodeInfo ListPos{_listPos = loc} sps = NodeSpan (RealSrcSpan (collectSpanRanges loc sps))
+        trf :: (HasRange (x RangeStage), HasRange (x NormRangeStage)) 
+            => ([SrcSpan] -> x RangeStage -> x NormRangeStage) -> x RangeStage -> State [[SrcSpan]] (x NormRangeStage)
+        trf f ni = do (below : top : xs) <- get
+                      let res = f below ni
+                      put ([] : (top ++ [ getRange res ]) : xs)
+                      return res
 
 -- | Expand a simple node to contain its children
-expandToContain :: [SpanInfo] -> SpanInfo -> SpanInfo
-expandToContain cont (NodeSpan sp) = NodeSpan (foldl1 combineSrcSpans $ sp : map spanRange cont)
-expandToContain _ oth = oth
+expandToContain :: [SrcSpan] -> SpanInfo RangeStage -> SpanInfo NormRangeStage
+expandToContain cont (NodeSpan sp) = NormNodeInfo (foldl1 combineSrcSpans $ sp : cont)
 
--- | Expand any node to contain its children
-expandAsNodeToContain :: SpanInfo -> [SpanInfo] -> SpanInfo
-expandAsNodeToContain ns@(NodeSpan _) ls = expandToContain ls ns
-expandAsNodeToContain oth ls = expandAsNodeInfo oth ls
-                  
+expandListToContain :: [SrcSpan] -> ListInfo RangeStage -> ListInfo NormRangeStage
+expandListToContain cont (ListPos bef aft def ind sp) = NormListInfo bef aft def ind (RealSrcSpan $ collectSpanRanges sp cont)
+
+expandOptToContain :: [SrcSpan] -> OptionalInfo RangeStage -> OptionalInfo NormRangeStage
+expandOptToContain cont (OptionalPos bef aft sp) = NormOptInfo bef aft (RealSrcSpan $ collectSpanRanges sp cont)
+   
 -- | Cuts out a list of source ranges from a given range
-cutOutElem :: [SpanInfo] -> SpanInfo -> RangeTemplate
-cutOutElem sps lp@(ListPos bef aft sep indented loc)
-  = let wholeRange = collectSpanRanges loc sps 
-     in RangeTemplate wholeRange [RangeListElem bef aft sep indented (getSeparators wholeRange sps)]
-cutOutElem sps op@(OptionalPos bef aft loc) 
-  = RangeTemplate (collectSpanRanges loc sps) [RangeOptionalElem bef aft]
-cutOutElem sps (NodeSpan (RealSrcSpan sp))
-  = RangeTemplate sp $ foldl breakFirstHit (foldl breakFirstHit [RangeElem sp] loc) span
-  where (loc,span) = partition (\sp -> srcSpanStart sp == srcSpanEnd sp) (map spanRange sps)
+cutOutElemSpan :: [SrcSpan] -> SpanInfo NormRangeStage -> SpanInfo RngTemplateStage
+cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))
+  = RangeTemplateNode sp $ foldl breakFirstHit (foldl breakFirstHit [RangeElem sp] loc) span
+  where (loc,span) = partition (\sp -> srcSpanStart sp == srcSpanEnd sp) sps
         breakFirstHit (elem:rest) sp 
           = case breakUpRangeElem elem sp of
              -- only continue if the correct place for the child range is not found
               Just pieces -> pieces ++ rest
               Nothing -> elem : breakFirstHit rest sp
-        breakFirstHit [] sp = error ("breakFirstHit: didn't find correct place for " ++ show sp)
+        breakFirstHit [] sp = error ("breakFirstHit: didn't find correct place for " ++ show sp ++ " in " ++ show sp ++ " with " ++ show sps)
 
-collectSpanRanges :: SrcLoc -> [SpanInfo] -> RealSrcSpan
+cutOutElemList :: [SrcSpan] -> ListInfo NormRangeStage -> ListInfo RngTemplateStage
+cutOutElemList sps lp@(NormListInfo bef aft sep indented sp)
+  = let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps
+     in RangeTemplateList wholeRange bef aft sep indented (getSeparators wholeRange sps)
+
+cutOutElemOpt :: [SrcSpan] -> OptionalInfo NormRangeStage -> OptionalInfo RngTemplateStage
+cutOutElemOpt sps op@(NormOptInfo bef aft sp) 
+  = let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps
+     in RangeTemplateOpt wholeRange bef aft
+
+collectSpanRanges :: SrcLoc -> [SrcSpan] -> RealSrcSpan
 collectSpanRanges (RealSrcLoc loc) [] = realSrcLocSpan loc
 collectSpanRanges _ [] = error "collectSpanRanges: No real src loc for empty element"
-collectSpanRanges _ ls = case foldl1 combineSrcSpans $ map spanRange ls of RealSrcSpan sp -> sp
+collectSpanRanges _ ls = case foldl1 combineSrcSpans ls of RealSrcSpan sp -> sp
                      
 -- | Cuts out all elements from a list, the rest is the list of separators
-getSeparators :: RealSrcSpan -> [SpanInfo] -> [RealSrcSpan]
+getSeparators :: RealSrcSpan -> [SrcSpan] -> [RealSrcSpan]
 getSeparators sp infos@(_:_:_)
-  = mapMaybe getRangeElemSpan (cutOutElem infos (NodeSpan (RealSrcSpan sp)) ^. rangeTemplateElems)
+  = mapMaybe getRangeElemSpan (cutOutElemSpan infos (NormNodeInfo (RealSrcSpan sp)) ^. rngTemplateNodeElems)
 -- at least two elements needed or there can be no separators
 getSeparators sp _ = []
                      

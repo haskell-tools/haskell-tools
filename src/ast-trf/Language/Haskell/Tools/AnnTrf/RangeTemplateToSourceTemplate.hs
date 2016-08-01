@@ -5,7 +5,6 @@ module Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate where
 
 import SrcLoc
 import StringBuffer
-import Data.StructuralTraversal
 import Data.Map
 import Data.Monoid
 import Control.Reference
@@ -17,8 +16,8 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 import Debug.Trace
 
-rangeToSource :: StructuralTraversable node => StringBuffer -> Ann node (NodeInfo sema RangeTemplate) 
-                                                            -> Ann node (NodeInfo sema SourceTemplate)
+rangeToSource :: SourceInfoTraversal node => StringBuffer -> Ann node dom RngTemplateStage
+                                                          -> Ann node dom SrcTemplateStage
 rangeToSource srcInput tree = let locIndices = getLocIndices tree
                                   srcMap = mapLocIndices srcInput locIndices
                                in applyFragments (elems srcMap) tree
@@ -26,13 +25,13 @@ rangeToSource srcInput tree = let locIndices = getLocIndices tree
 -- maps could be strict
 
 -- | Assigns an index (in the order they are used) for each range
-getLocIndices :: StructuralTraversable e => Ann e (NodeInfo sema RangeTemplate) -> Map OrdSrcSpan Int
+getLocIndices :: SourceInfoTraversal e => Ann e dom RngTemplateStage -> Map OrdSrcSpan Int
 getLocIndices = snd . flip execState (0, empty) .
-  traverseDown (return ()) (return ()) 
-               (mapM_ (\case RangeElem sp               -> modify (insertElem sp)
-                             RangeListElem _ _ _ _ seps -> mapM_ (modify . insertElem) seps
-                             _                          -> return ()
-                      ) . (^. sourceInfo&rangeTemplateElems))
+  sourceInfoTraverseDown (SourceInfoTrf 
+      (\ni -> do { mapM_ (\el -> case getRangeElemSpan el of Just sp -> modify (insertElem sp); _ -> return ()) (ni ^. rngTemplateNodeElems); return ni })
+      (\ni -> do { mapM_ (modify . insertElem) (ni ^. rngTmpSeparators); return ni })
+      pure ) 
+    (return ()) (return ())
   where insertElem sp (i,m) = (i+1, insert (OrdSrcSpan sp) i m)
                              
                              
@@ -49,20 +48,19 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
         takeSpan' _ _ (rem, taken) = (rem, taken)
         
 -- | Replaces the ranges in the AST with the source file parts
-applyFragments :: StructuralTraversable node => [String] -> Ann node (NodeInfo sema RangeTemplate) 
-                                                         -> Ann node (NodeInfo sema SourceTemplate)
+applyFragments :: SourceInfoTraversal node => [String] -> Ann node dom RngTemplateStage
+                                                       -> Ann node dom SrcTemplateStage
 applyFragments srcs = flip evalState srcs
-  . traverseDown 
+  . sourceInfoTraverseDown (SourceInfoTrf
+     (\ni -> do template <- mapM getTextFor (ni ^. rngTemplateNodeElems)
+                return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) template)
+     (\(RangeTemplateList rng bef aft sep indented seps) 
+         -> do (own, rest) <- splitAt (length seps) <$> get 
+               put rest
+               return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented own))
+     (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft))) 
      (return ()) (return ())
-     (\ni -> do template <- mapM getTextFor (ni ^. sourceInfo&rangeTemplateElems)
-                return $ sourceInfo .= SourceTemplate (RealSrcSpan $ ni ^. sourceInfo&rangeTemplateSpan) template $ ni)
-  where getTextFor (RangeElem sp) = do (src:rest) <- get
+  where getTextFor RangeChildElem = return ChildElem
+        getTextFor (RangeElem sp) = do (src:rest) <- get
                                        put rest
                                        return (TextElem src)
-        getTextFor RangeChildElem = return ChildElem
-        getTextFor (RangeOptionalElem bef aft) = return (OptionalChildElem bef aft)
-        getTextFor (RangeListElem bef aft sep indented seps) 
-          = do (own, rest) <- splitAt (length seps) <$> get 
-               put rest
-               return (ChildListElem bef aft sep indented own)
-        

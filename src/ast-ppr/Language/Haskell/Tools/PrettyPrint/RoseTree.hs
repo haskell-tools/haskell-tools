@@ -1,19 +1,28 @@
 {-# LANGUAGE NamedFieldPuns
            , FlexibleContexts 
            , DeriveFunctor
+           , StandaloneDeriving
            #-}
 -- | A simpler representation of the original AST.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
 
 import Control.Monad.State
-import Data.StructuralTraversal
+import Language.Haskell.Tools.AST
 
 -- | A rose tree containing additional node information         
-data RoseTree a = RoseTree { roseInfo :: a 
-                           , roseChildren :: [RoseTree a]
-                           } deriving Functor
+data RoseTree st = RoseTree { roseInfo :: RoseSourceInfo st 
+                            , roseChildren :: [RoseTree st]
+                            }
 
-instance Show a => Show (RoseTree a) where
+-- | Heterogenous representation of source information, for pretty printing
+data RoseSourceInfo st
+  = RoseSpan (SpanInfo st)
+  | RoseList (ListInfo st)
+  | RoseOptional (OptionalInfo st)
+
+deriving instance SourceInfo st => Show (RoseSourceInfo st)
+
+instance SourceInfo st => Show (RoseTree st) where
   show = show' 0
     where show' i RoseTree{roseInfo,roseChildren}
              = "\n" ++ replicate (2*i) '#'
@@ -21,10 +30,11 @@ instance Show a => Show (RoseTree a) where
                     ++ concatMap (show' (i+1)) roseChildren
                           
 -- | Transforms the heterogeneous AST into a homogeneous representation for pretty printing                   
-toRoseTree :: (StructuralTraversable n) => n inf -> RoseTree inf
+toRoseTree :: (SourceInfoTraversal n) => n dom st -> RoseTree st
 toRoseTree = head . head . tail . flip execState [[],[]] . toSrcRoseSt
-  where toSrcRoseSt = traverseUp desc asc f
+  where toSrcRoseSt = sourceInfoTraverseUp (SourceInfoTrf (trf RoseSpan) (trf RoseList) (trf RoseOptional)) desc asc
   
         desc  = modify ([]:)
         asc   = modify tail
-        f inf = modify (\(y : x : xs) -> [] : (RoseTree inf (reverse y) : x) : xs)
+        trf wrap inf = do modify (\(y : x : xs) -> [] : (RoseTree (wrap inf) (reverse y) : x) : xs)
+                          return inf

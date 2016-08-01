@@ -9,49 +9,52 @@ module Language.Haskell.Tools.AST.Base where
   
 import Language.Haskell.Tools.AST.Ann
 
-data Operator a
-  = BacktickOp { _operatorName :: Ann SimpleName a } -- ^ Backtick operator name: @ a `mod` b @
-  | NormalOp { _operatorName :: Ann SimpleName a }
+data Operator dom stage
+  = BacktickOp { _operatorName :: Ann SimpleName dom stage } -- ^ Backtick operator name: @ a `mod` b @
+  | NormalOp { _operatorName :: Ann SimpleName dom stage }
 
-data Name a
-  = ParenName { _simpleName :: Ann SimpleName a } -- ^ Parenthesized name: @ foldl (+) 0 @
-  | NormalName { _simpleName :: Ann SimpleName a }
+data Name dom stage
+  = ParenName { _simpleName :: Ann SimpleName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
+  | NormalName { _simpleName :: Ann SimpleName dom stage }
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
-data SimpleName a 
-  = SimpleName { _qualifiers      :: AnnList UnqualName a
-               , _unqualifiedName :: Ann UnqualName a 
+data SimpleName dom stage
+  = SimpleName { _qualifiers      :: AnnList UnqualName dom stage
+               , _unqualifiedName :: Ann UnqualName dom stage
                }
 
-nameFromList :: AnnList UnqualName a -> SimpleName a
+nameFromList :: AnnList UnqualName dom stage -> SimpleName dom stage
 nameFromList (AnnList a xs) | not (null xs) 
   = SimpleName (AnnList a (init xs)) (last xs) 
 nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         
-data UnqualName a 
+data UnqualName dom stage
   = UnqualName { _simpleNameStr :: String } 
                
 -- | Program elements formatted as string literals (import packages, pragma texts)
-data StringNode a
+data StringNode dom stage
   = StringNode { _stringNodeStr :: String }
+
+-- | The name of a module
+data ModuleName dom stage = ModuleName { _moduleNameString :: String }
                    
 -- | The @data@ or the @newtype@ keyword to define ADTs.
-data DataOrNewtypeKeyword a
+data DataOrNewtypeKeyword dom stage
   = DataKeyword
   | NewtypeKeyword
     
 -- | Keywords @do@ or @mdo@ to start a do-block
-data DoKind a
+data DoKind dom stage
   = DoKeyword
   | MDoKeyword
   
 -- | The @type@ keyword used to qualify that the type and not the constructor of the same name is referred
-data TypeKeyword a = TypeKeyword
+data TypeKeyword dom stage = TypeKeyword
   
 -- | Recognised overlaps for overlap pragmas. Can be applied to class declarations and class instance declarations.    
-data OverlapPragma a
+data OverlapPragma dom stage
   = EnableOverlap     -- ^ @OVERLAP@ pragma
   | DisableOverlap    -- ^ @NO_OVERLAP@ pragma
   | Overlappable      -- ^ @OVERLAPPABLE@ pragma
@@ -60,7 +63,7 @@ data OverlapPragma a
   | IncoherentOverlap -- ^ @INCOHERENT@ pragma
   
 -- | Call conventions of foreign functions
-data CallConv a
+data CallConv dom stage
   = StdCall
   | CCall
   | CPlusPlus
@@ -70,48 +73,48 @@ data CallConv a
   | JavaScript
   | CApi
   
-data ArrowAppl a
+data ArrowAppl dom stage
   = LeftAppl -- ^ Left arrow application: @-<@
   | RightAppl -- ^ Right arrow application: @>-@
   | LeftHighApp -- ^ Left arrow high application: @-<<@
   | RightHighApp -- ^ Right arrow high application: @>>-@
   
 -- | Safety annotations for foreign calls
-data Safety a
+data Safety dom stage
   = Safe
   | ThreadSafe
   | Unsafe
   | Interruptible
 
 -- | Associativity of an operator.
-data Assoc a
+data Assoc dom stage
   = AssocNone  -- ^ non-associative operator (declared with @infix@)
   | AssocLeft  -- ^ left-associative operator (declared with @infixl@)
   | AssocRight -- ^ right-associative operator (declared with @infixr@)
 
-data Role a
+data Role dom stage
   = Nominal
   | Representational
   | Phantom
   
-data ConlikeAnnot a = ConlikeAnnot
+data ConlikeAnnot dom stage = ConlikeAnnot
 
 -- | Numeric precedence of an operator
-data Precedence a
+data Precedence dom stage
   = Precedence { _precedenceValue :: Int } 
 
-data LineNumber a
+data LineNumber dom stage
   = LineNumber { _lineNumber :: Int } 
      
 -- | Controls the activation of a rewrite rule (@ [1] @)
-data PhaseControl a
-  = PhaseControl { _phaseUntil :: AnnMaybe PhaseInvert a
-                 , _phaseNumber :: Ann PhaseNumber a
+data PhaseControl dom stage
+  = PhaseControl { _phaseUntil :: AnnMaybe PhaseInvert dom stage
+                 , _phaseNumber :: Ann PhaseNumber dom stage
                  } 
 
 -- | Phase number for rewrite rules
-data PhaseNumber a 
+data PhaseNumber dom stage
   = PhaseNumber { _phaseNum :: Integer }
 
 -- | A tilde that marks the inversion of the phase number
-data PhaseInvert a = PhaseInvert
+data PhaseInvert dom stage = PhaseInvert
