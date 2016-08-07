@@ -68,12 +68,12 @@ install:
 # any command which exits with a non-zero exit code causes the build to fail.
 script:
  # install all components
- - cd src/ast && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
- - cd src/ast-trf && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
- - cd src/ast-ppr && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
- - cd src/ast-ghc && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
- - cd src/ast-gen && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
- - cd src/refactor && cabal install --enable-coverage && cabal check && cabal sdist && cd ../..
+ - cd src/ast && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
+ - cd src/ast-trf && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
+ - cd src/ast-ppr && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
+ - cd src/ast-ghc && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
+ - cd src/ast-gen && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
+ - cd src/refactor && cabal install --enable-coverage && cabal check && cabal haddock && cabal sdist && cd ../..
 
  # run test
  - cd test

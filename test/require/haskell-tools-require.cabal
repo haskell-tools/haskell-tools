@@ -1,5 +1,5 @@
 name:                haskell-tools-require
-version:             0.1.2.1
+version:             0.1.3.0
 synopsis:            All the requirements of the haskell-tools packages for caching.
 description:         All the requirements of the haskell-tools packages for caching.
 
