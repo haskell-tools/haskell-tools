@@ -52,7 +52,8 @@ createAmbigousNameInfo name span = do locals <- asks localsInScope
 createImplicitNameInfo :: String -> Trf (NameInfo n)
 createImplicitNameInfo name = do locals <- asks localsInScope
                                  isDefining <- asks defining
-                                 return (ImplicitNameInfo locals isDefining name)
+                                 rng <- asks contRange
+                                 return (ImplicitNameInfo locals isDefining name rng)
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (HsHasName n, GHCName n) => AST.ImportDecl (Dom n) stage -> Trf (ImportInfo n)

@@ -16,6 +16,7 @@ data Operator dom stage
 data Name dom stage
   = ParenName { _simpleName :: Ann SimpleName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
   | NormalName { _simpleName :: Ann SimpleName dom stage }
+  | ImplicitName { _simpleName :: Ann SimpleName dom stage } -- ^ Implicit name: @ ?var @
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.

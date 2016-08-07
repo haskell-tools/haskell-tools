@@ -144,10 +144,10 @@ instance InspectableName n => AssocData (NameInfo n) where
                                                       , ("isDefined", show defined)
                                                       , ("namesInScope", inspectScope locals) 
                                                       ]
-  toAssoc (ImplicitNameInfo locals defined name) = [ ("name", name)
-                                                   , ("isDefined", show defined)
-                                                   , ("namesInScope", inspectScope locals) 
-                                                   ]
+  toAssoc (ImplicitNameInfo locals defined name _) = [ ("name", name)
+                                                     , ("isDefined", show defined)
+                                                     , ("namesInScope", inspectScope locals) 
+                                                     ]
 instance AssocData CNameInfo where
   assocName (CNameInfo {}) = "CNameInfo"
   toAssoc (CNameInfo locals defined nameInfo) = [ ("name", inspect nameInfo)

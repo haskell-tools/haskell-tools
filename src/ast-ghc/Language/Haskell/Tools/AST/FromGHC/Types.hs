@@ -101,6 +101,8 @@ trfAssertion' (cleanHsType -> HsOpTy left op right)
 trfAssertion' (cleanHsType -> t) = case cleanHsType base of
    HsTyVar name -> AST.ClassAssert <$> trfName name <*> trfAnnList " " trfType' args
    HsEqTy t1 t2 -> AST.InfixAssert <$> trfType t1 <*> annLocNoSema (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
+   HsIParamTy name t -> do loc <- tokenLoc AnnVal
+                           AST.ImplicitAssert <$> define (focusOn loc (trfImplicitName name)) <*> trfType t
    t -> error ("Illegal trf assertion: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   where (args, sp, base) = getArgs t
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)

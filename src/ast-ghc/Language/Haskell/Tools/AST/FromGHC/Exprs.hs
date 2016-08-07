@@ -54,7 +54,7 @@ createScopeInfo = do scope <- asks localsInScope
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.Expr (Dom r) RangeStage)
 trfExpr' (HsVar name) = AST.Var <$> trfName name
 trfExpr' (HsRecFld fld) = AST.Var <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
-trfExpr' (HsIPVar (HsIPName ip)) = AST.Var <$> annContNoSema (AST.NormalName <$> annCont (createImplicitNameInfo (unpackFS ip)) (AST.nameFromList <$> trfNameStr (unpackFS ip)))
+trfExpr' (HsIPVar ip) = AST.Var <$> trfImplicitName ip
 trfExpr' (HsOverLit (ol_val -> val)) = AST.Lit <$> annContNoSema (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.Lit <$> annContNoSema (trfLiteral' val)
 trfExpr' (HsLam (unLoc . mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] (unLoc -> EmptyLocalBinds))]))

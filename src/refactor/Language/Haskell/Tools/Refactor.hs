@@ -112,7 +112,7 @@ onlineRefactor command workingDir moduleStr
        if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
           | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
-          | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
+          -- | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
           | otherwise -> do 
               res <- performRefactor command workingDir moduleName
               removeFile fileName
@@ -127,7 +127,7 @@ onlineASTView workingDir moduleStr
        if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
           | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
-          | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
+          -- | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
           | otherwise -> do 
               res <- astView workingDir moduleName
               removeFile fileName
@@ -202,11 +202,13 @@ demoRefactor command workingDir moduleName =
     let r = tm_renamed_source t
     let annots = pm_annotations $ tm_parsed_module t
 
-    -- liftIO $ putStrLn $ show annots
+    liftIO $ putStrLn $ show annots
+    liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (pm_parsed_source p)
     liftIO $ putStrLn "==========="
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
-    --liftIO $ putStrLn $ show (typecheckedSource t)
+    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)

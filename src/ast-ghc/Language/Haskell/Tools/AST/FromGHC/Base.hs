@@ -99,6 +99,13 @@ instance {-# OVERLAPPABLE #-} (n ~ r, TransformableName n, HsHasName n) => Trans
 instance {-# OVERLAPS #-} (TransformableName res, GHCName res, HsHasName res) => TransformName GHC.Name res where
   transformName = fromGHCName
 
+trfImplicitName :: HsIPName -> Trf (Ann AST.Name (Dom r) RangeStage)
+trfImplicitName (HsIPName fs) 
+  = let nstr = unpackFS fs 
+     in do rng <- asks contRange
+           let rng' = mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (srcSpanEnd rng)
+           annContNoSema (AST.ImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
+
 trfSimpleName :: TransformName n r => Located n -> Trf (Ann AST.SimpleName (Dom r) RangeStage)
 trfSimpleName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfSimpleName' n)
 
