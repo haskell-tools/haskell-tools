@@ -104,13 +104,10 @@ instance HasNameInfo CNameInfo where
 
 -- | Infos that may have a typed name that can be extracted
 class HasIdInfo si where
-  semanticsId :: si -> Maybe Id
-
-instance HasIdInfo (NameInfo Id) where
-  semanticsId = (^? nameInfo)
+  semanticsId :: si -> Id
 
 instance HasIdInfo CNameInfo where
-  semanticsId = (^? cnameInfo)
+  semanticsId = (^. cnameInfo)
 
 -- | Infos that contain the names that are available in theirs scope
 class HasScopeInfo si where

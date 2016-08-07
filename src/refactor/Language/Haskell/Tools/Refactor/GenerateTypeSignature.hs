@@ -132,10 +132,10 @@ generateTypeFor prec t
 -- | Check whether the definition already has a type signature
 typeSignatureAlreadyExist :: (GenerateSignatureDomain dom, BindingElem d) => AnnList' d dom -> Ann' ValueBind dom -> Bool
 typeSignatureAlreadyExist ls vb = 
-  getBindingName vb `elem` catMaybes (map semanticsId $ concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element))
+  getBindingName vb `elem` (map semanticsId $ concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element))
   
 getBindingName :: GenerateSignatureDomain dom => Ann' ValueBind dom -> GHC.Id
-getBindingName vb = case catMaybes $ map semanticsId $ nub $ vb ^? bindingName of 
+getBindingName vb = case map semanticsId $ nub $ vb ^? bindingName of 
   [n] -> n
   [] -> error "Trying to generate a signature for a binding with no name"
   _ -> error "Trying to generate a signature for a binding with multiple names"
