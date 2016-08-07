@@ -221,7 +221,7 @@ focusAfterIfPresent firstTok trf
           then local (\s -> s { contRange = mkSrcSpan (srcSpanEnd firstToken) (srcSpanEnd (contRange s))}) trf
           else trf
 
--- | Focuses the transformation to be performed after the given token. The token must be found inside the current range.
+-- | Focuses the transformation to be performed before the given token. The token must be found inside the current range.
 focusBefore :: AnnKeywordId -> Trf a -> Trf a
 focusBefore lastTok trf
   = do lastToken <- tokenLocBack lastTok
@@ -248,6 +248,9 @@ after tok = srcSpanEnd <$> tokenLoc tok
 -- | The element should span from the given token to the end of focus
 annFrom :: AnnKeywordId -> Trf (SemanticInfo (Dom n) e) -> Trf (e (Dom n) RangeStage) -> Trf (Ann e (Dom n) RangeStage)
 annFrom kw sema = annLoc sema (combineSrcSpans <$> tokenLoc kw <*> asks (srcLocSpan . srcSpanEnd . contRange))
+
+annFromNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo => AnnKeywordId -> Trf (e (Dom n) RangeStage) -> Trf (Ann e (Dom n) RangeStage)
+annFromNoSema kw = annFrom kw (pure NoSemanticInfo)
 
 -- | Gets the position at the beginning of the focus       
 atTheStart :: Trf SrcLoc

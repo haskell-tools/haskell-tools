@@ -97,6 +97,7 @@ trfWhereLocalBinds binds
 getBindLocs :: HsLocalBinds n -> SrcSpan
 getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs
 getBindLocs (HsValBinds (ValBindsOut binds sigs)) = foldLocs $ map getLoc (concatMap (bagToList . snd) binds) ++ map getLoc sigs
+getBindLocs (HsIPBinds (IPBinds binds _)) = foldLocs $ map getLoc binds
   
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnList AST.LocalBind (Dom r) RangeStage)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
@@ -107,6 +108,14 @@ trfLocalBinds (HsValBinds (ValBindsOut binds sigs))
   = makeIndentedList (after AnnWhere)
       (orderDefs <$> ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.LocalValBind . trfBind) . bagToList . snd) binds)
                            <*> mapM trfLocalSig sigs))
+trfLocalBinds (HsIPBinds (IPBinds binds _))
+  = makeIndentedList (after AnnWhere) (mapM trfIpBind binds)
+
+trfIpBind :: TransformName n r => Located (IPBind n) -> Trf (Ann AST.LocalBind (Dom r) RangeStage)
+trfIpBind = trfLocNoSema $ \case
+  IPBind (Left (L l ipname)) expr -> AST.LocalValBind <$> (annContNoSema $ AST.SimpleBind <$> focusOn l (annContNoSema (AST.VarPat <$> define (trfImplicitName ipname)))
+                                                                                          <*> annFromNoSema AnnEqual (AST.UnguardedRhs <$> trfExpr expr)
+                                                                                          <*> nothing " " "" atTheEnd)
              
 trfLocalSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.LocalBind (Dom r) RangeStage)
 trfLocalSig = trfLocNoSema $ \case

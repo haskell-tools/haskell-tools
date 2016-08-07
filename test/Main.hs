@@ -129,6 +129,7 @@ languageTests =
   , "Module.Import"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
+  , "Pattern.ImplicitParams"
   , "Pattern.Infix"
   , "Pattern.NPlusK"
   , "Pattern.Record"
