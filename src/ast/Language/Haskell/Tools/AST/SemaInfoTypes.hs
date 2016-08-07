@@ -40,6 +40,7 @@ data NameInfo n = NameInfo { _nameScopedLocals :: [[Name]]
                 | ImplicitNameInfo { _nameScopedLocals :: [[Name]]
                                    , _nameIsDefined :: Bool
                                    , _implicitName :: String
+                                   , _implicitLocation :: SrcSpan
                                    }
 
   deriving (Eq, Data)
@@ -70,7 +71,7 @@ instance Show ScopeInfo where
 instance Outputable n => Show (NameInfo n) where
   show (NameInfo locals defined nameInfo) = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
   show (AmbiguousNameInfo locals defined nameInfo span) = "(AmbiguousNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
-  show (ImplicitNameInfo locals defined nameInfo) = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
+  show (ImplicitNameInfo locals defined nameInfo span) = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
 
 instance Show CNameInfo where
   show (CNameInfo locals defined nameInfo) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"

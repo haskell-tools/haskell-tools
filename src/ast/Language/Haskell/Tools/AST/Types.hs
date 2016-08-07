@@ -80,5 +80,8 @@ data Assertion dom stage
                 , _assertOp :: Ann Operator dom stage
                 , _assertRhs :: Ann Type dom stage
                 } -- ^ Infix class assertion, also contains type equations (@ a ~ X y @)
+  | ImplicitAssert { _assertImplVar :: Ann Name dom stage
+                   , _assertImplType :: Ann Type dom stage
+                   } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -> a -> Bool @)
                  
                  

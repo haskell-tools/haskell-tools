@@ -108,6 +108,7 @@ languageTests =
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
   , "Expr.If"
+  , "Expr.ImplicitParams"
   , "Expr.LambdaCase"
   , "Expr.ListComp"
   , "Expr.MultiwayIf"
@@ -128,6 +129,7 @@ languageTests =
   , "Module.Import"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
+  , "Pattern.ImplicitParams"
   , "Pattern.Infix"
   , "Pattern.NPlusK"
   , "Pattern.Record"
@@ -219,6 +221,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.TypeOperators", "4:13-4:15", "x1")
   , ("Refactor.RenameDefinition.NoPrelude", "4:1-4:2", "map")
   , ("Refactor.RenameDefinition.UnusedDef", "3:1-3:2", "map")
+  , ("Refactor.RenameDefinition.ImplicitParams", "8:17-8:20", "compare")
   ]
 
 wrongRenameDefinitionTests =

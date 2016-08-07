@@ -3,11 +3,13 @@
            , FlexibleContexts
            , ScopedTypeVariables
            , TypeApplications
+           , TupleSections
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
 import Control.Reference hiding (element)
 import Data.Maybe
+import Data.Function (on)
 import Data.List
 import Data.Char
 import Data.Map as Map hiding (map, filter)
@@ -45,6 +47,7 @@ import Type as GHC
 import Unique as GHC
 import CoAxiom as GHC
 import DynFlags as GHC
+import TcEvidence as GHC
 import Language.Haskell.TH.LanguageExtensions
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), Dom, IdDom, RangeStage, NoSemanticInfo(..), NameInfo(..), CNameInfo(..), ScopeInfo(..), ImportInfo(..), ModuleInfo(..)
@@ -58,21 +61,46 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 addTypeInfos :: LHsBinds Id -> Ann AST.Module (Dom GHC.Name) RangeStage -> Ghc (Ann AST.Module IdDom RangeStage)
-addTypeInfos bnds = semaTraverse 
+addTypeInfos bnds mod = evalStateT (semaTraverse 
   (AST.SemaTrf
-    (\case (NameInfo sc def ni) -> CNameInfo sc def <$> getType' ni 
-           (AmbiguousNameInfo sc d rdr l) -> return $ CNameInfo sc d (locMapping ! l))
+    (\case (NameInfo sc def ni) -> lift $ CNameInfo sc def <$> getType' ni 
+           (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+           (AmbiguousNameInfo sc d rdr l) | otherwise -> error $ "Ambiguous name missing: " ++ showSDocUnsafe (ppr rdr) ++ ", at: " ++ show l
+           (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+           (ImplicitNameInfo sc d str (RealSrcSpan l)) | otherwise
+              -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` l) . fst))
+                    case rest of [] -> error $ "Implicit name missing: " ++ str ++ ", at: " ++ show l
+                                 ((_,id):more) -> do put (none ++ more)
+                                                     return $ CNameInfo sc d id)
     pure
-    (\(ImportInfo mod access used) -> ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
-    (\(ModuleInfo mod imps) -> ModuleInfo mod <$> mapM getType' imps)
-    pure)
+    (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
+    (\(ModuleInfo mod imps) -> lift $ ModuleInfo mod <$> mapM getType' imps)
+    pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found")
-                            <$> ((<|>) <$> getTopLevelId name <*> getLocalId bnds name)
+                                 <$> ((<|>) <$> getTopLevelId name <*> getLocalId bnds name)
 
 extractExprIds :: LHsBinds Id -> [Located Id]
         -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar
-extractExprIds = catMaybes . map (\case (L l (HsVar (L _ n))) -> Just (L l n); _ -> Nothing) . concatMap universeBi . bagToList
+extractExprIds = catMaybes . map (\case L l (HsVar (L _ n)) -> Just (L l n)
+                                        L l (HsWrap _ (HsVar (L _ n))) -> Just (L l n)
+                                        _ -> Nothing
+                                 ) . concatMap universeBi . bagToList
+
+extractSigIds :: LHsBinds Id -> [(SrcSpan,Id)]
+extractSigIds = concat . map (\case L l bs@(AbsBindsSig {} :: HsBind Id) -> map (l,) $ getImplVars (abs_sig_ev_bind bs)
+                                    _                                    -> []
+                             ) . concatMap universeBi . bagToList
+  where getImplVars (EvBinds evbnds) = catMaybes $ map getEvVar $ bagToList evbnds
+        getEvVar (EvBind lhs _ False) = Just lhs
+        getEvVar _                    = Nothing
+
+extractSigBindIds :: LHsBinds Id -> [(SrcSpan,Id)]
+extractSigBindIds = catMaybes . map (\case L l bs@(IPBind (Right id) _) -> Just (l,id)
+                                           _                            -> Nothing
+                                    ) . concatMap universeBi . bagToList
+
+
 
 createModuleInfo :: Module -> Trf (AST.ModuleInfo GHC.Name)
 createModuleInfo mod = do prelude <- lift (xopt ImplicitPrelude . ms_hspp_opts <$> getModSummary (moduleName mod))
