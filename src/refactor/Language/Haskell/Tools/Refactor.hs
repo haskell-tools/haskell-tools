@@ -112,7 +112,6 @@ onlineRefactor command workingDir moduleStr
        if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
           | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
-          -- | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
           | otherwise -> do 
               res <- performRefactor command workingDir moduleName
               removeFile fileName
@@ -127,7 +126,6 @@ onlineASTView workingDir moduleStr
        if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
           | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
           | xopt EmptyCase modOpts -> return (Left "The ranges in the AST are not correct for empty cases, therefore the EmptyCase extension is disabled")
-          -- | xopt ImplicitParams modOpts -> return (Left "Implicit parameters are erased early on by the compiler, we cannot support them")
           | otherwise -> do 
               res <- astView workingDir moduleName
               removeFile fileName
