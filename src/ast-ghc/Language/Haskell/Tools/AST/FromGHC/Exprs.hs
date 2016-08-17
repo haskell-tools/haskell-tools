@@ -42,9 +42,14 @@ import qualified Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr (Dom r) RangeStage)
--- correction for empty cases (TODO: put of and {} inside)
+-- correction for empty cases
 trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> []))) 
-  = annLoc createScopeInfo (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+  = do let realSpan = combineSrcSpans l (getLoc expr)
+       tokensAfter <- allTokensAfter (srcSpanEnd realSpan)
+       let actualSpan = case take 3 tokensAfter of 
+                          [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
+                          ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
+       annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
 trfExpr e = trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf AST.ScopeInfo
