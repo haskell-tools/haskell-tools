@@ -107,6 +107,7 @@ languageTests =
   , "Expr.Case"
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
+  , "Expr.EmptyCase"
   , "Expr.If"
   , "Expr.ImplicitParams"
   , "Expr.LambdaCase"

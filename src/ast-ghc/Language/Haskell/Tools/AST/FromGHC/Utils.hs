@@ -275,6 +275,9 @@ tokenBefore :: SrcLoc -> AnnKeywordId -> Trf SrcSpan
 tokenBefore loc keyw 
   = fromMaybe noSrcSpan <$> (getKeywordInsideBack keyw <$> (mkSrcSpan <$> (asks (srcSpanStart . contRange)) <*> pure loc) <*> asks srcMap)
 
+allTokensAfter :: SrcLoc -> Trf [(SrcSpan, AnnKeywordId)]
+allTokensAfter loc = getTokensAfter loc <$> asks srcMap
+
 -- | Searches for tokens in the given order inside the parent element and returns their combined location
 tokensLoc :: [AnnKeywordId] -> Trf SrcSpan
 tokensLoc keys = asks contRange >>= tokensLoc' keys

@@ -76,11 +76,19 @@ getRangeElemSpan (RangeElem sp) = Just sp
 getRangeElemSpan _ = Nothing
 
 instance HasRange (SpanInfo RngTemplateStage) where 
-  getRange = RealSrcSpan . (^. rngTemplateNodeRange)      
+  getRange = RealSrcSpan . (^. rngTemplateNodeRange)
+  setRange (RealSrcSpan sp) = rngTemplateNodeRange .= sp
+  setRange _ = id
+
 instance HasRange (ListInfo RngTemplateStage) where 
-  getRange = RealSrcSpan . (^. rngTemplateListRange)      
+  getRange = RealSrcSpan . (^. rngTemplateListRange)    
+  setRange (RealSrcSpan sp) = rngTemplateListRange .= sp  
+  setRange _ = id
+
 instance HasRange (OptionalInfo RngTemplateStage) where 
   getRange = RealSrcSpan . (^. rngTemplateOptRange)
+  setRange (RealSrcSpan sp) = rngTemplateOptRange .= sp  
+  setRange _ = id
 
 instance Show (SpanInfo RngTemplateStage) where
   show rngNode = concatMap show $ rngNode ^. rngTemplateNodeElems
