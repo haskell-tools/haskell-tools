@@ -49,6 +49,7 @@ deriving instance (Domain dom, SourceInfo stage) => Generic (InstBodyDecl dom st
 deriving instance (Domain dom, SourceInfo stage) => Generic (GadtConDecl dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (GadtConType dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (GadtField dom stage)
+deriving instance (Domain dom, SourceInfo stage) => Generic (FieldWildcard dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (FunDeps dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (FunDep dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (ConDecl dom stage)

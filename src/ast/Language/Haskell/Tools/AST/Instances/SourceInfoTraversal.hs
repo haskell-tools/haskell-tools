@@ -47,6 +47,7 @@ deriveSourceInfoTraversal ''InstBodyDecl
 deriveSourceInfoTraversal ''GadtConDecl
 deriveSourceInfoTraversal ''GadtConType
 deriveSourceInfoTraversal ''GadtField
+deriveSourceInfoTraversal ''FieldWildcard
 deriveSourceInfoTraversal ''FunDeps
 deriveSourceInfoTraversal ''FunDep
 deriveSourceInfoTraversal ''ConDecl

@@ -17,6 +17,7 @@ import BasicTypes as GHC
 import Bag as GHC
 import ForeignCall as GHC
 import Outputable as GHC
+import Unique as GHC
 
 import Control.Monad.Reader
 import Control.Reference
@@ -38,6 +39,7 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), getRange, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
+import Data.Dynamic
 import Debug.Trace
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) RangeStage)

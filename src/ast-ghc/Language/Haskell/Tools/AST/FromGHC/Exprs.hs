@@ -7,6 +7,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
+import Data.List (partition)
 import Data.Data (toConstr)
 import Control.Monad.Reader
 import Control.Reference
@@ -24,6 +25,7 @@ import ApiAnnotation as GHC
 import FastString as GHC
 import Outputable as GHC
 import PrelNames as GHC
+import DataCon as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -142,12 +144,13 @@ trfExpr' (HsAppType expr typ) = AST.ExplTypeApp <$> trfExpr expr <*> trfType (hs
 trfExpr' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate (Dom r) RangeStage)
-trfFieldInits (HsRecFields fields dotdot) 
+trfFieldInits (HsRecFields fields dotdot)
   = do cont <- asks contRange
+       let (normalFlds, implicitFlds) = partition ((cont /=) . getLoc) fields
        makeList ", " (before AnnCloseC)
-         $ ((++) <$> mapM trfFieldInit (filter ((cont /=) . getLoc) fields) 
+         $ ((++) <$> mapM trfFieldInit normalFlds
                   <*> (if isJust dotdot then (:[]) <$> annLocNoSema (tokenLoc AnnDotdot) 
-                                                                    (pure AST.FieldWildcard) 
+                                                                    (AST.FieldWildcard <$> (annCont (createImplicitFldInfo transformName (map unLoc implicitFlds)) (pure AST.FldWildcard))) 
                                         else pure []))
   
 trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (Dom r) RangeStage)

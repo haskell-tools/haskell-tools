@@ -6,3 +6,6 @@ data Expr dom stage
 
 type role Cmd nominal nominal
 data Cmd dom stage
+
+type role FieldWildcard phantom phantom
+data FieldWildcard dom stage
