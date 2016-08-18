@@ -67,8 +67,8 @@ data ImportInfo n = ImportInfo { _importedModule :: Module -- ^ The name and pac
   deriving (Eq, Data)
 
 -- | Info corresponding to an import declaration
-data ImplicitFieldInfo n = ImplicitFieldInfo { _implicitFieldBindings :: [(n,n)] -- ^ The name and package of the imported module
-                                             } 
+data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
+                                           } 
   deriving (Eq, Data)
 
 instance Show ScopeInfo where
@@ -88,7 +88,7 @@ instance Outputable n => Show (ModuleInfo n) where
 instance Outputable n => Show (ImportInfo n) where
   show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
 
-instance Outputable n => Show (ImplicitFieldInfo n) where
+instance Show ImplicitFieldInfo where
   show (ImplicitFieldInfo bnds) = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map (\(from,to) -> showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)) bnds)) ++ "])"
 
 instance Show NoSemanticInfo where

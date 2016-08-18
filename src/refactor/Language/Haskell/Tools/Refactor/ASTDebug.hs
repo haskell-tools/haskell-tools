@@ -175,7 +175,7 @@ instance InspectableName n => AssocData (ImportInfo n) where
                                             , ("importedNames", concat (intersperse ", " (map inspect imported))) 
                                             ]      
   
-instance InspectableName n => AssocData (ImplicitFieldInfo n) where
+instance AssocData ImplicitFieldInfo where
   assocName (ImplicitFieldInfo {}) = "ImplicitFieldInfo"
   toAssoc (ImplicitFieldInfo bnds) = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") bnds)))
                                      ]                                               

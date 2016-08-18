@@ -30,7 +30,6 @@ import Data.IORef
 import Data.Function hiding ((&))
 import Data.List
 import Data.Char
-import Data.Data (toConstr, Data(..))
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
@@ -58,11 +57,11 @@ createImplicitNameInfo name = do locals <- asks localsInScope
                                  return (ImplicitNameInfo locals isDefining name rng)
 
 -- | Creates a semantic information for an implicit name
-createImplicitFldInfo :: (GHCName n, DataId n) => (n -> r) -> [HsRecField n (LHsExpr n)] -> Trf (ImplicitFieldInfo r)
-createImplicitFldInfo trf flds = return (ImplicitFieldInfo (map getLabelAndExpr flds))
+createImplicitFldInfo :: (GHCName n, HsHasName n) => [HsRecField n (LHsExpr n)] -> Trf ImplicitFieldInfo
+createImplicitFldInfo flds = return (ImplicitFieldInfo (map getLabelAndExpr flds))
   where getLabelAndExpr fld = case unLoc (hsRecFieldArg fld) of
-          HsVar name -> (trf $ unLoc (getFieldOccName (hsRecFieldLbl fld)), trf $ unLoc name)
-          e -> error $ "The implicitely bounded argument must be a variable. It is: " ++ show (toConstr e)
+          HsVar name -> (head $ hsGetNames $ unLoc (getFieldOccName (hsRecFieldLbl fld)), head $ hsGetNames $ unLoc name)
+          e -> error $ "The implicitely bounded argument must be a variable."
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (HsHasName n, GHCName n) => AST.ImportDecl (Dom n) stage -> Trf (ImportInfo n)

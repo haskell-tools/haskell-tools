@@ -150,7 +150,7 @@ trfFieldInits (HsRecFields fields dotdot)
        makeList ", " (before AnnCloseC)
          $ ((++) <$> mapM trfFieldInit normalFlds
                   <*> (if isJust dotdot then (:[]) <$> annLocNoSema (tokenLoc AnnDotdot) 
-                                                                    (AST.FieldWildcard <$> (annCont (createImplicitFldInfo transformName (map unLoc implicitFlds)) (pure AST.FldWildcard))) 
+                                                                    (AST.FieldWildcard <$> (annCont (createImplicitFldInfo (map unLoc implicitFlds)) (pure AST.FldWildcard))) 
                                         else pure []))
   
 trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (Dom r) RangeStage)

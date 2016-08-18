@@ -95,14 +95,14 @@ type instance SemanticInfo' (Dom n) SameInfoNameCls = NameInfo n
 type instance SemanticInfo' (Dom n) SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
 type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
-type instance SemanticInfo' (Dom n) SameInfoWildcardCls = ImplicitFieldInfo n
+type instance SemanticInfo' (Dom n) SameInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
 
 type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
 type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
-type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo GHC.Id
+type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
 
 -- | Class for domain configuration markers

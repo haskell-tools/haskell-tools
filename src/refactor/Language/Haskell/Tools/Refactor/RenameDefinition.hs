@@ -31,12 +31,16 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 import Debug.Trace
 
 type DomainRenameDefinition dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), Data (SemanticInfo' dom SameInfoNameCls)
-                                  , HasScopeInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls) )
+                                  , HasScopeInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls)
+                                  , SemanticInfo' dom SameInfoWildcardCls ~ ImplicitFieldInfo )
 
 renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom
 renameDefinition' sp str mod
   = case (getNodeContaining sp mod :: Maybe (Ann SimpleName dom SrcTemplateStage)) >>= (fmap getName . (semanticsName =<<) . (^? semantics)) of 
-      Just n -> renameDefinition n str mod
+      Just name -> do let sameNames = bindsWithSameName name (mod ^? biplateRef) 
+                      foldM (\ast n -> renameDefinition n str ast) mod (name : sameNames) 
+        where bindsWithSameName :: GHC.Name -> [Ann FieldWildcard dom SrcTemplateStage] -> [GHC.Name]
+              bindsWithSameName name wcs = catMaybes $ map ((lookup name) . (^. semantics&implicitFieldBindings)) wcs
       Nothing -> refactError "No name is selected"
 
 renameDefinition :: DomainRenameDefinition dom => GHC.Name -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom

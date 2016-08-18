@@ -75,7 +75,7 @@ addTypeInfos bnds mod = evalStateT (semaTraverse
     pure
     (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
     (\(ModuleInfo mod imps) -> lift $ ModuleInfo mod <$> mapM getType' imps)
-    (\(ImplicitFieldInfo wcbinds) -> lift $ ImplicitFieldInfo <$> mapM (\(from,to) -> (,) <$> getType' from <*> getType' to) wcbinds)
+    (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
       pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found")
