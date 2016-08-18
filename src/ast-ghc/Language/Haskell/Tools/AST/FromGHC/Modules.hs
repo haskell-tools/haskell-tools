@@ -50,7 +50,7 @@ import DynFlags as GHC
 import TcEvidence as GHC
 import Language.Haskell.TH.LanguageExtensions
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), Dom, IdDom, RangeStage, NoSemanticInfo(..), NameInfo(..), CNameInfo(..), ScopeInfo(..), ImportInfo(..), ModuleInfo(..)
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), Dom, IdDom, RangeStage, NoSemanticInfo(..), NameInfo(..), CNameInfo(..), ScopeInfo(..), ImportInfo(..), ModuleInfo(..), ImplicitFieldInfo(..)
                                   , semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan, semaTraverse)
 import qualified Language.Haskell.Tools.AST as AST
 
@@ -75,7 +75,8 @@ addTypeInfos bnds mod = evalStateT (semaTraverse
     pure
     (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
     (\(ModuleInfo mod imps) -> lift $ ModuleInfo mod <$> mapM getType' imps)
-    pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
+    (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
+      pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found")
                                  <$> ((<|>) <$> getTopLevelId name <*> getLocalId bnds name)

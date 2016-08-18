@@ -28,6 +28,9 @@ instance {-# OVERLAPPING #-} (ASTDebug ImportDecl dom st) => ASTDebug (Ann Impor
 instance {-# OVERLAPPING #-} (ASTDebug Module dom st) => ASTDebug (Ann Module) dom st where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ModuleInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
+instance {-# OVERLAPPING #-} (ASTDebug FieldWildcard dom st) => ASTDebug (Ann FieldWildcard) dom st where
+  astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ImplicitFieldInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
+
 instance {-# OVERLAPPABLE #-} (ASTDebug e dom st) => ASTDebug (Ann e) dom st where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= DefaultInfoType (getRange (a ^. sourceInfo)) $ astDebug' e
 
@@ -64,6 +67,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug InstBodyDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug GadtConDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug GadtConType dom st
 instance (Domain dom, SourceInfo st) => ASTDebug GadtField dom st
+instance (Domain dom, SourceInfo st) => ASTDebug FieldWildcard dom st
 instance (Domain dom, SourceInfo st) => ASTDebug FunDeps dom st
 instance (Domain dom, SourceInfo st) => ASTDebug FunDep dom st
 instance (Domain dom, SourceInfo st) => ASTDebug ConDecl dom st

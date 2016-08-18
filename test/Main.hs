@@ -211,6 +211,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.QualName", "3:1-3:2", "q")
   , ("Refactor.RenameDefinition.BacktickName", "3:1-3:2", "g")
   , ("Refactor.RenameDefinition.ParenName", "4:3-4:5", "<->")
+  , ("Refactor.RenameDefinition.RecordWildcards", "4:32-4:33", "yy")
   , ("Refactor.RenameDefinition.RecordPatternSynonyms", "4:16-4:17", "xx")
   , ("Refactor.RenameDefinition.ClassMember", "7:3-7:4", "q")
   , ("Refactor.RenameDefinition.LocalFunction", "4:5-4:6", "g")

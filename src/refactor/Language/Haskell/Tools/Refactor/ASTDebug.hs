@@ -72,6 +72,10 @@ data SemanticInfoType dom
   | ModuleInfoType { semaInfoTypeModule :: SemanticInfo' dom SameInfoModuleCls
                    , semaInfoTypeRng :: SrcSpan
                    }
+  | ImplicitFieldInfoType { semaInfoTypeImplicitFld :: SemanticInfo' dom SameInfoWildcardCls
+                          , semaInfoTypeRng :: SrcSpan
+                          }
+
 
 deriving instance Domain dom => Show (SemanticInfoType dom)
 
@@ -79,7 +83,8 @@ makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
 type AssocSema dom = ( AssocData (SemanticInfo' dom SameInfoModuleCls), AssocData (SemanticInfo' dom SameInfoImportCls)
-                     , AssocData (SemanticInfo' dom SameInfoNameCls), AssocData (SemanticInfo' dom SameInfoExprCls) )
+                     , AssocData (SemanticInfo' dom SameInfoNameCls), AssocData (SemanticInfo' dom SameInfoExprCls)
+                     , AssocData (SemanticInfo' dom SameInfoWildcardCls) )
 
 astDebug :: (ASTDebug e dom st, AssocSema dom) => e dom st -> String
 astDebug ast = toList (astDebugToJson (astDebug' ast))
@@ -119,12 +124,14 @@ instance AssocSema dom => AssocData (SemanticInfoType dom) where
   assocName s@(ExprInfoType {}) = assocName (semaInfoTypeExpr s)
   assocName s@(ImportInfoType {}) = assocName (semaInfoTypeImport s)
   assocName s@(ModuleInfoType {}) = assocName (semaInfoTypeModule s)
+  assocName s@(ImplicitFieldInfoType {}) = assocName (semaInfoTypeImplicitFld s)
 
   toAssoc s@(DefaultInfoType {}) = []
   toAssoc s@(NameInfoType {}) = toAssoc (semaInfoTypeName s)
   toAssoc s@(ExprInfoType {}) = toAssoc (semaInfoTypeExpr s)
   toAssoc s@(ImportInfoType {}) = toAssoc (semaInfoTypeImport s)
   toAssoc s@(ModuleInfoType {}) = toAssoc (semaInfoTypeModule s)
+  toAssoc s@(ImplicitFieldInfoType {}) = toAssoc (semaInfoTypeImplicitFld s)
 
 
 instance AssocData ScopeInfo where
@@ -166,7 +173,12 @@ instance InspectableName n => AssocData (ImportInfo n) where
   toAssoc (ImportInfo mod avail imported) = [ ("moduleName", showSDocUnsafe (ppr mod)) 
                                             , ("availableNames", concat (intersperse ", " (map inspect avail))) 
                                             , ("importedNames", concat (intersperse ", " (map inspect imported))) 
-                                            ]                                            
+                                            ]      
+  
+instance AssocData ImplicitFieldInfo where
+  assocName (ImplicitFieldInfo {}) = "ImplicitFieldInfo"
+  toAssoc (ImplicitFieldInfo bnds) = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") bnds)))
+                                     ]                                               
 
 inspectScope :: InspectableName n => [[n]] -> String
 inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)

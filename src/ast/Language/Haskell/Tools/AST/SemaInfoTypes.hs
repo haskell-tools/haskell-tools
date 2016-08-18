@@ -13,6 +13,7 @@ import SrcLoc
 import RdrName
 import Outputable
 
+import Data.List
 import Data.Data
 
 import Control.Reference
@@ -65,6 +66,11 @@ data ImportInfo n = ImportInfo { _importedModule :: Module -- ^ The name and pac
                                } 
   deriving (Eq, Data)
 
+-- | Info corresponding to an import declaration
+data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
+                                           } 
+  deriving (Eq, Data)
+
 instance Show ScopeInfo where
   show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
 
@@ -82,6 +88,9 @@ instance Outputable n => Show (ModuleInfo n) where
 instance Outputable n => Show (ImportInfo n) where
   show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
 
+instance Show ImplicitFieldInfo where
+  show (ImplicitFieldInfo bnds) = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map (\(from,to) -> showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)) bnds)) ++ "])"
+
 instance Show NoSemanticInfo where
   show NoSemanticInfo = "NoSemanticInfo"
 
@@ -91,6 +100,7 @@ makeReferences ''NameInfo
 makeReferences ''CNameInfo
 makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
+makeReferences ''ImplicitFieldInfo
 
 -- | Infos that may have a name that can be extracted
 class HasNameInfo si where
