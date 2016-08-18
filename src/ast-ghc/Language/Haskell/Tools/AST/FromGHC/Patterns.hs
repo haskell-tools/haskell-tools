@@ -33,7 +33,7 @@ trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern (Dom 
 trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
   = do let (fromWC, notWC) = partition ((l ==) . getLoc) flds
        normalFields <- mapM (trfLocNoSema trfPatternField') notWC
-       wildc <- annLocNoSema (tokenLoc AnnDotdot) (pure AST.FieldWildcardPattern)
+       wildc <- annLocNoSema (tokenLoc AnnDotdot) (AST.FieldWildcardPattern <$> annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -> n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))
        annLocNoSema (pure l) (AST.RecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
 trfPattern p | otherwise = trfLocNoSema trfPattern' (correctPatternLoc p)
 

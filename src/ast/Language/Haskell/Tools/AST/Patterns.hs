@@ -5,7 +5,7 @@ import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Base  
 import Language.Haskell.Tools.AST.Literals
 import Language.Haskell.Tools.AST.Types
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Exprs (Expr)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Exprs (Expr, FieldWildcard)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.TH
 
         
@@ -66,4 +66,5 @@ data PatternField dom stage
                          } -- ^ Named field pattern (@ p = Point 3 2 @)
   | FieldPunPattern      { _fieldPatternName :: Ann Name dom stage
                          } -- ^ Named field pun (@ p @)
-  | FieldWildcardPattern -- ^ Wildcard field pattern (@ .. @)
+  | FieldWildcardPattern { _fieldPatternWildcard :: Ann FieldWildcard dom stage
+                         } -- ^ Wildcard field pattern (@ .. @)

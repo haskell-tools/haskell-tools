@@ -57,11 +57,10 @@ createImplicitNameInfo name = do locals <- asks localsInScope
                                  return (ImplicitNameInfo locals isDefining name rng)
 
 -- | Creates a semantic information for an implicit name
-createImplicitFldInfo :: (GHCName n, HsHasName n) => [HsRecField n (LHsExpr n)] -> Trf ImplicitFieldInfo
-createImplicitFldInfo flds = return (ImplicitFieldInfo (map getLabelAndExpr flds))
-  where getLabelAndExpr fld = case unLoc (hsRecFieldArg fld) of
-          HsVar name -> (head $ hsGetNames $ unLoc (getFieldOccName (hsRecFieldLbl fld)), head $ hsGetNames $ unLoc name)
-          e -> error $ "The implicitely bounded argument must be a variable."
+createImplicitFldInfo :: (GHCName n, HsHasName n) => (a -> n) -> [HsRecField n a] -> Trf ImplicitFieldInfo
+createImplicitFldInfo select flds = return (ImplicitFieldInfo (map getLabelAndExpr flds))
+  where getLabelAndExpr fld = ( head $ hsGetNames $ unLoc (getFieldOccName (hsRecFieldLbl fld))
+                              , head $ hsGetNames $ select (hsRecFieldArg fld) )
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (HsHasName n, GHCName n) => AST.ImportDecl (Dom n) stage -> Trf (ImportInfo n)
