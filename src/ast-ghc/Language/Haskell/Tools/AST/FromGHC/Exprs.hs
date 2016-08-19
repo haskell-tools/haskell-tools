@@ -7,6 +7,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
+import Data.List (partition)
 import Data.Data (toConstr)
 import Control.Monad.Reader
 import Control.Reference
@@ -24,6 +25,7 @@ import ApiAnnotation as GHC
 import FastString as GHC
 import Outputable as GHC
 import PrelNames as GHC
+import DataCon as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -42,9 +44,14 @@ import qualified Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr (Dom r) RangeStage)
--- correction for empty cases (TODO: put of and {} inside)
+-- correction for empty cases
 trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> []))) 
-  = annLoc createScopeInfo (pure $ combineSrcSpans l (getLoc expr)) (trfExpr' cs)
+  = do let realSpan = combineSrcSpans l (getLoc expr)
+       tokensAfter <- allTokensAfter (srcSpanEnd realSpan)
+       let actualSpan = case take 3 tokensAfter of 
+                          [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
+                          ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
+       annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
 trfExpr e = trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf AST.ScopeInfo
@@ -142,12 +149,13 @@ trfExpr' (HsAppType expr typ) = AST.ExplTypeApp <$> trfExpr expr <*> trfType (hs
 trfExpr' t = error ("Illegal expression: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
   
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnList AST.FieldUpdate (Dom r) RangeStage)
-trfFieldInits (HsRecFields fields dotdot) 
+trfFieldInits (HsRecFields fields dotdot)
   = do cont <- asks contRange
+       let (normalFlds, implicitFlds) = partition ((cont /=) . getLoc) fields
        makeList ", " (before AnnCloseC)
-         $ ((++) <$> mapM trfFieldInit (filter ((cont /=) . getLoc) fields) 
+         $ ((++) <$> mapM trfFieldInit normalFlds
                   <*> (if isJust dotdot then (:[]) <$> annLocNoSema (tokenLoc AnnDotdot) 
-                                                                    (pure AST.FieldWildcard) 
+                                                                    (AST.FieldWildcard <$> (annCont (createImplicitFldInfo (unLoc . (\(HsVar n) -> n) . unLoc) (map unLoc implicitFlds)) (pure AST.FldWildcard))) 
                                         else pure []))
   
 trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.FieldUpdate (Dom r) RangeStage)

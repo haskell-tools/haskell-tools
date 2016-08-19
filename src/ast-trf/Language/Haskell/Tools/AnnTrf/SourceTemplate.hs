@@ -77,10 +77,15 @@ makeReferences ''SourceTemplateElem
 
 instance HasRange (SpanInfo SrcTemplateStage) where 
   getRange = (^. sourceTemplateNodeRange)      
+  setRange = (sourceTemplateNodeRange .=) 
+
 instance HasRange (ListInfo SrcTemplateStage) where 
   getRange = (^. sourceTemplateListRange)      
+  setRange = (sourceTemplateListRange .=) 
+  
 instance HasRange (OptionalInfo SrcTemplateStage) where 
   getRange = (^. sourceTemplateOptRange)
+  setRange = (sourceTemplateOptRange .=) 
       
 instance Show (SpanInfo SrcTemplateStage) where
   show (SourceTemplateNode rng sp) = concatMap show sp

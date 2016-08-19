@@ -53,8 +53,13 @@ fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToCon
             => ([SrcSpan] -> x RangeStage -> x NormRangeStage) -> x RangeStage -> State [[SrcSpan]] (x NormRangeStage)
         trf f ni = do (below : top : xs) <- get
                       let res = f below ni
-                      put ([] : (top ++ [ getRange res ]) : xs)
-                      return res
+                          resRange = getRange res
+                          endOfSiblings = srcSpanEnd (RealSrcSpan $ collectSpanRanges (srcSpanStart resRange) top)
+                          correctedRange = if endOfSiblings > srcSpanStart resRange 
+                                             then mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange)) 
+                                             else resRange
+                      put ([] : (top ++ [ correctedRange ]) : xs)
+                      return $ setRange correctedRange res
 
 -- | Expand a simple node to contain its children
 expandToContain :: [SrcSpan] -> SpanInfo RangeStage -> SpanInfo NormRangeStage
@@ -76,7 +81,7 @@ cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))
              -- only continue if the correct place for the child range is not found
               Just pieces -> pieces ++ rest
               Nothing -> elem : breakFirstHit rest sp
-        breakFirstHit [] sp = error ("breakFirstHit: didn't find correct place for " ++ show sp ++ " in " ++ show sp ++ " with " ++ show sps)
+        breakFirstHit [] sp = error ("breakFirstHit: didn't find correct place for " ++ shortShowSpan sp ++ " in " ++ shortShowSpan sp ++ " with [" ++ concat (intersperse "," (map shortShowSpan sps)) ++ "]")
 
 cutOutElemList :: [SrcSpan] -> ListInfo NormRangeStage -> ListInfo RngTemplateStage
 cutOutElemList sps lp@(NormListInfo bef aft sep indented sp)

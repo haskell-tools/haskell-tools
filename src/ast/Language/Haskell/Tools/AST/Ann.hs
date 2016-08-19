@@ -49,7 +49,7 @@ deriving instance Data NormRangeStage
 -- | A stage in which AST elements are marked with templates. These
 -- templates are hierarchical, and contain the places of the children
 -- elements of the node.
-data  RngTemplateStage
+data RngTemplateStage
 
 deriving instance Data RngTemplateStage
 
@@ -79,13 +79,15 @@ data SameInfoExprCls
 data SameInfoImportCls
 data SameInfoModuleCls
 data SameInfoDefaultCls
+data SameInfoWildcardCls
 
 type family SemaInfoClassify (node :: * -> * -> *) where
-  SemaInfoClassify SimpleName = SameInfoNameCls
-  SemaInfoClassify Expr       = SameInfoExprCls
-  SemaInfoClassify ImportDecl = SameInfoImportCls
-  SemaInfoClassify AST.Module = SameInfoModuleCls
-  SemaInfoClassify a          = SameInfoDefaultCls
+  SemaInfoClassify SimpleName    = SameInfoNameCls
+  SemaInfoClassify Expr          = SameInfoExprCls
+  SemaInfoClassify ImportDecl    = SameInfoImportCls
+  SemaInfoClassify AST.Module    = SameInfoModuleCls
+  SemaInfoClassify FieldWildcard = SameInfoWildcardCls
+  SemaInfoClassify a             = SameInfoDefaultCls
 
 type family SemanticInfo' (domain :: *) (nodecls :: *)
 
@@ -93,12 +95,14 @@ type instance SemanticInfo' (Dom n) SameInfoNameCls = NameInfo n
 type instance SemanticInfo' (Dom n) SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
 type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
+type instance SemanticInfo' (Dom n) SameInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
 
 type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
 type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
+type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
 
 -- | Class for domain configuration markers
@@ -109,10 +113,12 @@ class ( Typeable d
       , Data (SemanticInfo' d SameInfoExprCls)
       , Data (SemanticInfo' d SameInfoImportCls)
       , Data (SemanticInfo' d SameInfoModuleCls)
+      , Data (SemanticInfo' d SameInfoWildcardCls)
       , Show (SemanticInfo' d SameInfoNameCls)
       , Show (SemanticInfo' d SameInfoExprCls)
       , Show (SemanticInfo' d SameInfoImportCls)
       , Show (SemanticInfo' d SameInfoModuleCls)
+      , Show (SemanticInfo' d SameInfoWildcardCls)
       ) => Domain d where
 
 -- | A semantic domain for the AST. The semantic domain maps semantic information for
@@ -127,10 +133,12 @@ instance ( Typeable d
          , Data (SemanticInfo' d SameInfoExprCls)
          , Data (SemanticInfo' d SameInfoImportCls)
          , Data (SemanticInfo' d SameInfoModuleCls)
+         , Data (SemanticInfo' d SameInfoWildcardCls)
          , Show (SemanticInfo' d SameInfoNameCls)
          , Show (SemanticInfo' d SameInfoExprCls)
          , Show (SemanticInfo' d SameInfoImportCls)
          , Show (SemanticInfo' d SameInfoModuleCls)
+         , Show (SemanticInfo' d SameInfoWildcardCls)
          ) => Domain d where
 
 
@@ -144,10 +152,11 @@ instance ( Data (SemanticInfo' d (SemaInfoClassify e))
          , Domain d
          ) => DomainWith e d where
 
--- | Extracts the concrete range corresponding to a given span.
+-- | Extracts or modifies the concrete range corresponding to a given source info.
 -- In case of lists and optional elements, it may not contain the elements inside.
 class HasRange a where
   getRange :: a -> SrcSpan
+  setRange :: SrcSpan -> a -> a
 
 -- | Class for source information stages
 class ( Typeable stage
@@ -296,30 +305,39 @@ annNothing a = AnnMaybe a Nothing
 
 instance HasRange (SpanInfo RangeStage) where
   getRange (NodeSpan sp) = sp
+  setRange sp (NodeSpan _) = NodeSpan sp
 
 instance HasRange (ListInfo RangeStage) where
   getRange ListPos{_listPos = pos} = srcLocSpan pos
+  setRange sp info = info {_listPos = srcSpanStart sp}
 
 instance HasRange (OptionalInfo RangeStage) where
   getRange OptionalPos{_optionalPos = pos} = srcLocSpan pos
+  setRange sp info = info {_optionalPos = srcSpanStart sp}
 
 instance HasRange (SpanInfo NormRangeStage) where
   getRange (NormNodeInfo sp) = sp
+  setRange sp (NormNodeInfo _) = NormNodeInfo sp
 
 instance HasRange (ListInfo NormRangeStage) where
   getRange NormListInfo{_normListSpan = sp} = sp
+  setRange sp info = info { _normListSpan = sp }
 
 instance HasRange (OptionalInfo NormRangeStage) where
   getRange NormOptInfo{_normOptSpan = sp} = sp
+  setRange sp info = info {_normOptSpan = sp}
 
 instance SourceInfo stage => HasRange (Ann elem dom stage) where
   getRange (Ann a _) = getRange (a ^. sourceInfo)
+  setRange sp = annotation & sourceInfo .- setRange sp
 
 instance SourceInfo stage => HasRange (AnnList elem dom stage) where
   getRange (AnnList a _) = getRange (a ^. sourceInfo)
+  setRange sp = annListAnnot & sourceInfo .- setRange sp
 
 instance SourceInfo stage => HasRange (AnnMaybe elem dom stage) where
   getRange (AnnMaybe a _) = getRange (a ^. sourceInfo)
+  setRange sp = annMaybeAnnot & sourceInfo .- setRange sp
 
 -- | A class for changing semantic information throught the AST.
 class ApplySemaChange cls where 
@@ -329,6 +347,7 @@ instance ApplySemaChange SameInfoNameCls where appSemaChange = trfSemaNameCls
 instance ApplySemaChange SameInfoExprCls where appSemaChange = trfSemaExprCls
 instance ApplySemaChange SameInfoImportCls where appSemaChange = trfSemaImportCls
 instance ApplySemaChange SameInfoModuleCls where appSemaChange = trfSemaModuleCls
+instance ApplySemaChange SameInfoWildcardCls where appSemaChange = trfSemaWildcardCls
 instance ApplySemaChange SameInfoDefaultCls where appSemaChange = trfSemaDefault
 
 -- | A class for traversing semantic information in an AST
@@ -341,6 +360,7 @@ data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameIn
                                    , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)
                                    , trfSemaImportCls :: SemanticInfo' dom1 SameInfoImportCls -> f (SemanticInfo' dom2 SameInfoImportCls)
                                    , trfSemaModuleCls :: SemanticInfo' dom1 SameInfoModuleCls -> f (SemanticInfo' dom2 SameInfoModuleCls)
+                                   , trfSemaWildcardCls :: SemanticInfo' dom1 SameInfoWildcardCls -> f (SemanticInfo' dom2 SameInfoWildcardCls)
                                    , trfSemaDefault :: SemanticInfo' dom1 SameInfoDefaultCls -> f (SemanticInfo' dom2 SameInfoDefaultCls)
                                    }
 

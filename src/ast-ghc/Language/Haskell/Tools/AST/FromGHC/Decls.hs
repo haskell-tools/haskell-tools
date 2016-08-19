@@ -17,6 +17,7 @@ import BasicTypes as GHC
 import Bag as GHC
 import ForeignCall as GHC
 import Outputable as GHC
+import Unique as GHC
 
 import Control.Monad.Reader
 import Control.Reference
@@ -38,6 +39,7 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), getRange, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
+import Data.Dynamic
 import Debug.Trace
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) RangeStage)
@@ -102,7 +104,7 @@ trfDecl = trfLocNoSema $ \case
     -> AST.TypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> trfVal bind
   SigD sig -> trfSig sig
-  DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybe "" "" trfOverlap overlap <*> trfInstanceRule (hsib_body t)
+  DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   RuleD (HsRules _ rules) -> AST.PragmaDecl <$> annContNoSema (AST.RulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
   RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfSimpleName name <*> makeList " " atTheEnd (mapM trfRole roles)

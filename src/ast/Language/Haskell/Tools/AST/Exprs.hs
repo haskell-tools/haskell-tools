@@ -124,8 +124,12 @@ data FieldUpdate dom stage
                       } -- ^ Update of a field (@ x = 1 @)
   | FieldPun          { _fieldUpdateName :: Ann Name dom stage
                       } -- ^ Update the field to the value of the same name (@ x @)
-  | FieldWildcard     -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last update. Cannot be used in a record update expression.
+  | FieldWildcard     { _fieldWildcard :: Ann FieldWildcard dom stage
+                      } -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last initializer. Cannot be used in a record update expression.
       
+-- | Marker for a field wildcard. Only needed to attach semantic information in a type-safe way.
+data FieldWildcard dom stage = FldWildcard
+
 -- | An element of a tuple section that can be an expression or missing (indicating a value from a parameter)
 data TupSecElem dom stage
   = Present { _tupSecExpr :: Ann Expr dom stage

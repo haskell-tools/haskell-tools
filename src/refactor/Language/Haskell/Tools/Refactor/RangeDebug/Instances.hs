@@ -54,6 +54,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug InstBodyDecl dom st
 instance (SourceInfo st, Domain dom) => TreeDebug GadtConDecl dom st
 instance (SourceInfo st, Domain dom) => TreeDebug GadtConType dom st
 instance (SourceInfo st, Domain dom) => TreeDebug GadtField dom st
+instance (SourceInfo st, Domain dom) => TreeDebug FieldWildcard dom st
 instance (SourceInfo st, Domain dom) => TreeDebug FunDeps dom st
 instance (SourceInfo st, Domain dom) => TreeDebug FunDep dom st
 instance (SourceInfo st, Domain dom) => TreeDebug ConDecl dom st
