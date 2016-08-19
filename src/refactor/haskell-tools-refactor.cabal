@@ -19,6 +19,7 @@ library
                      , Language.Haskell.Tools.Refactor.RenameDefinition
                      , Language.Haskell.Tools.Refactor.ExtractBinding
                      , Language.Haskell.Tools.Refactor.RefactorBase
+                     , Language.Haskell.Tools.Refactor.GetModules
   other-modules:       Language.Haskell.Tools.Refactor.RangeDebug
                      , Language.Haskell.Tools.Refactor.RangeDebug.Instances
                      , Language.Haskell.Tools.Refactor.ASTDebug
