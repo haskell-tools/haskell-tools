@@ -1,6 +1,6 @@
 module Language.Haskell.Tools.Refactor.GetModules where
 
-import Data.List (intersperse)
+import Data.List (intersperse, find)
 import Distribution.Verbosity (silent)
 import Distribution.ModuleName (components)
 import Distribution.PackageDescription
@@ -12,15 +12,15 @@ import System.Directory
 -- | Get modules of the project with the indicated root directory.
 -- If there is a cabal file, it uses that, otherwise it just scans the directory recursively for haskell sourcefiles.
 getModules :: FilePath -> IO [String]
-getModules 
+getModules root
   = do files <- listDirectory root
        case find (\p -> takeExtension p == ".hs") files of
           Just cabalFile -> modulesFromCabalFile cabalFile
-          Nothing        -> modulesFromDirectory
+          Nothing        -> modulesFromDirectory root root
 
 
 modulesFromCabalFile :: FilePath -> IO [String]
--- now omitting conditional entries
+-- now adding all conditional entries, regardless of flags
 modulesFromCabalFile cabal = getModules . flattenPackageDescription <$> readPackageDescription silent cabal
   where getModules pkg = map (concat . intersperse "." . components) 
                            $ maybe [] libModules (library pkg) 
@@ -28,13 +28,13 @@ modulesFromCabalFile cabal = getModules . flattenPackageDescription <$> readPack
                                ++ concatMap testModules (testSuites pkg) 
                                ++ concatMap benchmarkModules (benchmarks pkg) 
 
-modulesFromDirectory :: FilePath -> IO [String]
+modulesFromDirectory :: FilePath -> FilePath -> IO [String]
 -- now recognizing only .hs files
-modulesFromDirectory root = concat <$> (mapM goOn =<< listDirectory root)
-  where goOn fp = let path = root </> fp 
+modulesFromDirectory root searchRoot = concat <$> (mapM goOn =<< listDirectory searchRoot)
+  where goOn fp = let path = searchRoot </> fp 
                    in do isDir <- doesDirectoryExist path  
                          if isDir
-                           then modulesFromDirectory path 
+                           then modulesFromDirectory root path 
                            else if takeExtension path == ".hs" 
-                                  then return [concat $ intersperse "." $ splitDirectories $ dropExtension path] 
+                                  then return [concat $ intersperse "." $ splitDirectories $ dropExtension $ makeRelative root path] 
                                   else return []

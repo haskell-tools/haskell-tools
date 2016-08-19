@@ -61,6 +61,7 @@ import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.GetModules
 
 import Language.Haskell.TH.LanguageExtensions
  
@@ -80,7 +81,7 @@ data RefactorCommand = NoRefactor
 performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
                => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
                                   -> [ModuleDom dom] -- ^ Other modules
-                                  -> Ghc (Either String (ModuleDom dom, [ModuleDom dom]))
+                                  -> Ghc (Either String [ModuleDom dom])
 performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
@@ -139,8 +140,18 @@ onlineASTView workingDir moduleStr
 performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    (mapRight prettyPrint <$> (refact =<< parseTyped =<< loadModule workingDir target))
-  where refact = performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command)
+    (mapRight (prettyPrint . snd . head) <$> (refact =<< parseTyped =<< loadModule workingDir target))
+  where refact m = performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command) (target,m) []
+
+performRefactors :: String -> String -> String -> IO (Either String [String])
+performRefactors command workingDir target = do 
+  otherModules <- delete target <$> getModules workingDir
+  runGhc (Just libdir) $ do
+    targetMod <- parseTyped =<< loadModule workingDir target
+    otherMods <- mapM (parseTyped <=< loadModule workingDir) otherModules
+    res <- performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command) 
+                          (target, targetMod) (zip otherModules otherMods)
+    return $ mapRight (map (prettyPrint . snd)) res
 
 astView :: String -> String -> IO String
 astView workingDir target = 
@@ -234,9 +245,9 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
-    transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) sourced
+    transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) (moduleName, sourced) []
     case transformed of 
-      Right correctlyTransformed -> do
+      Right [(_, correctlyTransformed)] -> do
         liftIO $ putStrLn "=========== transformed AST:"
         liftIO $ putStrLn $ srcInfoDebug correctlyTransformed
         liftIO $ putStrLn "=========== transformed & prettyprinted:"

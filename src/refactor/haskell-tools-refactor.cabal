@@ -44,5 +44,6 @@ library
                      , haskell-tools-ast-trf     >=0.1.3 && <0.2
                      , haskell-tools-prettyprint >=0.1.3 && <0.2
                      , template-haskell          >=2.0 && <3.0
+                     , Cabal                     >=1.24 && <2.0
   default-language:    Haskell2010
   
