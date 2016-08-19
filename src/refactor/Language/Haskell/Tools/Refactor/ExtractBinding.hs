@@ -34,14 +34,14 @@ type AnnMaybe' e dom = AnnMaybe e dom SrcTemplateStage
 type ExtractBindingDomain dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls)
                                 , HasScopeInfo (SemanticInfo' dom SameInfoExprCls) )
 
-extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> Ann' Module dom -> RefactoredModule dom
+extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> Ann' Module dom -> Refactor dom (ModuleDom dom)
 extractBinding' sp name mod
   = if isValidBindingName name then extractBinding (nodesContaining sp) (nodesContaining sp) name mod
                                else refactError "The given name is not a valid for the extracted binding"
 
 extractBinding :: forall dom . ExtractBindingDomain dom => Simple Traversal (Ann' Module dom) (Ann' ValueBind dom)
                    -> Simple Traversal (Ann' ValueBind dom) (Ann' Expr dom)
-                   -> String -> Ann' Module dom -> RefactoredModule dom
+                   -> String -> Ann' Module dom -> Refactor dom (ModuleDom dom)
 extractBinding selectDecl selectExpr name mod
   = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [Ann' SimpleName dom])
         exprRange = getRange $ head (mod ^? selectDecl & selectExpr & annotation & sourceInfo)

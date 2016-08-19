@@ -1,4 +1,3 @@
-
 module Language.Haskell.Tools.Refactor.GetModules where
 
 import Data.List (intersperse)
@@ -10,8 +9,15 @@ import Distribution.PackageDescription.Parse
 import System.FilePath.Posix
 import System.Directory
 
-main = do print =<< modulesFromCabalFile "ast/haskell-tools-ast.cabal"
-          print =<< modulesFromDirectory "ast"
+-- | Get modules of the project with the indicated root directory.
+-- If there is a cabal file, it uses that, otherwise it just scans the directory recursively for haskell sourcefiles.
+getModules :: FilePath -> IO [String]
+getModules 
+  = do files <- listDirectory root
+       case find (\p -> takeExtension p == ".hs") files of
+          Just cabalFile -> modulesFromCabalFile cabalFile
+          Nothing        -> modulesFromDirectory
+
 
 modulesFromCabalFile :: FilePath -> IO [String]
 -- now omitting conditional entries

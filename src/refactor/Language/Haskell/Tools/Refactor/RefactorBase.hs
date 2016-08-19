@@ -33,11 +33,26 @@ data RefactorCtx dom = RefactorCtx { refModuleName :: GHC.Module
                                    , refCtxImports :: [Ann ImportDecl dom SrcTemplateStage] 
                                    }
 
+type UnnamedModule dom = Ann AST.Module dom SrcTemplateStage
+
+-- | The name of the module and the AST
+type ModuleDom dom = (String, UnnamedModule dom)
+
+-- | A refactoring that only affects one module
+type LocalRefactoring dom = UnnamedModule dom -> Refactor dom (UnnamedModule dom)
+
+-- | The type of a refactoring
+type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor dom (ModuleDom dom, [ModuleDom dom])
+
 -- | Performs the given refactoring, transforming it into a Ghc action
 runRefactor :: (SemanticInfo' dom SameInfoModuleCls ~ ModuleInfo n) 
-            => Ann Module dom SrcTemplateStage -> (Ann Module dom SrcTemplateStage -> RefactoredModule dom) -> Ghc (Either String (Ann Module dom SrcTemplateStage))
-runRefactor mod trf = let init = RefactorCtx (fromJust $ mod ^? semantics&defModuleName) (mod ^? element&modImports&annList)
-                       in runExceptT $ runReaderT (addGeneratedImports (runWriterT (fromRefactorT $ trf mod))) init
+            => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String (ModuleDom dom, [ModuleDom dom]))
+runRefactor mod mods trf = let init = RefactorCtx (fromJust $ mod ^? semantics&defModuleName) (mod ^? element&modImports&annList)
+                            in runExceptT $ runReaderT (addGeneratedImports (runWriterT (fromRefactorT $ trf mod))) init
+
+-- | Wraps a refactoring that only affects one module
+localRefactoring :: LocalRefactoring dom -> Refactoring dom
+localRefactoring ref (name, mod) mods = (\m -> ((name, m), [])) <$> ref mod 
 
 -- | Adds the imports that bring names into scope that are needed by the refactoring
 addGeneratedImports :: (Monad m) => ReaderT (RefactorCtx dom) m (Ann Module dom SrcTemplateStage, [GHC.Name]) -> ReaderT (RefactorCtx dom) m (Ann Module dom SrcTemplateStage)
@@ -89,7 +104,7 @@ refactError = lift . throwE
 -- | The refactoring monad
 type Refactor dom = RefactorT dom (ExceptT String Ghc)
 
-type RefactoredModule dom = Refactor dom (Ann Module dom SrcTemplateStage)
+type RefactoredModule dom = Refactor dom (ModuleDom dom)
 
 registeredNamesFromPrelude :: [GHC.Name]
 registeredNamesFromPrelude = GHC.basicKnownKeyNames ++ map GHC.tyConName GHC.wiredInTyCons

@@ -34,7 +34,7 @@ type AnnList' e dom = AnnList e dom SrcTemplateStage
 type GenerateSignatureDomain dom = ( Domain dom, HasIdInfo (SemanticInfo' dom SameInfoNameCls), Eq (SemanticInfo' dom SameInfoNameCls)
                                    , SemanticInfo' dom SameInfoImportCls ~ ImportInfo Id ) 
 
-generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> Ann' Module dom -> RefactoredModule dom
+generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> Ann' Module dom -> Refactor dom (ModuleDom dom)
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
 
 -- | Perform the refactoring on either local or top-level definition
@@ -45,7 +45,7 @@ generateTypeSignature :: GenerateSignatureDomain dom => Simple Traversal (Ann' M
                            -> (forall d . (Show (d dom SrcTemplateStage), Data (d dom SrcTemplateStage), Typeable d, BindingElem d) 
                                 => AnnList' d dom -> Maybe (Ann' ValueBind dom)) 
                                 -- ^ Selector for either local or top-level declaration in the definition list
-                           -> Ann' Module dom -> RefactoredModule dom
+                           -> Ann' Module dom -> Refactor dom (ModuleDom dom)
 generateTypeSignature topLevelRef localRef vbAccess
   = flip evalStateT False .
      (topLevelRef !~ genTypeSig vbAccess

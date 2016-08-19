@@ -37,7 +37,7 @@ import Debug.Trace
 type OrganizeImportsDomain dom n = (Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), SemanticInfo' dom SameInfoImportCls ~ ImportInfo n, NamedThing n)
 
 organizeImports :: forall n dom . OrganizeImportsDomain dom n 
-                => Ann Module dom SrcTemplateStage -> RefactoredModule dom
+                => Ann Module dom SrcTemplateStage -> Refactor dom (ModuleDom dom)
 organizeImports mod
   = element&modImports&annListElems !~ narrowImports usedNames . sortImports $ mod
   where usedNames = map getName $ catMaybes

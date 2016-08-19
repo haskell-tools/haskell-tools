@@ -33,13 +33,13 @@ import Debug.Trace
 type DomainRenameDefinition dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), Data (SemanticInfo' dom SameInfoNameCls)
                                   , HasScopeInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls) )
 
-renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom
-renameDefinition' sp str mod
+renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Refactoring dom
+renameDefinition' sp str mod mods
   = case (getNodeContaining sp mod :: Maybe (Ann SimpleName dom SrcTemplateStage)) >>= (fmap getName . (semanticsName =<<) . (^? semantics)) of 
       Just n -> renameDefinition n str mod
       Nothing -> refactError "No name is selected"
 
-renameDefinition :: DomainRenameDefinition dom => GHC.Name -> String -> Ann Module dom SrcTemplateStage -> RefactoredModule dom
+renameDefinition :: DomainRenameDefinition dom => GHC.Name -> String -> Ann Module dom SrcTemplateStage -> Refactor dom (ModuleDom dom)
 renameDefinition toChange newName mod 
     = do nameCls <- classifyName toChange
          (res,defFound) <- runStateT (biplateRef !~ changeName toChange newName $ mod) False
