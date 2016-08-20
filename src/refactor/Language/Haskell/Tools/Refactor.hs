@@ -143,7 +143,7 @@ performRefactor command workingDir target =
     (mapRight (prettyPrint . snd . head) <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command) (target,m) []
 
-performRefactors :: String -> String -> String -> IO (Either String [String])
+performRefactors :: String -> String -> String -> IO (Either String [(String, String)])
 performRefactors command workingDir target = do 
   otherModules <- delete target <$> getModules workingDir
   runGhc (Just libdir) $ do
@@ -151,7 +151,7 @@ performRefactors command workingDir target = do
     otherMods <- mapM (parseTyped <=< loadModule workingDir) otherModules
     res <- performCommand (readCommand (workingDir </> (map (\case '.' -> '\\'; c -> c) target ++ ".hs")) command) 
                           (target, targetMod) (zip otherModules otherMods)
-    return $ mapRight (map (prettyPrint . snd)) res
+    return $ mapRight (map (\(n,m) -> (n, prettyPrint m))) res
 
 astView :: String -> String -> IO String
 astView workingDir target = 

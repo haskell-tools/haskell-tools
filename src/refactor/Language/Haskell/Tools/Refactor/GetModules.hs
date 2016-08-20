@@ -14,7 +14,7 @@ import System.Directory
 getModules :: FilePath -> IO [String]
 getModules root
   = do files <- listDirectory root
-       case find (\p -> takeExtension p == ".hs") files of
+       case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile cabalFile
           Nothing        -> modulesFromDirectory root root
 
