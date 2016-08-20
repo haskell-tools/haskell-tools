@@ -321,8 +321,6 @@ loadExpected resSuffix workingDir moduleName =
 
 standardizeLineEndings = filter (/= '\r')
        
-toFileName mod = rootDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
-       
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted rootDir mod)
 
