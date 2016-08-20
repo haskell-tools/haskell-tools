@@ -142,6 +142,12 @@ instance HasDefiningInfo (NameInfo n) where
 instance HasDefiningInfo CNameInfo where
   semanticsDefining = (^. cnameIsDefined)
 
+class HasModuleInfo si where
+  semanticsModule :: si -> Module
+
+instance HasModuleInfo (ModuleInfo n) where
+  semanticsModule = (^. defModuleName)
+
 -- | Semantic and source code related information for an AST node.
 data NodeInfo sema src 
   = NodeInfo { _semanticInfo :: sema

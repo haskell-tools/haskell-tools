@@ -34,14 +34,14 @@ type AnnMaybe' e dom = AnnMaybe e dom SrcTemplateStage
 type ExtractBindingDomain dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls)
                                 , HasScopeInfo (SemanticInfo' dom SameInfoExprCls) )
 
-extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> Ann' Module dom -> RefactoredModule dom
+extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod
   = if isValidBindingName name then extractBinding (nodesContaining sp) (nodesContaining sp) name mod
                                else refactError "The given name is not a valid for the extracted binding"
 
 extractBinding :: forall dom . ExtractBindingDomain dom => Simple Traversal (Ann' Module dom) (Ann' ValueBind dom)
                    -> Simple Traversal (Ann' ValueBind dom) (Ann' Expr dom)
-                   -> String -> Ann' Module dom -> RefactoredModule dom
+                   -> String -> LocalRefactoring dom
 extractBinding selectDecl selectExpr name mod
   = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [Ann' SimpleName dom])
         exprRange = getRange $ head (mod ^? selectDecl & selectExpr & annotation & sourceInfo)
@@ -59,7 +59,7 @@ isConflicting name used
       && (GHC.occNameString . GHC.getOccName <$> semanticsName (used ^. semantics)) == Just name
 
 -- Replaces the selected expression with a call and generates the called binding.
-extractThatBind :: ExtractBindingDomain dom => String -> Ann' Expr dom -> Ann' Expr dom -> StateT (Maybe (Ann' ValueBind dom)) (Refactor dom) (Ann' Expr dom)
+extractThatBind :: ExtractBindingDomain dom => String -> Ann' Expr dom -> Ann' Expr dom -> StateT (Maybe (Ann' ValueBind dom)) (LocalRefactor dom) (Ann' Expr dom)
 extractThatBind name cont e 
   = do ret <- get
        if (isJust ret) then return e 
@@ -108,7 +108,7 @@ isParenLikeExpr (Splice {}) = True
 isParenLikeExpr (QuasiQuoteExpr {}) = True
 isParenLikeExpr _ = False
 
-doExtract :: ExtractBindingDomain dom => String -> Ann' Expr dom -> Ann' Expr dom -> StateT (Maybe (Ann' ValueBind dom)) (Refactor dom) (Ann' Expr dom)
+doExtract :: ExtractBindingDomain dom => String -> Ann' Expr dom -> Ann' Expr dom -> StateT (Maybe (Ann' ValueBind dom)) (LocalRefactor dom) (Ann' Expr dom)
 doExtract name cont e@((^. element) -> lam@(Lambda {}))
   = do let params = getExternalBinds cont e
        put (Just (generateBind name (map mkVarPat params ++ (lam ^? exprBindings&annList)) (fromJust $ lam ^? exprInner)))

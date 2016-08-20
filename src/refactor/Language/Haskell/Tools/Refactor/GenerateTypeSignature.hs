@@ -34,7 +34,7 @@ type AnnList' e dom = AnnList e dom SrcTemplateStage
 type GenerateSignatureDomain dom = ( Domain dom, HasIdInfo (SemanticInfo' dom SameInfoNameCls), Eq (SemanticInfo' dom SameInfoNameCls)
                                    , SemanticInfo' dom SameInfoImportCls ~ ImportInfo Id ) 
 
-generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> Ann' Module dom -> RefactoredModule dom
+generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> LocalRefactoring dom
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
 
 -- | Perform the refactoring on either local or top-level definition
@@ -45,14 +45,14 @@ generateTypeSignature :: GenerateSignatureDomain dom => Simple Traversal (Ann' M
                            -> (forall d . (Show (d dom SrcTemplateStage), Data (d dom SrcTemplateStage), Typeable d, BindingElem d) 
                                 => AnnList' d dom -> Maybe (Ann' ValueBind dom)) 
                                 -- ^ Selector for either local or top-level declaration in the definition list
-                           -> Ann' Module dom -> RefactoredModule dom
+                           -> LocalRefactoring dom
 generateTypeSignature topLevelRef localRef vbAccess
   = flip evalStateT False .
      (topLevelRef !~ genTypeSig vbAccess
         <=< localRef !~ genTypeSig vbAccess)
   
 genTypeSig :: (GenerateSignatureDomain dom, BindingElem d) => (AnnList' d dom -> Maybe (Ann' ValueBind dom))  
-                -> AnnList' d dom -> StateT Bool (Refactor dom) (AnnList' d dom)
+                -> AnnList' d dom -> StateT Bool (LocalRefactor dom) (AnnList' d dom)
 genTypeSig vbAccess ls 
   | Just vb <- vbAccess ls 
   , not (typeSignatureAlreadyExist ls vb)
@@ -70,11 +70,11 @@ genTypeSig vbAccess ls
   | otherwise = return ls
 
 
-generateTSFor :: GenerateSignatureDomain dom => GHC.Name -> GHC.Type -> Refactor dom (Ann' TypeSignature dom)
+generateTSFor :: GenerateSignatureDomain dom => GHC.Name -> GHC.Type -> LocalRefactor dom (Ann' TypeSignature dom)
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) <$> generateTypeFor (-1) (dropForAlls t)
 
 -- | Generates the source-level type for a GHC internal type
-generateTypeFor :: GenerateSignatureDomain dom => Int -> GHC.Type -> Refactor dom (Ann' AST.Type dom) 
+generateTypeFor :: GenerateSignatureDomain dom => Int -> GHC.Type -> LocalRefactor dom (Ann' AST.Type dom) 
 generateTypeFor prec t 
   -- context
   | (break (not . isPredTy) -> (preds, other), rt) <- splitFunTys t
@@ -123,7 +123,7 @@ generateTypeFor prec t
         getTCId :: GHC.TyCon -> GHC.Id
         getTCId tc = GHC.mkVanillaGlobal (GHC.tyConName tc) (tyConKind tc)
 
-        generateAssertionFor :: GenerateSignatureDomain dom => GHC.Type -> Refactor dom (Ann' AST.Assertion dom)
+        generateAssertionFor :: GenerateSignatureDomain dom => GHC.Type -> LocalRefactor dom (Ann' AST.Assertion dom)
         generateAssertionFor t 
           | Just (tc, types) <- splitTyConApp_maybe t
           = mkClassAssert <$> referenceName (getTCId tc) <*> mapM (generateTypeFor 0) types

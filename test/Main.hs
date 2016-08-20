@@ -54,6 +54,7 @@ unitTests = map makeReprintTest checkTestCases
               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+              ++ map makeMultiModuleTest multiModuleTests
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
                           ++ map fst generateSignatureTests 
@@ -256,58 +257,69 @@ wrongExtractBindingTests =
   [ ("Refactor.ExtractBinding.TooSimple", "3:19-3:20", "x")
   , ("Refactor.ExtractBinding.NameConflict", "3:19-3:27", "stms")
   ]
+
+multiModuleTests =
+  [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule") ]
    
+makeMultiModuleTest :: (String, String, String) -> Test
+makeMultiModuleTest (refact, mod, root)
+  = TestLabel (root ++ ":" ++ mod) $ TestCase 
+      $ do res <- performRefactors refact (rootDir </> root) mod
+           case res of 
+             Right result -> forM_ result $ \(name, mod) ->
+                               do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
+                                  assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
+                                                                                               (standardizeLineEndings mod)
+             Left err -> assertFailure $ "The transformation failed : " ++ err
+
+createTest :: String -> [String] -> String -> Test
+createTest refactoring args mod
+  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (refactoring ++ (concatMap (" "++) args)) rootDir mod
+
+createFailTest :: String -> [String] -> String -> Test
+createFailTest refactoring args mod
+  = TestLabel mod $ TestCase $ checkTransformFails (refactoring ++ (concatMap (" "++) args)) rootDir mod
+
 makeOrganizeImportsTest :: String -> Test
-makeOrganizeImportsTest mod 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed organizeImports rootDir mod
+makeOrganizeImportsTest = createTest "OrganizeImports" []
 
 makeGenerateSignatureTest :: (String, String) -> Test
-makeGenerateSignatureTest (mod, readSrcSpan (toFileName mod) -> rng) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (generateTypeSignature' rng) rootDir mod
+makeGenerateSignatureTest (mod, rng) = createTest "GenerateSignature" [rng] mod
 
 makeGenerateExportsTest :: String -> Test
-makeGenerateExportsTest mod 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed generateExports rootDir mod
+makeGenerateExportsTest mod = createTest "GenerateExports" [] mod
 
 makeRenameDefinitionTest :: (String, String, String) -> Test
-makeRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (renameDefinition' rng newName) rootDir mod
-
+makeRenameDefinitionTest (mod, rng, newName) = createTest "RenameDefinition" [rng, newName] mod
 
 makeWrongRenameDefinitionTest :: (String, String, String) -> Test
-makeWrongRenameDefinitionTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkTransformFails (renameDefinition' rng newName) rootDir mod
+makeWrongRenameDefinitionTest (mod, rng, newName) = createFailTest "RenameDefinition" [rng, newName] mod
 
 makeExtractBindingTest :: (String, String, String) -> Test
-makeExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (extractBinding' rng newName) rootDir mod
+makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod
   
 makeWrongExtractBindingTest :: (String, String, String) -> Test
-makeWrongExtractBindingTest (mod, readSrcSpan (toFileName mod) -> rng, newName) 
-  = TestLabel mod $ TestCase $ checkTransformFails (extractBinding' rng newName) rootDir mod
+makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod
 
-checkCorrectlyTransformed :: (Ann AST.Module IdDom SrcTemplateStage -> Refactor IdDom (Ann AST.Module IdDom SrcTemplateStage)) -> String -> String -> IO ()
-checkCorrectlyTransformed transform workingDir moduleName
-  = do -- need to use binary or line endings will be translated
-       expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ "_res.hs") ReadMode
-       expected <- hGetContents expectedHandle
-       transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
-                                              =<< parseTyped 
-                                              =<< parse workingDir moduleName)
+checkCorrectlyTransformed :: String -> String -> String -> IO ()
+checkCorrectlyTransformed command workingDir moduleName
+  = do expected <- loadExpected True workingDir moduleName
+       res <- performRefactor command workingDir moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
-                                                                    (mapRight standardizeLineEndings transformed)
+                                                                    (mapRight standardizeLineEndings res)
+
+checkTransformFails :: String -> String -> String -> IO ()
+checkTransformFails command workingDir moduleName
+  = do res <- performRefactor command workingDir moduleName
+       assertBool "The transform should fail for the given input" (isLeft res)
        
-checkTransformFails :: (Ann AST.Module IdDom SrcTemplateStage -> Refactor IdDom (Ann AST.Module IdDom SrcTemplateStage)) -> String -> String -> IO ()
-checkTransformFails transform workingDir moduleName
-  = do -- need to use binary or line endings will be translated
-       transformed <- runGhc (Just libdir) ((\mod -> mapBoth id prettyPrint <$> (runRefactor mod transform))
-                                              =<< parseTyped 
-                                              =<< parse workingDir moduleName)
-       assertBool "The transform should fail for the given input" (isLeft transformed)
+loadExpected :: Bool -> String -> String -> IO String
+loadExpected resSuffix workingDir moduleName = 
+  do -- need to use binary or line endings will be translated
+     expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ (if resSuffix then "_res" else "") ++ ".hs") ReadMode
+     hGetContents expectedHandle
 
 standardizeLineEndings = filter (/= '\r')
-       
-toFileName mod = rootDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
        
 makeReprintTest :: String -> Test       
 makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted rootDir mod)
