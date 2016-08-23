@@ -73,16 +73,16 @@ import Debug.Trace
 
 type RefactorSession = StateT RefactorSessionState
 
-refactorSession :: String -> IO ()
-refactorSession workingDir = runGhc (Just libdir) $ flip evalStateT initSession $
-  do moduleNames <- liftIO $ getModules workingDir
-     mods <- lift $ mapM (parseTyped <=< loadModule workingDir) moduleNames
+refactorSession :: [String] -> IO ()
+refactorSession workingDirs = runGhc (Just libdir) $ flip evalStateT initSession $
+  do moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
+     mods <- lift $ mapM (\(wd,mod) -> parseTyped =<< loadModule wd mod) moduleNames
      modify $ \s -> s { refSessMods = Map.fromList (zip moduleNames mods) }
      runSession
   where runSession :: RefactorSession Ghc ()
         runSession = do cmd <- liftIO $ getLine 
-                        sessionComm <- readSessionCommand workingDir cmd
-                        performSessionCommand workingDir sessionComm
+                        sessionComm <- readSessionCommand cmd
+                        performSessionCommand sessionComm
                         doExit <- gets exiting 
                         when (not doExit) runSession
 
@@ -91,33 +91,36 @@ data RefactorSessionCommand
   | Exit
   | RefactorCommand RefactorCommand
 
-readSessionCommand :: Monad m => String -> String -> RefactorSession m RefactorSessionCommand
-readSessionCommand workingDir cmd = case splitOn " " cmd of 
+readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
+readSessionCommand cmd = case splitOn " " cmd of 
     ["LoadModule", mod] -> return $ LoadModule mod
     ["Exit"] -> return Exit
     _ -> do actualMod <- gets actualMod 
-            case actualMod of Just m -> return $ RefactorCommand $ readCommand (toFileName workingDir m) cmd
+            case actualMod of Just (wd,m) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
                               Nothing -> error "Set the actual module first"
 
-performSessionCommand :: String -> RefactorSessionCommand -> RefactorSession Ghc ()
-performSessionCommand _ (LoadModule mod) = modify $ \s -> s { actualMod = Just mod }
-performSessionCommand _ Exit = modify $ \s -> s { exiting = True }
-performSessionCommand workingDir (RefactorCommand cmd) 
-  = do RefactorSessionState { refSessMods = mods, actualMod = Just act } <- get
-       res <- lift $ performCommand cmd (act, mods Map.! act) (Map.assocs (Map.delete act mods))
+performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc ()
+performSessionCommand (LoadModule mod) = do modKey <- gets (find ((mod ==) . snd) . Map.keys . refSessMods)
+                                            modify $ \s -> s { actualMod = modKey }
+performSessionCommand Exit = modify $ \s -> s { exiting = True }
+performSessionCommand (RefactorCommand cmd) 
+  = do RefactorSessionState { refSessMods = mods, actualMod = Just act@(workingDir, mod) } <- get
+       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((wd,m),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
        case res of Left err -> liftIO $ putStrLn err
                    Right resMods -> do 
-                     newMods <- lift $ forM resMods $ \(n,m) -> do
+                     newMods <- forM resMods $ \(n,m) -> do
                        liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
-                       (n,) <$> (parseTyped =<< loadModule workingDir n)
+                       Just wdmod <- gets (find ((n ==) . snd) . Map.keys . refSessMods)
+                       lift $ (wdmod,) <$> (parseTyped =<< loadModule workingDir n)
+
                      modify $ \s -> s { refSessMods = foldl (\s (n,m) -> Map.insert n m s) mods newMods }
 
 initSession :: RefactorSessionState
 initSession = RefactorSessionState Map.empty Nothing False
 
 data RefactorSessionState
-  = RefactorSessionState { refSessMods :: Map.Map String (UnnamedModule IdDom)
-                         , actualMod :: Maybe String
+  = RefactorSessionState { refSessMods :: Map.Map (String, String) (UnnamedModule IdDom)
+                         , actualMod :: Maybe (String, String)
                          , exiting :: Bool
                          }
     
