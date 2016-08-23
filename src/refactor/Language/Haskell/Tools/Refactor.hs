@@ -6,6 +6,7 @@
            , MultiWayIf
            , FlexibleContexts
            , TypeFamilies
+           , TupleSections
            #-}
 module Language.Haskell.Tools.Refactor where
 
@@ -69,6 +70,56 @@ import DynFlags
 import StringBuffer            
 
 import Debug.Trace
+
+type RefactorSession = StateT RefactorSessionState
+
+refactorSession :: String -> IO ()
+refactorSession workingDir = runGhc (Just libdir) $ flip evalStateT initSession $
+  do moduleNames <- liftIO $ getModules workingDir
+     mods <- lift $ mapM (parseTyped <=< loadModule workingDir) moduleNames
+     modify $ \s -> s { refSessMods = Map.fromList (zip moduleNames mods) }
+     runSession
+  where runSession :: RefactorSession Ghc ()
+        runSession = do cmd <- liftIO $ getLine 
+                        sessionComm <- readSessionCommand workingDir cmd
+                        performSessionCommand workingDir sessionComm
+                        doExit <- gets exiting 
+                        when (not doExit) runSession
+
+data RefactorSessionCommand 
+  = LoadModule String
+  | Exit
+  | RefactorCommand RefactorCommand
+
+readSessionCommand :: Monad m => String -> String -> RefactorSession m RefactorSessionCommand
+readSessionCommand workingDir cmd = case splitOn " " cmd of 
+    ["LoadModule", mod] -> return $ LoadModule mod
+    ["Exit"] -> return Exit
+    _ -> do actualMod <- gets actualMod 
+            case actualMod of Just m -> return $ RefactorCommand $ readCommand (toFileName workingDir m) cmd
+                              Nothing -> error "Set the actual module first"
+
+performSessionCommand :: String -> RefactorSessionCommand -> RefactorSession Ghc ()
+performSessionCommand _ (LoadModule mod) = modify $ \s -> s { actualMod = Just mod }
+performSessionCommand _ Exit = modify $ \s -> s { exiting = True }
+performSessionCommand workingDir (RefactorCommand cmd) 
+  = do RefactorSessionState { refSessMods = mods, actualMod = Just act } <- get
+       res <- lift $ performCommand cmd (act, mods Map.! act) (Map.assocs (Map.delete act mods))
+       case res of Left err -> liftIO $ putStrLn err
+                   Right resMods -> do 
+                     newMods <- lift $ forM resMods $ \(n,m) -> do
+                       liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
+                       (n,) <$> (parseTyped =<< loadModule workingDir n)
+                     modify $ \s -> s { refSessMods = foldl (\s (n,m) -> Map.insert n m s) mods newMods }
+
+initSession :: RefactorSessionState
+initSession = RefactorSessionState Map.empty Nothing False
+
+data RefactorSessionState
+  = RefactorSessionState { refSessMods :: Map.Map String (UnnamedModule IdDom)
+                         , actualMod :: Maybe String
+                         , exiting :: Bool
+                         }
     
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
