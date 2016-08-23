@@ -143,6 +143,7 @@ trfExpr' (PArrSeq _ (FromThenTo from step to))
 trfExpr' (HsBracket brack) = AST.BracketExpr <$> annContNoSema (trfBracket' brack)
 trfExpr' (HsSpliceE qq@(HsQuasiQuote {})) = AST.QuasiQuoteExpr <$> annContNoSema (trfQuasiQuotation' qq)
 trfExpr' (HsSpliceE splice) = AST.Splice <$> annContNoSema (trfSplice' splice)
+trfExpr' (HsRnBracketOut br _) = AST.BracketExpr <$> annContNoSema (trfBracket' br)
 trfExpr' (HsProc pat cmdTop) = AST.Proc <$> trfPattern pat <*> trfCmdTop cmdTop
 trfExpr' (HsStatic expr) = AST.StaticPtr <$> trfExpr expr
 trfExpr' (HsAppType expr typ) = AST.ExplTypeApp <$> trfExpr expr <*> trfType (hswc_body typ)
