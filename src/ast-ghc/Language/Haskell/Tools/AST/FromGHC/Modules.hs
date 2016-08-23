@@ -60,6 +60,8 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
+import Debug.Trace
+
 addTypeInfos :: LHsBinds Id -> Ann AST.Module (Dom GHC.Name) RangeStage -> Ghc (Ann AST.Module IdDom RangeStage)
 addTypeInfos bnds mod = evalStateT (semaTraverse 
   (AST.SemaTrf
@@ -123,18 +125,24 @@ trfModuleRename :: Module -> Ann AST.Module (Dom RdrName) RangeStage
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod 
     = do info <- createModuleInfo mod
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. AST.implicitNames)) hsMod      
-  where originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
+  where splices = map getSpliceLoc (hsMod ^? biplateRef)
+        originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
         getSourceAndInfo :: Ann AST.SimpleName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
         
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
-          setOriginalNames originalNames
+          setOriginalNames originalNames . setSpliceLocs splices
             $ AST.Module <$> trfFilePragmas
                          <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
                                                                          _                       -> Nothing) deprec
                          <*> return transformedImports
                          <*> addToScope (concat @[] (transformedImports ^? AST.annList&semantics&AST.importedNames) ++ preludeImports) (trfDeclsGroup gr)
+
+        getSpliceLoc :: HsSplice RdrName -> SrcSpan
+        getSpliceLoc (HsTypedSplice _ e) = getLoc e
+        getSpliceLoc (HsUntypedSplice _ e) = getLoc e
+        getSpliceLoc (HsQuasiQuote _ _ sp _) = sp
 
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModuleHead (Dom r) RangeStage) 
 trfModuleHead (Just mn) exports modPrag
