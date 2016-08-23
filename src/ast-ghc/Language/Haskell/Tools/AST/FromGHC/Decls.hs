@@ -48,7 +48,7 @@ trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
+  = addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ (mapM filterNoSplices =<<) $ sequence $
       [ trfBindOrSig vals
       , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
       , mapM (trfDecl . (fmap SpliceD)) splices
@@ -68,6 +68,15 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
           = (++) <$> mapM (trfLocNoSema trfVal) (bagToList binds)
                  <*> mapM (trfLocNoSema trfSig) sigs
         addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
+
+        -- | This is a walkaround solution for the more general problem of implementing TH support
+        filterNoSplices :: [Ann AST.Decl (Dom r) RangeStage] -> Trf [Ann AST.Decl (Dom r) RangeStage]
+        filterNoSplices ls = do splices <- asks spliceLocs
+                                return $ filter (not . checkContainsAny splices) ls
+          where checkContainsAny :: [SrcSpan] -> Ann AST.Decl (Dom r) RangeStage -> Bool
+                checkContainsAny spans a = 
+                  let RealSrcSpan rng = a ^. AST.annotation & AST.sourceInfo & AST.nodeSpan
+                   in any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl (Dom r) RangeStage)

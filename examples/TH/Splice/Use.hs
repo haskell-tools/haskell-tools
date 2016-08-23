@@ -9,3 +9,11 @@ $(def "x")
 $(defHello)
 
 $defHello2
+
+defHello3
+
+a :: $typ
+a = ()
+
+e :: Int
+e = $expr

@@ -33,6 +33,7 @@ trfQuasiQuotation' (HsQuasiQuote id _ l str)
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice (Dom r) RangeStage)
 trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
+trfSplice' (HsUntypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket (Dom r) RangeStage)
 trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr

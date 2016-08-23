@@ -10,3 +10,12 @@ defHello = def "hello"
 
 defHello2 :: Q [Dec]
 defHello2 = def "hello2"
+
+defHello3 :: Q [Dec]
+defHello3 = def "hello3"
+
+expr :: Q Exp
+expr = return $ LitE $ IntegerL 3
+
+typ :: Q Type
+typ = return $ TupleT 0
