@@ -10,6 +10,7 @@ import GHC.Paths ( libdir )
 import Control.Monad.IO.Class
 import Control.Monad
 import Data.Maybe
+import Data.List
 import Data.Either.Combinators
 import Test.HUnit hiding (test)
 import System.IO
@@ -264,18 +265,25 @@ wrongExtractBindingTests =
   ]
 
 multiModuleTests =
-  [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule") ]
+  [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule", [])
+  , ("RenameDefinition 1:8-1:9 C", "B", "Refactor/RenameDefinition/RenameModule", ["B"])
+  ]
    
-makeMultiModuleTest :: (String, String, String) -> Test
-makeMultiModuleTest (refact, mod, root)
+makeMultiModuleTest :: (String, String, String, [String]) -> Test
+makeMultiModuleTest (refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
       $ do res <- performRefactors refact (rootDir </> root) mod
-           case res of 
-             Right result -> forM_ result $ \(name, mod) ->
-                               do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
-                                  assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
-                                                                                               (standardizeLineEndings mod)
-             Left err -> assertFailure $ "The transformation failed : " ++ err
+           case res of Right result -> checkResults result removed
+                       Left err -> assertFailure $ "The transformation failed : " ++ err
+  where checkResults :: [(String, Maybe String)] -> [String] -> IO ()
+        checkResults ((name, Just mod):rest) removed = 
+          do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
+             assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
+                                                                          (standardizeLineEndings mod)
+             checkResults rest removed
+        checkResults ((name, Nothing) : rest) removed = checkResults rest (delete name removed)
+        checkResults [] [] = return ()
+        checkResults [] removed = assertFailure $ "Modules has not been marked as removed: " ++ concat (intersperse ", " removed)
 
 createTest :: String -> [String] -> String -> Test
 createTest refactoring args mod
