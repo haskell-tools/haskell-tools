@@ -3,7 +3,7 @@
            #-}
 module Main where
 
-import GHC
+import GHC (runGhc)
 import DynFlags
 import GHC.Paths ( libdir )
 
@@ -31,6 +31,7 @@ import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.ASTDebug
 
 main :: IO ()
 main = run nightlyTests
@@ -56,6 +57,7 @@ unitTests = map makeReprintTest checkTestCases
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
               ++ map makeMultiModuleTest multiModuleTests
+              ++ map makeASTDebugTest astDebugTests
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
                           ++ map fst generateSignatureTests 
@@ -269,7 +271,28 @@ multiModuleTests =
   , ("RenameDefinition 1:8-1:9 C", "B", "Refactor/RenameDefinition/RenameModule", ["B"])
   , ("RenameDefinition 3:8-3:9 C", "A", "Refactor/RenameDefinition/RenameModule", ["B"])
   ]
+
+astDebugTests =
+  [ ("ASTDebug.Name", (\case NameInfoType {} -> True; _ -> False))
+  , ("ASTDebug.Name", (\case ExprInfoType {} -> True; _ -> False))
+  , ("ASTDebug.Expr", (\case ExprInfoType {} -> True; _ -> False))
+  , ("ASTDebug.Simple", (\case ModuleInfoType {} -> True; _ -> False))
+  , ("ASTDebug.Import", (\case ImportInfoType {} -> True; _ -> False))
+  , ("ASTDebug.ImplicitFldCreate", (\case ImplicitFieldInfoType {} -> True; _ -> False))
+  , ("ASTDebug.ImplicitFldExtract", (\case ImplicitFieldInfoType {} -> True; _ -> False))
+  ]
    
+makeASTDebugTest :: (String, SemanticInfoType IdDom -> Bool) -> Test
+makeASTDebugTest (mod, check)
+  = TestLabel mod $ TestCase $ 
+      do modul <- runGhc (Just libdir) (parseTyped =<< loadModule rootDir mod)
+         let semaInfos = concatMap flattenDebugNode (astDebug' modul)
+         assertBool "The searched semantic element is not found" (any check semaInfos)
+
+flattenDebugNode :: DebugNode dom -> [SemanticInfoType dom]
+flattenDebugNode (TreeNode _ (TreeDebugNode _ sema more)) = sema : concatMap flattenDebugNode more
+flattenDebugNode _ = []
+
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
 makeMultiModuleTest (refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
@@ -350,7 +373,7 @@ checkCorrectlyPrinted workingDir moduleName
        expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
        (actual, actual', actual'') <- runGhc (Just libdir) $ do
-         parsed <- parse workingDir moduleName
+         parsed <- loadModule workingDir moduleName
          actual <- prettyPrint <$> parseAST parsed
          actual' <- prettyPrint <$> parseRenamed parsed
          actual'' <- prettyPrint <$> parseTyped parsed
@@ -359,26 +382,3 @@ checkCorrectlyPrinted workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
               
-parseAST :: ModSummary -> Ghc (Ann AST.Module (Dom RdrName) SrcTemplateStage)
-parseAST modSum = do
-  p <- parseModule modSum
-  let annots = pm_annotations p
-      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) $ pm_parsed_source p)
-                                 
-parse :: String -> String -> Ghc ModSummary
-parse workingDir moduleName = do
-  dflags <- getSessionDynFlags
-  -- don't generate any code
-  setSessionDynFlags $ gopt_set (dflags { importPaths = [workingDir]
-                                        , hscTarget = HscAsm -- needed for static pointers
-                                        , ghcLink = LinkInMemory
-                                        , ghcMode = CompManager 
-                                        }) Opt_KeepRawTokenStream
-  target <- guessTarget moduleName Nothing
-  setTargets [target]
-  load LoadAllTargets
-  getModSummary $ mkModuleName moduleName
-                            
-           
