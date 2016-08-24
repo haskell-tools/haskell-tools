@@ -31,8 +31,12 @@ instance {-# OVERLAPPING #-} (ASTDebug Module dom st) => ASTDebug (Ann Module) d
 instance {-# OVERLAPPING #-} (ASTDebug FieldWildcard dom st) => ASTDebug (Ann FieldWildcard) dom st where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (ImplicitFieldInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
-instance {-# OVERLAPPABLE #-} (ASTDebug e dom st) => ASTDebug (Ann e) dom st where
+instance ASTDebug e dom st => ASTDebug (Ann e) dom st where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= DefaultInfoType (getRange (a ^. sourceInfo)) $ astDebug' e
+
+-- FIXME: WHY do I have to write it separately?
+instance {-# OVERLAPPING #-} (ASTDebug ImportDecl dom st) => ASTDebug (AnnList ImportDecl) dom st where
+  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
 
 instance (ASTDebug e dom st) => ASTDebug (AnnList e) dom st where
   astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
