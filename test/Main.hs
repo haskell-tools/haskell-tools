@@ -267,6 +267,7 @@ wrongExtractBindingTests =
 multiModuleTests =
   [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule", [])
   , ("RenameDefinition 1:8-1:9 C", "B", "Refactor/RenameDefinition/RenameModule", ["B"])
+  , ("RenameDefinition 3:8-3:9 C", "A", "Refactor/RenameDefinition/RenameModule", ["B"])
   ]
    
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
