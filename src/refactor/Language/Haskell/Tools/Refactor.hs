@@ -227,7 +227,7 @@ loadModule workingDir moduleName
          $ flip gopt_set Opt_KeepRawTokenStream
          $ flip gopt_set Opt_NoHsMain
          $ dflags { importPaths = [workingDir]
-                  , hscTarget = HscInterpreted
+                  , hscTarget = HscAsm -- needed for static pointers
                   , ghcLink = LinkInMemory
                   , ghcMode = CompManager 
                   }
