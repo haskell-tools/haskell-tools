@@ -21,6 +21,9 @@ import qualified Control.Reference as Ref
 import Control.Monad.State
 import Control.Monad.Trans.Except
 import Data.Data
+import Data.Either.Combinators
+import Data.List.Split
+import Data.List
 import Data.Maybe
 import Data.Generics.Uniplate.Data
 import Language.Haskell.Tools.AST
@@ -41,7 +44,35 @@ renameDefinition' sp str mod mods
                       renameDefinition name sameNames str mod mods
         where bindsWithSameName :: GHC.Name -> [Ann FieldWildcard dom SrcTemplateStage] -> [GHC.Name]
               bindsWithSameName name wcs = catMaybes $ map ((lookup name) . (^. semantics&implicitFieldBindings)) wcs
-      Nothing -> refactError "No name is selected"
+      Nothing -> case getNodeContaining sp (snd mod) of
+                   Just modName -> renameModule (modName ^. element&moduleNameString) str mod mods
+                   Nothing -> refactError "No name is selected"
+
+renameModule :: forall dom . DomainRenameDefinition dom => String -> String -> Refactoring dom
+renameModule from to m mods 
+    | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module" 
+    | not (validModuleName to) = refactError "The given name is not a valid module name" 
+    | otherwise = fmap (\ls -> ModuleRemoved from : map (\(ContentChanged (mod,res)) -> ContentChanged (if mod == from then to else mod, res)) ls)
+                    $ localRefactoring (replaceModuleNames >=> alterNormalNames) m mods
+  where replaceModuleNames :: LocalRefactoring dom
+        replaceModuleNames = biplateRef @_ @(Ann ModuleName dom SrcTemplateStage) & filtered (\e -> (e ^. element&moduleNameString) == from) != mkModuleName to
+
+        alterNormalNames :: LocalRefactoring dom
+        alterNormalNames mod = if from `elem` moduleQualifiers mod 
+           then biplateRef @_ @(Ann SimpleName dom SrcTemplateStage) & filtered (\e -> concat (intersperse "." (e ^? element&qualifiers&annList&element&simpleNameStr)) == from)
+                  !- (\e -> mkQualifiedName (splitOn "." to) (e ^. element&unqualifiedName&element&simpleNameStr)) $ mod
+           else return mod
+
+        moduleQualifiers :: Ann Module dom SrcTemplateStage -> [String]
+        moduleQualifiers mod = mod ^? element & modImports & annList & element & filtered (\m -> isAnnNothing (m ^. importAs)) 
+                                              & importModule & element & moduleNameString
+
+        nameConflict :: String -> Ann Module dom SrcTemplateStage -> Bool
+        nameConflict to mod 
+          = let modName = mod ^? element&modHead&annJust&element&mhName&element&moduleNameString
+                imports = mod ^? element&modImports&annList&element
+                importNames = map (\imp -> fromMaybe (imp ^. importModule) (imp ^? importAs&annJust&element&importRename) ^. element&moduleNameString) imports
+             in modName == Just to || to `elem` importNames
 
 renameDefinition :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> Refactoring dom
 renameDefinition toChangeOrig toChangeWith newName mod mods
@@ -49,7 +80,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
          (changedModules,defFound) <- runStateT (catMaybes <$> mapM (renameInAModule toChangeOrig toChangeWith newName) (mod:mods)) False
          if | not (nameValid nameCls newName) -> refactError "The new name is not valid"
             | not defFound -> refactError "The definition to rename was not found"
-            | otherwise -> return changedModules
+            | otherwise -> return $ map ContentChanged changedModules
   where     
     renameInAModule :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> ModuleDom dom -> StateT Bool Refactor (Maybe (ModuleDom dom))
     renameInAModule toChangeOrig toChangeWith newName (name, mod)

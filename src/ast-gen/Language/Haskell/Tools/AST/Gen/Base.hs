@@ -44,8 +44,11 @@ mkParenName = mkAnn ("(" <> child <> ")") . ParenName
 
 -- | Creates an annotated qualified simple name
 mkQualifiedName' :: [String] -> GHC.Name -> Ann SimpleName dom SrcTemplateStage
-mkQualifiedName' [] n = mkSimpleName' n
-mkQualifiedName' quals (GHC.occNameString . GHC.getOccName -> name) 
+mkQualifiedName' quals n = mkQualifiedName quals (GHC.occNameString $ GHC.getOccName n)
+
+mkQualifiedName :: [String] -> String -> Ann SimpleName dom SrcTemplateStage
+mkQualifiedName [] n = mkSimpleName n
+mkQualifiedName quals name
   = mkAnn (child <> "." <> child)
           (SimpleName (mkAnnList (listSep ".") $ map (\q -> mkAnn (fromString q) (UnqualName q)) quals) 
                       (mkAnn (fromString name) (UnqualName name)))

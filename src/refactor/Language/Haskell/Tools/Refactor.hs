@@ -107,13 +107,15 @@ performSessionCommand (RefactorCommand cmd)
   = do RefactorSessionState { refSessMods = mods, actualMod = Just act@(workingDir, mod) } <- get
        res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((wd,m),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
        case res of Left err -> liftIO $ putStrLn err
-                   Right resMods -> do 
-                     newMods <- forM resMods $ \(n,m) -> do
+                   Right resMods -> forM_ resMods $ \case 
+                     ContentChanged (n,m) -> do
                        liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
-                       Just wdmod <- gets (find ((n ==) . snd) . Map.keys . refSessMods)
-                       lift $ (wdmod,) <$> (parseTyped =<< loadModule workingDir n)
-
-                     modify $ \s -> s { refSessMods = foldl (\s (n,m) -> Map.insert n m s) mods newMods }
+                       w <- gets (find ((n ==) . snd) . Map.keys . refSessMods)
+                       newm <- lift $ (parseTyped =<< loadModule workingDir n)
+                       modify $ \s -> s { refSessMods = Map.insert (workingDir, n) newm (refSessMods s) }
+                     ModuleRemoved mod -> do
+                       liftIO $ removeFile (toFileName workingDir mod)
+                       modify $ \s -> s { refSessMods = Map.delete (workingDir, mod) (refSessMods s) }
 
 initSession :: RefactorSessionState
 initSession = RefactorSessionState Map.empty Nothing False
@@ -135,7 +137,7 @@ data RefactorCommand = NoRefactor
 performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
                => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
                                   -> [ModuleDom dom] -- ^ Other modules
-                                  -> Ghc (Either String [ModuleDom dom])
+                                  -> Ghc (Either String [RefactorChange dom])
 performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
@@ -192,13 +194,15 @@ onlineASTView workingDir moduleStr
 performRefactor :: String -> String -> String -> IO (Either String String)
 performRefactor command workingDir target = 
   runGhc (Just libdir) $
-    (mapRight (prettyPrint . snd . head) <$> (refact =<< parseTyped =<< loadModule workingDir target))
+    (mapRight newContent <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand (readCommand (toFileName workingDir target) command) (target,m) []
+        newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
+        newContent (_ : ress) = newContent ress
 
 toFileName :: String -> String -> FilePath
 toFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
 
-performRefactors :: String -> String -> String -> IO (Either String [(String, String)])
+performRefactors :: String -> String -> String -> IO (Either String [(String, Maybe String)])
 performRefactors command workingDir target = do 
   otherModules <- delete target <$> getModules workingDir
   runGhc (Just libdir) $ do
@@ -206,7 +210,9 @@ performRefactors command workingDir target = do
     otherMods <- mapM (parseTyped <=< loadModule workingDir) otherModules
     res <- performCommand (readCommand (toFileName workingDir target) command) 
                           (target, targetMod) (zip otherModules otherMods)
-    return $ mapRight (map (\(n,m) -> (n, prettyPrint m))) res
+    return $ mapRight (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+                                  ModuleRemoved m -> (m, Nothing)
+                           )) res
 
 astView :: String -> String -> IO String
 astView workingDir target = 
@@ -302,7 +308,7 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn prettyPrinted
     transformed <- performCommand (readCommand (fromJust $ ml_hs_file $ ms_location modSum) command) (moduleName, sourced) []
     case transformed of 
-      Right [(_, correctlyTransformed)] -> do
+      Right [ContentChanged (_, correctlyTransformed)] -> do
         liftIO $ putStrLn "=========== transformed AST:"
         liftIO $ putStrLn $ srcInfoDebug correctlyTransformed
         liftIO $ putStrLn "=========== transformed & prettyprinted:"

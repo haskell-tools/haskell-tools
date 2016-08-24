@@ -296,6 +296,10 @@ isAnnNothing :: AnnMaybe e d s -> Bool
 isAnnNothing (AnnMaybe _ Nothing) = True
 isAnnNothing (AnnMaybe _ _) = False
 
+isAnnJust :: AnnMaybe e d s -> Bool
+isAnnJust (AnnMaybe _ (Just _)) = True
+isAnnJust (AnnMaybe _ _) = False
+
 -- | A non-existing AST part
 annNothing :: NodeInfo (SemanticInfo d (AnnMaybe e)) (OptionalInfo s) -> AnnMaybe e d s
 annNothing a = AnnMaybe a Nothing
