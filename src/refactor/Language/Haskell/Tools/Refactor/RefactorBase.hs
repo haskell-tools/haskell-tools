@@ -41,17 +41,21 @@ type ModuleDom dom = (String, UnnamedModule dom)
 type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModule dom)
 
 -- | The type of a refactoring
-type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [ModuleDom dom]
+type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [RefactorChange dom]
+
+
+data RefactorChange dom = ContentChanged (ModuleDom dom)
+                        | ModuleRemoved String
 
 -- | Performs the given refactoring, transforming it into a Ghc action
 runRefactor :: (SemanticInfo' dom SameInfoModuleCls ~ ModuleInfo n) 
-            => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [ModuleDom dom])
+            => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
 runRefactor mod mods trf = runExceptT $ trf mod mods
 
 -- | Wraps a refactoring that only affects one module. Performs the per-module finishing touches.
 localRefactoring :: HasModuleInfo (SemanticInfo dom Module) => LocalRefactoring dom -> Refactoring dom
 localRefactoring ref (name, mod) _ 
-  = (\m -> [(name, m)]) <$> localRefactoringRes id mod (ref mod)
+  = (\m -> [ContentChanged (name, m)]) <$> localRefactoringRes id mod (ref mod)
 
 -- | Transform the result of the local refactoring
 localRefactoringRes :: HasModuleInfo (SemanticInfo dom Module)
@@ -206,6 +210,9 @@ classifyName n = liftGhc (lookupName n) >>= return . \case
     Nothing                   -> Variable
   where isop = GHC.isSymOcc (GHC.getOccName n) 
 
+-- | Checks if a given name is a valid module name
+validModuleName :: String -> Bool
+validModuleName s = all (nameValid Ctor) (splitOn "." s) 
 
 -- | Check if a given name is valid for a given kind of definition
 nameValid :: NameClass -> String -> Bool
