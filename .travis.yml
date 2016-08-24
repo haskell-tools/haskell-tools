@@ -109,4 +109,4 @@ after_script:
   - cp -r -t . ../src/*/$CATEGORY
 
   # send coveralls report
-  - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test --repo-token=evVaJSdhT3mFWlBuNINeuXtLc86FXYFml haskell-tools-test
+  - $HOME/.cabal/bin/hpc-coveralls --repo-token=evVaJSdhT3mFWlBuNINeuXtLc86FXYFml haskell-tools-test

@@ -20,9 +20,9 @@ library
                      , Language.Haskell.Tools.Refactor.ExtractBinding
                      , Language.Haskell.Tools.Refactor.RefactorBase
                      , Language.Haskell.Tools.Refactor.GetModules
+                     , Language.Haskell.Tools.Refactor.ASTDebug
   other-modules:       Language.Haskell.Tools.Refactor.RangeDebug
                      , Language.Haskell.Tools.Refactor.RangeDebug.Instances
-                     , Language.Haskell.Tools.Refactor.ASTDebug
                      , Language.Haskell.Tools.Refactor.ASTDebug.Instances
                      , Language.Haskell.Tools.Refactor.DebugGhcAST
   build-depends:       base                      >=4.9 && <5.0

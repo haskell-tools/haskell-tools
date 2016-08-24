@@ -227,7 +227,7 @@ loadModule workingDir moduleName
          $ flip gopt_set Opt_KeepRawTokenStream
          $ flip gopt_set Opt_NoHsMain
          $ dflags { importPaths = [workingDir]
-                  , hscTarget = HscInterpreted
+                  , hscTarget = HscAsm -- needed for static pointers
                   , ghcLink = LinkInMemory
                   , ghcMode = CompManager 
                   }
@@ -266,6 +266,16 @@ parseRenamed modSum = do
               $ trfModuleRename (ms_mod $ modSum) parseTrf
                   (fromJust $ tm_renamed_source tc) 
                   (pm_parsed_source p))
+
+type ParsedModule = Ann AST.Module (Dom RdrName) SrcTemplateStage
+
+parseAST :: ModSummary -> Ghc Language.Haskell.Tools.Refactor.ParsedModule
+parseAST modSum = do
+  p <- parseModule modSum
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) $ pm_parsed_source p)          
     
 -- | Should be only used for testing
 demoRefactor :: String -> String -> String -> IO ()
