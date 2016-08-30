@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Haskell-tools</title>
+  <link rel="shortcut icon" type="image/x-icon" href="img/favicon.png" />
+  <link rel="stylesheet" type="text/css" media="screen" href="css/jstree.css"></link>
+  <link rel="stylesheet" type="text/css" media="screen" href="libs/jquery-ui/jquery-ui.min.css"></link>
+  <link rel="stylesheet" type="text/css" media="screen" href="css/demo.css"></link>
+  <script type="text/javascript" charset="utf-8" src="js/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8" src="libs/jquery-ui/jquery-ui.min.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/jstree.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/ace/ace.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/editor.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/astview.js"></script>
+  <script type="text/javascript" charset="utf-8" src="js/refactor.js"></script>
+</head>
+<body>
+
+<a name="home"></a>
+<div class="slide" id="header">
+  <div class="slidecont">
+    <div id="headerleft">
+      <div id="home">
+        <img src="img/logo.png"/>
+      </div>
+      <div id="introduction">
+        A GHC based toolset for Haskell programming.<br/>Currently featuring Haskell-tools Refact, a refactoring framework.<br/>This presentation is just a demo and does not represent the final product.<br/>Integration for a major text editor is coming this winter.
+      </div>
+      <div id="navbar">
+        <span class="navitem"><a href="#features">Features</a></span>
+        <span class="navitem"><a href="#refactorings">Refactorings</a></span>
+        <span class="navitem"><a href="#demo">Demo</a></span>
+        <span class="navitem"><a href="https://github.com/nboldi/haskell-tools">GitHub</a></span>
+        <span class="navitem"><a href="http://hackage.haskell.org/packages/search?terms=haskell-tools">Hackage</a></span>
+      </div>
+    </div>
+    <div id="headerright">
+      <img id="demoanimation" data-demoname="demo-anim" src="img/demoanimation.gif" title="This example demonstrates three refactorings applied on the example taken from https://www.haskell.org/" />
+    </div>
+    <div class="spacer"></div>
+  </div>
+</div>
+<a name="features"></a>
+<div class="slide featureslide">
+  <div class="slidecont">
+    <div class="slidecontleft">
+      <div class="featurebox">
+        <div class="featurecaption">
+          Full language support
+          <button class="featurebutton" type="button" data-demoname="Features.LanguageSupport">Try it out</button>
+        </div>
+        <div class="featuretext">The refactoring tool uses the GHC API and so it handles all language features and extensions that are supported by GHC.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          GHC 8.0.1
+          <button class="featurebutton" type="button" data-demoname="Features.GHC8">Try it out</button>
+        </div>
+        <div class="featuretext">The tool is already on GHC 8.0.1 and will be updated immediately when a new GHC version arrives.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Keeps formatting
+          <button class="featurebutton" type="button" data-demoname="Features.KeepsFormatting">Try it out</button>
+        </div>
+        <div class="featuretext">The representation of haskell-tools contains the information about the exact format of the source code. Comments and layout is not lost during the refactorings.</div>
+      </div>
+    </div>
+    <div class="slidecontright">
+      <div class="featurebox">
+        <div class="featurecaption">
+          Extensible
+        </div>
+        <div class="featuretext">We use a custom Haskell syntax tree for the refactorings. This syntax tree is more suited for rewriting than GHC's own syntax tree. As a result, writing refactorings is easy, and they are less likely to be affected by changes in the GHC API.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Layout-sensitive
+        <button class="featurebutton" type="button" data-demoname="Features.LayoutSensitive">Try it out</button>
+        </div>
+        <div class="featuretext">Haskell is a layout sensitive language. We designed the framework to be sensitive to the layout of the elements. This way no refactoring will affect the meaning of the program by changing indentation.</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+  <div class="spacer"></div>
+</div>
+<a name="refactorings"></a>
+<div class="slide featureslide">
+  <div class="slidecont">
+    <div class="slidecontleft">
+      <div class="featurebox">
+        <div class="featurecaption">
+          Rename
+          <button class="featurebutton" type="button" data-demoname="Refactors.Rename">Try it out</button>
+        </div>
+        <div class="featuretext">Rename is a very simple refactoring, that can be performed on any named definition, including types, bindings, constructors, pattern variables and so on. It changes the name where it is defined and all the places where it is used. The rename refactor checks if the new name is a valid name for the definition, and that the renaming does not cause name collisions.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Generate type signature
+          <button class="featurebutton" type="button" data-demoname="Refactors.GenerateTypeSig">Try it out</button>
+        </div>
+        <div class="featuretext">You should always write the type signatures of top-level bindings for your Haskell program. Suppose you forgot it. Now you can just use generate type signature refactoring to generate it automatically for you. Also works on local definitions, so if a local binding's type is not trivial, you can generate it for improved readability of your code.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Generate exports
+          <button class="featurebutton" type="button" data-demoname="Refactors.GenerateExports">Try it out</button>
+        </div>
+        <div class="featuretext">If you want to control which definitions are exported from a module, one thing that you can do is to start from exporting all the things that are defined and narrow it to what you want to put in your interface. This refactoring generates the export list that contains everything that is defined in the module. Remember, deleting is easier and less error-prone than writing.</div>
+      </div>
+    </div>
+    <div class="slidecontright">
+      <div class="featurebox">
+        <div class="featurecaption">
+          Extract binding
+          <button class="featurebutton" type="button" data-demoname="Refactors.ExtractBind">Try it out</button>
+        </div>
+        <div class="featuretext">With the extract binding refactoring complex expressions can be transformed into separate local bindings. With this transformation, long bindings can be shortened and the extracted functionality can be named properly. Since the generated binding is local, parts of the expressions that are in scope are implicitly passed to the generated binding.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Organize imports
+        <button class="featurebutton" type="button" data-demoname="Refactors.OrganizeImports">Try it out</button>
+        </div>
+        <div class="featuretext">When you are constantly changing the code of your module import lists can quickly become very long and messy. The organize imports refactoring helps you to keep this in check by sorting your imports and narrowing them to only import the definitions you want to use. Removes imports that are redundant and marks those that might also be.</div>
+      </div>
+      <div class="featurebox extrafeaturebox">
+      <div class="featuretext extrafeaturetext"><span class="extrafeature">One more thing to try out</span>: by pressing the U key with some modifier keys you can get the AST view of the current haskell source. This shows our custom syntax tree representation with semantic infos. The selection in the tree and the editor are synchronized. If you modify the editor content don't forget to press the key combination again to update the tree view.<br/>Also, you can typecheck the content of the editor by pressing the H key with some modifier keys.</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+  <div class="spacer"></div>
+</div>
+<a name="demo"></a>
+
+<div class="slide editorslide">
+  <div id="tabs" class="slidecont">
+    <ul id="editortabs">
+      <li><a href="#tab-defaultslide">Demo</a><span class='ui-icon ui-icon-circle-close ui-closable-tab'></span></li>
+    </ul>
+    <div id="tabpanels">
+      <div id="tab-defaultslide"></div>
+    </div>
+    <div class="tabcont">
+      <div id="ast"></div>
+      <div id="rightpane">
+        <pre id="editor">
+        </pre>
+        <div id="infos">
+          <div id="memberinfos"></div>
+          <div id="semainfos"></div>
+        </div>
+      </div>
+    </div>
+    <pre id="compile-errors"></pre>
+  </div>
+  <div id="demobuttons">
+    <button class="refactorbutton" type="button" data-refactor="RenameDefinition">Rename definition (R)</button>
+    <button class="refactorbutton" type="button" data-refactor="ExtractBinding">Extract binding (B)</button>
+    <button class="refactorbutton" type="button" data-refactor="GenerateSignature">Generate type signature (S)</button>
+    <button class="refactorbutton" type="button" data-refactor="OrganizeImports">Organize Imports (O)</button>
+    <button class="refactorbutton" type="button" data-refactor="GenerateExports">Generate Exports (E)</button>
+  </div>
+</div>
+
+<div class="slide footerslide">
+  <div class="slidecont footer">
+    <p class="footertext">Best viewed with latest Chrome or Firefox. This is the demo application for the Haskell-tools project and falls under the same licence. Logo is the work of . The example code on the top is taken from haskell.org. The origin of other examples is mentioned in comments.</p>
+  </div>
+</div>
+
+<div class="modal"></div>
+
+<div id="dialog-container">
+  <div id="new-tab-dialog" class="dialog" title="Create a new module">
+    <form>
+      <fieldset>
+        <label for="modulenamefld">Module name</label>
+        <input type="text" id="modulenamefld" name="modulenamefld" value="MyModule" class="text ui-widget-content ui-corner-all"> 
+        <!-- Allow form submission with keyboard without duplicating the dialog button -->
+        <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+    </form>
+  </div>
+
+  <div id="rename-refactor-dialog" class="dialog" title="Rename Definition">
+    <p class="validate-tips">The new name must be a valid haskell name for the renamed definition. It cannot contain spaces.</p>
+    <form>
+      <fieldset>
+        <label for="newname">New name</label>
+        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname"> 
+        <!-- Allow form submission with keyboard without duplicating the dialog button -->
+        <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+    </form>
+  </div>
+
+  <div id="extract-refactor-dialog" class="dialog" title="Extract binding">
+    <p class="validate-tips">The new name of the extracted definition must be a valid haskell name. It cannot contain spaces.</p>
+    <form>
+      <fieldset>
+        <label for="newname">Name of extracted binding</label>
+        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname"> 
+        <!-- Allow form submission with keyboard without duplicating the dialog button -->
+        <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+    </form>
+  </div>
+
+  <div id="error-dialog" title="Error">
+    <p id="error-message"></p>
+  </div>
+
+</div>
+
+</body>
+</html>

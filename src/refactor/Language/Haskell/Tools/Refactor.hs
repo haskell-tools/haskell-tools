@@ -7,6 +7,8 @@
            , FlexibleContexts
            , TypeFamilies
            , TupleSections
+           , ViewPatterns
+           , TemplateHaskell
            #-}
 module Language.Haskell.Tools.Refactor where
 
@@ -73,58 +75,31 @@ import Debug.Trace
 
 type RefactorSession = StateT RefactorSessionState
 
+data RefactorSessionState
+  = RefactorSessionState { _refSessMods :: Map.Map (String, String) (UnnamedModule IdDom)
+                         , _actualMod :: Maybe (String, String)
+                         , _exiting :: Bool -- TODO: remove this field
+                         }
+
+makeReferences ''RefactorSessionState
+
 refactorSession :: [String] -> IO ()
 refactorSession workingDirs = runGhc (Just libdir) $ flip evalStateT initSession $
   do moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
      mods <- lift $ mapM (\(wd,mod) -> parseTyped =<< loadModule wd mod) moduleNames
-     modify $ \s -> s { refSessMods = Map.fromList (zip moduleNames mods) }
+     modify $ refSessMods .= Map.fromList (zip moduleNames mods)
      runSession
   where runSession :: RefactorSession Ghc ()
         runSession = do cmd <- liftIO $ getLine 
                         sessionComm <- readSessionCommand cmd
                         performSessionCommand sessionComm
-                        doExit <- gets exiting 
+                        doExit <- gets (^. exiting) 
                         when (not doExit) runSession
 
 data RefactorSessionCommand 
   = LoadModule String
   | Exit
   | RefactorCommand RefactorCommand
-
-readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
-readSessionCommand cmd = case splitOn " " cmd of 
-    ["LoadModule", mod] -> return $ LoadModule mod
-    ["Exit"] -> return Exit
-    _ -> do actualMod <- gets actualMod 
-            case actualMod of Just (wd,m) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
-                              Nothing -> error "Set the actual module first"
-
-performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc ()
-performSessionCommand (LoadModule mod) = do modKey <- gets (find ((mod ==) . snd) . Map.keys . refSessMods)
-                                            modify $ \s -> s { actualMod = modKey }
-performSessionCommand Exit = modify $ \s -> s { exiting = True }
-performSessionCommand (RefactorCommand cmd) 
-  = do RefactorSessionState { refSessMods = mods, actualMod = Just act@(workingDir, mod) } <- get
-       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((wd,m),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
-       case res of Left err -> liftIO $ putStrLn err
-                   Right resMods -> forM_ resMods $ \case 
-                     ContentChanged (n,m) -> do
-                       liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
-                       w <- gets (find ((n ==) . snd) . Map.keys . refSessMods)
-                       newm <- lift $ (parseTyped =<< loadModule workingDir n)
-                       modify $ \s -> s { refSessMods = Map.insert (workingDir, n) newm (refSessMods s) }
-                     ModuleRemoved mod -> do
-                       liftIO $ removeFile (toFileName workingDir mod)
-                       modify $ \s -> s { refSessMods = Map.delete (workingDir, mod) (refSessMods s) }
-
-initSession :: RefactorSessionState
-initSession = RefactorSessionState Map.empty Nothing False
-
-data RefactorSessionState
-  = RefactorSessionState { refSessMods :: Map.Map (String, String) (UnnamedModule IdDom)
-                         , actualMod :: Maybe (String, String)
-                         , exiting :: Bool
-                         }
     
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
@@ -133,6 +108,35 @@ data RefactorCommand = NoRefactor
                      | RenameDefinition RealSrcSpan String
                      | ExtractBinding RealSrcSpan String
     deriving Show
+
+readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
+readSessionCommand cmd = case splitOn " " cmd of 
+    ["LoadModule", mod] -> return $ LoadModule mod
+    ["Exit"] -> return Exit
+    _ -> do actualMod <- gets (^. actualMod) 
+            case actualMod of Just (wd,m) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
+                              Nothing -> error "Set the actual module first"
+
+performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc ()
+performSessionCommand (LoadModule mod) = do modKey <- gets (find ((mod ==) . snd) . Map.keys . (^. refSessMods))
+                                            modify $ actualMod .= modKey
+performSessionCommand Exit = modify $ exiting .= True
+performSessionCommand (RefactorCommand cmd) 
+  = do RefactorSessionState { _refSessMods = mods, _actualMod = Just act@(workingDir, mod) } <- get
+       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((wd,m),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
+       case res of Left err -> liftIO $ putStrLn err
+                   Right resMods -> forM_ resMods $ \case 
+                     ContentChanged (n,m) -> do
+                       liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
+                       w <- gets (find ((n ==) . snd) . Map.keys . (^. refSessMods))
+                       newm <- lift $ (parseTyped =<< loadModule workingDir n)
+                       modify $ refSessMods .- Map.insert (workingDir, n) newm
+                     ModuleRemoved mod -> do
+                       liftIO $ removeFile (toFileName workingDir mod)
+                       modify $ refSessMods .- Map.delete (workingDir, mod)
+
+initSession :: RefactorSessionState
+initSession = RefactorSessionState Map.empty Nothing False
 
 performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
                => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
@@ -147,14 +151,16 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
         selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' sp str
 
 readCommand :: String -> String -> RefactorCommand
-readCommand fileName s = case splitOn " " s of 
-  [""] -> NoRefactor
-  ("CheckSource":_) -> NoRefactor
-  ("OrganizeImports":_) -> OrganizeImports
-  ("GenerateExports":_) -> GenerateExports
-  ["GenerateSignature", sp] -> GenerateSignature (readSrcSpan fileName sp)
-  ["RenameDefinition", sp, name] -> RenameDefinition (readSrcSpan fileName sp) name
-  ["ExtractBinding", sp, name] -> ExtractBinding (readSrcSpan fileName sp) name
+readCommand fileName (splitOn " " -> refact:args) = analyzeCommand fileName refact args
+
+analyzeCommand :: String -> String -> [String] -> RefactorCommand
+analyzeCommand _ "" _ = NoRefactor
+analyzeCommand _ "CheckSource" _ = NoRefactor
+analyzeCommand _ "OrganizeImports" _ = OrganizeImports
+analyzeCommand _ "GenerateExports" _ = GenerateExports
+analyzeCommand fileName "GenerateSignature" [sp] = GenerateSignature (readSrcSpan fileName sp)
+analyzeCommand fileName "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan fileName sp) newName
+analyzeCommand fileName "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan fileName sp) newName
   
 readSrcSpan :: String -> String -> RealSrcSpan
 readSrcSpan fileName s = case splitOn "-" s of
@@ -332,3 +338,4 @@ demoRefactor command workingDir moduleName =
   
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
+

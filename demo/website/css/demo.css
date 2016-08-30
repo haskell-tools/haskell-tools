@@ -1,0 +1,294 @@
+body {
+    margin: 30px 0 10px 0;
+    font-family: "Source Sans Pro",Helvetica,Arial,sans-serif;
+}
+
+#headerleft {
+    width: 450px;
+    float: left;
+}
+
+#navbar {
+    text-align: right;
+}
+
+.navitem a {
+    color: gray;
+    text-decoration: none;
+}
+
+.navitem a:hover {
+    color: black;
+    text-decoration: underline;
+}
+
+.navitem + .navitem:before {
+    content: "- ";
+    padding: 0 5px;
+    color: gray;
+
+}
+
+#introduction {
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-style: italic;
+    font-size: small;
+    text-align: right;
+}
+
+#headerright {
+    float: right;
+    width: 530px;
+    height: 280px;
+    position: relative;
+}
+
+#demoanimation {
+    position: absolute;
+    bottom: 0;
+    cursor: pointer;
+}
+
+.slide {
+    position: relative;
+    left: 0;
+    right: 0;
+    margin: auto;
+    padding-top: 20px;
+    padding-bottom: 15px;
+}
+
+.slide:nth-of-type(even) {
+    background-color: lightgray;
+}
+
+.slidecont {
+    width: 1024px;
+    margin: auto;
+}
+
+.slidecontright, .slidecontleft {
+    width: 480px;
+    float: left;
+}
+
+.slidecontright {
+    margin-left: 64px;
+}
+
+.featurebox {
+    margin-top: 15px;
+}
+
+.featurecaption {
+    font-size: x-large;
+    padding-bottom: 5px;
+}
+
+.featurebutton {
+    margin-left: 10px;
+    position: relative;
+    bottom: 3px;
+    padding-top: 2px;
+    cursor: pointer;
+}
+
+.extrafeaturebox {
+    margin-top: 30px;
+}
+
+.extrafeaturetext {
+    font-style: italic;
+    color: gray;
+    font-size: small;
+}
+
+.extrafeature {
+    color: black;
+}
+
+.editorslide {
+    text-align: center;
+}
+
+.editorslide .slidecont {
+    margin-top: 5px;
+    text-align: left;
+}
+
+.tabcont {
+    position: relative;
+    height: 500px;
+}
+
+#editortabs :focus {
+    outline: none;
+}
+
+#tabpanels {
+    height: 0;
+}
+
+.ui-icon-circle-close {
+    cursor: pointer;
+    float: right;
+}
+
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+    padding: 4px 7px;
+}
+
+#demobuttons {
+    margin-top: 10px;
+    text-align: center;
+}
+
+#demobuttons button {
+    padding: 8px;
+    font-weight: bold;
+}
+
+.spacer {
+    clear: both;
+}
+
+/* editor settings */
+
+#ast {
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 100%;
+    overflow: scroll;
+}
+
+#infos {
+    position: absolute;
+    top: 100%;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+#memberinfos {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    overflow: auto;
+    right: 50%;
+}
+
+#semainfos {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: 0;
+    overflow: auto;
+    font-family: "Courier New", Courier, monospace;
+    font-size: small;
+}
+
+#infos div {
+    margin: 5px;
+}
+
+#rightpane {
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+#editor {
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: larger;
+}
+
+.astlab {
+    font-style: italic;
+    color: gray;
+    font-size: small;
+}
+
+.semaname {
+    font-weight: bold;
+    font-size: large;
+}
+
+.modal {
+    display:    none;
+    position:   fixed;
+    z-index:    1000;
+    top:        0;
+    left:       0;
+    height:     100%;
+    width:      100%;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('../img/spinner.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+body.loading {
+    overflow: hidden;   
+}
+
+body.loading .modal {
+    display: block;
+}
+
+#dialog-container {
+    position: fixed;
+    visibility: hidden;
+}
+
+.opened-dialog {
+    position: fixed;   
+}
+
+.validate-tips {
+    font-style: italic;
+    color: #aaaaaa;
+    font-size: smaller;
+}
+
+#compile-errors {
+    position: absolute;
+    visibility: hidden;
+    color: red;
+    margin: 3px;
+}
+
+#compile-errors.errors-visible {
+    position: inherit;
+    visibility: visible;
+}
+
+.dialog fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.footertext {
+    font-style: italic;
+    font-size: small;
+    text-align: center;
+    color: #aaaaaa;
+}
+
+/*ui-widget-content {
+    border: none;
+}*/
