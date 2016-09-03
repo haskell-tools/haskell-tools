@@ -15,6 +15,7 @@ import qualified GHC
 import OccName
 import SrcLoc
 import Outputable
+import Unique
 
 import Control.Reference hiding (element)
 import qualified Control.Reference as Ref
@@ -91,23 +92,23 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
 
     changeName :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> Ann SimpleName dom SrcTemplateStage 
                                                          -> StateT Bool (StateT Bool (LocalRefactor dom)) (Ann SimpleName dom SrcTemplateStage)
-    changeName toChangeOrig toChangeWith str name 
-      = if | maybe False (`elem` toChange) actualName
-               && semanticsDefining (name ^. semantics) == False
-               && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (name ^. semantics) ^? Ref.element 0 & traversal)
-             -> refactError "The definition clashes with an existing one" -- name clash with an external definition
-           | maybe False (`elem` toChange) actualName
-             -> do put True -- state that something is changed in the local state
-                   when (actualName == Just toChangeOrig) 
-                     $ lift $ modify (|| semanticsDefining (name ^. semantics)) -- state that the definition is renamed in the global state
-                   return $ element & unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)
-           | let namesInScope = semanticsScope (name ^. semantics)
-              in case semanticsName (name ^. semantics) of 
-                   Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChangeOrig exprName
-                                                   && conflicts toChangeOrig exprName namesInScope
-                   Nothing -> False -- ambiguous names
-             -> refactError "The definition clashes with an existing one" -- local name clash
-           | otherwise -> return name -- not the changed name, leave as before
+    changeName toChangeOrig toChangeWith str name
+      | maybe False (`elem` toChange) actualName
+          && semanticsDefining (name ^. semantics) == False
+          && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (name ^. semantics) ^? Ref.element 0 & traversal)
+      = refactError "The definition clashes with an existing one" -- name clash with an external definition
+      | maybe False (`elem` toChange) actualName
+      = do put True -- state that something is changed in the local state
+           when (actualName == Just toChangeOrig) 
+             $ lift $ modify (|| semanticsDefining (name ^. semantics)) -- state that the definition is renamed in the global state
+           return $ element & unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)
+      | let namesInScope = semanticsScope (name ^. semantics)
+         in case semanticsName (name ^. semantics) of 
+              Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChangeOrig exprName
+                                              && conflicts toChangeOrig exprName namesInScope
+              Nothing -> False -- ambiguous names
+      = refactError "The definition clashes with an existing one" -- local name clash
+      | otherwise = return name -- not the changed name, leave as before
       where toChange = toChangeOrig : toChangeWith
             actualName = fmap getName (semanticsName (name ^. semantics))
 

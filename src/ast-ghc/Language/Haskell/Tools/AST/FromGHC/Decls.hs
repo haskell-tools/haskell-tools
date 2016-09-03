@@ -48,35 +48,36 @@ trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ (mapM filterNoSplices =<<) $ sequence $
-      [ trfBindOrSig vals
-      , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
-      , mapM (trfDecl . (fmap SpliceD)) splices
-      , mapM (trfDecl . (fmap InstD)) insts
-      , mapM (trfDecl . (fmap DerivD)) derivs
-      , mapM (trfDecl . (fmap (SigD . FixSig))) (mergeFixityDefs fixities)
-      , mapM (trfDecl . (fmap DefD)) defaults
-      , mapM (trfDecl . (fmap ForD)) foreigns
-      , mapM (trfDecl . (fmap WarningD)) warns
-      , mapM (trfDecl . (fmap AnnD)) anns
-      , mapM (trfDecl . (fmap RuleD)) rules
-      , mapM (trfDecl . (fmap VectD)) vects
-      -- , mapM (trfDecl . (fmap DocD)) docs
-      ])
-  where trfBindOrSig :: HsValBinds n -> Trf [Ann AST.Decl (Dom r) RangeStage]
-        trfBindOrSig (getBindsAndSigs -> (sigs, binds))
-          = (++) <$> mapM (trfLocNoSema trfVal) (bagToList binds)
-                 <*> mapM (trfLocNoSema trfSig) sigs
+  = do spls <- asks spliceLocs
+       let noSplices = filterNoSplices spls
+       addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
+         [ trfBindOrSig spls vals
+         , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . noSplices . group_tyclds) tycls
+         , mapM (trfDecl . (fmap SpliceD)) $ noSplices splices
+         , mapM (trfDecl . (fmap InstD)) $ noSplices insts
+         , mapM (trfDecl . (fmap DerivD)) $ noSplices derivs
+         , mapM (trfDecl . (fmap (SigD . FixSig))) (noSplices $ mergeFixityDefs fixities)
+         , mapM (trfDecl . (fmap DefD)) $ noSplices defaults
+         , mapM (trfDecl . (fmap ForD)) $ noSplices foreigns
+         , mapM (trfDecl . (fmap WarningD)) $ noSplices warns
+         , mapM (trfDecl . (fmap AnnD)) $ noSplices anns
+         , mapM (trfDecl . (fmap RuleD)) $ noSplices rules
+         , mapM (trfDecl . (fmap VectD)) $ noSplices vects
+         -- , mapM (trfDecl . (fmap DocD)) docs
+         ])
+  where trfBindOrSig :: [SrcSpan] -> HsValBinds n -> Trf [Ann AST.Decl (Dom r) RangeStage]
+        trfBindOrSig spls (getBindsAndSigs -> (sigs, binds))
+          = (++) <$> mapM (trfLocNoSema trfVal) (filterNoSplices spls $ bagToList binds)
+                 <*> mapM (trfLocNoSema trfSig) (filterNoSplices spls sigs)
         addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
 
         -- | This is a walkaround solution for the more general problem of implementing TH support
-        filterNoSplices :: [Ann AST.Decl (Dom r) RangeStage] -> Trf [Ann AST.Decl (Dom r) RangeStage]
-        filterNoSplices ls = do splices <- asks spliceLocs
-                                return $ filter (not . checkContainsAny splices) ls
-          where checkContainsAny :: [SrcSpan] -> Ann AST.Decl (Dom r) RangeStage -> Bool
+        filterNoSplices :: [SrcSpan] -> [Located a] -> [Located a]
+        filterNoSplices splices ls = filter (not . checkContainsAny splices) ls
+          where checkContainsAny :: [SrcSpan] -> Located a -> Bool
                 checkContainsAny spans a = 
-                  let RealSrcSpan rng = a ^. AST.annotation & AST.sourceInfo & AST.nodeSpan
-                   in any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
+                  case getLoc a of RealSrcSpan rng -> any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
+                                   _ -> False
            
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl (Dom r) RangeStage)

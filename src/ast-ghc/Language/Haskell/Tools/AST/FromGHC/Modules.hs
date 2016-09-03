@@ -76,7 +76,7 @@ addTypeInfos bnds mod = evalStateT (semaTraverse
                                                      return $ CNameInfo sc d id)
     pure
     (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
-    (\(ModuleInfo mod imps) -> lift $ ModuleInfo mod <$> mapM getType' imps)
+    (\(ModuleInfo mod isboot imps) -> lift $ ModuleInfo mod isboot <$> mapM getType' imps)
     (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
       pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
@@ -105,12 +105,12 @@ extractSigBindIds = catMaybes . map (\case L l bs@(IPBind (Right id) _) -> Just 
 
 
 
-createModuleInfo :: Module -> Trf (AST.ModuleInfo GHC.Name)
-createModuleInfo mod = do prelude <- lift (xopt ImplicitPrelude . ms_hspp_opts <$> getModSummary (moduleName mod))
-                          (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (mod, [])
-                          return $ AST.ModuleInfo mod preludeImports
+createModuleInfo :: ModSummary -> Trf (AST.ModuleInfo GHC.Name)
+createModuleInfo mod = do let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
+                          (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
+                          return $ AST.ModuleInfo (ms_mod mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True) preludeImports
 
-trfModule :: Module -> Located (HsModule RdrName) -> Trf (Ann AST.Module (Dom RdrName) RangeStage)
+trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.Module (Dom RdrName) RangeStage)
 trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
                   \(HsModule name exports imports decls deprec _) -> 
                     AST.Module <$> trfFilePragmas
@@ -118,10 +118,10 @@ trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr 
                                <*> trfImports imports
                                <*> trfDecls decls
        
-trfModuleRename :: Module -> Ann AST.Module (Dom RdrName) RangeStage 
-                          -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) 
-                          -> Located (HsModule RdrName) 
-                          -> Trf (Ann AST.Module (Dom GHC.Name) RangeStage)
+trfModuleRename :: ModSummary -> Ann AST.Module (Dom RdrName) RangeStage 
+                              -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) 
+                              -> Located (HsModule RdrName) 
+                              -> Trf (Ann AST.Module (Dom GHC.Name) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod 
     = do info <- createModuleInfo mod
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. AST.implicitNames)) hsMod      
