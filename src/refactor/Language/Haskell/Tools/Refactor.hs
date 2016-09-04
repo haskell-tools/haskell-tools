@@ -118,21 +118,25 @@ performSessionCommand (RefactorCommand cmd)
                    Right resMods -> do 
                      mss <- forM resMods $ \case 
                        ContentChanged (n,m) -> do
-                         allMods <- lift getModuleGraph
-                         let Just ms = find (\ms -> ms_mod ms == (semanticsModule $ m ^. semantics) 
-                                                      && (ms_hsc_src ms == HsSrcFile) /= (isBootModule $ m ^. semantics)
-                                            ) allMods 
+                         let modName = semanticsModule $ m ^. semantics
+                         ms <- getModSummary modName (isBootModule $ m ^. semantics)
                          let isBoot = case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot
-                         liftIO $ withBinaryFile ((case isBoot of NormalHs -> toFileName; IsHsBoot -> toBootFileName) workingDir n) WriteMode (`hPutStr` prettyPrint m)
-                         return $ Just (n, ms, isBoot)
+                         liftIO $ withBinaryFile ((case isBoot of NormalHs -> toFileName; IsHsBoot -> toBootFileName) workingDir n) 
+                                                 WriteMode (`hPutStr` prettyPrint m)
+                         return $ Just (n, modName, isBoot)
                        ModuleRemoved mod -> do
                          liftIO $ removeFile (toFileName workingDir mod)
                          modify $ \s -> s { refSessMods = Map.delete (workingDir, mod, IsHsBoot) $ Map.delete (workingDir, mod, NormalHs) (refSessMods s) }
                          return Nothing
-                     forM_ (catMaybes mss) $ \(n, ms, isBoot) -> do
+                     lift $ load LoadAllTargets
+                     forM_ (catMaybes mss) $ \(n, modName, isBoot) -> do
                          -- TODO: add target if module is added as a change
+                         ms <- getModSummary modName (isBoot == IsHsBoot)
                          newm <- lift $ parseTyped ms
                          modify $ \s -> s { refSessMods = Map.insert (workingDir, n, isBoot) newm (refSessMods s) }
+  where getModSummary name boot
+          = do allMods <- lift getModuleGraph
+               return $ fromJust $ find (\ms -> ms_mod ms == name && (ms_hsc_src ms == HsSrcFile) /= boot) allMods 
 
 initSession :: RefactorSessionState
 initSession = RefactorSessionState Map.empty Nothing False
@@ -206,14 +210,20 @@ toFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c ->
 toBootFileName :: String -> String -> FilePath
 toBootFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
 
-performRefactors :: String -> String -> String -> IO (Either String [(String, Maybe String)])
-performRefactors command workingDir target = do 
-  otherModules <- delete target <$> getModules workingDir
+performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
+performRefactors command workingDir flags target = do 
+  mods <- getModules workingDir
   runGhc (Just libdir) $ do
-    targetMod <- parseTyped =<< loadModule workingDir target
-    otherMods <- mapM (parseTyped <=< loadModule workingDir) otherModules
+    useDirsAndFlags [workingDir] flags
+    setTargets (map (\mod -> (Target (TargetModule (mkModuleName mod)) True Nothing)) mods)
+    load LoadAllTargets
+    allMods <- getModuleGraph
+    selectedMod <- getModSummary (mkModuleName target)
+    let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
+    targetMod <- parseTyped selectedMod
+    otherMods <- mapM parseTyped otherModules
     res <- performCommand (readCommand (toFileName workingDir target) command) 
-                          (target, targetMod) (zip otherModules otherMods)
+                          (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
     return $ mapRight (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
                                   ModuleRemoved m -> (m, Nothing)
                            )) res

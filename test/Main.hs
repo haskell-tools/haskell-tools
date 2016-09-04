@@ -296,7 +296,7 @@ flattenDebugNode _ = []
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
 makeMultiModuleTest (refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
-      $ do res <- performRefactors refact (rootDir </> root) mod
+      $ do res <- performRefactors refact (rootDir </> root) [] mod
            case res of Right result -> checkResults result removed
                        Left err -> assertFailure $ "The transformation failed : " ++ err
   where checkResults :: [(String, Maybe String)] -> [String] -> IO ()
@@ -341,13 +341,13 @@ makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
-       res <- performRefactor command workingDir moduleName
+       res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
 
 checkTransformFails :: String -> String -> String -> IO ()
 checkTransformFails command workingDir moduleName
-  = do res <- performRefactor command workingDir moduleName
+  = do res <- performRefactor command workingDir [] moduleName
        assertBool "The transform should fail for the given input" (isLeft res)
        
 loadExpected :: Bool -> String -> String -> IO String
