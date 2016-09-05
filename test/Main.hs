@@ -233,6 +233,8 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.NoPrelude", "4:1-4:2", "map")
   , ("Refactor.RenameDefinition.UnusedDef", "3:1-3:2", "map")
   , ("Refactor.RenameDefinition.ImplicitParams", "8:17-8:20", "compare")
+  , ("Refactor.RenameDefinition.SameCtorAndType", "3:6-3:13", "P2D")
+  , ("Refactor.RenameDefinition.RoleAnnotation", "4:11-4:12", "AA")
   ]
 
 wrongRenameDefinitionTests =
