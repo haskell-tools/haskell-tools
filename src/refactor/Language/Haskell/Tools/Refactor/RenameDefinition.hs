@@ -95,7 +95,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
     changeName toChangeOrig toChangeWith str name
       | maybe False (`elem` toChange) actualName
           && semanticsDefining (name ^. semantics) == False
-          && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (name ^. semantics) ^? Ref.element 0 & traversal)
+          && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (name ^. semantics) ^? Ref.element 0 & traversal & filtered (sameNamespace toChangeOrig))
       = refactError "The definition clashes with an existing one" -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
