@@ -12,6 +12,7 @@ import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Data.Map as Map
 import Data.Maybe
+import Language.Haskell.Tools.AST
 
 import Debug.Trace
 
@@ -22,6 +23,7 @@ type Trf = ReaderT TrfInput Ghc
 data TrfInput
   = TrfInput { srcMap :: SourceMap -- ^ The lexical tokens of the source file
              , pragmaComms :: Map String [Located String] -- ^ Pragma comments
+             , declsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -- ^ Declarations that are from the parsed AST
              , contRange :: SrcSpan -- ^ The focus of the transformation
              , localsInScope :: [[GHC.Name]] -- ^ Local names visible
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
@@ -34,6 +36,7 @@ trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
 trfInit annots comments 
   = TrfInput { srcMap = annotationsToSrcMap annots
              , pragmaComms = comments
+             , declsToInsert = []
              , contRange = noSrcSpan
              , localsInScope = []
              , defining = False
@@ -83,3 +86,6 @@ getOriginalName n = do sp <- asks contRange
 
 setSpliceLocs :: [SrcSpan] -> Trf a -> Trf a
 setSpliceLocs locs = local (\s -> s {spliceLocs = locs})
+
+setDeclsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -> Trf a -> Trf a
+setDeclsToInsert decls = local (\s -> s {declsToInsert = decls})

@@ -4,6 +4,7 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
+import qualified GHC
 import RdrName as GHC
 import Class as GHC
 import HsSyn as GHC
@@ -21,6 +22,7 @@ import Unique as GHC
 
 import Control.Monad.Reader
 import Control.Reference
+import Data.List
 import Data.Maybe
 import Data.Data (toConstr)
 import Data.Generics.Uniplate.Data
@@ -50,7 +52,7 @@ trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
   = do spls <- asks spliceLocs
        let noSplices = filterNoSplices spls
-       addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ sequence $
+       addAllToScope $ makeIndentedListNewlineBefore atTheEnd (orderDefs <$> ((++) <$> getDeclsToInsert <*> (concat <$> (sequence $
          [ trfBindOrSig spls vals
          , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . noSplices . group_tyclds) tycls
          , mapM (trfDecl . (fmap SpliceD)) $ noSplices splices
@@ -64,7 +66,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
          , mapM (trfDecl . (fmap RuleD)) $ noSplices rules
          , mapM (trfDecl . (fmap VectD)) $ noSplices vects
          -- , mapM (trfDecl . (fmap DocD)) docs
-         ])
+         ]))))
   where trfBindOrSig :: [SrcSpan] -> HsValBinds n -> Trf [Ann AST.Decl (Dom r) RangeStage]
         trfBindOrSig spls (getBindsAndSigs -> (sigs, binds))
           = (++) <$> mapM (trfLocNoSema trfVal) (filterNoSplices spls $ bagToList binds)
@@ -78,7 +80,19 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
                 checkContainsAny spans a = 
                   case getLoc a of RealSrcSpan rng -> any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
                                    _ -> False
-           
+
+        getDeclsToInsert :: Trf [Ann AST.Decl (Dom r) RangeStage]
+        getDeclsToInsert = do decls <- asks declsToInsert
+                              locals <- asks (head . localsInScope)
+                              lift $ mapM (loadIdsForDecls locals) decls
+           where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom r) RangeStage)
+                 loadIdsForDecls locals = AST.semaTraverse $
+                    AST.SemaTrf (AST.nameInfo !~ findName) pure 
+                                (\(AST.ImportInfo mod avail actual) -> AST.ImportInfo mod <$> mapM findName avail <*> mapM findName actual)
+                                pure pure pure
+                   where findName rdr = pure $ fromGHCName $ fromMaybe (error $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr) 
+                                                                                  ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals)) 
+                                                           $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl (Dom r) RangeStage)
 trfDecl = trfLocNoSema $ \case
