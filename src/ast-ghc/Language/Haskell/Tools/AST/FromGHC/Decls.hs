@@ -81,7 +81,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
         getDeclsToInsert :: Trf [Ann AST.Decl (Dom Name) RangeStage]
         getDeclsToInsert = do decls <- asks declsToInsert
                               locals <- asks (head . localsInScope)
-                              lift $ mapM (loadIdsForDecls locals) decls
+                              liftGhc $ mapM (loadIdsForDecls locals) decls
            where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom Name) RangeStage)
                  loadIdsForDecls locals = AST.semaTraverse $
                     AST.SemaTrf (AST.nameInfo !~ findName) pure 

@@ -145,25 +145,36 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
           
-          env <- lift getSession
-          let spls = hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+          let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+              declLocs = map getLoc declSpls
+          let spls = filter (\e -> not $ getSpliceLoc e `elem` declLocs) $ hsMod ^? biplateRef :: [HsSplice RdrName]
+
+          -- debug
+          --liftIO $ putStrLn $ "//// declSpls: " ++ show declLocs
+          --liftIO $ putStrLn $ "//// spls: " ++ show (map getLoc spls)
+          --liftIO $ putStrLn $ "//// all spls: " ++ show (map getLoc (hsMod ^? biplateRef :: [HsSplice RdrName]))
+
           RealSrcSpan loc <- asks contRange 
 
           -- initialize reader environment
-          parsed <- lift $ parseModule mod
+          env <- liftGhc getSession
+          parsed <- liftGhc $ parseModule mod
           let imports = hsmodImports $ unLoc $ pm_parsed_source parsed
               implicitPrelude = xopt ImplicitPrelude $ ms_hspp_opts mod
               prelImps = mkPrelImports (ms_mod_name mod) noSrcSpan implicitPrelude imports 
           (m, readEnv) <- liftIO $ tcRnImportDecls env (prelImps ++ imports)
 
-          tcdSplices <- liftIO $ runTcInteractive env $ updGblEnv (\gbl -> gbl { tcg_rdr_env = fromJust readEnv }) $ mapM tcHsSplice spls
+          tcdSplices <- liftIO $ runTcInteractive env 
+            $ updGblEnv (\gbl -> gbl { tcg_rdr_env = fromJust readEnv }) 
+            $ (,) <$> mapM tcHsSplice declSpls <*> mapM tcHsSplice' spls
 
-          let splices = fromMaybe (error $ "Splice expression could not be typechecked: " 
-                                             ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))) 
-                                                                  <+> vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))))) 
-                                  (snd tcdSplices)
+          let (declSplices, splices) 
+                = fromMaybe (error $ "Splice expression could not be typechecked: " 
+                                       ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))) 
+                                                            <+> vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))))) 
+                            (snd tcdSplices)
 
-          setOriginalNames originalNames . setSpliceLocs splices . setDeclsToInsert roleAnnots
+          setOriginalNames originalNames . setSplices declSplices splices . setDeclsToInsert roleAnnots
             $ AST.Module <$> trfFilePragmas
                          <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
                                                                          _                       -> Nothing) deprec

@@ -7,7 +7,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe
-import Data.List (partition)
+import Data.List (partition, find)
 import Data.Data (toConstr)
 import Control.Monad.Reader
 import Control.Reference
@@ -52,7 +52,11 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
                           [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
                           ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
        annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
-trfExpr e = trfLoc trfExpr' createScopeInfo e
+trfExpr e = do othSplices <- asks otherSplices
+               let RealSrcSpan loce = getLoc e
+                   contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
+               case contSplice of Just sp -> spliceInserted sp (annCont createScopeInfo (AST.Splice <$> annContNoSema (trfSplice' sp)))
+                                  Nothing -> trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf AST.ScopeInfo
 createScopeInfo = do scope <- asks localsInScope
@@ -73,7 +77,7 @@ trfExpr' (OpApp e1 (unLoc -> HsVar op) _ e2)
 trfExpr' (NegApp e _) = AST.PrefixApp <$> annLocNoSema loc (AST.NormalOp <$> annLoc info loc (AST.nameFromList <$> trfNameStr "-"))
                                       <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
-        info = createNameInfo =<< (fromMaybe (error "minus operation is not found") <$> lift negateOpName)
+        info = createNameInfo =<< (fromMaybe (error "minus operation is not found") <$> liftGhc negateOpName)
         negateOpName = getFromNameUsing (\n -> (\case Just (AnId id) -> Just id; _ -> Nothing) <$> lookupName n) negateName
 trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.LeftSection <$> trfExpr expr <*> trfOperator op
 trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.RightSection <$> trfOperator op <*> trfExpr expr

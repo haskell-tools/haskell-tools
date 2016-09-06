@@ -18,7 +18,7 @@ import Language.Haskell.Tools.AST.FromGHC.Patterns
 import Language.Haskell.Tools.AST.FromGHC.Base
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
-import Language.Haskell.Tools.AST (Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.QuasiQuote (Dom r) RangeStage)
@@ -30,6 +30,8 @@ trfQuasiQuotation' (HsQuasiQuote id _ l str)
                               (updateCol (subtract 1) (srcSpanStart l))
         strLoc = mkSrcSpan (srcSpanStart l) (updateCol (subtract 2) (srcSpanEnd l))
 
+trfSplice :: TransformName n r => Located (HsSplice n) -> Trf (Ann AST.Splice (Dom r) RangeStage)
+trfSplice = trfLocNoSema trfSplice'
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice (Dom r) RangeStage)
 trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
