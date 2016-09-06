@@ -22,8 +22,10 @@ import Unique as GHC
 
 import Control.Monad.Reader
 import Control.Reference
+import Data.Function (on)
 import Data.List
 import Data.Maybe
+import qualified Data.Map as Map
 import Data.Data (toConstr)
 import Data.Generics.Uniplate.Data
 
@@ -48,44 +50,39 @@ trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) Ra
 -- TODO: filter documentation comments
 trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
-trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
+trfDeclsGroup :: HsGroup Name -> Trf (AnnList AST.Decl (Dom Name) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
   = do spls <- asks spliceLocs
-       let noSplices = filterNoSplices spls
-       addAllToScope $ makeIndentedListNewlineBefore atTheEnd (orderDefs <$> ((++) <$> getDeclsToInsert <*> (concat <$> (sequence $
-         [ trfBindOrSig spls vals
-         , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . noSplices . group_tyclds) tycls
-         , mapM (trfDecl . (fmap SpliceD)) $ noSplices splices
-         , mapM (trfDecl . (fmap InstD)) $ noSplices insts
-         , mapM (trfDecl . (fmap DerivD)) $ noSplices derivs
-         , mapM (trfDecl . (fmap (SigD . FixSig))) (noSplices $ mergeFixityDefs fixities)
-         , mapM (trfDecl . (fmap DefD)) $ noSplices defaults
-         , mapM (trfDecl . (fmap ForD)) $ noSplices foreigns
-         , mapM (trfDecl . (fmap WarningD)) $ noSplices warns
-         , mapM (trfDecl . (fmap AnnD)) $ noSplices anns
-         , mapM (trfDecl . (fmap RuleD)) $ noSplices rules
-         , mapM (trfDecl . (fmap VectD)) $ noSplices vects
-         -- , mapM (trfDecl . (fmap DocD)) docs
-         ]))))
-  where trfBindOrSig :: [SrcSpan] -> HsValBinds n -> Trf [Ann AST.Decl (Dom r) RangeStage]
-        trfBindOrSig spls (getBindsAndSigs -> (sigs, binds))
-          = (++) <$> mapM (trfLocNoSema trfVal) (filterNoSplices spls $ bagToList binds)
-                 <*> mapM (trfLocNoSema trfSig) (filterNoSplices spls sigs)
-        addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
+       let (sigs, bagToList -> binds) = getBindsAndSigs vals
+           alldecls :: [Located (HsDecl Name)]
+           alldecls = (map (fmap SpliceD) splices)
+                        ++ (map (fmap ValD) binds)
+                        ++ (map (fmap SigD) sigs)
+                        ++ (map (fmap TyClD) (concat $ map group_tyclds tycls))
+                        ++ (map (fmap InstD) insts)
+                        ++ (map (fmap DerivD) derivs)
+                        ++ (map (fmap (SigD . FixSig)) (mergeFixityDefs fixities)) 
+                        ++ (map (fmap DefD) defaults)
+                        ++ (map (fmap ForD) foreigns)
+                        ++ (map (fmap WarningD) warns)
+                        ++ (map (fmap AnnD) anns)
+                        ++ (map (fmap RuleD) rules)
+                        ++ (map (fmap VectD) vects)
+       addAllToScope $ makeIndentedListNewlineBefore atTheEnd (orderDefs <$> ((++) <$> getDeclsToInsert <*> (mapM trfDecl $ replaceSpliceDecls spls alldecls)))
+  where addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
 
-        -- | This is a walkaround solution for the more general problem of implementing TH support
-        filterNoSplices :: [SrcSpan] -> [Located a] -> [Located a]
-        filterNoSplices splices ls = filter (not . checkContainsAny splices) ls
-          where checkContainsAny :: [SrcSpan] -> Located a -> Bool
-                checkContainsAny spans a = 
-                  case getLoc a of RealSrcSpan rng -> any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
-                                   _ -> False
+        replaceSpliceDecls :: [Located (HsSplice Name)] -> [Located (HsDecl Name)] -> [Located (HsDecl Name)]
+        replaceSpliceDecls splices decls = foldl mergeSplice decls splices
 
-        getDeclsToInsert :: Trf [Ann AST.Decl (Dom r) RangeStage]
+        mergeSplice :: [Located (HsDecl Name)] -> Located (HsSplice Name) -> [Located (HsDecl Name)]
+        mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
+          = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
+ 
+        getDeclsToInsert :: Trf [Ann AST.Decl (Dom Name) RangeStage]
         getDeclsToInsert = do decls <- asks declsToInsert
                               locals <- asks (head . localsInScope)
                               lift $ mapM (loadIdsForDecls locals) decls
-           where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom r) RangeStage)
+           where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom Name) RangeStage)
                  loadIdsForDecls locals = AST.semaTraverse $
                     AST.SemaTrf (AST.nameInfo !~ findName) pure 
                                 (\(AST.ImportInfo mod avail actual) -> AST.ImportInfo mod <$> mapM findName avail <*> mapM findName actual)

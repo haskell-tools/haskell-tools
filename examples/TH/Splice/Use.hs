@@ -4,6 +4,10 @@ module TH.Splice.Use where
 
 import TH.Splice.Define
 
+$(return [])
+
+$(let x = return [] in x)
+
 $(def "x")
 
 $(defHello)

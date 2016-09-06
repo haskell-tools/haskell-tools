@@ -29,7 +29,7 @@ data TrfInput
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
              , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
-             , spliceLocs :: [SrcSpan] -- ^ Location of the TH splices for extracting the locations from the renamed AST. 
+             , spliceLocs :: [Located (HsSplice GHC.Name)] -- ^ Location of the TH splices for extracting the locations from the renamed AST. 
              }
       
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
@@ -84,7 +84,7 @@ getOriginalName :: RdrName -> Trf String
 getOriginalName n = do sp <- asks contRange
                        asks (rdrNameStr . fromMaybe n . (Map.lookup sp) . originalNames)
 
-setSpliceLocs :: [SrcSpan] -> Trf a -> Trf a
+setSpliceLocs :: [Located (HsSplice GHC.Name)] -> Trf a -> Trf a
 setSpliceLocs locs = local (\s -> s {spliceLocs = locs})
 
 setDeclsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -> Trf a -> Trf a
