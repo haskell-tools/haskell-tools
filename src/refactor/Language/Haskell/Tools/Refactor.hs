@@ -202,6 +202,20 @@ useDirsAndFlags workingDirs args = do
   dynflags <- getSessionDynFlags
   let ((leftovers, errors, warnings), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
   setSessionDynFlags newDynFlags { importPaths = importPaths newDynFlags ++ workingDirs }
+  initGhcFlags workingDirs
+
+initGhcFlags :: [FilePath] -> Ghc ()
+initGhcFlags wds = do
+  dflags <- getSessionDynFlags
+  -- don't generate any code
+  setSessionDynFlags 
+    $ flip gopt_set Opt_KeepRawTokenStream
+    $ flip gopt_set Opt_NoHsMain
+    $ dflags { importPaths = wds
+             , hscTarget = HscAsm -- needed for static pointers
+             , ghcLink = LinkInMemory
+             , ghcMode = CompManager 
+             }
   return ()
 
 toFileName :: String -> String -> FilePath
@@ -235,16 +249,7 @@ astView workingDir target =
 
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName 
-  = do dflags <- getSessionDynFlags
-       -- don't generate any code
-       setSessionDynFlags 
-         $ flip gopt_set Opt_KeepRawTokenStream
-         $ flip gopt_set Opt_NoHsMain
-         $ dflags { importPaths = [workingDir]
-                  , hscTarget = HscAsm -- needed for static pointers
-                  , ghcLink = LinkInMemory
-                  , ghcMode = CompManager 
-                  }
+  = do initGhcFlags [workingDir]
        target <- guessTarget moduleName Nothing
        setTargets [target]
        load LoadAllTargets
