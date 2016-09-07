@@ -35,10 +35,10 @@ import Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type (Dom r) RangeStage)
-trfType typ = do othSplices <- asks otherSplices
+trfType typ = do othSplices <- asks typeSplices
                  let RealSrcSpan loce = getLoc typ
                      contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
-                 case contSplice of Just sp -> spliceInserted sp (annContNoSema (AST.TySplice <$> trfSplice' sp))
+                 case contSplice of Just sp -> typeSpliceInserted sp (annContNoSema (AST.TySplice <$> trfSplice' sp))
                                     Nothing -> trfLocNoSema trfType' typ
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type (Dom r) RangeStage)

@@ -43,5 +43,5 @@ trfBracket' (TExpBr expr) = AST.ExprBracket <$> trfExpr expr
 trfBracket' (VarBr _ expr) = AST.ExprBracket <$> annCont createScopeInfo (AST.Var <$> (annContNoSema (trfName' expr)))
 trfBracket' (PatBr pat) = AST.PatternBracket <$> trfPattern pat
 trfBracket' (DecBrL decls) = AST.DeclsBracket <$> trfDecls decls
---trfBracket' (DecBrG decls) = AST.DeclsBracket <$> trfDeclsGroup decls
+trfBracket' (DecBrG decls) = AST.DeclsBracket <$> trfDeclsGroup decls
 trfBracket' (TypBr typ) = AST.TypeBracket <$> trfType typ

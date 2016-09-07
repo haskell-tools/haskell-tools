@@ -50,11 +50,11 @@ trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) Ra
 -- TODO: filter documentation comments
 trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
-trfDeclsGroup :: HsGroup Name -> Trf (AnnList AST.Decl (Dom Name) RangeStage)
+trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = do spls <- asks spliceLocs
+  = do spls <- getDeclSplices
        let (sigs, bagToList -> binds) = getBindsAndSigs vals
-           alldecls :: [Located (HsDecl Name)]
+           alldecls :: [Located (HsDecl n)]
            alldecls = (map (fmap SpliceD) splices)
                         ++ (map (fmap ValD) binds)
                         ++ (map (fmap SigD) sigs)
@@ -71,18 +71,18 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
        addAllToScope $ makeIndentedListNewlineBefore atTheEnd (orderDefs <$> ((++) <$> getDeclsToInsert <*> (mapM trfDecl $ replaceSpliceDecls spls alldecls)))
   where addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
 
-        replaceSpliceDecls :: [Located (HsSplice Name)] -> [Located (HsDecl Name)] -> [Located (HsDecl Name)]
+        replaceSpliceDecls :: [Located (HsSplice n)] -> [Located (HsDecl n)] -> [Located (HsDecl n)]
         replaceSpliceDecls splices decls = foldl mergeSplice decls splices
 
-        mergeSplice :: [Located (HsDecl Name)] -> Located (HsSplice Name) -> [Located (HsDecl Name)]
+        mergeSplice :: [Located (HsDecl n)] -> Located (HsSplice n) -> [Located (HsDecl n)]
         mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
           = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
  
-        getDeclsToInsert :: Trf [Ann AST.Decl (Dom Name) RangeStage]
+        getDeclsToInsert :: Trf [Ann AST.Decl (Dom r) RangeStage]
         getDeclsToInsert = do decls <- asks declsToInsert
                               locals <- asks (head . localsInScope)
                               liftGhc $ mapM (loadIdsForDecls locals) decls
-           where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom Name) RangeStage)
+           where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom r) RangeStage)
                  loadIdsForDecls locals = AST.semaTraverse $
                     AST.SemaTrf (AST.nameInfo !~ findName) pure 
                                 (\(AST.ImportInfo mod avail actual) -> AST.ImportInfo mod <$> mapM findName avail <*> mapM findName actual)

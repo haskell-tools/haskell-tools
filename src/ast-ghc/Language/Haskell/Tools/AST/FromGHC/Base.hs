@@ -76,14 +76,17 @@ trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
 
 class (DataId n, Eq n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
+  getDeclSplices :: Trf [Located (HsSplice n)]
   fromGHCName :: GHC.Name -> n 
 
 instance TransformableName RdrName where
   correctNameString = pure . rdrNameStr
+  getDeclSplices = pure []
   fromGHCName = rdrName
 
 instance TransformableName GHC.Name where
   correctNameString n = getOriginalName (rdrName n)
+  getDeclSplices = asks declSplices
   fromGHCName = id
 
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.

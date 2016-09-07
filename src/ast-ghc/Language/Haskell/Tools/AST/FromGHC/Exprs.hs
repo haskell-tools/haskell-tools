@@ -52,10 +52,11 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
                           [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
                           ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
        annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
-trfExpr e = do othSplices <- asks otherSplices
+trfExpr e = do exprSpls <- asks exprSplices
                let RealSrcSpan loce = getLoc e
-                   contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
-               case contSplice of Just sp -> spliceInserted sp (annCont createScopeInfo (AST.Splice <$> annContNoSema (trfSplice' sp)))
+                   contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) exprSpls
+               case contSplice of Just sp -> case sp of HsQuasiQuote {} -> exprSpliceInserted sp (annCont createScopeInfo (AST.QuasiQuoteExpr <$> annContNoSema (trfQuasiQuotation' sp)))
+                                                        _               -> exprSpliceInserted sp (annCont createScopeInfo (AST.Splice <$> annContNoSema (trfSplice' sp)))
                                   Nothing -> trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf AST.ScopeInfo

@@ -30,9 +30,10 @@ data TrfInput
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
              , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
-             , spliceLocs :: [Located (HsSplice GHC.Name)] -- ^ Location of the TH splices for extracting declarations from the renamed AST. 
+             , declSplices :: [Located (HsSplice GHC.Name)] -- ^ Location of the TH splices for extracting declarations from the renamed AST. 
                  -- ^ It is possible that multiple declarations stand in the place of the declaration splice or none at all.
-             , otherSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types). 
+             , typeSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types). 
+             , exprSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types). 
              }
       
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
@@ -45,8 +46,9 @@ trfInit annots comments
              , defining = False
              , definingTypeVars = False
              , originalNames = empty
-             , spliceLocs = []
-             , otherSplices = []
+             , declSplices = []
+             , typeSplices = []
+             , exprSplices = []
              }
 
 liftGhc :: Ghc a -> Trf a
@@ -92,19 +94,24 @@ getOriginalName n = do sp <- asks contRange
                        asks (rdrNameStr . fromMaybe n . (Map.lookup sp) . originalNames)
 
 -- | Set splices that must replace the elements that are generated into the AST representation.
-setSplices :: [Located (HsSplice GHC.Name)] -> [HsSplice GHC.Name] -> Trf a -> Trf a
-setSplices declSpls otherSpls 
-  = local (\s -> s { otherSplices = otherSpls, spliceLocs = declSpls })
+setSplices :: [Located (HsSplice GHC.Name)] -> [HsSplice GHC.Name] -> [HsSplice GHC.Name] -> Trf a -> Trf a
+setSplices declSpls typeSpls exprSpls 
+  = local (\s -> s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })
 
 -- | Set the list of declarations that will be missing from AST
 setDeclsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -> Trf a -> Trf a
 setDeclsToInsert decls = local (\s -> s {declsToInsert = decls})
 
 -- Remove the splice that has already been added
-spliceInserted :: HsSplice GHC.Name -> Trf a -> Trf a
-spliceInserted spl = local (\s -> s { otherSplices = Prelude.filter (((/=) `on` getSpliceLoc) spl) (otherSplices s) })
+exprSpliceInserted :: HsSplice GHC.Name -> Trf a -> Trf a
+exprSpliceInserted spl = local (\s -> s { exprSplices = Prelude.filter (((/=) `on` getSpliceLoc) spl) (exprSplices s) })
+
+-- Remove the splice that has already been added
+typeSpliceInserted :: HsSplice GHC.Name -> Trf a -> Trf a
+typeSpliceInserted spl = local (\s -> s { typeSplices = Prelude.filter (((/=) `on` getSpliceLoc) spl) (typeSplices s) })
 
 
 getSpliceLoc :: HsSplice a -> SrcSpan
 getSpliceLoc (HsTypedSplice _ e) = getLoc e
 getSpliceLoc (HsUntypedSplice _ e) = getLoc e
+getSpliceLoc (HsQuasiQuote _ _ sp _) = sp

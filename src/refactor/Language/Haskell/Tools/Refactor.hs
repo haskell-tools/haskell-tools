@@ -198,16 +198,16 @@ performRefactor command workingDir flags target =
 
 useDirsAndFlags :: [FilePath] -> [String] -> Ghc ()
 useDirsAndFlags workingDirs args = do 
+  initGhcFlags workingDirs
   let lArgs = map (L noSrcSpan) args
   dynflags <- getSessionDynFlags
   let ((leftovers, errors, warnings), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
   setSessionDynFlags newDynFlags { importPaths = importPaths newDynFlags ++ workingDirs }
-  initGhcFlags workingDirs
+  return ()
 
 initGhcFlags :: [FilePath] -> Ghc ()
 initGhcFlags wds = do
   dflags <- getSessionDynFlags
-  -- don't generate any code
   setSessionDynFlags 
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
@@ -215,6 +215,7 @@ initGhcFlags wds = do
              , hscTarget = HscAsm -- needed for static pointers
              , ghcLink = LinkInMemory
              , ghcMode = CompManager 
+             , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
              }
   return ()
 
