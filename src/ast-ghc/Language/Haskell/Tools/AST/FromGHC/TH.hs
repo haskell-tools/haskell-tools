@@ -34,8 +34,8 @@ trfSplice :: TransformName n r => Located (HsSplice n) -> Trf (Ann AST.Splice (D
 trfSplice = trfLocNoSema trfSplice'
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice (Dom r) RangeStage)
-trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
-trfSplice' (HsUntypedSplice _ expr) = AST.ParenSplice <$> trfExpr expr
+trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> (focusAfterIfPresent AnnThIdSplice $ trfExpr expr)
+trfSplice' (HsUntypedSplice _ expr) = AST.ParenSplice <$> (focusAfterIfPresent AnnThIdSplice $ trfExpr expr)
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket (Dom r) RangeStage)
 trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr

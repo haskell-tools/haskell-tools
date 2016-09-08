@@ -91,8 +91,7 @@ addTypeInfos bnds mod = evalStateT (semaTraverse
     (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
       pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
-        getType' name = fromMaybe (error $ "Type of name '" ++ showSDocUnsafe (ppr name) ++ "' cannot be found")
-                                 <$> ((<|>) <$> getTopLevelId name <*> getLocalId ids name)
+        getType' name = fromMaybe (mkVanillaGlobal name unitTy) <$> ((<|>) <$> getTopLevelId name <*> getLocalId ids name)
         ids = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
         extractTypes :: LHsBinds Id -> [Id]
         extractTypes = concatMap universeBi . bagToList

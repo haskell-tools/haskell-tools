@@ -96,7 +96,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
       | maybe False (`elem` toChange) actualName
           && semanticsDefining (name ^. semantics) == False
           && any @[] ((str ==) . occNameString . getOccName) (semanticsScope (name ^. semantics) ^? Ref.element 0 & traversal & filtered (sameNamespace toChangeOrig))
-      = refactError "The definition clashes with an existing one" -- name clash with an external definition
+      = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
            when (actualName == Just toChangeOrig) 
@@ -107,7 +107,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
               Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChangeOrig exprName
                                               && conflicts toChangeOrig exprName namesInScope
               Nothing -> False -- ambiguous names
-      = refactError "The definition clashes with an existing one" -- local name clash
+      = refactError $ "The definition clashes with an existing one: " ++ shortShowSpan (getRange name) -- local name clash
       | otherwise = return name -- not the changed name, leave as before
       where toChange = toChangeOrig : toChangeWith
             actualName = fmap getName (semanticsName (name ^. semantics))
