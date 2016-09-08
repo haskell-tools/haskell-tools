@@ -204,6 +204,10 @@ annLocNoSema = annLoc (pure NoSemanticInfo)
 focusOn :: SrcSpan -> Trf a -> Trf a
 focusOn sp = local (\s -> s { contRange = sp })
 
+updateFocus :: (SrcSpan -> Trf SrcSpan) -> Trf a -> Trf a
+updateFocus f trf = do newSpan <- f =<< asks contRange
+                       focusOn newSpan trf
+
 -- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok = focusAfter firstTok . focusBefore lastTok

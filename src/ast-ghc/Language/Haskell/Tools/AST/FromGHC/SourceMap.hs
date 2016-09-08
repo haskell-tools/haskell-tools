@@ -3,6 +3,7 @@
 module Language.Haskell.Tools.AST.FromGHC.SourceMap where
 
 import ApiAnnotation
+import Data.Maybe
 import Data.Map as Map
 import Data.List as List
 import Safe
@@ -23,7 +24,10 @@ getKeywordInside keyw sr srcmap = getSourceElementInside True sr =<< Map.lookup 
 
 getKeywordsInside :: AnnKeywordId -> SrcSpan -> SourceMap -> [SrcSpan]
 getKeywordsInside keyw sr srcmap 
-  = maybe [] (List.map (uncurry mkSrcSpan) . assocs . fst . Map.split (srcSpanEnd sr) . snd . Map.split (srcSpanStart sr)) (Map.lookup keyw (fst srcmap))
+  = let tokensOfType = Map.lookup keyw (fst srcmap)
+        (_, startsAtBegin, startAfterBegin) = Map.splitLookup (srcSpanStart sr) $ fromMaybe empty tokensOfType
+        (startsBeforeEnd, _) = Map.split (srcSpanEnd sr) $ maybe id (Map.insert (srcSpanStart sr)) startsAtBegin startAfterBegin -- tokens are minimum 1 char long
+     in List.map (uncurry mkSrcSpan) $ List.filter (\(_, end) -> end <= srcSpanEnd sr) $ assocs startsBeforeEnd
 
 getKeywordInsideBack :: AnnKeywordId -> SrcSpan -> SourceMap -> Maybe SrcSpan
 getKeywordInsideBack keyw sr srcmap = getSourceElementInside False sr =<< Map.lookup keyw (fst srcmap)

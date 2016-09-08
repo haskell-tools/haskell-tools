@@ -55,8 +55,8 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
 trfExpr e = do exprSpls <- asks exprSplices
                let RealSrcSpan loce = getLoc e
                    contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) exprSpls
-               case contSplice of Just sp -> case sp of HsQuasiQuote {} -> exprSpliceInserted sp (annCont createScopeInfo (AST.QuasiQuoteExpr <$> annContNoSema (trfQuasiQuotation' sp)))
-                                                        _               -> exprSpliceInserted sp (annCont createScopeInfo (AST.Splice <$> annContNoSema (trfSplice' sp)))
+               case contSplice of Just sp -> case sp of HsQuasiQuote {} -> exprSpliceInserted sp (annCont createScopeInfo (AST.QuasiQuoteExpr <$> annLocNoSema (pure $ getSpliceLoc sp) (trfQuasiQuotation' sp)))
+                                                        _               -> exprSpliceInserted sp (annCont createScopeInfo (AST.Splice <$> annLocNoSema (pure $ getSpliceLoc sp) (trfSplice' sp)))
                                   Nothing -> trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf AST.ScopeInfo

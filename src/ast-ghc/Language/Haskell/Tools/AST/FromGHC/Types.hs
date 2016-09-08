@@ -38,7 +38,7 @@ trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type (Dom r) 
 trfType typ = do othSplices <- asks typeSplices
                  let RealSrcSpan loce = getLoc typ
                      contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
-                 case contSplice of Just sp -> typeSpliceInserted sp (annContNoSema (AST.TySplice <$> trfSplice' sp))
+                 case contSplice of Just sp -> typeSpliceInserted sp (annLocNoSema (pure $ getSpliceLoc sp) (AST.TySplice <$> trfSplice' sp))
                                     Nothing -> trfLocNoSema trfType' typ
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type (Dom r) RangeStage)

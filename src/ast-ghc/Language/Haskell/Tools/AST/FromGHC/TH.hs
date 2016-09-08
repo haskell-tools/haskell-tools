@@ -1,5 +1,7 @@
 module Language.Haskell.Tools.AST.FromGHC.TH where
 
+import Control.Monad.Reader
+
 import SrcLoc as GHC
 import RdrName as GHC
 import HsTypes as GHC
@@ -34,8 +36,17 @@ trfSplice :: TransformName n r => Located (HsSplice n) -> Trf (Ann AST.Splice (D
 trfSplice = trfLocNoSema trfSplice'
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.Splice (Dom r) RangeStage)
-trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> (focusAfterIfPresent AnnThIdSplice $ trfExpr expr)
-trfSplice' (HsUntypedSplice _ expr) = AST.ParenSplice <$> (focusAfterIfPresent AnnThIdSplice $ trfExpr expr)
+trfSplice' (HsTypedSplice _ expr) = AST.ParenSplice <$> trfCorrectDollar expr
+trfSplice' (HsUntypedSplice _ expr) = AST.ParenSplice <$> trfCorrectDollar expr
+
+trfCorrectDollar :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr (Dom r) RangeStage)
+trfCorrectDollar expr = 
+  do isSplice <- allTokenLoc AnnThIdSplice
+     case isSplice of [] -> trfExpr expr
+                      _  -> let sp = getLoc expr 
+                                newSp = mkSrcSpan (updateCol (+1) (srcSpanStart sp)) (srcSpanEnd sp)
+                             in case expr of L _ (HsVar (L _ varName)) -> trfExpr $ L newSp (HsVar (L newSp varName))
+                                             L _ exp                   -> trfExpr $ L newSp exp
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket (Dom r) RangeStage)
 trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr
