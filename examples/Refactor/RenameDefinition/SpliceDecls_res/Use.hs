@@ -3,4 +3,6 @@ module Use where
 
 import Define
 
-$defHello
+$hello
+
+$(let x = return [] in x)
