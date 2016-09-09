@@ -119,7 +119,7 @@ deriving instance Show (k dom stage) => Show (Promoted k dom stage)
 -- Base
 deriving instance Show (Operator dom stage)
 deriving instance Show (Name dom stage)
-deriving instance Show (SimpleName dom stage)
+deriving instance Show (QualifiedName dom stage)
 deriving instance Show (ModuleName dom stage)
 deriving instance Show (UnqualName dom stage)
 deriving instance Show (StringNode dom stage)

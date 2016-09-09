@@ -118,7 +118,7 @@ deriving instance Eq (k dom stage) => Eq (Promoted k dom stage)
 -- Base
 deriving instance Eq (Operator dom stage)
 deriving instance Eq (Name dom stage)
-deriving instance Eq (SimpleName dom stage)
+deriving instance Eq (QualifiedName dom stage)
 deriving instance Eq (ModuleName dom stage)
 deriving instance Eq (UnqualName dom stage)
 deriving instance Eq (StringNode dom stage)

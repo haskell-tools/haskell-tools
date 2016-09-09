@@ -10,24 +10,24 @@ module Language.Haskell.Tools.AST.Base where
 import Language.Haskell.Tools.AST.Ann
 
 data Operator dom stage
-  = BacktickOp { _operatorName :: Ann SimpleName dom stage } -- ^ Backtick operator name: @ a `mod` b @
-  | NormalOp { _operatorName :: Ann SimpleName dom stage }
+  = BacktickOp { _operatorName :: Ann QualifiedName dom stage } -- ^ Backtick operator name: @ a `mod` b @
+  | NormalOp { _operatorName :: Ann QualifiedName dom stage }
 
 data Name dom stage
-  = ParenName { _simpleName :: Ann SimpleName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
-  | NormalName { _simpleName :: Ann SimpleName dom stage }
-  | ImplicitName { _simpleName :: Ann SimpleName dom stage } -- ^ Implicit name: @ ?var @
+  = ParenName { _simpleName :: Ann QualifiedName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
+  | NormalName { _simpleName :: Ann QualifiedName dom stage }
+  | ImplicitName { _simpleName :: Ann QualifiedName dom stage } -- ^ Implicit name: @ ?var @
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
-data SimpleName dom stage
-  = SimpleName { _qualifiers      :: AnnList UnqualName dom stage
+data QualifiedName dom stage
+  = QualifiedName { _qualifiers      :: AnnList UnqualName dom stage
                , _unqualifiedName :: Ann UnqualName dom stage
                }
 
-nameFromList :: AnnList UnqualName dom stage -> SimpleName dom stage
+nameFromList :: AnnList UnqualName dom stage -> QualifiedName dom stage
 nameFromList (AnnList a xs) | not (null xs) 
-  = SimpleName (AnnList a (init xs)) (last xs) 
+  = QualifiedName (AnnList a (init xs)) (last xs) 
 nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         

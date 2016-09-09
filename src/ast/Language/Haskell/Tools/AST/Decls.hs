@@ -85,7 +85,7 @@ data Decl dom stage
                          } -- ^ foreign export (@ foreign export ccall _foo :: Int -> IO Int @)
   | PragmaDecl           { _declPragma :: Ann TopLevelPragma dom stage
                          } -- ^ top level pragmas
-  | RoleDecl             { _declRoleType :: Ann SimpleName dom stage
+  | RoleDecl             { _declRoleType :: Ann QualifiedName dom stage
                          , _declRoles :: AnnList Role dom stage
                          } -- ^ role annotations (@ type role Ptr representational @)
   | SpliceDecl           { _declSplice :: Ann Splice dom stage

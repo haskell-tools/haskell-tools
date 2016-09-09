@@ -113,7 +113,7 @@ deriveSourceInfoTraversal ''Promoted
 -- Base
 deriveSourceInfoTraversal ''Operator
 deriveSourceInfoTraversal ''Name
-deriveSourceInfoTraversal ''SimpleName
+deriveSourceInfoTraversal ''QualifiedName
 deriveSourceInfoTraversal ''ModuleName
 deriveSourceInfoTraversal ''UnqualName
 deriveSourceInfoTraversal ''StringNode
