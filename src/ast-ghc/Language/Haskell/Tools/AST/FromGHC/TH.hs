@@ -43,15 +43,16 @@ trfCorrectDollar :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.Expr
 trfCorrectDollar expr = 
   do isSplice <- allTokenLoc AnnThIdSplice
      case isSplice of [] -> trfExpr expr
-                      _  -> let sp = getLoc expr 
-                                newSp = mkSrcSpan (updateCol (+1) (srcSpanStart sp)) (srcSpanEnd sp)
+                      _  -> let newSp = updateStart (updateCol (+1)) (getLoc expr) 
                              in case expr of L _ (HsVar (L _ varName)) -> trfExpr $ L newSp (HsVar (L newSp varName))
                                              L _ exp                   -> trfExpr $ L newSp exp
 
 trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.Bracket (Dom r) RangeStage)
 trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr
 trfBracket' (TExpBr expr) = AST.ExprBracket <$> trfExpr expr
-trfBracket' (VarBr _ expr) = AST.ExprBracket <$> annCont createScopeInfo (AST.Var <$> (annContNoSema (trfName' expr)))
+trfBracket' (VarBr isSingle expr) 
+  = AST.ExprBracket <$> annLoc createScopeInfo (updateStart (updateCol (if isSingle then (+1) else (+2))) <$> asks contRange) 
+      (AST.Var <$> (annContNoSema (trfName' expr)))
 trfBracket' (PatBr pat) = AST.PatternBracket <$> trfPattern pat
 trfBracket' (DecBrL decls) = AST.DeclsBracket <$> trfDecls decls
 trfBracket' (DecBrG decls) = AST.DeclsBracket <$> trfDeclsGroup decls

@@ -329,6 +329,14 @@ updateCol :: (Int -> Int) -> SrcLoc -> SrcLoc
 updateCol f loc@(UnhelpfulLoc _) = loc
 updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)
 
+-- | Update the start of the src span
+updateStart :: (SrcLoc -> SrcLoc) -> SrcSpan -> SrcSpan
+updateStart f sp = mkSrcSpan (f (srcSpanStart sp)) (srcSpanEnd sp)
+
+-- | Update the end of the src span
+updateEnd :: (SrcLoc -> SrcLoc) -> SrcSpan -> SrcSpan
+updateEnd f sp = mkSrcSpan (srcSpanStart sp) (f (srcSpanEnd sp))
+
 -- | Combine source spans of elements into one that contains them all
 collectLocs :: [Located e] -> SrcSpan
 collectLocs = foldLocs . map getLoc
