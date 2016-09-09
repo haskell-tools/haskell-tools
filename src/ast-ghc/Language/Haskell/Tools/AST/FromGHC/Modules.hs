@@ -146,34 +146,33 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
            
+          addToScope (concat @[] (transformedImports ^? AST.annList&semantics&AST.importedNames) ++ preludeImports)
+            $ loadSplices mod hsMod gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
+              $ AST.Module <$> trfFilePragmas
+                           <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                                           _                       -> Nothing) deprec
+                           <*> return transformedImports
+                           <*> trfDeclsGroup gr
 
-          loadSplices mod hsMod $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
-            $ AST.Module <$> trfFilePragmas
-                         <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                                         _                       -> Nothing) deprec
-                         <*> return transformedImports
-                         <*> addToScope (concat @[] (transformedImports ^? AST.annList&semantics&AST.importedNames) ++ preludeImports) (trfDeclsGroup gr)
-
-loadSplices :: ModSummary -> HsModule RdrName -> Trf a -> Trf a
-loadSplices mod hsMod trf = do 
+loadSplices :: ModSummary -> HsModule RdrName -> HsGroup Name -> Trf a -> Trf a
+loadSplices mod hsMod group trf = do 
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
         declLocs = map getLoc declSpls
     let exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
         typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
     -- initialize reader environment
     env <- liftGhc getSession
-    parsed <- liftGhc $ parseModule mod
-    let imports = hsmodImports $ unLoc $ pm_parsed_source parsed
-        implicitPrelude = xopt ImplicitPrelude $ ms_hspp_opts mod
-        prelImps = mkPrelImports (ms_mod_name mod) noSrcSpan implicitPrelude imports 
-    (m, readEnv) <- liftIO $ tcRnImportDecls env (prelImps ++ imports)
-    tcdSplices <- liftIO $ runTcInteractive env 
-      $ updGblEnv (\gbl -> gbl { tcg_rdr_env = fromJust readEnv }) 
+
+    locals <- asks ((hsGetNames group ++) . concat . localsInScope)
+    let readEnv = mkOccEnv (map (\n -> (GHC.occName n, [GRE n NoParent False [ImpSpec (ImpDeclSpec (moduleName $ nameModule n) (moduleName $ nameModule n) False noSrcSpan) ImpAll]])) locals)
+
+    tcdSplices <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
+      $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv }) 
       $ (,,) <$> mapM tcHsSplice declSpls <*> mapM tcHsSplice' typeSpls <*> mapM tcHsSplice' exprSpls
     let (declSplices, typeSplices, exprSplices) 
           = fromMaybe (error $ "Splice expression could not be typechecked: " 
                                  ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))) 
-                                                      <+> vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))))) 
+                                                      <+> vcat (pprErrMsgBagWithLoc (snd (fst tcdSplices))))) 
                       (snd tcdSplices)
     setSplices declSplices typeSplices exprSplices trf
   where

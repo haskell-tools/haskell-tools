@@ -194,6 +194,9 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames (SigPatOut p _) = hsGetNames p
   hsGetNames _ = []
 
+instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
+  hsGetNames (HsGroup vals _ clds _ _ _ _ foreigns _ _ _ _ _) = hsGetNames vals ++ hsGetNames clds ++ hsGetNames foreigns
+
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String
 rdrNameStr name = showSDocUnsafe $ ppr name
