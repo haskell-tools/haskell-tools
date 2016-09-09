@@ -83,7 +83,9 @@ refactorSession workingDirs args = runGhc (Just libdir) $ flip evalStateT initSe
      allMods <- lift getModuleGraph
      mods <- lift $ forM allMods (\ms -> do mm <- parseTyped ms
                                             liftIO $ putStrLn ("Loaded module " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
-                                            return ((head workingDirs, GHC.moduleNameString $ moduleName $ ms_mod ms, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm))
+                                            let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
+                                                Just wd = find ((modName ==) . snd) moduleNames 
+                                            return ((fst wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm))
      modify $ \s -> s { refSessMods = Map.fromList mods }
      runSession
   where runSession :: RefactorSession Ghc ()
@@ -112,7 +114,7 @@ performSessionCommand (LoadModule mod) = do fnd <- gets (find (\(_,m,hs) -> m ==
                                                           else liftIO $ putStrLn ("Cannot find module: " ++ mod)
 performSessionCommand Exit = modify $ \s -> s { exiting = True }
 performSessionCommand (RefactorCommand cmd) 
-  = do RefactorSessionState { refSessMods = mods, actualMod = Just act@(workingDir, mod, _) } <- get
+  = do RefactorSessionState { refSessMods = mods, actualMod = Just act@(_, mod, _) } <- get
        res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((_,m,_),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
        case res of Left err -> liftIO $ putStrLn err
                    Right resMods -> do 
@@ -121,15 +123,17 @@ performSessionCommand (RefactorCommand cmd)
                          let modName = semanticsModule $ m ^. semantics
                          ms <- getModSummary modName (isBootModule $ m ^. semantics)
                          let isBoot = case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot
+                         Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == n && b == isBoot) . Map.keys . refSessMods)
                          liftIO $ withBinaryFile ((case isBoot of NormalHs -> toFileName; IsHsBoot -> toBootFileName) workingDir n) 
                                                  WriteMode (`hPutStr` prettyPrint m)
-                         return $ Just (n, modName, isBoot)
+                         return $ Just (n, workingDir, modName, isBoot)
                        ModuleRemoved mod -> do
+                         Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == mod) . Map.keys . refSessMods)
                          liftIO $ removeFile (toFileName workingDir mod)
                          modify $ \s -> s { refSessMods = Map.delete (workingDir, mod, IsHsBoot) $ Map.delete (workingDir, mod, NormalHs) (refSessMods s) }
                          return Nothing
                      lift $ load LoadAllTargets
-                     forM_ (catMaybes mss) $ \(n, modName, isBoot) -> do
+                     forM_ (catMaybes mss) $ \(n, workingDir, modName, isBoot) -> do
                          -- TODO: add target if module is added as a change
                          ms <- getModSummary modName (isBoot == IsHsBoot)
                          newm <- lift $ parseTyped ms
@@ -141,7 +145,7 @@ performSessionCommand (RefactorCommand cmd)
 initSession :: RefactorSessionState
 initSession = RefactorSessionState Map.empty Nothing False
 
-data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord)
+data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
 data RefactorSessionState
   = RefactorSessionState { refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
