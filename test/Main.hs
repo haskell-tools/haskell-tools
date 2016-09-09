@@ -235,6 +235,8 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.ImplicitParams", "8:17-8:20", "compare")
   , ("Refactor.RenameDefinition.SameCtorAndType", "3:6-3:13", "P2D")
   , ("Refactor.RenameDefinition.RoleAnnotation", "4:11-4:12", "AA")
+  , ("Refactor.RenameDefinition.TypeBracket", "6:6-6:7", "B")
+  , ("Refactor.RenameDefinition.ValBracket", "8:11-8:12", "B")
   ]
 
 wrongRenameDefinitionTests =
