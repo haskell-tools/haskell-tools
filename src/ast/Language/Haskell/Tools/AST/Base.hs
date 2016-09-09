@@ -21,9 +21,9 @@ data Name dom stage
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
 data QualifiedName dom stage
-  = QualifiedName { _qualifiers      :: AnnList UnqualName dom stage
-               , _unqualifiedName :: Ann UnqualName dom stage
-               }
+  = QualifiedName { _qualifiers :: AnnList UnqualName dom stage
+                  , _unqualifiedName :: Ann UnqualName dom stage
+                  }
 
 nameFromList :: AnnList UnqualName dom stage -> QualifiedName dom stage
 nameFromList (AnnList a xs) | not (null xs) 

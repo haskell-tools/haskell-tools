@@ -82,7 +82,7 @@ refactorSession workingDirs args = runGhc (Just libdir) $ flip evalStateT initSe
      lift $ load LoadAllTargets
      allMods <- lift getModuleGraph
      mods <- lift $ forM allMods (\ms -> do mm <- parseTyped ms
-                                            liftIO $ putStrLn ("Loaded module " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
+                                            liftIO $ putStrLn ("Loaded module: " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
                                             let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
                                                 Just wd = find ((modName ==) . snd) moduleNames 
                                             return ((fst wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm))
@@ -138,6 +138,7 @@ performSessionCommand (RefactorCommand cmd)
                          ms <- getModSummary modName (isBoot == IsHsBoot)
                          newm <- lift $ parseTyped ms
                          modify $ \s -> s { refSessMods = Map.insert (workingDir, n, isBoot) newm (refSessMods s) }
+                         liftIO $ putStrLn ("Re-loaded module: " ++ n)
   where getModSummary name boot
           = do allMods <- lift getModuleGraph
                return $ fromJust $ find (\ms -> ms_mod ms == name && (ms_hsc_src ms == HsSrcFile) /= boot) allMods 

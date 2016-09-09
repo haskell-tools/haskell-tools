@@ -48,8 +48,8 @@ trfOperator = trfLocNoSema trfOperator'
 
 trfOperator' :: TransformName n r => n -> Trf (AST.Operator (Dom r) RangeStage)
 trfOperator' n
-  | isSymOcc (occName n) = AST.NormalOp <$> (annCont (createNameInfo (transformName n)) (trfSimpleName' n))
-  | otherwise = AST.BacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfSimpleName' n))
+  | isSymOcc (occName n) = AST.NormalOp <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
+  | otherwise = AST.BacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 trfName :: TransformName n r => Located n -> Trf (Ann AST.Name (Dom r) RangeStage)
@@ -57,8 +57,8 @@ trfName = trfLocNoSema trfName'
 
 trfName' :: TransformName n r => n -> Trf (AST.Name (Dom r) RangeStage)
 trfName' n
-  | isSymOcc (occName n) = AST.ParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfSimpleName' n))
-  | otherwise = AST.NormalName <$> (annCont (createNameInfo (transformName n)) (trfSimpleName' n))
+  | isSymOcc (occName n) = AST.ParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
+  | otherwise = AST.NormalName <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.Name (Dom r) RangeStage)
@@ -109,11 +109,11 @@ trfImplicitName (HsIPName fs)
            let rng' = mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (srcSpanEnd rng)
            annContNoSema (AST.ImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
 
-trfSimpleName :: TransformName n r => Located n -> Trf (Ann AST.QualifiedName (Dom r) RangeStage)
-trfSimpleName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfSimpleName' n)
+trfQualifiedName :: TransformName n r => Located n -> Trf (Ann AST.QualifiedName (Dom r) RangeStage)
+trfQualifiedName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfQualifiedName' n)
 
-trfSimpleName' :: TransformName n r => n -> Trf (AST.QualifiedName (Dom r) RangeStage)
-trfSimpleName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
+trfQualifiedName' :: TransformName n r => n -> Trf (AST.QualifiedName (Dom r) RangeStage)
+trfQualifiedName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
 
 -- | Creates a qualified name from a name string
 trfNameStr :: String -> Trf (AnnList AST.UnqualName (Dom r) RangeStage)

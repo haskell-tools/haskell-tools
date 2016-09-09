@@ -128,7 +128,7 @@ trfDecl = trfLocNoSema $ \case
   DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   RuleD (HsRules _ rules) -> AST.PragmaDecl <$> annContNoSema (AST.RulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
-  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfSimpleName name <*> makeList " " atTheEnd (mapM trfRole roles)
+  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfQualifiedName name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name (hsib_body -> typ) _ (CImport ccall safe _ _ _)) 
     -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety (getLoc ccall) safe <*> define (trfName name) <*> trfType typ
