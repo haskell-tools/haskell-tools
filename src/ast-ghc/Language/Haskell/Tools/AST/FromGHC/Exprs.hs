@@ -187,7 +187,8 @@ trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann A
 trfCaseRhss = gTrfCaseRhss trfExpr
 
 gTrfCaseRhss :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> [Located (GRHS n (Located (ge n)))] -> Trf (Ann (AST.CaseRhs' ae) (Dom r) RangeStage)
-gTrfCaseRhss te [unLoc -> GRHS [] body] = annLocNoSema (combineSrcSpans (getLoc body) <$> tokenLocBack AnnRarrow) 
+gTrfCaseRhss te [unLoc -> GRHS [] body] = annLocNoSema (combineSrcSpans (getLoc body) <$> updateFocus (pure . updateEnd (const $ srcSpanStart $ getLoc body)) 
+                                                                                                      (tokenLocBack AnnRarrow)) 
                                                  (AST.UnguardedCaseRhs <$> te body)
 gTrfCaseRhss te rhss = annLocNoSema (pure $ collectLocs rhss) 
                               (AST.GuardedCaseRhss <$> trfAnnList ";" (gTrfGuardedCaseRhs' te) rhss)
