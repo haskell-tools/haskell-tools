@@ -244,7 +244,6 @@ trfImport (L l (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs de
       annBeforeQual = if isSrc then AnnClose else AnnImport
       annBeforeSafe = if isQual then AnnQualified else annBeforeQual
       annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
-      atAsPos = if isJust declHiding then before AnnOpenP else atTheEnd
   in (\impdecl -> annLoc (createImportData =<< impdecl) (pure l) impdecl) $ AST.ImportDecl 
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.ImportSource)
                      else nothing " " "" (after AnnImport))
@@ -255,7 +254,7 @@ trfImport (L l (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs de
        <*> maybe (nothing " " "" (after annBeforePkg)) 
                  (\str -> makeJust <$> (annLocNoSema (tokenLoc AnnPackageName) (pure (AST.StringNode (unpackFS $ sl_fs str))))) pkg
        <*> trfModuleName name 
-       <*> maybe (nothing " " "" atAsPos) (\mn -> makeJust <$> (trfRenaming mn)) declAs
+       <*> maybe (nothing " " "" (pure $ srcSpanEnd (getLoc name))) (\mn -> makeJust <$> (trfRenaming mn)) declAs
        <*> trfImportSpecs declHiding 
   where trfRenaming mn
           = annLocNoSema (tokensLoc [AnnAs,AnnVal])
