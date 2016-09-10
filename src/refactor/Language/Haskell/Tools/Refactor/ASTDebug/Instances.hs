@@ -16,7 +16,7 @@ import Control.Reference
 import Language.Haskell.Tools.AST
 
 -- Annotations
-instance {-# OVERLAPPING #-} (ASTDebug SimpleName dom st) => ASTDebug (Ann SimpleName) dom st where
+instance {-# OVERLAPPING #-} (ASTDebug QualifiedName dom st) => ASTDebug (Ann QualifiedName) dom st where
   astDebug' (Ann a e) = traversal&nodeSubtree&nodeInfo .= (NameInfoType (a ^. semanticInfo) (getRange (a ^. sourceInfo))) $ astDebug' e
 
 instance {-# OVERLAPPING #-} (ASTDebug Expr dom st) => ASTDebug (Ann Expr) dom st where
@@ -138,7 +138,7 @@ instance (Domain dom, SourceInfo st, ASTDebug k dom st, Generic (k dom st)) => A
 -- Base
 instance (Domain dom, SourceInfo st) => ASTDebug Operator dom st
 instance (Domain dom, SourceInfo st) => ASTDebug Name dom st
-instance (Domain dom, SourceInfo st) => ASTDebug SimpleName dom st
+instance (Domain dom, SourceInfo st) => ASTDebug QualifiedName dom st
 instance (Domain dom, SourceInfo st) => ASTDebug ModuleName dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UnqualName dom st
 instance (Domain dom, SourceInfo st) => ASTDebug StringNode dom st

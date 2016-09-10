@@ -29,20 +29,20 @@ import Language.Haskell.Tools.AST.SemaInfoTypes
 
 import Debug.Trace
 
-ordByOccurrence :: SimpleName dom stage -> SimpleName dom stage -> Ordering
+ordByOccurrence :: QualifiedName dom stage -> QualifiedName dom stage -> Ordering
 ordByOccurrence = compare `on` nameElements
 
 -- | The occurrence of the name.
-nameString :: SimpleName dom stage -> String
+nameString :: QualifiedName dom stage -> String
 nameString = intercalate "." . nameElements
 
 -- | The qualifiers and the unqualified name
-nameElements :: SimpleName dom stage -> [String]
+nameElements :: QualifiedName dom stage -> [String]
 nameElements n = (n ^? qualifiers&annList&element&simpleNameStr) 
                     ++ [n ^. unqualifiedName&element&simpleNameStr]
 
 -- | The qualifier of the name
-nameQualifier :: SimpleName dom stage -> [String]
+nameQualifier :: QualifiedName dom stage -> [String]
 nameQualifier n = n ^? qualifiers&annList&element&simpleNameStr
          
 -- | Does the import declaration import only the explicitly listed elements?
@@ -67,13 +67,13 @@ importQualifiers imp
   = (if isAnnNothing (imp ^. importQualified) then [[]] else [])
       ++ [imp ^? importAs&annJust&element&importRename&element&moduleNameString]
         
-bindingName :: (SemanticInfo dom SimpleName ~ ni) => Simple Traversal (Ann ValueBind dom stage) ni
+bindingName :: (SemanticInfo dom QualifiedName ~ ni) => Simple Traversal (Ann ValueBind dom stage) ni
 bindingName = element&(valBindPat&element&patternName&element&simpleName 
                         &+& funBindMatches&annList&element&matchLhs&element
                               &(matchLhsName&element&simpleName &+& matchLhsOperator&element&operatorName))
                      &semantics
                      
-declHeadNames :: Simple Traversal (Ann DeclHead dom stage) (Ann SimpleName dom stage)
+declHeadNames :: Simple Traversal (Ann DeclHead dom stage) (Ann QualifiedName dom stage)
 declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+& dhAppFun&declHeadNames &+& dhOperator&element&operatorName)
 
                
@@ -90,7 +90,7 @@ typeParams = fromTraversal typeParamsTrav
 semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
 semantics = annotation&semanticInfo
 
-dhNames :: (SemanticInfo dom SimpleName ~ k) => Simple Traversal (Ann DeclHead dom stage) k
+dhNames :: (SemanticInfo dom QualifiedName ~ k) => Simple Traversal (Ann DeclHead dom stage) k
 dhNames = declHeadNames & semantics
 
 -- | A type class for transformations that work on both top-level and local definitions
@@ -122,7 +122,7 @@ instance BindingElem LocalBind where
   isBinding (LocalValBind _) = True
   isBinding _ = False
 
-bindName :: (BindingElem d, SemanticInfo dom SimpleName ~ k) => Simple Traversal (d dom stage) k
+bindName :: (BindingElem d, SemanticInfo dom QualifiedName ~ k) => Simple Traversal (d dom stage) k
 bindName = valBind&bindingName &+& sigBind&element&tsName&annList&element&simpleName&semantics
 
 valBindsInList :: BindingElem d => Simple Traversal (AnnList d dom stage) (Ann ValueBind dom stage)

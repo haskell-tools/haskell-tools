@@ -4,6 +4,7 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
+import qualified GHC
 import RdrName as GHC
 import Class as GHC
 import HsSyn as GHC
@@ -21,7 +22,10 @@ import Unique as GHC
 
 import Control.Monad.Reader
 import Control.Reference
+import Data.Function (on)
+import Data.List
 import Data.Maybe
+import qualified Data.Map as Map
 import Data.Data (toConstr)
 import Data.Generics.Uniplate.Data
 
@@ -44,40 +48,48 @@ import Debug.Trace
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) RangeStage)
 -- TODO: filter documentation comments
-trfDecls decls = addToScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
+trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
-  = addAllToScope $ makeIndentedListNewlineBefore atTheEnd (fmap (orderDefs . concat) $ (mapM filterNoSplices =<<) $ sequence $
-      [ trfBindOrSig vals
-      , concat <$> mapM (mapM (trfDecl . (fmap TyClD)) . group_tyclds) tycls
-      , mapM (trfDecl . (fmap SpliceD)) splices
-      , mapM (trfDecl . (fmap InstD)) insts
-      , mapM (trfDecl . (fmap DerivD)) derivs
-      , mapM (trfDecl . (fmap (SigD . FixSig))) (mergeFixityDefs fixities)
-      , mapM (trfDecl . (fmap DefD)) defaults
-      , mapM (trfDecl . (fmap ForD)) foreigns
-      , mapM (trfDecl . (fmap WarningD)) warns
-      , mapM (trfDecl . (fmap AnnD)) anns
-      , mapM (trfDecl . (fmap RuleD)) rules
-      , mapM (trfDecl . (fmap VectD)) vects
-      -- , mapM (trfDecl . (fmap DocD)) docs
-      ])
-  where trfBindOrSig :: HsValBinds n -> Trf [Ann AST.Decl (Dom r) RangeStage]
-        trfBindOrSig (getBindsAndSigs -> (sigs, binds))
-          = (++) <$> mapM (trfLocNoSema trfVal) (bagToList binds)
-                 <*> mapM (trfLocNoSema trfSig) sigs
-        addAllToScope = addToCurrentScope vals . addToCurrentScope tycls . addToCurrentScope foreigns
-
-        -- | This is a walkaround solution for the more general problem of implementing TH support
-        filterNoSplices :: [Ann AST.Decl (Dom r) RangeStage] -> Trf [Ann AST.Decl (Dom r) RangeStage]
-        filterNoSplices ls = do splices <- asks spliceLocs
-                                return $ filter (not . checkContainsAny splices) ls
-          where checkContainsAny :: [SrcSpan] -> Ann AST.Decl (Dom r) RangeStage -> Bool
-                checkContainsAny spans a = 
-                  let RealSrcSpan rng = a ^. AST.annotation & AST.sourceInfo & AST.nodeSpan
-                   in any ((rng `containsSpan`) . (\(RealSrcSpan sp) -> sp)) spans
-           
+  = do spls <- getDeclSplices
+       let (sigs, bagToList -> binds) = getBindsAndSigs vals
+           alldecls :: [Located (HsDecl n)]
+           alldecls = (map (fmap SpliceD) splices)
+                        ++ (map (fmap ValD) binds)
+                        ++ (map (fmap SigD) sigs)
+                        ++ (map (fmap TyClD) (concat $ map group_tyclds tycls))
+                        ++ (map (fmap InstD) insts)
+                        ++ (map (fmap DerivD) derivs)
+                        ++ (map (fmap (SigD . FixSig)) (mergeFixityDefs fixities)) 
+                        ++ (map (fmap DefD) defaults)
+                        ++ (map (fmap ForD) foreigns)
+                        ++ (map (fmap WarningD) warns)
+                        ++ (map (fmap AnnD) anns)
+                        ++ (map (fmap RuleD) rules)
+                        ++ (map (fmap VectD) vects)
+       let actualDefinitions = replaceSpliceDecls spls alldecls
+       addToCurrentScope actualDefinitions $ makeIndentedListNewlineBefore atTheEnd (orderDefs <$> ((++) <$> getDeclsToInsert <*> (mapM trfDecl actualDefinitions)))
+  where 
+    replaceSpliceDecls :: [Located (HsSplice n)] -> [Located (HsDecl n)] -> [Located (HsDecl n)]
+    replaceSpliceDecls splices decls = foldl mergeSplice decls splices
+    
+    mergeSplice :: [Located (HsDecl n)] -> Located (HsSplice n) -> [Located (HsDecl n)]
+    mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
+      = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
+    
+    getDeclsToInsert :: Trf [Ann AST.Decl (Dom r) RangeStage]
+    getDeclsToInsert = do decls <- asks declsToInsert
+                          locals <- asks (head . localsInScope)
+                          liftGhc $ mapM (loadIdsForDecls locals) decls
+       where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom r) RangeStage)
+             loadIdsForDecls locals = AST.semaTraverse $
+                AST.SemaTrf (AST.nameInfo !~ findName) pure 
+                            (\(AST.ImportInfo mod avail actual) -> AST.ImportInfo mod <$> mapM findName avail <*> mapM findName actual)
+                            pure pure pure
+               where findName rdr = pure $ fromGHCName $ fromMaybe (error $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr) 
+                                                                              ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals)) 
+                                                       $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
            
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl (Dom r) RangeStage)
 trfDecl = trfLocNoSema $ \case
@@ -116,7 +128,7 @@ trfDecl = trfLocNoSema $ \case
   DerivD (DerivDecl t overlap) -> AST.DerivDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
   -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
   RuleD (HsRules _ rules) -> AST.PragmaDecl <$> annContNoSema (AST.RulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
-  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfSimpleName name <*> makeList " " atTheEnd (mapM trfRole roles)
+  RoleAnnotD (RoleAnnotDecl name roles) -> AST.RoleDecl <$> trfQualifiedName name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.DefaultDecl . nonemptyAnnList <$> mapM trfType types
   ForD (ForeignImport name (hsib_body -> typ) _ (CImport ccall safe _ _ _)) 
     -> AST.ForeignImport <$> trfCallConv ccall <*> trfSafety (getLoc ccall) safe <*> define (trfName name) <*> trfType typ

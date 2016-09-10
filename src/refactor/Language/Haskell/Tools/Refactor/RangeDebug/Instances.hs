@@ -120,7 +120,7 @@ instance (SourceInfo st, Domain dom, TreeDebug k dom st, Generic (k dom st)) => 
 -- Base
 instance (SourceInfo st, Domain dom) => TreeDebug Operator dom st
 instance (SourceInfo st, Domain dom) => TreeDebug Name dom st
-instance (SourceInfo st, Domain dom) => TreeDebug SimpleName dom st
+instance (SourceInfo st, Domain dom) => TreeDebug QualifiedName dom st
 instance (SourceInfo st, Domain dom) => TreeDebug ModuleName dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UnqualName dom st
 instance (SourceInfo st, Domain dom) => TreeDebug StringNode dom st

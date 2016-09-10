@@ -74,20 +74,6 @@ getTopLevelId name =
       Nothing -> return Nothing
   where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
--- | Loading ids for local ghc names
-getLocalId :: LHsBinds Id -> GHC.Name -> Ghc (Maybe GHC.Id)
-getLocalId bnds name = case Map.lookup name mapping of
-    Just id -> return (Just id)
-    Nothing | isTyVarName name
-               -- unit type is for cases we don't know the kind
-            -> return $ Just $ mkVanillaGlobal name unitTy
-    Nothing -> return Nothing
-  where mapping = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
-        extractTypes :: LHsBinds Id -> [Id]
-        extractTypes = concatMap universeBi . bagToList
-
-
-
 class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
 
@@ -197,6 +183,9 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames (SigPatIn p _) = hsGetNames p
   hsGetNames (SigPatOut p _) = hsGetNames p
   hsGetNames _ = []
+
+instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
+  hsGetNames (HsGroup vals _ clds _ _ _ _ foreigns _ _ _ _ _) = hsGetNames vals ++ hsGetNames clds ++ hsGetNames foreigns
 
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String

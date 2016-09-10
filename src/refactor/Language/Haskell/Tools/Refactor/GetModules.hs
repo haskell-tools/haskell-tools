@@ -15,7 +15,7 @@ getModules :: FilePath -> IO [String]
 getModules root
   = do files <- listDirectory root
        case find (\p -> takeExtension p == ".cabal") files of
-          Just cabalFile -> modulesFromCabalFile cabalFile
+          Just cabalFile -> modulesFromCabalFile (root </> cabalFile)
           Nothing        -> modulesFromDirectory root root
 
 

@@ -115,7 +115,7 @@ deriving instance (DomainWith k dom, SourceInfo stage, Typeable k, Data (k dom s
 -- Base
 deriving instance (Domain dom, SourceInfo stage) => Data (Operator dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (Name dom stage)
-deriving instance (Domain dom, SourceInfo stage) => Data (SimpleName dom stage)
+deriving instance (Domain dom, SourceInfo stage) => Data (QualifiedName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (ModuleName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UnqualName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (StringNode dom stage)

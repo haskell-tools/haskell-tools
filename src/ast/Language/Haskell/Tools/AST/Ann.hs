@@ -82,7 +82,7 @@ data SameInfoDefaultCls
 data SameInfoWildcardCls
 
 type family SemaInfoClassify (node :: * -> * -> *) where
-  SemaInfoClassify SimpleName    = SameInfoNameCls
+  SemaInfoClassify QualifiedName    = SameInfoNameCls
   SemaInfoClassify Expr          = SameInfoExprCls
   SemaInfoClassify ImportDecl    = SameInfoImportCls
   SemaInfoClassify AST.Module    = SameInfoModuleCls

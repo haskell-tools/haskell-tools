@@ -36,33 +36,33 @@ mkUnqualName' :: GHC.Name -> Ann Name dom SrcTemplateStage
 mkUnqualName' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn ("(" <> child <> ")") $ ParenName $ mkSimpleName' n
                 | otherwise                       = mkAnn child $ NormalName $ mkSimpleName' n
 
-mkNormalName :: Ann SimpleName dom SrcTemplateStage -> Ann Name dom SrcTemplateStage
+mkNormalName :: Ann QualifiedName dom SrcTemplateStage -> Ann Name dom SrcTemplateStage
 mkNormalName = mkAnn child . NormalName
 
-mkParenName :: Ann SimpleName dom SrcTemplateStage -> Ann Name dom SrcTemplateStage
+mkParenName :: Ann QualifiedName dom SrcTemplateStage -> Ann Name dom SrcTemplateStage
 mkParenName = mkAnn ("(" <> child <> ")") . ParenName
 
 -- | Creates an annotated qualified simple name
-mkQualifiedName' :: [String] -> GHC.Name -> Ann SimpleName dom SrcTemplateStage
+mkQualifiedName' :: [String] -> GHC.Name -> Ann QualifiedName dom SrcTemplateStage
 mkQualifiedName' quals n = mkQualifiedName quals (GHC.occNameString $ GHC.getOccName n)
 
-mkQualifiedName :: [String] -> String -> Ann SimpleName dom SrcTemplateStage
+mkQualifiedName :: [String] -> String -> Ann QualifiedName dom SrcTemplateStage
 mkQualifiedName [] n = mkSimpleName n
 mkQualifiedName quals name
   = mkAnn (child <> "." <> child)
-          (SimpleName (mkAnnList (listSep ".") $ map (\q -> mkAnn (fromString q) (UnqualName q)) quals) 
+          (QualifiedName (mkAnnList (listSep ".") $ map (\q -> mkAnn (fromString q) (UnqualName q)) quals) 
                       (mkAnn (fromString name) (UnqualName name)))
 
 -- | Creates an annotated part of a name.
 mkNamePart :: String -> Ann UnqualName dom SrcTemplateStage
 mkNamePart s = mkAnn (fromString s) (UnqualName s)
 
-mkSimpleName' :: GHC.Name -> Ann SimpleName dom SrcTemplateStage
+mkSimpleName' :: GHC.Name -> Ann QualifiedName dom SrcTemplateStage
 mkSimpleName' = mkSimpleName . GHC.occNameString . GHC.getOccName
 
-mkSimpleName :: String -> Ann SimpleName dom SrcTemplateStage
+mkSimpleName :: String -> Ann QualifiedName dom SrcTemplateStage
 mkSimpleName n = mkAnn (child <> child) 
-                       (SimpleName emptyList (mkAnn (fromString n) (UnqualName n)))
+                       (QualifiedName emptyList (mkAnn (fromString n) (UnqualName n)))
 
 mkModuleName :: String -> Ann ModuleName dom SrcTemplateStage
 mkModuleName s = mkAnn (fromString s) (ModuleName s)

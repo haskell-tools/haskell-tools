@@ -164,9 +164,10 @@ instance AssocData CNameInfo where
 
 instance InspectableName n => AssocData (ModuleInfo n) where
   assocName (ModuleInfo {}) = "ModuleInfo"
-  toAssoc (ModuleInfo mod imps) = [ ("moduleName", showSDocUnsafe (ppr mod))
-                                  , ("implicitImports", concat (intersperse ", " (map inspect imps)))
-                                  ]
+  toAssoc (ModuleInfo mod isboot imps) = [ ("moduleName", showSDocUnsafe (ppr mod))
+                                         , ("isBoot", show isboot)
+                                         , ("implicitImports", concat (intersperse ", " (map inspect imps)))
+                                         ]
   
 instance InspectableName n => AssocData (ImportInfo n) where
   assocName (ImportInfo {}) = "ImportInfo"

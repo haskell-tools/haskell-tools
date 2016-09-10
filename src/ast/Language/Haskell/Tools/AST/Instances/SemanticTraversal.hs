@@ -113,7 +113,7 @@ deriveSemanticTraversal ''Promoted
 -- Base
 deriveSemanticTraversal ''Operator
 deriveSemanticTraversal ''Name
-deriveSemanticTraversal ''SimpleName
+deriveSemanticTraversal ''QualifiedName
 deriveSemanticTraversal ''ModuleName
 deriveSemanticTraversal ''UnqualName
 deriveSemanticTraversal ''StringNode

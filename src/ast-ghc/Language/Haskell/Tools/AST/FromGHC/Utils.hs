@@ -67,14 +67,14 @@ createImportData :: (HsHasName n, GHCName n) => AST.ImportDecl (Dom n) stage -> 
 createImportData imp = 
   do (mod,importedNames) <- getImportedNames (imp ^. importModule&element&AST.moduleNameString)
                                              (imp ^? importPkg&annJust&element&stringNodeStr)
-     names <- lift $ filterM (checkImportVisible imp) importedNames
-     lookedUpNames <- lift $ mapM (getFromNameUsing getTopLevelId) names
-     lookedUpImported <- lift $ mapM (getFromNameUsing getTopLevelId) importedNames
+     names <- liftGhc $ filterM (checkImportVisible imp) importedNames
+     lookedUpNames <- liftGhc $ mapM (getFromNameUsing getTopLevelId) names
+     lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId) importedNames
      return $ ImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames)
 
 -- | Get names that are imported from a given import
 getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [GHC.Name])
-getImportedNames name pkg = lift $ do
+getImportedNames name pkg = liftGhc $ do
   eps <- getSession >>= liftIO . readIORef . hsc_EPS
   mod <- findModule (mkModuleName name) (fmap mkFastString pkg)
   -- load exported names from interface file
@@ -204,6 +204,10 @@ annLocNoSema = annLoc (pure NoSemanticInfo)
 focusOn :: SrcSpan -> Trf a -> Trf a
 focusOn sp = local (\s -> s { contRange = sp })
 
+updateFocus :: (SrcSpan -> Trf SrcSpan) -> Trf a -> Trf a
+updateFocus f trf = do newSpan <- f =<< asks contRange
+                       focusOn newSpan trf
+
 -- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok = focusAfter firstTok . focusBefore lastTok
@@ -324,6 +328,14 @@ advanceStr _ l = l
 updateCol :: (Int -> Int) -> SrcLoc -> SrcLoc
 updateCol f loc@(UnhelpfulLoc _) = loc
 updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)
+
+-- | Update the start of the src span
+updateStart :: (SrcLoc -> SrcLoc) -> SrcSpan -> SrcSpan
+updateStart f sp = mkSrcSpan (f (srcSpanStart sp)) (srcSpanEnd sp)
+
+-- | Update the end of the src span
+updateEnd :: (SrcLoc -> SrcLoc) -> SrcSpan -> SrcSpan
+updateEnd f sp = mkSrcSpan (srcSpanStart sp) (f (srcSpanEnd sp))
 
 -- | Combine source spans of elements into one that contains them all
 collectLocs :: [Located e] -> SrcSpan
