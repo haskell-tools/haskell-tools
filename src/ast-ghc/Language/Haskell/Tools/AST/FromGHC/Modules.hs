@@ -58,6 +58,7 @@ import NameEnv as GHC
 import TcRnDriver as GHC
 import TcExpr as GHC
 import TcType as GHC
+import UniqSupply as GHC
 import HeaderInfo as GHC
 import Language.Haskell.TH.LanguageExtensions
 
@@ -74,27 +75,35 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Debug.Trace
 
 addTypeInfos :: LHsBinds Id -> Ann AST.Module (Dom GHC.Name) RangeStage -> Ghc (Ann AST.Module IdDom RangeStage)
-addTypeInfos bnds mod = evalStateT (semaTraverse 
-  (AST.SemaTrf
-    (\case (NameInfo sc def ni) -> lift $ CNameInfo sc def <$> getType' ni 
-           (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
-           (AmbiguousNameInfo sc d rdr l) | otherwise -> error $ "Ambiguous name missing: " ++ showSDocUnsafe (ppr rdr) ++ ", at: " ++ show l
-           (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
-           (ImplicitNameInfo sc d str (RealSrcSpan l)) | otherwise
-              -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` l) . fst))
-                    case rest of [] -> error $ "Implicit name missing: " ++ str ++ ", at: " ++ show l
-                                 ((_,id):more) -> do put (none ++ more)
-                                                     return $ CNameInfo sc d id)
-    pure
-    (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType' access <*> mapM getType' used)
-    (\(ModuleInfo mod isboot imps) -> lift $ ModuleInfo mod isboot <$> mapM getType' imps)
-    (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
-      pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
+addTypeInfos bnds mod = do
+  ut <- liftIO mkUnknownType
+  let getType = getType' ut
+  evalStateT (semaTraverse 
+    (AST.SemaTrf
+      (\case (NameInfo sc def ni) -> lift $ CNameInfo sc def <$> getType ni 
+             (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+             (AmbiguousNameInfo sc d rdr l) | otherwise -> error $ "Ambiguous name missing: " ++ showSDocUnsafe (ppr rdr) ++ ", at: " ++ show l
+             (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+             (ImplicitNameInfo sc d str (RealSrcSpan l)) | otherwise
+                -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` l) . fst))
+                      case rest of [] -> error $ "Implicit name missing: " ++ str ++ ", at: " ++ show l
+                                   ((_,id):more) -> do put (none ++ more)
+                                                       return $ CNameInfo sc d id)
+      pure
+      (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType access <*> mapM getType used)
+      (\(ModuleInfo mod isboot imps) -> lift $ ModuleInfo mod isboot <$> mapM getType imps)
+      (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
+        pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
-        getType' name = fromMaybe (mkVanillaGlobal name unitTy) <$> ((<|>) <$> getTopLevelId name <*> getLocalId ids name)
+        getType' ut name = fromMaybe (mkVanillaGlobal name ut) <$> ((<|> Map.lookup name ids) <$> getTopLevelId name)
         ids = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
         extractTypes :: LHsBinds Id -> [Id]
         extractTypes = concatMap universeBi . bagToList
+
+        mkUnknownType :: IO Type
+        mkUnknownType = do 
+          tUnique <- mkSplitUniqSupply 'x'
+          return $ mkTyVarTy $ mkVanillaGlobal (mkSystemName (uniqFromSupply tUnique) (mkDataOcc "TypeNotFound")) (mkTyConTy starKindTyCon)
 
 extractExprIds :: LHsBinds Id -> [Located Id]
         -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar

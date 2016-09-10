@@ -74,16 +74,6 @@ getTopLevelId name =
       Nothing -> return Nothing
   where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
--- | Loading ids for local ghc names
-getLocalId :: Map.Map GHC.Name Id -> GHC.Name -> Ghc (Maybe GHC.Id)
-getLocalId ids name = case Map.lookup name ids of
-    Just id -> return (Just id)
-    Nothing | isTyVarName name
-               -- unit type is for cases we don't know the kind
-            -> return $ Just $ mkVanillaGlobal name unitTy
-    Nothing -> return Nothing
-  where mapping =  ids
-
 class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
 
