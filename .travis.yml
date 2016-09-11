@@ -25,7 +25,7 @@ matrix:
   include:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack ARGS=""
+  - env: BUILD=stack ARGS="" GHCVER=8.0.1 CABALVER=1.24
     compiler: ": #stack default"
     addons: {apt: {packages: [ghc-8.0.1], sources: [hvr-ghc]}}
 
@@ -34,7 +34,7 @@ before_install:
 - unset CC
 
 # Download and unpack the stack executable
-- export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
+- export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
 - mkdir -p ~/.local/bin
 - |
   if [ `uname` = "Darwin" ]
@@ -45,8 +45,11 @@ before_install:
   fi
 
 install:
-- echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 - stack --no-terminal --install-ghc test --only-dependencies
 
 script:
 - stack --no-terminal test --haddock --no-haddock-deps
+
+after_script:
+- travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
+- ./shc haskell-tools-refactor haskell-tools-test
