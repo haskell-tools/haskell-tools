@@ -67,7 +67,7 @@ unitTests = map makeReprintTest checkTestCases
                           ++ map (\(mod,_,_) -> mod) extractBindingTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
 
-rootDir = ".." </> "examples"
+rootDir = ".." </> ".." </> "examples"
         
 languageTests =
   [ "Decl.AmbiguousFields"
