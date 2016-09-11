@@ -15,7 +15,7 @@ Installation
     - On Windows you might have to install `old-time` with Cygwin or MinGW.
 
 Installation from source
-  - *Recommended*: use [stack][https://docs.haskellstack.org/en/stable/README/] for building the project
+  - *Recommended*: use [stack](https://docs.haskellstack.org/en/stable/README/) for building the project
     - `stack setup`
     - `stack build`
   - *Alternative*: you have to cabal-install each package of the repository in the following order: `ast`, `ast-ghc`, `ast-trf`, `ast-gen`, `ast-ppr`, `refactor`.
