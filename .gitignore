@@ -3,3 +3,4 @@ sandbox
 *.o
 *.hi-boot
 *.o-boot
+.stack-work
