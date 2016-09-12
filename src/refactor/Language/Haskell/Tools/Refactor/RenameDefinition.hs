@@ -22,7 +22,6 @@ import qualified Control.Reference as Ref
 import Control.Monad.State
 import Control.Monad.Trans.Except
 import Data.Data
-import Data.Either.Combinators
 import Data.List.Split
 import Data.List
 import Data.Maybe
