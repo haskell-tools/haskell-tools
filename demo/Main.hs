@@ -194,6 +194,7 @@ handleErrors wd req next io = io `catch` (next <=< handleException)
         handleException e 
           | Just (se :: SourceError) <- fromException e 
           = return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
+          | Just (ae :: AsyncException) <- fromException e = throw ae
           | Just (ge :: GhcException) <- fromException e = return $ ErrorMessage $ show ge
           | otherwise = do logToFile wd (show e) req
                            return $ ErrorMessage (showInternalError e)
