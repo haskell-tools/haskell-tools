@@ -1,0 +1,6 @@
+demo/website/libs/* linguist-vendored
+demo/website/js/ace/* linguist-vendored
+demo/website/js/jquery.min.js linguist-vendored
+demo/website/js/jstree.js linguist-vendored
+demo/website/css/jstree.css linguist-vendored
+demo/website/images/jstree/* linguist-vendored
