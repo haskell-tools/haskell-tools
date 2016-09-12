@@ -9,6 +9,7 @@ packages:
 - src/refactor
 - demo
 - src/cli
+- src/debug
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 extra-deps: 

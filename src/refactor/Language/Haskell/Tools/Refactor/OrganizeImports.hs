@@ -29,7 +29,6 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Refactor.DebugGhcAST
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Debug.Trace
