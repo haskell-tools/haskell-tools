@@ -107,7 +107,7 @@ makeReferences ''Promoted
 -- Base
 makeReferences ''Operator
 makeReferences ''Name
-makeReferences ''SimpleName
+makeReferences ''QualifiedName
 makeReferences ''ModuleName
 makeReferences ''UnqualName
 makeReferences ''StringNode

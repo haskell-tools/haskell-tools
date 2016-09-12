@@ -19,6 +19,7 @@ import Control.Monad.Reader.Class
 import Control.Applicative
 import Control.Reference
 import Data.Maybe
+import Data.List (find)
 import Data.Data (Data(..), toConstr)
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
@@ -34,7 +35,11 @@ import Language.Haskell.Tools.AST as AST
 import Debug.Trace
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.Type (Dom r) RangeStage)
-trfType = trfLocNoSema trfType'
+trfType typ = do othSplices <- asks typeSplices
+                 let RealSrcSpan loce = getLoc typ
+                     contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
+                 case contSplice of Just sp -> typeSpliceInserted sp (annLocNoSema (pure $ getSpliceLoc sp) (AST.TySplice <$> trfSplice' sp))
+                                    Nothing -> trfLocNoSema trfType' typ
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.Type (Dom r) RangeStage)
 trfType' = trfType'' . cleanHsType where

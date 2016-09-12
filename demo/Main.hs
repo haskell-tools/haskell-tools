@@ -109,11 +109,11 @@ updateClient dir (ModuleChanged name newContent) = do
       $ lift $ addTarget (Target (TargetModule (mkModuleName name)) True Nothing)
     lift $ load LoadAllTargets
     mod <- lift $ getModSummary (mkModuleName name) >>= parseTyped
-    modify $ refSessMods .- Map.insert (dir, name) mod
+    modify $ refSessMods .- Map.insert (dir, name, NormalHs) mod
     return Nothing
 updateClient dir (ModuleDeleted name) = do
     lift $ removeTarget (TargetModule (mkModuleName name))
-    modify $ refSessMods .- Map.delete (dir, name)
+    modify $ refSessMods .- Map.delete (dir, name, NormalHs)
     return Nothing
 updateClient dir (InitialProject modules) = do 
     -- clean the workspace to remove source files from earlier sessions
@@ -125,15 +125,15 @@ updateClient dir (InitialProject modules) = do
     lift $ load LoadAllTargets
     forM (map fst modules) $ \modName -> do
       mod <- lift $ getModSummary (mkModuleName modName) >>= parseTyped
-      modify $ refSessMods .- Map.insert (dir, modName) mod
+      modify $ refSessMods .- Map.insert (dir, modName, NormalHs) mod
     return Nothing
 updateClient _ (PerformRefactoring "UpdateAST" modName _ _) = do
-    mod <- gets (find ((modName ==) . snd . fst) . Map.assocs . (^. refSessMods))
+    mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     case mod of Just (_,m) -> return $ Just $ ASTViewContent $ astDebug m
                 Nothing -> return $ Just $ ErrorMessage "The module is not found"
 updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a test"
 updateClient dir (PerformRefactoring refact modName selection args) = do
-    mod <- gets (find ((modName ==) . snd . fst) . Map.assocs . (^. refSessMods))
+    mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (map moduleNameAndContent . Map.assocs . (^. refSessMods))
     let command = analyzeCommand (toFileName dir modName) refact (selection:args)
     case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules 
@@ -149,12 +149,12 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
           = mapM_ $ \case 
               ContentChanged (n,m) -> do
                 liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
-                w <- gets (find ((n ==) . snd) . Map.keys . (^. refSessMods))
+                w <- gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
                 newm <- lift $ (parseTyped =<< loadModule dir n)
-                modify $ refSessMods .- Map.insert (dir, n) newm
+                modify $ refSessMods .- Map.insert (dir, n, NormalHs) newm
               ModuleRemoved mod -> do
                 liftIO $ removeFile (toFileName dir mod)
-                modify $ refSessMods .- Map.delete (dir, mod)
+                modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
 
 createFileForModule :: FilePath -> String -> String -> IO ()
 createFileForModule dir name newContent = do
@@ -165,8 +165,8 @@ createFileForModule dir name newContent = do
 removeDirectoryIfPresent :: FilePath -> IO ()
 removeDirectoryIfPresent dir = removeDirectoryRecursive dir `catch` \e -> if isDoesNotExistError e then return () else throwIO e
 
-moduleNameAndContent :: ((String,String), mod) -> (String, mod)
-moduleNameAndContent ((_,name), mod) = (name, mod)
+moduleNameAndContent :: ((String,String,IsBoot), mod) -> (String, mod)
+moduleNameAndContent ((_,name,_), mod) = (name, mod)
 
 dataDirs :: FilePath -> FilePath
 dataDirs wd = wd </> "demoSources"

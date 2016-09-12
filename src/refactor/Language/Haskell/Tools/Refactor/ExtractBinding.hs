@@ -43,7 +43,7 @@ extractBinding :: forall dom . ExtractBindingDomain dom => Simple Traversal (Ann
                    -> Simple Traversal (Ann' ValueBind dom) (Ann' Expr dom)
                    -> String -> LocalRefactoring dom
 extractBinding selectDecl selectExpr name mod
-  = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [Ann' SimpleName dom])
+  = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [Ann' QualifiedName dom])
         exprRange = getRange $ head (mod ^? selectDecl & selectExpr & annotation & sourceInfo)
         decl = last (mod ^? selectDecl)
         declRange = getRange $ last (mod ^? selectDecl & annotation & sourceInfo)
@@ -53,7 +53,7 @@ extractBinding selectDecl selectExpr name mod
                    case st of Just def -> return $ evalState (selectDecl&element !~ addLocalBinding declRange exprRange def $ res) False
                               Nothing -> refactError "There is no applicable expression to extract."
 
-isConflicting :: ExtractBindingDomain dom => String -> Ann' SimpleName dom -> Bool
+isConflicting :: ExtractBindingDomain dom => String -> Ann' QualifiedName dom -> Bool
 isConflicting name used
   = semanticsDefining (used ^. semantics)
       && (GHC.occNameString . GHC.getOccName <$> semanticsName (used ^. semantics)) == Just name

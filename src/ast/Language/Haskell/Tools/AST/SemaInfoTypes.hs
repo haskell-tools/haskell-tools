@@ -55,6 +55,7 @@ data CNameInfo = CNameInfo { _cnameScopedLocals :: [[Name]]
 
 -- | Info for the module element
 data ModuleInfo n = ModuleInfo { _defModuleName :: Module 
+                               , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
                                , _implicitNames :: [n] -- ^ Implicitely imported names
                                } 
   deriving (Eq, Data)
@@ -83,7 +84,7 @@ instance Show CNameInfo where
   show (CNameInfo locals defined nameInfo) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
 
 instance Outputable n => Show (ModuleInfo n) where
-  show (ModuleInfo mod imp) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr imp) ++ ")"
+  show (ModuleInfo mod isboot imp) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ ")"
 
 instance Outputable n => Show (ImportInfo n) where
   show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
@@ -144,9 +145,11 @@ instance HasDefiningInfo CNameInfo where
 
 class HasModuleInfo si where
   semanticsModule :: si -> Module
+  isBootModule :: si -> Bool
 
 instance HasModuleInfo (ModuleInfo n) where
   semanticsModule = (^. defModuleName)
+  isBootModule = (^. defIsBootModule)
 
 -- | Semantic and source code related information for an AST node.
 data NodeInfo sema src 

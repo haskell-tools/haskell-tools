@@ -67,7 +67,7 @@ unitTests = map makeReprintTest checkTestCases
                           ++ map (\(mod,_,_) -> mod) extractBindingTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
 
-rootDir = ".." </> "examples"
+rootDir = ".." </> ".." </> "examples"
         
 languageTests =
   [ "Decl.AmbiguousFields"
@@ -233,6 +233,10 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.NoPrelude", "4:1-4:2", "map")
   , ("Refactor.RenameDefinition.UnusedDef", "3:1-3:2", "map")
   , ("Refactor.RenameDefinition.ImplicitParams", "8:17-8:20", "compare")
+  , ("Refactor.RenameDefinition.SameCtorAndType", "3:6-3:13", "P2D")
+  , ("Refactor.RenameDefinition.RoleAnnotation", "4:11-4:12", "AA")
+  , ("Refactor.RenameDefinition.TypeBracket", "6:6-6:7", "B")
+  , ("Refactor.RenameDefinition.ValBracket", "8:11-8:12", "B")
   ]
 
 wrongRenameDefinitionTests =
@@ -270,6 +274,9 @@ multiModuleTests =
   [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule", [])
   , ("RenameDefinition 1:8-1:9 C", "B", "Refactor/RenameDefinition/RenameModule", ["B"])
   , ("RenameDefinition 3:8-3:9 C", "A", "Refactor/RenameDefinition/RenameModule", ["B"])
+  , ("RenameDefinition 6:1-6:9 hello", "Use", "Refactor/RenameDefinition/SpliceDecls", [])
+  , ("RenameDefinition 5:1-5:5 exprSplice", "Define", "Refactor/RenameDefinition/SpliceExpr", [])
+  , ("RenameDefinition 6:1-6:4 spliceTyp", "Define", "Refactor/RenameDefinition/SpliceType", [])
   ]
 
 astDebugTests =
@@ -296,7 +303,7 @@ flattenDebugNode _ = []
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
 makeMultiModuleTest (refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
-      $ do res <- performRefactors refact (rootDir </> root) mod
+      $ do res <- performRefactors refact (rootDir </> root) [] mod
            case res of Right result -> checkResults result removed
                        Left err -> assertFailure $ "The transformation failed : " ++ err
   where checkResults :: [(String, Maybe String)] -> [String] -> IO ()
@@ -341,13 +348,13 @@ makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
-       res <- performRefactor command workingDir moduleName
+       res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
 
 checkTransformFails :: String -> String -> String -> IO ()
 checkTransformFails command workingDir moduleName
-  = do res <- performRefactor command workingDir moduleName
+  = do res <- performRefactor command workingDir [] moduleName
        assertBool "The transform should fail for the given input" (isLeft res)
        
 loadExpected :: Bool -> String -> String -> IO String

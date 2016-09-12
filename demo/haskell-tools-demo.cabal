@@ -13,7 +13,7 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
-executable haskelltoolsdemo
+executable haskell-tools-demo
   main-is:             Main.hs
   other-modules:       
   ghc-options:         -with-rtsopts=-M1g

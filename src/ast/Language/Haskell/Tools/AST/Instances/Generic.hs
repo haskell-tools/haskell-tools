@@ -116,7 +116,7 @@ deriving instance (Domain dom, SourceInfo stage, Generic (k dom stage)) => Gener
 -- Base
 deriving instance (Domain dom, SourceInfo stage) => Generic (Operator dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (Name dom stage)
-deriving instance (Domain dom, SourceInfo stage) => Generic (SimpleName dom stage)
+deriving instance (Domain dom, SourceInfo stage) => Generic (QualifiedName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (ModuleName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (UnqualName dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Generic (StringNode dom stage)

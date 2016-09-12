@@ -3,6 +3,7 @@ sandbox
 *.o
 *.hi-boot
 *.o-boot
-demo/dist
+.stack-work
+demo/.stack-work
 demo/demoSources
 demo/error-log.txt

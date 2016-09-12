@@ -7,8 +7,8 @@
            , FlexibleContexts
            , TypeFamilies
            , TupleSections
-           , ViewPatterns
            , TemplateHaskell
+           , ViewPatterns
            #-}
 module Language.Haskell.Tools.Refactor where
 
@@ -33,10 +33,11 @@ import BasicTypes
 import Bag
 import Var
 import SrcLoc
-import Module
+import Module as GHC
 import FastString
 import HscTypes
 import GHC.Paths ( libdir )
+import CmdLineParser
  
 import Data.List
 import Data.List.Split
@@ -76,79 +77,48 @@ import Debug.Trace
 type RefactorSession = StateT RefactorSessionState
 
 data RefactorSessionState
-  = RefactorSessionState { _refSessMods :: Map.Map (String, String) (UnnamedModule IdDom)
-                         , _actualMod :: Maybe (String, String)
-                         , _exiting :: Bool -- TODO: remove this field
+  = RefactorSessionState { _refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
+                         , _actualMod :: Maybe (String, String, IsBoot)
+                         , _exiting :: Bool
                          }
+
+data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
 makeReferences ''RefactorSessionState
 
-refactorSession :: [String] -> IO ()
-refactorSession workingDirs = runGhc (Just libdir) $ flip evalStateT initSession $
-  do moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
-     mods <- lift $ mapM (\(wd,mod) -> parseTyped =<< loadModule wd mod) moduleNames
-     modify $ refSessMods .= Map.fromList (zip moduleNames mods)
+refactorSession :: [String] -> [String] -> IO ()
+refactorSession workingDirs args = runGhc (Just libdir) $ flip evalStateT initSession $
+  do lift $ useDirsAndFlags workingDirs args
+     moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
+     lift $ setTargets (map (\(_,mod) -> (Target (TargetModule (mkModuleName mod)) True Nothing)) moduleNames)
+     lift $ load LoadAllTargets
+     allMods <- lift getModuleGraph
+     mods <- lift $ forM allMods (\ms -> do mm <- parseTyped ms
+                                            liftIO $ putStrLn ("Loaded module: " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
+                                            let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
+                                                Just wd = find ((modName ==) . snd) moduleNames 
+                                            return ((fst wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm))
+     modify $ refSessMods .= Map.fromList mods
      runSession
   where runSession :: RefactorSession Ghc ()
         runSession = do cmd <- liftIO $ getLine 
                         sessionComm <- readSessionCommand cmd
                         performSessionCommand sessionComm
-                        doExit <- gets (^. exiting) 
+                        doExit <- gets (^. exiting)
                         when (not doExit) runSession
 
 data RefactorSessionCommand 
   = LoadModule String
   | Exit
   | RefactorCommand RefactorCommand
-    
-data RefactorCommand = NoRefactor 
-                     | OrganizeImports
-                     | GenerateExports
-                     | GenerateSignature RealSrcSpan
-                     | RenameDefinition RealSrcSpan String
-                     | ExtractBinding RealSrcSpan String
-    deriving Show
 
 readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
 readSessionCommand cmd = case splitOn " " cmd of 
     ["LoadModule", mod] -> return $ LoadModule mod
     ["Exit"] -> return Exit
-    _ -> do actualMod <- gets (^. actualMod) 
-            case actualMod of Just (wd,m) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
+    _ -> do actualMod <- gets (^. actualMod)
+            case actualMod of Just (wd,m,_) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
                               Nothing -> error "Set the actual module first"
-
-performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc ()
-performSessionCommand (LoadModule mod) = do modKey <- gets (find ((mod ==) . snd) . Map.keys . (^. refSessMods))
-                                            modify $ actualMod .= modKey
-performSessionCommand Exit = modify $ exiting .= True
-performSessionCommand (RefactorCommand cmd) 
-  = do RefactorSessionState { _refSessMods = mods, _actualMod = Just act@(workingDir, mod) } <- get
-       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((wd,m),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
-       case res of Left err -> liftIO $ putStrLn err
-                   Right resMods -> forM_ resMods $ \case 
-                     ContentChanged (n,m) -> do
-                       liftIO $ withBinaryFile (toFileName workingDir n) WriteMode (`hPutStr` prettyPrint m)
-                       w <- gets (find ((n ==) . snd) . Map.keys . (^. refSessMods))
-                       newm <- lift $ (parseTyped =<< loadModule workingDir n)
-                       modify $ refSessMods .- Map.insert (workingDir, n) newm
-                     ModuleRemoved mod -> do
-                       liftIO $ removeFile (toFileName workingDir mod)
-                       modify $ refSessMods .- Map.delete (workingDir, mod)
-
-initSession :: RefactorSessionState
-initSession = RefactorSessionState Map.empty Nothing False
-
-performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
-               => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
-                                  -> [ModuleDom dom] -- ^ Other modules
-                                  -> Ghc (Either String [RefactorChange dom])
-performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
-  where selectCommand NoRefactor = localRefactoring return
-        selectCommand OrganizeImports = localRefactoring organizeImports
-        selectCommand GenerateExports = localRefactoring generateExports 
-        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' sp
-        selectCommand (RenameDefinition sp str) = renameDefinition' sp str
-        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' sp str
 
 readCommand :: String -> String -> RefactorCommand
 readCommand fileName (splitOn " " -> refact:args) = analyzeCommand fileName refact args
@@ -161,6 +131,65 @@ analyzeCommand _ "GenerateExports" _ = GenerateExports
 analyzeCommand fileName "GenerateSignature" [sp] = GenerateSignature (readSrcSpan fileName sp)
 analyzeCommand fileName "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan fileName sp) newName
 analyzeCommand fileName "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan fileName sp) newName
+
+
+performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc ()
+performSessionCommand (LoadModule mod) = do fnd <- gets (find (\(_,m,hs) -> m == mod && hs == NormalHs) . Map.keys . (^. refSessMods))
+                                            if isJust fnd then modify $ actualMod .= fnd
+                                                          else liftIO $ putStrLn ("Cannot find module: " ++ mod)
+performSessionCommand Exit = modify $ exiting .= True
+performSessionCommand (RefactorCommand cmd) 
+  = do RefactorSessionState { _refSessMods = mods, _actualMod = Just act@(_, mod, _) } <- get
+       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((_,m,_),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
+       case res of Left err -> liftIO $ putStrLn err
+                   Right resMods -> do 
+                     mss <- forM resMods $ \case 
+                       ContentChanged (n,m) -> do
+                         let modName = semanticsModule $ m ^. semantics
+                         ms <- getModSummary modName (isBootModule $ m ^. semantics)
+                         let isBoot = case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot
+                         Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == n && b == isBoot) . Map.keys . (^. refSessMods))
+                         liftIO $ withBinaryFile ((case isBoot of NormalHs -> toFileName; IsHsBoot -> toBootFileName) workingDir n) 
+                                                 WriteMode (`hPutStr` prettyPrint m)
+                         return $ Just (n, workingDir, modName, isBoot)
+                       ModuleRemoved mod -> do
+                         Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == mod) . Map.keys . (^. refSessMods))
+                         liftIO $ removeFile (toFileName workingDir mod)
+                         modify $ refSessMods .- Map.delete (workingDir, mod, IsHsBoot) . Map.delete (workingDir, mod, NormalHs)
+                         return Nothing
+                     lift $ load LoadAllTargets
+                     forM_ (catMaybes mss) $ \(n, workingDir, modName, isBoot) -> do
+                         -- TODO: add target if module is added as a change
+                         ms <- getModSummary modName (isBoot == IsHsBoot)
+                         newm <- lift $ parseTyped ms
+                         modify $ refSessMods .- Map.insert (workingDir, n, isBoot) newm
+                         liftIO $ putStrLn ("Re-loaded module: " ++ n)
+  where getModSummary name boot
+          = do allMods <- lift getModuleGraph
+               return $ fromJust $ find (\ms -> ms_mod ms == name && (ms_hsc_src ms == HsSrcFile) /= boot) allMods 
+
+initSession :: RefactorSessionState
+initSession = RefactorSessionState Map.empty Nothing False
+
+data RefactorCommand = NoRefactor 
+                     | OrganizeImports
+                     | GenerateExports
+                     | GenerateSignature RealSrcSpan
+                     | RenameDefinition RealSrcSpan String
+                     | ExtractBinding RealSrcSpan String
+    deriving Show
+
+performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
+               => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
+                                  -> [ModuleDom dom] -- ^ Other modules
+                                  -> Ghc (Either String [RefactorChange dom])
+performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
+  where selectCommand NoRefactor = localRefactoring return
+        selectCommand OrganizeImports = localRefactoring organizeImports
+        selectCommand GenerateExports = localRefactoring generateExports 
+        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' sp
+        selectCommand (RenameDefinition sp str) = renameDefinition' sp str
+        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' sp str
   
 readSrcSpan :: String -> String -> RealSrcSpan
 readSrcSpan fileName s = case splitOn "-" s of
@@ -170,52 +199,58 @@ readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
 
-onlineRefactor :: String -> FilePath -> String -> IO (Either String String)
-onlineRefactor command workingDir moduleStr
-  = do withBinaryFile fileName WriteMode (`hPutStr` moduleStr)
-       modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
-       if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
-          | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
-          | otherwise -> do 
-              res <- performRefactor command workingDir moduleName
-              removeFile fileName
-              return res
-  where moduleName = "Test"
-        fileName = workingDir </> (moduleName ++ ".hs")
-
-onlineASTView :: FilePath -> String -> IO (Either String String)
-onlineASTView workingDir moduleStr
-  = do withBinaryFile fileName WriteMode (`hPutStr` moduleStr)
-       modOpts <- runGhc (Just libdir) $ ms_hspp_opts <$> loadModule workingDir moduleName
-       if | xopt Cpp modOpts -> return (Left "The use of C preprocessor is not supported, please turn off Cpp extension")
-          | xopt TemplateHaskell modOpts -> return (Left "The use of Template Haskell is not supported yet, please turn off TemplateHaskell extension")
-          | otherwise -> do 
-              res <- astView workingDir moduleName
-              removeFile fileName
-              return (Right res)
-  where moduleName = "Test"
-        fileName = workingDir </> (moduleName ++ ".hs")
-
-
-performRefactor :: String -> String -> String -> IO (Either String String)
-performRefactor command workingDir target = 
-  runGhc (Just libdir) $
+performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String String)
+performRefactor command workingDir flags target = 
+  runGhc (Just libdir) $ do
+    useDirsAndFlags [workingDir] flags
     (mapRight newContent <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand (readCommand (toFileName workingDir target) command) (target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress
 
+useDirsAndFlags :: [FilePath] -> [String] -> Ghc ()
+useDirsAndFlags workingDirs args = do 
+  initGhcFlags workingDirs
+  let lArgs = map (L noSrcSpan) args
+  dynflags <- getSessionDynFlags
+  let ((leftovers, errors, warnings), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
+  setSessionDynFlags newDynFlags { importPaths = importPaths newDynFlags ++ workingDirs }
+  return ()
+
+initGhcFlags :: [FilePath] -> Ghc ()
+initGhcFlags wds = do
+  dflags <- getSessionDynFlags
+  setSessionDynFlags 
+    $ flip gopt_set Opt_KeepRawTokenStream
+    $ flip gopt_set Opt_NoHsMain
+    $ dflags { importPaths = wds
+             , hscTarget = HscAsm -- needed for static pointers
+             , ghcLink = LinkInMemory
+             , ghcMode = CompManager 
+             , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
+             }
+  return ()
+
 toFileName :: String -> String -> FilePath
 toFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
 
-performRefactors :: String -> String -> String -> IO (Either String [(String, Maybe String)])
-performRefactors command workingDir target = do 
-  otherModules <- delete target <$> getModules workingDir
+toBootFileName :: String -> String -> FilePath
+toBootFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
+
+performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
+performRefactors command workingDir flags target = do 
+  mods <- getModules workingDir
   runGhc (Just libdir) $ do
-    targetMod <- parseTyped =<< loadModule workingDir target
-    otherMods <- mapM (parseTyped <=< loadModule workingDir) otherModules
+    useDirsAndFlags [workingDir] flags
+    setTargets (map (\mod -> (Target (TargetModule (mkModuleName mod)) True Nothing)) mods)
+    load LoadAllTargets
+    allMods <- getModuleGraph
+    selectedMod <- getModSummary (mkModuleName target)
+    let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
+    targetMod <- parseTyped selectedMod
+    otherMods <- mapM parseTyped otherModules
     res <- performCommand (readCommand (toFileName workingDir target) command) 
-                          (target, targetMod) (zip otherModules otherMods)
+                          (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
     return $ mapRight (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
                                   ModuleRemoved m -> (m, Nothing)
                            )) res
@@ -227,16 +262,7 @@ astView workingDir target =
 
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName 
-  = do dflags <- getSessionDynFlags
-       -- don't generate any code
-       setSessionDynFlags 
-         $ flip gopt_set Opt_KeepRawTokenStream
-         $ flip gopt_set Opt_NoHsMain
-         $ dflags { importPaths = [workingDir]
-                  , hscTarget = HscAsm -- needed for static pointers
-                  , ghcLink = LinkInMemory
-                  , ghcMode = CompManager 
-                  }
+  = do initGhcFlags [workingDir]
        target <- guessTarget moduleName Nothing
        setTargets [target]
        load LoadAllTargets
@@ -252,9 +278,9 @@ parseTyped modSum = do
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
+           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
                    runTrf (fst annots) (getPragmaComments $ snd annots)
-                     $ trfModuleRename (ms_mod $ modSum) parseTrf
+                     $ trfModuleRename modSum parseTrf
                          (fromJust $ tm_renamed_source tc) 
                          (pm_parsed_source p)))
 
@@ -267,9 +293,9 @@ parseRenamed modSum = do
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
-    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
+    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
             runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename (ms_mod $ modSum) parseTrf
+              $ trfModuleRename modSum parseTrf
                   (fromJust $ tm_renamed_source tc) 
                   (pm_parsed_source p))
 
@@ -281,12 +307,13 @@ parseAST modSum = do
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
-     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) $ pm_parsed_source p)          
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum $ pm_parsed_source p)          
     
 -- | Should be only used for testing
-demoRefactor :: String -> String -> String -> IO ()
-demoRefactor command workingDir moduleName = 
+demoRefactor :: String -> String -> [String] -> String -> IO ()
+demoRefactor command workingDir args moduleName = 
   runGhc (Just libdir) $ do
+    useDirsAndFlags [workingDir] args
     modSum <- loadModule workingDir moduleName
     p <- parseModule modSum
     t <- typecheckModule p
@@ -303,10 +330,10 @@ demoRefactor command workingDir moduleName =
     liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
-    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (ms_mod modSum) (pm_parsed_source p)
+    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
     liftIO $ putStrLn $ srcInfoDebug parseTrf
     liftIO $ putStrLn "=========== typed:"
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename (ms_mod $ modSum) parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename modSum parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
     liftIO $ putStrLn $ srcInfoDebug transformed
     liftIO $ putStrLn "=========== ranges fixed:"
     let commented = fixRanges $ placeComments (getNormalComments $ snd annots) transformed
@@ -338,4 +365,3 @@ demoRefactor command workingDir moduleName =
   
 deriving instance Generic SrcSpan
 deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
-

@@ -9,23 +9,27 @@ The goal of this project is to create developer tools for the functional program
 
 ## [Check out our demo](http://haskelltools.org)
 
-Sources for the demo application can be found [here](https://github.com/kelemzol/haskell-tools-demo)
-
 Installation
   - Make sure you have the latest [haskell-platform](https://www.haskell.org/platform/)
-  - `cabal update`
-  - Install haskell-tools-refactor: `cabal install haskell-tools-refactor`
-    - On Windows you might have to manually download `old-time`, fix the base dependency and install it with Cygwin or MinGW.
+  - Use `stack install haskell-tools-refactor` or `cabal install haskell-tools-refactor` to install the library.
+    - On Windows you might have to install `old-time` with Cygwin or MinGW.
+
+Installation from source
+  - *Recommended*: use [stack](https://docs.haskellstack.org/en/stable/README/) for building the project
+    - `stack setup`
+    - `stack build`
+  - *Alternative*: you have to cabal-install each package of the repository in the following order: `ast`, `ast-ghc`, `ast-trf`, `ast-gen`, `ast-ppr`, `refactor`.
 
 Test:
   - The test folder contains the test package. The test suite contains both unit and nightly tests.
-  - Run it with `cabal configure --enable-tests; cabal test`.
+  - Run it with `stack test`.
   - Continous integration is backed by Travis-CI. Status: [![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools.svg?maxAge=2592000)](https://travis-ci.org/haskell-tools/haskell-tools)
-  - Test coverage is automatically calculated, but is currently very low due to not all tests running, and lot of generated fields/instances/references not being used by any refactoring: [![Coverage Status](https://coveralls.io/repos/github/haskell-tools/haskell-tools/badge.svg)](https://coveralls.io/github/haskell-tools/haskell-tools)
+  - Test coverage is automatically calculated, but is currently very low because of generated fields/instances/references defined for API consistency but not being used by any refactoring: [![Coverage Status](https://coveralls.io/repos/github/haskell-tools/haskell-tools/badge.svg)](https://coveralls.io/github/haskell-tools/haskell-tools)
 
 
 Using GHCi:
-  - `ghci -package ghc -isrc\ast;src\ast-ghc;src\ast-trf;src\ast-ppr;src\ast-gen;src\refactor Language.Haskell.Tools.Refactor` (from root, on Windows)
+  - use `stack ghci`
+  - currently ghci cannot be used to perform whole refactorings because of a ghci code generation bug in ghc 8.0.1, but this should be fixed soon
 
 Known limitations:
   - The refactoring tool currently works with only one module, but that will be changed in the near future.

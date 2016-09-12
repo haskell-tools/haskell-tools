@@ -16,6 +16,8 @@ import Control.Monad.State
 import SrcLoc
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 
+import FastString as GHC
+
 import Debug.Trace
 
 -- | Creates a source template from the ranges and the input file.
@@ -81,7 +83,7 @@ cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))
              -- only continue if the correct place for the child range is not found
               Just pieces -> pieces ++ rest
               Nothing -> elem : breakFirstHit rest sp
-        breakFirstHit [] sp = error ("breakFirstHit: didn't find correct place for " ++ shortShowSpan sp ++ " in " ++ shortShowSpan sp ++ " with [" ++ concat (intersperse "," (map shortShowSpan sps)) ++ "]")
+        breakFirstHit [] sp = error ("breakFirstHit: " ++ maybe "" unpackFS (srcSpanFileName_maybe sp) ++ " didn't find correct place for " ++ shortShowSpan sp ++ " in " ++ shortShowSpan sp ++ " with [" ++ concat (intersperse "," (map shortShowSpan sps)) ++ "]")
 
 cutOutElemList :: [SrcSpan] -> ListInfo NormRangeStage -> ListInfo RngTemplateStage
 cutOutElemList sps lp@(NormListInfo bef aft sep indented sp)

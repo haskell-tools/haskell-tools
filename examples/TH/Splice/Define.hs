@@ -19,3 +19,6 @@ expr = return $ LitE $ IntegerL 3
 
 typ :: Q Type
 typ = return $ TupleT 0
+
+nameOf :: Name -> Q [Dec]
+nameOf n = return []
