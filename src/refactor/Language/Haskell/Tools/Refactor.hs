@@ -43,9 +43,7 @@ import GHC.Generics hiding (moduleName)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Typeable
-import Data.Time.Clock
 import Data.IORef
-import Data.Either.Combinators
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.IO.Class
@@ -196,7 +194,7 @@ performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String
 performRefactor command workingDir flags target = 
   runGhc (Just libdir) $ do
     useDirsAndFlags [workingDir] flags
-    (mapRight newContent <$> (refact =<< parseTyped =<< loadModule workingDir target))
+    ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand (readCommand (toFileName workingDir target) command) (target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress
@@ -244,9 +242,11 @@ performRefactors command workingDir flags target = do
     otherMods <- mapM parseTyped otherModules
     res <- performCommand (readCommand (toFileName workingDir target) command) 
                           (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
-    return $ mapRight (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
-                                  ModuleRemoved m -> (m, Nothing)
-                           )) res
+    return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+                                                   ModuleRemoved m -> (m, Nothing)
+                                            )) r
+                    Left l -> Left l) 
+           $ res
 
 astView :: String -> String -> IO String
 astView workingDir target = 
