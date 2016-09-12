@@ -1,11 +1,13 @@
 {-# LANGUAGE LambdaCase
            , ViewPatterns
+           , TypeFamilies
            #-}
 module Main where
 
-import GHC (runGhc)
+import GHC hiding (loadModule, ParsedModule)
 import DynFlags
 import GHC.Paths ( libdir )
+import Module as GHC
 
 import Control.Monad.IO.Class
 import Control.Monad
@@ -25,13 +27,13 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.PlaceComments
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.OrganizeImports
 import Language.Haskell.Tools.Refactor.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.GenerateExports
 import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Refactor.ASTDebug
 
 main :: IO ()
 main = run nightlyTests
@@ -57,7 +59,6 @@ unitTests = map makeReprintTest checkTestCases
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
               ++ map makeMultiModuleTest multiModuleTests
-              ++ map makeASTDebugTest astDebugTests
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
                           ++ map fst generateSignatureTests 
@@ -279,27 +280,6 @@ multiModuleTests =
   , ("RenameDefinition 6:1-6:4 spliceTyp", "Define", "Refactor/RenameDefinition/SpliceType", [])
   ]
 
-astDebugTests =
-  [ ("ASTDebug.Name", (\case NameInfoType {} -> True; _ -> False))
-  , ("ASTDebug.Name", (\case ExprInfoType {} -> True; _ -> False))
-  , ("ASTDebug.Expr", (\case ExprInfoType {} -> True; _ -> False))
-  , ("ASTDebug.Simple", (\case ModuleInfoType {} -> True; _ -> False))
-  , ("ASTDebug.Import", (\case ImportInfoType {} -> True; _ -> False))
-  , ("ASTDebug.ImplicitFldCreate", (\case ImplicitFieldInfoType {} -> True; _ -> False))
-  , ("ASTDebug.ImplicitFldExtract", (\case ImplicitFieldInfoType {} -> True; _ -> False))
-  ]
-   
-makeASTDebugTest :: (String, SemanticInfoType IdDom -> Bool) -> Test
-makeASTDebugTest (mod, check)
-  = TestLabel mod $ TestCase $ 
-      do modul <- runGhc (Just libdir) (parseTyped =<< loadModule rootDir mod)
-         let semaInfos = concatMap flattenDebugNode (astDebug' modul)
-         assertBool "The searched semantic element is not found" (any check semaInfos)
-
-flattenDebugNode :: DebugNode dom -> [SemanticInfoType dom]
-flattenDebugNode (TreeNode _ (TreeDebugNode _ sema more)) = sema : concatMap flattenDebugNode more
-flattenDebugNode _ = []
-
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
 makeMultiModuleTest (refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
@@ -388,4 +368,62 @@ checkCorrectlyPrinted workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
-              
+
+
+performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
+performRefactors command workingDir flags target = do 
+  mods <- getModules workingDir
+  runGhc (Just libdir) $ do
+    initGhcFlags
+    useFlags flags
+    useDirs [workingDir]
+    setTargets (map (\mod -> (Target (TargetModule (mkModuleName mod)) True Nothing)) mods)
+    load LoadAllTargets
+    allMods <- getModuleGraph
+    selectedMod <- getModSummary (mkModuleName target)
+    let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
+    targetMod <- parseTyped selectedMod
+    otherMods <- mapM parseTyped otherModules
+    res <- performCommand (readCommand (toFileName workingDir target) command) 
+                          (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
+    return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+                                                   ModuleRemoved m -> (m, Nothing)
+                                            )) r
+                    Left l -> Left l) 
+           $ res
+
+type ParsedModule = Ann AST.Module (Dom RdrName) SrcTemplateStage
+
+parseAST :: ModSummary -> Ghc ParsedModule
+parseAST modSum = do
+  p <- parseModule modSum
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum $ pm_parsed_source p)          
+
+type RenamedModule = Ann AST.Module (Dom GHC.Name) SrcTemplateStage
+
+parseRenamed :: ModSummary -> Ghc RenamedModule
+parseRenamed modSum = do
+  p <- parseModule modSum
+  tc <- typecheckModule p
+  let annots = pm_annotations p
+      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
+  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
+    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
+            runTrf (fst annots) (getPragmaComments $ snd annots)
+              $ trfModuleRename modSum parseTrf
+                  (fromJust $ tm_renamed_source tc) 
+                  (pm_parsed_source p))
+
+performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String String)
+performRefactor command workingDir flags target = 
+  runGhc (Just libdir) $ do
+    initGhcFlags
+    useFlags flags
+    useDirs [workingDir]
+    ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
+  where refact m = performCommand (readCommand (toFileName workingDir target) command) (target,m) []
+        newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
+        newContent (_ : ress) = newContent ress

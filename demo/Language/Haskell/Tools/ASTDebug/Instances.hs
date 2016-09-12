@@ -6,9 +6,9 @@
            , UndecidableInstances 
            , TypeFamilies
            #-}
-module Language.Haskell.Tools.Refactor.ASTDebug.Instances where
+module Language.Haskell.Tools.ASTDebug.Instances where
 
-import Language.Haskell.Tools.Refactor.ASTDebug
+import Language.Haskell.Tools.ASTDebug
 
 import GHC.Generics
 import Control.Reference

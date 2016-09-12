@@ -1,0 +1,28 @@
+name:                haskell-tools-cli
+version:             0.1.3.0
+synopsis:            Command-line frontend for Haskell-tools Refact
+description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
+homepage:            https://github.com/haskell-tools/haskell-tools
+license:             BSD3
+license-file:        LICENSE
+author:              Boldizsar Nemeth
+maintainer:          nboldi@elte.hu
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable ht-refact
+  build-depends:       base                      >=4.9 && <5.0
+                     , containers                >=0.5 && <0.6
+                     , mtl                       >=2.2 && <2.3
+                     , split                     >=0.2 && <1.0
+                     , directory                 >=1.2 && <1.3
+                     , ghc                       >=8.0 && <8.1
+                     , ghc-paths                 >=0.1 && <0.2
+                     , references                >=0.3.2 && <1.0
+                     , haskell-tools-ast         >=0.1.3 && <0.2
+                     , haskell-tools-prettyprint >=0.1.3 && <0.2
+                     , haskell-tools-refactor    >=0.1.3 && <0.2
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  

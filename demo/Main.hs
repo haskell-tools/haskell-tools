@@ -51,8 +51,8 @@ import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Refactor.ASTDebug
-import Language.Haskell.Tools.Refactor.ASTDebug.Instances
+import Language.Haskell.Tools.ASTDebug
+import Language.Haskell.Tools.ASTDebug.Instances
 import Language.Haskell.Tools.PrettyPrint
 
 type ClientId = Int

@@ -48,7 +48,7 @@ install:
 - stack --no-terminal --install-ghc test --only-dependencies
 
 script:
-- stack --no-terminal build --stack-yaml=stack-include-demo.yaml --coverage  --haddock --no-haddock-deps 
+- stack --no-terminal build --stack-yaml=stack-all.yaml --coverage  --haddock --no-haddock-deps 
 - stack --no-terminal test --coverage
 
 after_script:

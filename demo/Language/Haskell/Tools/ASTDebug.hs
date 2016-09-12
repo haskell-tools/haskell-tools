@@ -14,7 +14,7 @@
            , UndecidableInstances
            #-}
 -- | A module for displaying the AST in a tree view.
-module Language.Haskell.Tools.Refactor.ASTDebug where
+module Language.Haskell.Tools.ASTDebug where
 
 import GHC.Generics
 import Control.Reference
@@ -37,7 +37,7 @@ import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import Language.Haskell.Tools.Refactor.RangeDebug
+--import Language.Haskell.Tools.Refactor.RangeDebug
 
 
 data DebugNode dom = TreeNode { _nodeLabel :: String
