@@ -1,4 +1,4 @@
--- | Representation of Haskell modules with imports and exports
+-- | Representation of Haskell modules, imports and exports. Also contains file-level pragmas.
 module Language.Haskell.Tools.AST.Modules where
 
 import Language.Haskell.Tools.AST.Ann
@@ -7,6 +7,8 @@ import Language.Haskell.Tools.AST.Exprs
 import Language.Haskell.Tools.AST.Binds
 import Language.Haskell.Tools.AST.Decls
 
+-- | The representation of a haskell module, that is a separate compilation unit.
+-- It may or may not have a header.
 data Module dom stage
   = Module { _filePragmas :: AnnList FilePragma dom stage
            , _modHead :: AnnMaybe ModuleHead dom stage
@@ -56,7 +58,8 @@ data ModulePragma dom stage
                         }  -- ^ a warning pragma attached to the module
   | ModuleDeprecatedPragma {  _modDeprecatedPragma :: AnnList StringNode dom stage
                            } -- ^ a deprecated pragma attached to the module
-             
+
+-- | The name of the enabled language extension, for example (@ LambdaCase @)
 data LanguageExtension dom stage = LanguageExtension { _langExt :: String }
 
 -- | An import declaration: @import Module.Name@         

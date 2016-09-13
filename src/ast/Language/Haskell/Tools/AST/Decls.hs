@@ -1,4 +1,5 @@
--- | Representation of Haskell AST definitions
+-- | Representation of Haskell AST definitions. These include definition of data types, classes, instances and so on. 
+-- The definition of value bindings are in the Binds module.
 module Language.Haskell.Tools.AST.Decls where
 
 import Language.Haskell.Tools.AST.Binds
@@ -99,13 +100,15 @@ data TypeFamily dom stage
   | DataFamily { _tfHead :: Ann DeclHead dom stage
                , _tfKind :: AnnMaybe KindConstraint dom stage
                } -- ^ Data family declaration
-                  
+
+-- | Type family specification with kinds specification and injectivity.
 data TypeFamilySpec dom stage
   = TypeFamilyKind { _tfSpecKind :: Ann KindConstraint dom stage
                    }
   | TypeFamilyInjectivity { _tfInjectivity :: Ann InjectivityAnn dom stage
                           }
 
+-- | Injectivity annotation for type families (@ = r | r -> a @)
 data InjectivityAnn dom stage
   = InjectivityAnn { _injAnnRes :: Ann Name dom stage
                    , _injAnnDeps :: AnnList Name dom stage
@@ -195,6 +198,7 @@ data GadtConType dom stage
                    , _gadtConResultType :: Ann Type dom stage
                    }
 
+-- | GADT field (like a normal attribute, but can have record syntax)
 data GadtField dom stage
   = GadtNormalField { _gadtFieldType :: Ann Type dom stage
                     } -- ^ Normal GADT field type (@ Int @)
@@ -213,6 +217,7 @@ data FunDep dom stage
            , _funDepRhs :: AnnList Name dom stage
            }
   
+-- | A constructor declaration for a datatype
 data ConDecl dom stage
   = ConDecl      { _conDeclName :: Ann Name dom stage
                  , _conDeclArgs :: AnnList Type dom stage

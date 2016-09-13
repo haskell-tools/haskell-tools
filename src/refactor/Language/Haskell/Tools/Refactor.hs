@@ -75,6 +75,7 @@ useDirs workingDirs = do
   setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }
   return ()
 
+-- | Set the given flags for the GHC session
 useFlags :: [String] -> Ghc [String]
 useFlags args = do 
   let lArgs = map (L noSrcSpan) args
@@ -106,7 +107,7 @@ toFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c ->
 toBootFileName :: String -> String -> FilePath
 toBootFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
 
-
+-- | Load the summary of a module given by the working directory and module name.
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName 
   = do initGhcFlags
@@ -116,8 +117,10 @@ loadModule workingDir moduleName
        load LoadAllTargets
        getModSummary $ mkModuleName moduleName
     
+-- | The final version of our AST, with type infromation added
 type TypedModule = Ann AST.Module IdDom SrcTemplateStage
 
+-- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = do
   p <- parseModule modSum
@@ -132,6 +135,7 @@ parseTyped modSum = do
                          (fromJust $ tm_renamed_source tc) 
                          (pm_parsed_source p)))
 
+-- | Executes a given command on the selected module and given other modules
 performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
                => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
                                   -> [ModuleDom dom] -- ^ Other modules
@@ -144,6 +148,7 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
         selectCommand (RenameDefinition sp str) = renameDefinition' sp str
         selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' sp str
 
+-- | A refactoring command
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
                      | GenerateExports

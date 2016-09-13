@@ -43,7 +43,7 @@ type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModul
 -- | The type of a refactoring
 type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [RefactorChange dom]
 
-
+-- | Change in the project, modification or removal of a module.
 data RefactorChange dom = ContentChanged (ModuleDom dom)
                         | ModuleRemoved String
 
@@ -145,6 +145,7 @@ registeredNamesFromPrelude = GHC.basicKnownKeyNames ++ map GHC.tyConName GHC.wir
 otherNamesFromPrelude :: [String]
 otherNamesFromPrelude 
  -- TODO: extend and revise this list
+ -- TODO: prelude names are simply existing names?? No need to check??
   = ["GHC.Base.Maybe", "GHC.Base.Just", "GHC.Base.Nothing", "GHC.Base.maybe", "GHC.Base.either", "GHC.Base.not"
     , "Data.Tuple.curry", "Data.Tuple.uncurry", "GHC.Base.compare", "GHC.Base.max", "GHC.Base.min", "GHC.Base.id"]
 
@@ -179,6 +180,7 @@ referenceName' makeName n@(GHC.getName -> name)
 
 -- | Reference the name by the shortest suitable import
 referenceBy :: ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> [Ann ImportDecl dom SrcTemplateStage] -> Ann nt dom SrcTemplateStage
+-- TODO: use scope information instead of checking the imports??
 referenceBy makeName name imps = 
   let prefixes = map importQualifier imps
    in makeName (minimumBy (compare `on` (length . concat)) prefixes) name
