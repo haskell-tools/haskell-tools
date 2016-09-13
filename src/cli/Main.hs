@@ -34,23 +34,40 @@ refactorSession args = runGhc (Just libdir) $ flip evalStateT initSession $
   do lift $ initGhcFlags
      workingDirs <- lift $ useFlags args
      lift $ useDirs workingDirs
-     moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
-     lift $ setTargets (map (\(_,mod) -> (Target (TargetModule (mkModuleName mod)) True Nothing)) moduleNames)
-     lift $ load LoadAllTargets
-     allMods <- lift getModuleGraph
-     mods <- lift $ forM allMods (\ms -> do mm <- parseTyped ms
-                                            liftIO $ putStrLn ("Loaded module: " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
-                                            let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
-                                                Just wd = find ((modName ==) . snd) moduleNames 
-                                            return ((fst wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm))
-     modify $ refSessMods .= Map.fromList mods
-     runSession
-  where runSession :: RefactorSession Ghc ()
-        runSession = do cmd <- liftIO $ getLine 
-                        sessionComm <- readSessionCommand cmd
-                        performSessionCommand sessionComm
-                        doExit <- gets (^. exiting)
-                        when (not doExit) runSession
+     if null workingDirs then liftIO $ putStrLn "Usage: ht-refact [ghc-flags] package-pathes"
+                         else do moduleNames <- initializeSession workingDirs
+                                 runSession moduleNames
+     
+  where initializeSession :: [FilePath] -> RefactorSession Ghc [(FilePath, String)]
+        initializeSession workingDirs = do
+          moduleNames <- liftIO $ concat <$> mapM (\wd -> map (wd,) <$> getModules wd) workingDirs
+          lift $ setTargets (map (\(_,mod) -> (Target (TargetModule (mkModuleName mod)) True Nothing)) moduleNames)
+          liftIO $ putStrLn "Compiling modules. This may take some time. Please wait."
+          lift $ load LoadAllTargets
+          allMods <- lift getModuleGraph
+          mods <- lift $ forM allMods (loadModule moduleNames)
+          liftIO $ putStrLn "All modules loaded. Use 'SelectModule module-name' to select a module"
+          modify $ refSessMods .= Map.fromList mods
+          liftIO $ hSetBuffering stdout NoBuffering
+          return moduleNames
+
+        loadModule :: [(String, String)] -> ModSummary -> Ghc ((FilePath, String, IsBoot), TypedModule)
+        loadModule moduleNames ms = 
+          do mm <- parseTyped ms
+             liftIO $ putStrLn ("Loaded module: " ++ (GHC.moduleNameString $ moduleName $ ms_mod ms))
+             let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
+                 Just wd = find ((modName ==) . snd) moduleNames 
+             return ((fst wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm)
+
+        runSession :: [(String, String)] -> RefactorSession Ghc ()
+        runSession moduleNames = do 
+          actualMod <- gets (^. actualMod)
+          liftIO $ putStr (maybe "no-module-selected" (\(_,m,_) -> m) actualMod ++ ">")
+          cmd <- liftIO $ getLine 
+          sessionComm <- readSessionCommand cmd
+          performSessionCommand sessionComm
+          doExit <- gets (^. exiting)
+          when (not doExit) (runSession moduleNames)
 
 data RefactorSessionCommand 
   = LoadModule String
@@ -59,7 +76,7 @@ data RefactorSessionCommand
 
 readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
 readSessionCommand cmd = case splitOn " " cmd of 
-    ["LoadModule", mod] -> return $ LoadModule mod
+    ["SelectModule", mod] -> return $ LoadModule mod
     ["Exit"] -> return Exit
     _ -> do actualMod <- gets (^. actualMod)
             case actualMod of Just (wd,m,_) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
