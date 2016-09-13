@@ -1,6 +1,7 @@
 {-# LANGUAGE ViewPatterns
            , TypeFamilies 
            #-}
+-- | Functions that convert the kind-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Kinds where
 
 import SrcLoc as GHC

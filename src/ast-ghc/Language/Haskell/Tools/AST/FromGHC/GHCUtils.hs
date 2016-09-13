@@ -5,6 +5,7 @@
            , ViewPatterns
            , LambdaCase
            #-}
+-- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
 import Data.List
@@ -74,6 +75,7 @@ getTopLevelId name =
       Nothing -> return Nothing
   where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
+-- | Get names from the GHC AST
 class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
 

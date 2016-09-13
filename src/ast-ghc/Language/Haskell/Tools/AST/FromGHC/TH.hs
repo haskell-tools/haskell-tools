@@ -1,3 +1,4 @@
+-- | Functions that convert the Template-Haskell-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.TH where
 
 import Control.Monad.Reader

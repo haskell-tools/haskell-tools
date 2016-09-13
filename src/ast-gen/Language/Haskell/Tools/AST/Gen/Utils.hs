@@ -1,4 +1,4 @@
--- | Utility methods for generating parts of the ADT for refactorings
+-- | Utility methods for generating parts of the AST for refactorings
 {-# LANGUAGE FlexibleInstances
            , TypeFamilies
            #-}

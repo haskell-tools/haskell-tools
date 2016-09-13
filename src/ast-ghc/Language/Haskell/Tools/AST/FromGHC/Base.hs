@@ -10,6 +10,7 @@
            , AllowAmbiguousTypes
            , TypeApplications
            #-}
+-- | Functions that convert the basic elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Base where
 
 import Control.Monad.Reader

@@ -1,3 +1,4 @@
+-- | Functions that convert the literals of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Literals where
 
 import qualified Data.ByteString.Char8 as BS

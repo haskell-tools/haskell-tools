@@ -3,6 +3,7 @@
            , ScopedTypeVariables
            , AllowAmbiguousTypes
            #-}
+-- | Functions that convert the pattern-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Patterns where
 
 import SrcLoc as GHC

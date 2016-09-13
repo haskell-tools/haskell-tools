@@ -2,6 +2,7 @@
            , ViewPatterns
            , ScopedTypeVariables
            #-}
+-- | Functions that convert the declarations of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
 import qualified GHC

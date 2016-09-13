@@ -4,6 +4,7 @@
            , TypeApplications
            , AllowAmbiguousTypes
            #-}
+-- | Functions that convert the expression-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Data.Maybe

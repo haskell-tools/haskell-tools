@@ -10,6 +10,7 @@
            , TemplateHaskell
            , ViewPatterns
            #-}
+-- | Defines common utilities for using refactorings. Provides an interface for both demo, command line and integrated tools.
 module Language.Haskell.Tools.Refactor where
 
 import Language.Haskell.Tools.AST.FromGHC

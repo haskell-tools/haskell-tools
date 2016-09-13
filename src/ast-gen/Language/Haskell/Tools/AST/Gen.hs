@@ -1,3 +1,4 @@
+-- | Public interface for the modules that generate parts of the AST
 module Language.Haskell.Tools.AST.Gen ( module X ) where
 
 import Language.Haskell.Tools.AST.Gen.Modules as X

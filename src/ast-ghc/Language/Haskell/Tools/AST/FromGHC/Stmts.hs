@@ -2,6 +2,7 @@
            , ViewPatterns
            , TypeFamilies
            #-}
+-- | Functions that convert the statement-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Stmts where
  
 import Data.Maybe
