@@ -18,27 +18,30 @@ import Data.Data
 
 import Control.Reference
 
+
+type Scope = [[Name]]
+
 -- | Semantic info type for any node not 
 -- carrying additional semantic information
 data NoSemanticInfo = NoSemanticInfo 
   deriving (Eq, Data)
 
 -- | Info for expressions that tells which definitions are in scope
-data ScopeInfo = ScopeInfo { _exprScopedLocals :: [[Name]] 
+data ScopeInfo = ScopeInfo { _exprScopedLocals :: Scope 
                            }
   deriving (Eq, Data)
 
 -- | Info corresponding to a name
-data NameInfo n = NameInfo { _nameScopedLocals :: [[Name]]
+data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                            , _nameIsDefined :: Bool
                            , _nameInfo :: n
                            } 
-                | AmbiguousNameInfo { _nameScopedLocals :: [[Name]]
+                | AmbiguousNameInfo { _nameScopedLocals :: Scope
                                     , _nameIsDefined :: Bool
                                     , _ambiguousName :: RdrName
                                     , _ambiguousLocation :: SrcSpan
                                     }
-                | ImplicitNameInfo { _nameScopedLocals :: [[Name]]
+                | ImplicitNameInfo { _nameScopedLocals :: Scope
                                    , _nameIsDefined :: Bool
                                    , _implicitName :: String
                                    , _implicitLocation :: SrcSpan
@@ -47,7 +50,7 @@ data NameInfo n = NameInfo { _nameScopedLocals :: [[Name]]
   deriving (Eq, Data)
 
 -- | Info corresponding to a name that is correctly identified
-data CNameInfo = CNameInfo { _cnameScopedLocals :: [[Name]]
+data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
                            , _cnameIsDefined :: Bool
                            , _cnameInfo :: Id
                            }
@@ -67,7 +70,7 @@ data ImportInfo n = ImportInfo { _importedModule :: Module -- ^ The name and pac
                                } 
   deriving (Eq, Data)
 
--- | Info corresponding to an import declaration
+-- | Info corresponding to an record-wildcard
 data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
                                            } 
   deriving (Eq, Data)
@@ -122,7 +125,7 @@ instance HasIdInfo CNameInfo where
 
 -- | Infos that contain the names that are available in theirs scope
 class HasScopeInfo si where
-  semanticsScope :: si -> [[Name]]
+  semanticsScope :: si -> Scope
 
 instance HasScopeInfo (NameInfo n) where
   semanticsScope = (^. nameScopedLocals)
