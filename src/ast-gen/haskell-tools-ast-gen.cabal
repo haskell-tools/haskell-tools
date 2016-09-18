@@ -17,7 +17,10 @@ library
                      , Language.Haskell.Tools.AST.Gen.Decls
                      , Language.Haskell.Tools.AST.Gen.Binds
                      , Language.Haskell.Tools.AST.Gen.Types
+                     , Language.Haskell.Tools.AST.Gen.Kinds
                      , Language.Haskell.Tools.AST.Gen.Exprs
+                     , Language.Haskell.Tools.AST.Gen.Literals
+                     , Language.Haskell.Tools.AST.Gen.Stmts
                      , Language.Haskell.Tools.AST.Gen.Patterns
                      , Language.Haskell.Tools.AST.Gen.Base
                      , Language.Haskell.Tools.AST.Gen.Utils

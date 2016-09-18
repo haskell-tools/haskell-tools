@@ -174,7 +174,7 @@ data InstBodyDecl dom stage
                          } -- ^ An associated data type implementation (@ data A X = C1 | C2 @)
   | InstBodyGadtDataDecl { _instBodyDataNew :: Ann DataOrNewtypeKeyword dom stage
                          , _instBodyLhsType :: Ann InstanceRule dom stage
-                         , _instBodyDataKind :: AnnMaybe Kind dom stage
+                         , _instBodyDataKind :: AnnMaybe KindConstraint dom stage
                          , _instBodyGadtCons :: AnnList GadtConDecl dom stage
                          , _instBodyDerivings :: AnnMaybe Deriving dom stage
                          } -- ^ An associated data type implemented using GADT style
@@ -198,14 +198,6 @@ data GadtConType dom stage
                    , _gadtConResultType :: Ann Type dom stage
                    }
 
--- | GADT field (like a normal attribute, but can have record syntax)
-data GadtField dom stage
-  = GadtNormalField { _gadtFieldType :: Ann Type dom stage
-                    } -- ^ Normal GADT field type (@ Int @)
-  | GadtNamedField  { _gadtFieldName :: Ann Name dom stage
-                    , _gadtFieldType :: Ann Type dom stage
-                    } -- ^ Named GADT field (@ { _val :: Int } @)
-         
 -- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas  
 data FunDeps dom stage
   = FunDeps { _funDeps :: AnnList FunDep dom stage

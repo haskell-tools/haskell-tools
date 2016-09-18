@@ -16,6 +16,16 @@ import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
+-- | Creates a simple, unqualified name
+mkName :: String -> Ann Name dom SrcTemplateStage
+mkName = mkNormalName . mkSimpleName
+
+mkQualOp :: [String] -> String -> Ann Operator dom SrcTemplateStage
+mkQualOp quals = mkAnn child . NormalOp . mkQualifiedName quals
+
+mkBacktickOp :: [String] -> String -> Ann Operator dom SrcTemplateStage
+mkBacktickOp quals = mkAnn ("`" <> child <> "`") . BacktickOp . mkQualifiedName quals
+
 -- | Creates an annotated qualified operator: @A.B.+@ or @`A.B.mod`@.
 mkQualOp' :: [String] -> GHC.Name -> Ann Operator dom SrcTemplateStage
 mkQualOp' quals n | GHC.isSymOcc (GHC.getOccName n) = mkAnn child $ NormalOp $ mkQualifiedName' quals n
@@ -26,6 +36,9 @@ mkUnqualOp' :: GHC.Name -> Ann Operator dom SrcTemplateStage
 mkUnqualOp' n | GHC.isSymOcc (GHC.getOccName n) = mkAnn child $ NormalOp $ mkSimpleName' n
               | otherwise                       = mkAnn ("`" <> child <> "`") $ BacktickOp $ mkSimpleName' n
   
+mkUnqualOp :: String -> Ann Operator dom SrcTemplateStage
+mkUnqualOp = mkAnn child . NormalOp . mkSimpleName
+
 -- | Creates an annotated qualified (non-operator) binding name: @A.B.f@ or @(A.B.+)@
 mkQualName' :: [String] -> GHC.Name -> Ann Name dom SrcTemplateStage
 mkQualName' quals n | GHC.isSymOcc (GHC.getOccName n) = mkAnn ("(" <> child <> ")") $ ParenName $ mkQualifiedName' quals n
@@ -64,5 +77,9 @@ mkSimpleName :: String -> Ann QualifiedName dom SrcTemplateStage
 mkSimpleName n = mkAnn (child <> child) 
                        (QualifiedName emptyList (mkAnn (fromString n) (UnqualName n)))
 
+mkStringNode :: String -> Ann StringNode dom SrcTemplateStage
+mkStringNode s = mkAnn (fromString s) (StringNode s)
+
 mkModuleName :: String -> Ann ModuleName dom SrcTemplateStage
 mkModuleName s = mkAnn (fromString s) (ModuleName s)
+

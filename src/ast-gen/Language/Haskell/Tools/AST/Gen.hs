@@ -5,7 +5,10 @@ import Language.Haskell.Tools.AST.Gen.Modules as X
 import Language.Haskell.Tools.AST.Gen.Decls as X
 import Language.Haskell.Tools.AST.Gen.Binds as X
 import Language.Haskell.Tools.AST.Gen.Types as X
+import Language.Haskell.Tools.AST.Gen.Kinds as X
 import Language.Haskell.Tools.AST.Gen.Exprs as X
+import Language.Haskell.Tools.AST.Gen.Stmts as X
+import Language.Haskell.Tools.AST.Gen.Literals as X
 import Language.Haskell.Tools.AST.Gen.Patterns as X
 import Language.Haskell.Tools.AST.Gen.Base as X
 import Language.Haskell.Tools.AST.Gen.Utils as X

@@ -24,5 +24,6 @@ data Literal dom stage
                   } -- ^ Primitive double literal (of type @Double#@): @3.14##@
   | PrimCharLit { _charLitValue :: Char 
                 } -- ^ Primitive character literal (of type @Char#@): @'c'#@
-  | PrimStringLit { _stringLitValue :: String }
+  | PrimStringLit { _stringLitValue :: String 
+                  } -- ^ Prmitive string literal (of type @Addr#@): @"xxx"#@
                

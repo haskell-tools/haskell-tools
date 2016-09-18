@@ -42,7 +42,6 @@ makeReferences ''InstBody
 makeReferences ''InstBodyDecl
 makeReferences ''GadtConDecl
 makeReferences ''GadtConType
-makeReferences ''GadtField
 makeReferences ''FunDeps
 makeReferences ''FunDep
 makeReferences ''ConDecl

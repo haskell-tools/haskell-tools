@@ -70,7 +70,6 @@ instance (Domain dom, SourceInfo st) => ASTDebug InstBody dom st
 instance (Domain dom, SourceInfo st) => ASTDebug InstBodyDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug GadtConDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug GadtConType dom st
-instance (Domain dom, SourceInfo st) => ASTDebug GadtField dom st
 instance (Domain dom, SourceInfo st) => ASTDebug FieldWildcard dom st
 instance (Domain dom, SourceInfo st) => ASTDebug FunDeps dom st
 instance (Domain dom, SourceInfo st) => ASTDebug FunDep dom st

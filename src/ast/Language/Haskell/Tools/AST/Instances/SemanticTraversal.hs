@@ -46,7 +46,6 @@ deriveSemanticTraversal ''InstBody
 deriveSemanticTraversal ''InstBodyDecl
 deriveSemanticTraversal ''GadtConDecl
 deriveSemanticTraversal ''GadtConType
-deriveSemanticTraversal ''GadtField
 deriveSemanticTraversal ''FieldWildcard
 deriveSemanticTraversal ''FunDeps
 deriveSemanticTraversal ''FunDep
