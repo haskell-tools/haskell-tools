@@ -48,7 +48,6 @@ The goal of this project is to create developer tools for the functional program
 ## Using GHCi
 
   - use `stack ghci`
-  - currently ghci cannot be used to perform whole refactorings because of a ghci code generation bug in ghc 8.0.1, but this should be fixed soon
 
 ## Test the code
 
