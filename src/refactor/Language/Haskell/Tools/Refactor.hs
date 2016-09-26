@@ -178,15 +178,5 @@ readSrcLoc :: String -> String -> RealSrcLoc
 readSrcLoc fileName s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString fileName) (read line) (read col)
 
-data RefactorSessionState
-  = RefactorSessionState { _refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
-                         , _actualMod :: Maybe (String, String, IsBoot)
-                         , _exiting :: Bool
-                         }
-
 data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
-makeReferences ''RefactorSessionState
-
-initSession :: RefactorSessionState
-initSession = RefactorSessionState Map.empty Nothing False

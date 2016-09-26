@@ -57,6 +57,16 @@ import Language.Haskell.Tools.PrettyPrint
 
 type ClientId = Int
 
+data RefactorSessionState
+  = RefactorSessionState { _refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
+                         , _actualMod :: Maybe (String, String, IsBoot)
+                         }
+
+makeReferences ''RefactorSessionState
+
+initSession :: RefactorSessionState
+initSession = RefactorSessionState Map.empty Nothing
+
 main :: IO ()
 main = do
     args <- getArgs
