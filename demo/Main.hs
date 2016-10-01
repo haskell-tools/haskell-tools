@@ -146,6 +146,8 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (map moduleNameAndContent . Map.assocs . (^. refSessMods))
     let command = analyzeCommand (toFileName dir modName) refact (selection:args)
+    liftIO $ putStrLn $ (toFileName dir modName)
+    liftIO $ putStrLn $ maybe "" (show . getRange . (^. annotation&sourceInfo) . snd) mod
     case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules 
                              case res of
                                Left err -> return $ Just $ ErrorMessage err
@@ -179,7 +181,7 @@ moduleNameAndContent :: ((String,String,IsBoot), mod) -> (String, mod)
 moduleNameAndContent ((_,name,_), mod) = (name, mod)
 
 dataDirs :: FilePath -> FilePath
-dataDirs wd = wd </> "demoSources"
+dataDirs wd = normalise $ wd </> "demoSources"
 
 userDir :: FilePath -> ClientId -> FilePath
 userDir wd id = dataDirs wd </> show id
