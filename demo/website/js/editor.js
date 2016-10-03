@@ -67,6 +67,7 @@ $(function () {
                 createTab(demoname, true);
             } else {
                 tabContents[demoname] = data;
+                selectTab(demoname);
             }
             toServer({ tag : 'ModuleChanged', moduleName: demoname, newContent: data });
         })
