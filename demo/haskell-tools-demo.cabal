@@ -17,7 +17,7 @@ executable haskell-tools-demo
   main-is:             Main.hs
   other-modules:       Language.Haskell.Tools.ASTDebug
                      , Language.Haskell.Tools.ASTDebug.Instances
-  ghc-options:         -with-rtsopts=-M1g
+  ghc-options:         -with-rtsopts=-M1500m
 
   build-depends:       base >=4.8 && <5.0
                      , ghc >=7.10 && <8.1
