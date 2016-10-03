@@ -14,7 +14,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.AST    
-  other-modules:       Language.Haskell.Tools.AST.Modules
+                     , Language.Haskell.Tools.AST.Modules
                      , Language.Haskell.Tools.AST.TH
                      , Language.Haskell.Tools.AST.Decls
                      , Language.Haskell.Tools.AST.Binds

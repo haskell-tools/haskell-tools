@@ -14,7 +14,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Language.Haskell.Tools.AST.FromGHC   
                      , Language.Haskell.Tools.AST.FromGHC.GHCUtils                  
-  other-modules:       Language.Haskell.Tools.AST.FromGHC.Modules
+                     , Language.Haskell.Tools.AST.FromGHC.Modules
                      , Language.Haskell.Tools.AST.FromGHC.TH
                      , Language.Haskell.Tools.AST.FromGHC.Decls
                      , Language.Haskell.Tools.AST.FromGHC.Binds
