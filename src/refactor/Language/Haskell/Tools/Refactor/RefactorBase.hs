@@ -6,6 +6,7 @@
            , FlexibleInstances
            , FlexibleContexts
            , TypeSynonymInstances
+           , MultiWayIf
            #-}
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
@@ -44,27 +45,26 @@ type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModul
 type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [RefactorChange dom]
 
 -- | Change in the project, modification or removal of a module.
-data RefactorChange dom = ContentChanged (ModuleDom dom)
-                        | ModuleRemoved String
+data RefactorChange dom = ContentChanged { fromContentChanged :: (ModuleDom dom) }
+                        | ModuleRemoved { removedModuleName :: String }
 
 -- | Performs the given refactoring, transforming it into a Ghc action
-runRefactor :: (SemanticInfo' dom SameInfoModuleCls ~ ModuleInfo n) 
-            => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
+runRefactor :: (HasModuleInfo dom) => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
 runRefactor mod mods trf = runExceptT $ trf mod mods
 
 -- | Wraps a refactoring that only affects one module. Performs the per-module finishing touches.
-localRefactoring :: HasModuleInfo (SemanticInfo dom Module) => LocalRefactoring dom -> Refactoring dom
+localRefactoring :: HasModuleInfo dom => LocalRefactoring dom -> Refactoring dom
 localRefactoring ref (name, mod) _ 
   = (\m -> [ContentChanged (name, m)]) <$> localRefactoringRes id mod (ref mod)
 
 -- | Transform the result of the local refactoring
-localRefactoringRes :: HasModuleInfo (SemanticInfo dom Module)
+localRefactoringRes :: HasModuleInfo dom
                     => ((UnnamedModule dom -> UnnamedModule dom) -> a -> a) 
                           -> UnnamedModule dom 
                           -> LocalRefactor dom a
                           -> Refactor a
 localRefactoringRes access mod trf
-  = let init = RefactorCtx (semanticsModule $ mod ^. semantics) (mod ^? element&modImports&annList)
+  = let init = RefactorCtx (semanticsModule $ mod ^. semantics) mod (mod ^? element&modImports&annList)
      in flip runReaderT init $ do (mod, newNames) <- runWriterT (fromRefactorT trf)
                                   return $ access (addGeneratedImports newNames) mod
 
@@ -110,6 +110,7 @@ newtype LocalRefactorT dom m a = LocalRefactorT { fromRefactorT :: WriterT [GHC.
 
 -- | The information a refactoring can use
 data RefactorCtx dom = RefactorCtx { refModuleName :: GHC.Module
+                                   , refCtxRoot :: Ann Module dom SrcTemplateStage
                                    , refCtxImports :: [Ann ImportDecl dom SrcTemplateStage] 
                                    }
 
@@ -154,33 +155,32 @@ qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
-referenceName :: (SemanticInfo' dom SameInfoImportCls ~ ImportInfo n, Eq n, GHC.NamedThing n) 
-              => n -> LocalRefactor dom (Ann Name dom SrcTemplateStage)
+referenceName :: (HasImportInfo dom, HasModuleInfo dom) => GHC.Name -> LocalRefactor dom (Ann Name dom SrcTemplateStage)
 referenceName = referenceName' mkQualName'
 
-referenceOperator :: (SemanticInfo' dom SameInfoImportCls ~ ImportInfo n, Eq n, GHC.NamedThing n) 
-                  => n -> LocalRefactor dom (Ann Operator dom SrcTemplateStage)
+referenceOperator :: (HasImportInfo dom, HasModuleInfo dom) => GHC.Name -> LocalRefactor dom (Ann Operator dom SrcTemplateStage)
 referenceOperator = referenceName' mkQualOp'
 
 -- | Create a name that references the definition. Generates an import if the definition is not yet imported.
-referenceName' :: (SemanticInfo' dom SameInfoImportCls ~ ImportInfo n, Eq n, GHC.NamedThing n) 
-               => ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> n -> LocalRefactor dom (Ann nt dom SrcTemplateStage)
-referenceName' makeName n@(GHC.getName -> name) 
+referenceName' :: (HasImportInfo dom, HasModuleInfo dom) 
+               => ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> LocalRefactor dom (Ann nt dom SrcTemplateStage)
+referenceName' makeName name 
   | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
   = return $ makeName [] name -- imported from prelude
   | otherwise 
-  = do RefactorCtx {refCtxImports = imports, refModuleName = thisModule} <- ask
+  = do RefactorCtx {refCtxRoot = mod, refCtxImports = imports, refModuleName = thisModule} <- ask
        if maybe True (thisModule ==) (GHC.nameModule_maybe name) 
          then return $ makeName [] name -- in the same module, use simple name
-         else let possibleImports = filter ((n `elem`) . (\imp -> fromJust $ imp ^? semantics&importedNames)) imports
-               in if null possibleImports 
-                    then do tell [name]
-                            return $ makeName [] name
-                    else return $ referenceBy makeName name possibleImports -- use it according to the best available import
+         else let possibleImports = filter ((name `elem`) . (\imp -> semanticsImported $ imp ^. semantics)) imports
+                  fromPrelude = name `elem` semanticsImplicitImports (mod ^. semantics)
+               in if | fromPrelude -> return $ makeName [] name
+                     | null possibleImports -> do tell [name]
+                                                  return $ makeName [] name
+                     | otherwise -> return $ referenceBy makeName name possibleImports 
+                                     -- use it according to the best available import
 
 -- | Reference the name by the shortest suitable import
 referenceBy :: ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> [Ann ImportDecl dom SrcTemplateStage] -> Ann nt dom SrcTemplateStage
--- TODO: use scope information instead of checking the imports??
 referenceBy makeName name imps = 
   let prefixes = map importQualifier imps
    in makeName (minimumBy (compare `on` (length . concat)) prefixes) name

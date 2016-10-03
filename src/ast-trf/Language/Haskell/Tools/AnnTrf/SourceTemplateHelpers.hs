@@ -14,6 +14,7 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 
 filterList :: (Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom SrcTemplateStage -> AnnList e dom SrcTemplateStage
+-- QUESTION: is it OK? No problem from losing separators?
 filterList pred ls = replaceList (filter pred (ls ^. annListElems)) ls   
        
 -- | Replaces the list with a new one with the given elements, keeping the most common separator as the new one.

@@ -24,3 +24,4 @@ import Language.Haskell.Tools.AST.Base as Exported
 import Language.Haskell.Tools.AST.Ann as Exported
 import Language.Haskell.Tools.AST.Utils.OrdSrcSpan as Exported
 import Language.Haskell.Tools.AST.SemaInfoTypes as Exported
+import Language.Haskell.Tools.AST.SemaInfoClasses as Exported

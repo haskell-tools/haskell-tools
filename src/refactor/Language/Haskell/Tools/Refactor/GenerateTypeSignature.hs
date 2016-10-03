@@ -31,8 +31,7 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 type Ann' e dom = Ann e dom SrcTemplateStage
 type AnnList' e dom = AnnList e dom SrcTemplateStage
-type GenerateSignatureDomain dom = ( Domain dom, HasIdInfo (SemanticInfo' dom SameInfoNameCls), Eq (SemanticInfo' dom SameInfoNameCls)
-                                   , SemanticInfo' dom SameInfoImportCls ~ ImportInfo Id ) 
+type GenerateSignatureDomain dom = ( HasModuleInfo dom, HasIdInfo dom, HasImportInfo dom ) 
 
 generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> LocalRefactoring dom
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
@@ -89,7 +88,7 @@ generateTypeFor prec t
   | (op, [at,rt]) <- splitAppTys t
   , Just tc <- tyConAppTyCon_maybe op
   , isSymOcc (getOccName (getName tc))
-  = wrapParen 0 <$> (mkTyInfix <$> generateTypeFor 10 at <*> referenceOperator (getTCId tc) <*> generateTypeFor 10 rt)
+  = wrapParen 0 <$> (mkTyInfix <$> generateTypeFor 10 at <*> referenceOperator (idName $ getTCId tc) <*> generateTypeFor 10 rt)
   -- tuple types
   | Just (tc, tas) <- splitTyConApp_maybe t
   , isTupleTyCon tc
@@ -109,10 +108,10 @@ generateTypeFor prec t
   = wrapParen 10 <$> (mkTyApp <$> generateTypeFor 10 tf <*> generateTypeFor 11 ta)
   -- type constructor
   | Just tc <- tyConAppTyCon_maybe t
-  = mkTyVar <$> referenceName (getTCId tc)
+  = mkTyVar <$> referenceName (idName $ getTCId tc)
   -- type variable
   | Just tv <- getTyVar_maybe t
-  = mkTyVar <$> referenceName tv
+  = mkTyVar <$> referenceName (idName tv)
   -- forall type
   | (tvs@(_:_), t') <- splitForAllTys t
   = wrapParen (-1) <$> (mkTyForall (map (mkTypeVar' . getName) tvs) <$> generateTypeFor 0 t')
@@ -126,7 +125,7 @@ generateTypeFor prec t
         generateAssertionFor :: GenerateSignatureDomain dom => GHC.Type -> LocalRefactor dom (Ann' AST.Assertion dom)
         generateAssertionFor t 
           | Just (tc, types) <- splitTyConApp_maybe t
-          = mkClassAssert <$> referenceName (getTCId tc) <*> mapM (generateTypeFor 0) types
+          = mkClassAssert <$> referenceName (idName $ getTCId tc) <*> mapM (generateTypeFor 0) types
         -- TODO: infix things
     
 -- | Check whether the definition already has a type signature
@@ -135,7 +134,7 @@ typeSignatureAlreadyExist ls vb =
   getBindingName vb `elem` (map semanticsId $ concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element))
   
 getBindingName :: GenerateSignatureDomain dom => Ann' ValueBind dom -> GHC.Id
-getBindingName vb = case map semanticsId $ nub $ vb ^? bindingName of 
+getBindingName vb = case nub $ map semanticsId $ vb ^? bindingName of 
   [n] -> n
   [] -> error "Trying to generate a signature for a binding with no name"
   _ -> error "Trying to generate a signature for a binding with multiple names"

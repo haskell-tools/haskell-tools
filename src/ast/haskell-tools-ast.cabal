@@ -27,6 +27,7 @@ library
                      , Language.Haskell.Tools.AST.Base
                      , Language.Haskell.Tools.AST.Ann
                      , Language.Haskell.Tools.AST.SemaInfoTypes
+                     , Language.Haskell.Tools.AST.SemaInfoClasses
                    
                      , Language.Haskell.Tools.AST.Instances
                      , Language.Haskell.Tools.AST.Instances.Eq

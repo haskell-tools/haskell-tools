@@ -36,6 +36,10 @@ import Language.Haskell.Tools.Refactor.RenameDefinition
 import Language.Haskell.Tools.Refactor.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 
+import Language.Haskell.Tools.Refactor.DataToNewtype
+import Language.Haskell.Tools.Refactor.IfToGuards
+import Language.Haskell.Tools.Refactor.DollarApp
+
 main :: IO ()
 main = run nightlyTests
 
@@ -63,6 +67,7 @@ functionalTests = map makeReprintTest checkTestCases
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
               ++ map makeMultiModuleTest multiModuleTests
+              ++ map makeMiscRefactorTest miscRefactorTests
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
                           ++ map fst generateSignatureTests 
@@ -276,12 +281,22 @@ wrongExtractBindingTests =
   ]
 
 multiModuleTests =
-  [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor/RenameDefinition/MultiModule", [])
-  , ("RenameDefinition 1:8-1:9 C", "B", "Refactor/RenameDefinition/RenameModule", ["B"])
-  , ("RenameDefinition 3:8-3:9 C", "A", "Refactor/RenameDefinition/RenameModule", ["B"])
-  , ("RenameDefinition 6:1-6:9 hello", "Use", "Refactor/RenameDefinition/SpliceDecls", [])
-  , ("RenameDefinition 5:1-5:5 exprSplice", "Define", "Refactor/RenameDefinition/SpliceExpr", [])
-  , ("RenameDefinition 6:1-6:4 spliceTyp", "Define", "Refactor/RenameDefinition/SpliceType", [])
+  [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor" </> "RenameDefinition" </> "MultiModule", [])
+  , ("RenameDefinition 1:8-1:9 C", "B", "Refactor" </> "RenameDefinition" </> "RenameModule", ["B"])
+  , ("RenameDefinition 3:8-3:9 C", "A", "Refactor" </> "RenameDefinition" </> "RenameModule", ["B"])
+  , ("RenameDefinition 6:1-6:9 hello", "Use", "Refactor" </> "RenameDefinition" </> "SpliceDecls", [])
+  , ("RenameDefinition 5:1-5:5 exprSplice", "Define", "Refactor" </> "RenameDefinition" </> "SpliceExpr", [])
+  , ("RenameDefinition 6:1-6:4 spliceTyp", "Define", "Refactor" </> "RenameDefinition" </> "SpliceType", [])
+  ]
+
+miscRefactorTests =
+  [ ("Refactor.DataToNewtype.Cases", \_ _ -> dataToNewtype)
+  , ("Refactor.IfToGuards.Simple", \wd mod -> ifToGuards (readSrcSpan (toFileName wd mod) "3:11-3:33"))
+  , ("Refactor.DollarApp.FirstSingle", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:12"))
+  , ("Refactor.DollarApp.FirstMulti", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:16"))
+  , ("Refactor.DollarApp.InfixOperator", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:16"))
+  , ("Refactor.DollarApp.AnotherOperator", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:15"))
+  , ("Refactor.DollarApp.ImportDollar", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "6:5-6:12"))
   ]
 
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
@@ -335,6 +350,23 @@ checkCorrectlyTransformed command workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
+makeMiscRefactorTest :: (String, FilePath -> String -> LocalRefactoring IdDom) -> Test
+makeMiscRefactorTest (moduleName, refact)
+  = TestLabel moduleName $ TestCase $
+      do expected <- loadExpected True rootDir moduleName
+         res <- testRefactor (localRefactoring (refact rootDir moduleName)) moduleName
+         assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
+                                                                    (mapRight standardizeLineEndings res)
+        
+testRefactor :: Refactoring IdDom -> String -> IO (Either String String)
+testRefactor refact moduleName 
+  = runGhc (Just libdir) $ do
+      initGhcFlags
+      useDirs [rootDir]
+      mod <- loadModule rootDir moduleName >>= parseTyped
+      res <- runRefactor (toFileName rootDir moduleName, mod) [] refact 
+      case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
+                  Left err -> return $ Left err
 
 checkTransformFails :: String -> String -> String -> IO ()
 checkTransformFails command workingDir moduleName

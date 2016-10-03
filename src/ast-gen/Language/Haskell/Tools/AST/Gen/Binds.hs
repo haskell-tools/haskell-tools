@@ -80,7 +80,7 @@ mkGuardedRhss :: [Ann GuardedRhs dom SrcTemplateStage] -> Ann Rhs dom SrcTemplat
 mkGuardedRhss = mkAnn child . GuardedRhss . mkAnnList indentedList
 
 mkGuardedRhs :: [Ann RhsGuard dom SrcTemplateStage] -> Ann Expr dom SrcTemplateStage -> Ann GuardedRhs dom SrcTemplateStage
-mkGuardedRhs guards expr = mkAnn ("| " <> child <> child) $ GuardedRhs (mkAnnList (listSep ", ") guards) expr
+mkGuardedRhs guards expr = mkAnn ("| " <> child <> " = " <> child) $ GuardedRhs (mkAnnList (listSep ", ") guards) expr
 
 mkGuardBind :: Ann Pattern dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann RhsGuard dom SrcTemplateStage
 mkGuardBind pat expr = mkAnn (child <> " <- " <> child) $ GuardBind pat expr

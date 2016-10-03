@@ -16,7 +16,7 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-type DomGenerateExports dom = (Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls))
+type DomGenerateExports dom = (Domain dom, HasNameInfo dom)
 
 -- | Creates an export list that imports standalone top-level definitions with all of their contained definitions
 generateExports :: DomGenerateExports dom => LocalRefactoring dom

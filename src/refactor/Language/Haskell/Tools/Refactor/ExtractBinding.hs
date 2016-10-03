@@ -31,8 +31,7 @@ import Debug.Trace
 type Ann' e dom = Ann e dom SrcTemplateStage 
 type AnnMaybe' e dom = AnnMaybe e dom SrcTemplateStage 
 
-type ExtractBindingDomain dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls)
-                                , HasScopeInfo (SemanticInfo' dom SameInfoExprCls) )
+type ExtractBindingDomain dom = ( Domain dom, HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom )
 
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod

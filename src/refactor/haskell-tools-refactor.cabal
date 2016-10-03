@@ -19,6 +19,9 @@ library
                      , Language.Haskell.Tools.Refactor.RenameDefinition
                      , Language.Haskell.Tools.Refactor.ExtractBinding
                      , Language.Haskell.Tools.Refactor.RefactorBase
+                     , Language.Haskell.Tools.Refactor.DataToNewtype
+                     , Language.Haskell.Tools.Refactor.IfToGuards
+                     , Language.Haskell.Tools.Refactor.DollarApp
                      , Language.Haskell.Tools.Refactor.GetModules
   build-depends:       base                      >=4.9 && <5.0
                      , ghc                       >=8.0 && <8.1

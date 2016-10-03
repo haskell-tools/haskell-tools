@@ -6,18 +6,18 @@
            #-}
 module Language.Haskell.Tools.AST.SemaInfoTypes where
 
-import Name
-import Id
-import Module
-import SrcLoc
-import RdrName
-import Outputable
+import Name as GHC
+import BasicTypes as GHC
+import Id as GHC
+import Module as GHC
+import SrcLoc as GHC
+import RdrName as GHC
+import Outputable as GHC
 
 import Data.List
 import Data.Data
 
 import Control.Reference
-
 
 type Scope = [[Name]]
 
@@ -53,18 +53,19 @@ data NameInfo n = NameInfo { _nameScopedLocals :: Scope
 data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
                            , _cnameIsDefined :: Bool
                            , _cnameInfo :: Id
+                           , _cnameFixity :: Maybe GHC.Fixity
                            }
   deriving (Eq, Data)
 
 -- | Info for the module element
-data ModuleInfo n = ModuleInfo { _defModuleName :: Module 
+data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module 
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
                                , _implicitNames :: [n] -- ^ Implicitely imported names
                                } 
   deriving (Eq, Data)
 
 -- | Info corresponding to an import declaration
-data ImportInfo n = ImportInfo { _importedModule :: Module -- ^ The name and package of the imported module
+data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
                                , _importedNames :: [n] -- ^ Names actually imported from the module.
                                } 
@@ -84,7 +85,7 @@ instance Outputable n => Show (NameInfo n) where
   show (ImplicitNameInfo locals defined nameInfo span) = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
 
 instance Show CNameInfo where
-  show (CNameInfo locals defined nameInfo) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
+  show (CNameInfo locals defined nameInfo fixity) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
 
 instance Outputable n => Show (ModuleInfo n) where
   show (ModuleInfo mod isboot imp) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ ")"
@@ -105,54 +106,6 @@ makeReferences ''CNameInfo
 makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
 makeReferences ''ImplicitFieldInfo
-
--- | Infos that may have a name that can be extracted
-class HasNameInfo si where
-  semanticsName :: si -> Maybe Name
-
-instance HasNameInfo (NameInfo Name) where
-  semanticsName = (^? nameInfo)
-
-instance HasNameInfo CNameInfo where
-  semanticsName = fmap idName . (^? cnameInfo)
-
--- | Infos that may have a typed name that can be extracted
-class HasIdInfo si where
-  semanticsId :: si -> Id
-
-instance HasIdInfo CNameInfo where
-  semanticsId = (^. cnameInfo)
-
--- | Infos that contain the names that are available in theirs scope
-class HasScopeInfo si where
-  semanticsScope :: si -> Scope
-
-instance HasScopeInfo (NameInfo n) where
-  semanticsScope = (^. nameScopedLocals)
-
-instance HasScopeInfo CNameInfo where
-  semanticsScope = (^. cnameScopedLocals)
-
-instance HasScopeInfo ScopeInfo where
-  semanticsScope = (^. exprScopedLocals)
-
--- | Infos that store if they were used to define a name
-class HasDefiningInfo si where
-  semanticsDefining :: si -> Bool
-
-instance HasDefiningInfo (NameInfo n) where
-  semanticsDefining = (^. nameIsDefined)
-
-instance HasDefiningInfo CNameInfo where
-  semanticsDefining = (^. cnameIsDefined)
-
-class HasModuleInfo si where
-  semanticsModule :: si -> Module
-  isBootModule :: si -> Bool
-
-instance HasModuleInfo (ModuleInfo n) where
-  semanticsModule = (^. defModuleName)
-  isBootModule = (^. defIsBootModule)
 
 -- | Semantic and source code related information for an AST node.
 data NodeInfo sema src 

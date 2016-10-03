@@ -33,9 +33,8 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace
 
-type DomainRenameDefinition dom = ( Domain dom, HasNameInfo (SemanticInfo' dom SameInfoNameCls), Data (SemanticInfo' dom SameInfoNameCls)
-                                  , HasScopeInfo (SemanticInfo' dom SameInfoNameCls), HasDefiningInfo (SemanticInfo' dom SameInfoNameCls)
-                                  , SemanticInfo' dom SameInfoWildcardCls ~ ImplicitFieldInfo, HasModuleInfo (SemanticInfo dom Module) )
+type DomainRenameDefinition dom = ( HasNameInfo dom, HasScopeInfo dom, HasDefiningInfo dom
+                                  , HasImplicitFieldsInfo dom, HasModuleInfo dom )
 
 renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Refactoring dom
 renameDefinition' sp str mod mods
@@ -43,7 +42,7 @@ renameDefinition' sp str mod mods
       Just name -> do let sameNames = bindsWithSameName name (snd mod ^? biplateRef) 
                       renameDefinition name sameNames str mod mods
         where bindsWithSameName :: GHC.Name -> [Ann FieldWildcard dom SrcTemplateStage] -> [GHC.Name]
-              bindsWithSameName name wcs = catMaybes $ map ((lookup name) . (^. semantics&implicitFieldBindings)) wcs
+              bindsWithSameName name wcs = catMaybes $ map ((lookup name) . semanticsImplicitFlds . (^. semantics)) wcs
       Nothing -> case getNodeContaining sp (snd mod) of
                    Just modName -> renameModule (modName ^. element&moduleNameString) str mod mods
                    Nothing -> refactError "No name is selected"

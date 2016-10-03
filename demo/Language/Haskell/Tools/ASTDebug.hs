@@ -157,10 +157,11 @@ instance InspectableName n => AssocData (NameInfo n) where
                                                      ]
 instance AssocData CNameInfo where
   assocName (CNameInfo {}) = "CNameInfo"
-  toAssoc (CNameInfo locals defined nameInfo) = [ ("name", inspect nameInfo)
-                                                , ("isDefined", show defined)
-                                                , ("namesInScope", inspectScope locals) 
-                                                ]
+  toAssoc (CNameInfo locals defined nameInfo fixity) = [ ("name", inspect nameInfo)
+                                                       , ("isDefined", show defined)
+                                                       , ("fixity", maybe "" (showSDocUnsafe . ppr) fixity) 
+                                                       , ("namesInScope", inspectScope locals) 
+                                                       ]
 
 instance InspectableName n => AssocData (ModuleInfo n) where
   assocName (ModuleInfo {}) = "ModuleInfo"

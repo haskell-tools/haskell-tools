@@ -83,3 +83,9 @@ mkStringNode s = mkAnn (fromString s) (StringNode s)
 mkModuleName :: String -> Ann ModuleName dom SrcTemplateStage
 mkModuleName s = mkAnn (fromString s) (ModuleName s)
 
+mkDataKeyword :: Ann DataOrNewtypeKeyword dom SrcTemplateStage
+mkDataKeyword = mkAnn "data" DataKeyword
+
+mkNewtypeKeyword :: Ann DataOrNewtypeKeyword dom SrcTemplateStage
+mkNewtypeKeyword = mkAnn "newtype" NewtypeKeyword
+

@@ -144,6 +144,16 @@ isInside :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
 isInside rng nd = case getRange nd of RealSrcSpan sp -> sp `containsSpan` rng
                                       _              -> False
 
+-- | Get all nodes that are contained in a given source range
+nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage), SourceInfo stage) 
+                    => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
+nodesContained rng = biplateRef & filtered (isContained rng) 
+
+-- | Return true if the node contains a given range
+isContained :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
+isContained rng nd = case getRange nd of RealSrcSpan sp -> rng `containsSpan` sp
+                                         _              -> False
+
 -- | Get the nodes that have exactly the given range 
 nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) 
                => RealSrcSpan -> Simple Traversal (Ann node dom stage) (Ann inner dom stage)

@@ -9,13 +9,13 @@ The goal of this project is to create developer tools for the functional program
 
 **[Check out our demo](http://haskelltools.org)**
 
-## Installation
+## Installation (last release from Hackage)
 
   - Make sure you have the latest [haskell-platform](https://www.haskell.org/platform/)
-  - Use `stack install haskell-tools-refactor` or `cabal install haskell-tools-refactor` to install the library. Also install `haskell-tools-cli` or `haskell-tools-demo` to try the command line interface, or to setup the demo for yourself.
-    - On Windows you might have to install `old-time` with Cygwin or MinGW.
+  - On Linux you might need to install libz-dev and libgmp-dev (`sudo apt-get install libz-dev libgmp-dev`).
+  - Use `cabal install haskell-tools-refactor` to install the library. Also install `haskell-tools-cli` or `haskell-tools-demo` to try the command line interface, or to setup the demo for yourself.
 
-## Installation from source
+## Installation (last build from source)
 
   - *Recommended*: use [stack](https://docs.haskellstack.org/en/stable/README/) for building the project
     - `stack --stack-yaml=stack-all.yaml setup`
@@ -47,7 +47,7 @@ When the interactive session is started:
   - Install a web server, for example [apache](https://httpd.apache.org/).
   - Install the `haskell-tools-demo` package.
   - Host the website in the `demo/website` folder.
-  - Use `haskell-tools-demo working-dir` command to start the demo service.
+  - Use `haskell-tools-demo <working-dir>` command to start the demo service.
   - Visit `localhost` in the browser.
 
 ## Using GHCi
@@ -64,12 +64,13 @@ When the interactive session is started:
 ## Known limitations
 
   - Generate type signature does not generate `ScopedTypeVariables` extension and explicit `forall` in cases when it would be needed to create a compilable result. These have to be added manually.
+  - Some semantic information is missing, for example, kinds of type variables, types of variables local to TH splices, fixity of locally defined operators.
   - The following extensions are not supported: `UnicodeSyntax`, `CPP`
 
 ## Plans
-
-  - Editor support in the winter of 2016
-  - Wider variety of refactorings and Template Haskell support in the spring of 2017
+  
+  - 2016: Refinements in project handling.
+  - Editor support in early 2017. Better layout handling. Refinement and wider variety of refactorings.
 
 ## Repository contents
 

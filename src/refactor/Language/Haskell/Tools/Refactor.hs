@@ -102,11 +102,11 @@ initGhcFlags = do
 
 -- | Translates module name and working directory into the name of the file where the given module should be defined
 toFileName :: String -> String -> FilePath
-toFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
+toFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
 
 -- | Translates module name and working directory into the name of the file where the boot module should be defined
 toBootFileName :: String -> String -> FilePath
-toBootFileName workingDir mod = workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
+toBootFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
 
 -- | Load the summary of a module given by the working directory and module name.
 loadModule :: String -> String -> Ghc ModSummary
@@ -137,7 +137,7 @@ parseTyped modSum = do
                          (pm_parsed_source p)))
 
 -- | Executes a given command on the selected module and given other modules
-performCommand :: (SemanticInfo' dom SameInfoModuleCls ~ AST.ModuleInfo n, DomGenerateExports dom, OrganizeImportsDomain dom n, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
+performCommand :: (HasModuleInfo dom, DomGenerateExports dom, OrganizeImportsDomain dom, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
                => RefactorCommand -> ModuleDom dom -- ^ The module in which the refactoring is performed
                                   -> [ModuleDom dom] -- ^ Other modules
                                   -> Ghc (Either String [RefactorChange dom])
@@ -180,3 +180,12 @@ readSrcLoc fileName s = case splitOn ":" s of
 
 data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
+tryRefactor :: Refactoring IdDom -> String -> IO ()
+tryRefactor refact moduleName 
+  = runGhc (Just libdir) $ do
+      initGhcFlags
+      useDirs ["."]
+      mod <- loadModule "." moduleName >>= parseTyped
+      res <- runRefactor (toFileName "." moduleName, mod) [] refact 
+      case res of Right r -> liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r
+                  Left err -> liftIO $ putStrLn err

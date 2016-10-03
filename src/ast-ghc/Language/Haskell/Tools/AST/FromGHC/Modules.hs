@@ -12,7 +12,7 @@ module Language.Haskell.Tools.AST.FromGHC.Modules where
 import Control.Reference hiding (element)
 import Data.Maybe
 import Data.Function (on)
-import Data.List
+import Data.List as List
 import Data.Char
 import Data.Map as Map hiding (map, filter)
 import Data.IORef
@@ -61,6 +61,7 @@ import TcRnDriver as GHC
 import TcExpr as GHC
 import TcType as GHC
 import UniqSupply as GHC
+import UniqFM as GHC
 import HeaderInfo as GHC
 import Language.Haskell.TH.LanguageExtensions
 
@@ -80,17 +81,22 @@ addTypeInfos :: LHsBinds Id -> Ann AST.Module (Dom GHC.Name) RangeStage -> Ghc (
 addTypeInfos bnds mod = do
   ut <- liftIO mkUnknownType
   let getType = getType' ut
+  fixities <- getFixities
+  let createCName sc def id = CNameInfo sc def id fixity
+        where fixity = if any (any ((getOccName id ==) . getOccName)) (init sc) 
+                          then Nothing 
+                          else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> mod == (nameModule $ varName id) && occ == getOccName id) fixities
   evalStateT (semaTraverse 
     (AST.SemaTrf
-      (\case (NameInfo sc def ni) -> lift $ CNameInfo sc def <$> getType ni 
-             (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+      (\case (NameInfo sc def ni) -> lift $ createCName sc def <$> getType ni 
+             (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ createCName sc d id
              (AmbiguousNameInfo sc d rdr l) | otherwise -> error $ "Ambiguous name missing: " ++ showSDocUnsafe (ppr rdr) ++ ", at: " ++ show l
-             (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ CNameInfo sc d id
+             (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ createCName sc d id
              (ImplicitNameInfo sc d str (RealSrcSpan l)) | otherwise
                 -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` l) . fst))
                       case rest of [] -> error $ "Implicit name missing: " ++ str ++ ", at: " ++ show l
                                    ((_,id):more) -> do put (none ++ more)
-                                                       return $ CNameInfo sc d id)
+                                                       return $ createCName sc d id)
       pure
       (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType access <*> mapM getType used)
       (\(ModuleInfo mod isboot imps) -> lift $ ModuleInfo mod isboot <$> mapM getType imps)
@@ -106,6 +112,13 @@ addTypeInfos bnds mod = do
         mkUnknownType = do 
           tUnique <- mkSplitUniqSupply 'x'
           return $ mkTyVarTy $ mkVanillaGlobal (mkSystemName (uniqFromSupply tUnique) (mkDataOcc "TypeNotFound")) (mkTyConTy starKindTyCon)
+
+        getFixities :: Ghc [(Module, (OccName, GHC.Fixity))]
+        getFixities = do env <- getSession
+                         pit <- liftIO $ eps_PIT <$> hscEPS env
+                         let hpt = hsc_HPT env
+                             ifaces = moduleEnvElts pit ++ map hm_iface (eltsUFM hpt)
+                         return $ concatMap (\mi -> map (mi_module mi, ) $ mi_fixities mi) ifaces
 
 extractExprIds :: LHsBinds Id -> [Located Id]
         -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar
@@ -246,7 +259,7 @@ trfExport = trfMaybeLocNoSema $ \case
 trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl (Dom r) RangeStage)
 trfImports (filter (not . ideclImplicit . unLoc) -> imps) 
   = AnnList <$> importDefaultLoc <*> mapM trfImport imps
-  where importDefaultLoc = noSemaInfo . AST.ListPos (if Data.List.null imps then "\n" else "") "" "\n" True . srcSpanEnd 
+  where importDefaultLoc = noSemaInfo . AST.ListPos (if List.null imps then "\n" else "") "" "\n" True . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl (Dom r) RangeStage)

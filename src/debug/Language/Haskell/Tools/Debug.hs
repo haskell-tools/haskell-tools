@@ -27,7 +27,6 @@ import Language.Haskell.Tools.RangeDebug.Instances
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-
 -- | Should be only used for testing
 demoRefactor :: String -> String -> [String] -> String -> IO ()
 demoRefactor command workingDir args moduleName = 
