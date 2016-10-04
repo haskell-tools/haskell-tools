@@ -292,11 +292,11 @@ multiModuleTests =
 miscRefactorTests =
   [ ("Refactor.DataToNewtype.Cases", \_ _ -> dataToNewtype)
   , ("Refactor.IfToGuards.Simple", \wd mod -> ifToGuards (readSrcSpan (toFileName wd mod) "3:11-3:33"))
-  , ("Refactor.DollarApp.FirstSingle", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:12"))
-  , ("Refactor.DollarApp.FirstMulti", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:16"))
-  , ("Refactor.DollarApp.InfixOperator", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:16"))
-  , ("Refactor.DollarApp.AnotherOperator", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "5:5-5:15"))
-  , ("Refactor.DollarApp.ImportDollar", \wd mod -> dollarApp4 (readSrcSpan (toFileName wd mod) "6:5-6:12"))
+  , ("Refactor.DollarApp.FirstSingle", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:12"))
+  , ("Refactor.DollarApp.FirstMulti", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:16"))
+  , ("Refactor.DollarApp.InfixOperator", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:16"))
+  , ("Refactor.DollarApp.AnotherOperator", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:15"))
+  , ("Refactor.DollarApp.ImportDollar", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "6:5-6:12"))
   ]
 
 makeMultiModuleTest :: (String, String, String, [String]) -> Test
