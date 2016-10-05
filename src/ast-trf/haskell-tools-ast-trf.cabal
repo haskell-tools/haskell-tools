@@ -1,5 +1,5 @@
 name:                haskell-tools-ast-trf
-version:             0.1.3.0
+version:             0.2.0.0
 synopsis:            Conversions on Haskell-Tools AST to prepare for refactorings
 description:         Converts the Haskell-Tools AST between different versions to have source annotations that help refactorings. Have transformations that convert from ranges to range templates and then to source templates. The AST can be modified correctly when it has source templates. Every syntactically correct program can be transformed into source template form. Also have a transformation to put comments to their places.
 homepage:            https://github.com/nboldi/haskell-tools
@@ -20,7 +20,7 @@ library
                      , Language.Haskell.Tools.AnnTrf.PlaceComments  
   build-depends:       base                 >=4.9   && <5.0
                      , ghc                  >=8.0   && <8.1
-                     , haskell-tools-ast    >=0.1.3 && <1.0
+                     , haskell-tools-ast    >=0.2   && <0.3
                      , uniplate             >=1.6   && <2.0
                      , references           >=0.3.2 && <1.0
                      , mtl                  >=2.2   && <2.3
