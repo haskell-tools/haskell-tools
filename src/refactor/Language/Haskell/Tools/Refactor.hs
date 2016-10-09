@@ -98,7 +98,7 @@ initGhcFlags = do
              , ghcMode = CompManager 
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
              }
-  return ()
+  return () 
 
 -- | Translates module name and working directory into the name of the file where the given module should be defined
 toFileName :: String -> String -> FilePath
@@ -145,9 +145,14 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
         selectCommand GenerateExports = localRefactoring generateExports 
-        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' sp
-        selectCommand (RenameDefinition sp str) = renameDefinition' sp str
-        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' sp str
+        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctSp mod sp)
+        selectCommand (RenameDefinition sp str) = renameDefinition' (correctSp mod sp) str
+        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctSp mod sp) str
+
+        correctSp mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
+                                         (updateSrcFile fileName $ realSrcSpanEnd sp)
+        fileName = case srcSpanStart $ getRange (snd mod) of RealSrcLoc loc -> srcLocFile loc 
+        updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc) 
 
 -- | A refactoring command
 data RefactorCommand = NoRefactor 
@@ -169,6 +174,7 @@ analyzeCommand _ "GenerateExports" _ = GenerateExports
 analyzeCommand fileName "GenerateSignature" [sp] = GenerateSignature (readSrcSpan fileName sp)
 analyzeCommand fileName "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan fileName sp) newName
 analyzeCommand fileName "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan fileName sp) newName
+analyzeCommand _ ref _ = error $ "Unknown command: " ++ ref
 
 readSrcSpan :: String -> String -> RealSrcSpan
 readSrcSpan fileName s = case splitOn "-" s of

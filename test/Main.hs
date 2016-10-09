@@ -412,8 +412,8 @@ performRefactors command workingDir flags target = do
   runGhc (Just libdir) $ do
     initGhcFlags
     useFlags flags
-    useDirs [workingDir]
-    setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) mods)
+    useDirs (concatMap fst mods)
+    setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap snd mods))
     load LoadAllTargets
     allMods <- getModuleGraph
     selectedMod <- getModSummary (GHC.mkModuleName target)
