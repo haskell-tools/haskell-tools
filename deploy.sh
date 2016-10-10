@@ -19,21 +19,16 @@ echo "Starting deploy"
 # Clone the existing gh-pages for this repo into out/
 # Create a new empty branch if gh-pages doesn't exist yet (should only happen on first deply)
 git clone https://github.com/haskell-tools/haskell-tools.github.io out
-cd out
-git checkout master
 
 # Clean out existing contents
-rm -rf **/* || exit 0
+rm -rf out/**/* || exit 0
 
 # Copy generated haddock documentation
-cp .stack-work/install/x86_64-linux/nightly-2016-09-10/8.0.1/doc api
+cp .stack-work/install/x86_64-linux/nightly-2016-09-10/8.0.1/doc out/api
+cd out
 
-# Now let's go have some fun with the cloned repo
 git config user.name "Travis CI"
 git config user.email "nboldi@elte.hu"
 
-# Commit the "changes", i.e. the new version.
-# The delta will show diffs between new and old versions.
 git add .
-
 git push -f -q https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io &2>/dev/null
