@@ -3,6 +3,9 @@ set -e # Exit with nonzero exit code if anything fails
 
 SOURCE_BRANCH="master"
 
+# remove this
+echo $GITHUB_API_KEY
+
 if [ -n "$GITHUB_API_KEY" ]; then
     echo "No API key given, skipping deploy"
     exit 0
@@ -35,6 +38,5 @@ git config user.email "nboldi@caesar.elte.hu"
 # Commit the "changes", i.e. the new version.
 # The delta will show diffs between new and old versions.
 git add .
-git commit -m "Deploy to GitHub Pages: ${SHA}"
 
 git push -f -q https://haskell-tools:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io &2>/dev/null
