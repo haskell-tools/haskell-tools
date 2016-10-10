@@ -3,10 +3,7 @@ set -e # Exit with nonzero exit code if anything fails
 
 SOURCE_BRANCH="master"
 
-# remove this
-echo $GITHUB_API_KEY
-
-if [ -n "$GITHUB_API_KEY" ]; then
+if ! [ -n "$GITHUB_API_KEY" ]; then
     echo "No API key given, skipping deploy"
     exit 0
 fi
@@ -32,11 +29,11 @@ rm -rf **/* || exit 0
 cp .stack-work/install/x86_64-linux/nightly-2016-09-10/8.0.1/doc api
 
 # Now let's go have some fun with the cloned repo
-git config user.name "haskell-tools"
-git config user.email "nboldi@caesar.elte.hu"
+git config user.name "Travis CI"
+git config user.email "nboldi@elte.hu"
 
 # Commit the "changes", i.e. the new version.
 # The delta will show diffs between new and old versions.
 git add .
 
-git push -f -q https://haskell-tools:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io &2>/dev/null
+git push -f -q https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io &2>/dev/null
