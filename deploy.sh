@@ -31,13 +31,7 @@ git config user.name "Travis CI"
 git config user.email "nboldi@elte.hu"
 git config push.default simple
 
-echo "Configured git"
-
 git add .
 git commit -m "Updating the API documentation"
 
-echo "Commited to git"
-
-git push -f -q https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io # &2>/dev/null
-
-echo "Pushed to git"
+git push -f -q https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io &2>/dev/null
