@@ -9,10 +9,10 @@ if [ -n "$GITHUB_API_KEY" ]; then
 fi
 
 # Pull requests and commits to other branches shouldn't try to deploy, just build to verify
-if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "master" ]; then
-    echo "Skipping deploy"
-    exit 0
-fi
+# if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "master" ]; then
+#     echo "Skipping deploy"
+#     exit 0
+# fi
 
 echo "Starting deploy"
 
