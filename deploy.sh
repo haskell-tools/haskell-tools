@@ -30,7 +30,7 @@ cd out
 git config user.name "Travis CI"
 git config user.email "nboldi@elte.hu"
 git config push.default simple
-git remote set-url origin https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io
+git remote set-url origin https://haskell-tools-deploy:$GITHUB_API_KEY@github.com/haskell-tools/haskell-tools.github.io.git
 
 git add .
 git commit -m "Updating the API documentation"
