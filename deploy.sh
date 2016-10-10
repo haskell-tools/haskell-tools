@@ -34,4 +34,4 @@ git config push.default simple
 git add .
 git commit -m "Updating the API documentation"
 
-echo "$GITHUB_API_KEY\n" | git push -f https://haskell-tools-deploy@github.com/haskell-tools/haskell-tools.github.io.git
+echo "$GITHUB_API_KEY" | git push -f https://haskell-tools-deploy@github.com/haskell-tools/haskell-tools.github.io.git
