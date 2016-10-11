@@ -16,18 +16,13 @@ SOURCE_BRANCH="master"
 
 echo "Starting deploy"
 
-openssl aes-256-cbc -K $encrypted_961cdb62d58f_key -iv $encrypted_961cdb62d58f_iv -in id_rsa.enc -out id_rsa -d
+# Decrypt the private key using travis encrypted file service
+openssl aes-256-cbc -K $encrypted_961cdb62d58f_key -iv $encrypted_961cdb62d58f_iv -in deploykey.enc -out deploykey -d
+chmod 600 deploykey
 
-echo "key decrypted"
-
-chmod 600 id_rsa
+# Start an ssh session and add the private key
 eval `ssh-agent -s`
-
-echo "ssh-agent"
-
-ssh-add id_rsa
-
-echo "ssh added"
+ssh-add deploykey
 
 # Clone the existing repo into out/
 git clone git@github.com:haskell-tools/haskell-tools.github.io out
