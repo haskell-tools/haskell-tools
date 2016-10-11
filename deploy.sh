@@ -3,10 +3,10 @@ set -e # Exit with nonzero exit code if anything fails
 
 SOURCE_BRANCH="master"
 
-if ! [ -n "$GITHUB_API_KEY" ]; then
-    echo "No API key given, skipping deploy"
-    exit 0
-fi
+# if ! [ -n "$GITHUB_API_KEY" ]; then
+#     echo "No API key given, skipping deploy"
+#     exit 0
+# fi
 
 # Pull requests and commits to other branches shouldn't try to deploy, just build to verify
 # if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "master" ]; then
@@ -16,9 +16,13 @@ fi
 
 echo "Starting deploy"
 
-# Clone the existing gh-pages for this repo into out/
-# Create a new empty branch if gh-pages doesn't exist yet (should only happen on first deply)
-git clone https://github.com/haskell-tools/haskell-tools.github.io out
+openssl aes-256-cbc -K $encrypted_961cdb62d58f_key -iv $encrypted_961cdb62d58f_iv -in id_rsa.enc -out id_rsa -d
+chmod 600 id_rsa
+eval `ssh-agent -s`
+ssh-add id_rsa
+
+# Clone the existing repo into out/
+git clone git@github.com:haskell-tools/haskell-tools.github.io out
 
 # Clean out existing contents
 rm -rf out/**/* || exit 0
@@ -34,4 +38,6 @@ git config push.default simple
 git add .
 git commit -m "Updating the API documentation"
 
-echo $GITHUB_API_KEY | git push -f https://haskell-tools-deploy@github.com/haskell-tools/haskell-tools.github.io.git
+
+
+git push -f
