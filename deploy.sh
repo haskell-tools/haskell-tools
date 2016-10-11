@@ -4,10 +4,10 @@ set -e # Exit with nonzero exit code if anything fails
 SOURCE_BRANCH="master"
 
 # Pull requests and commits to other branches shouldn't try to deploy
-# if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "master" ]; then
-#     echo "Skipping deploy"
-#     exit 0
-# fi
+if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "master" ]; then
+    echo "Skipping deploy"
+    exit 0
+fi
 
 echo "Starting deploy"
 
@@ -34,5 +34,5 @@ git config user.email "nboldi@caesar.elte.hu"
 git config push.default simple
 
 git add .
-git commit -m "Updating the API documentation - see: https://github.com/haskell-tools/haskell-tools/commit/$TRAVIS_COMMIT"
+git commit -m "Updating API documentation for: https://github.com/haskell-tools/haskell-tools/commit/$TRAVIS_COMMIT"
 git push -f
