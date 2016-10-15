@@ -13,7 +13,7 @@ fromTemplate :: src -> NodeInfo sema src
 fromTemplate = NodeInfo (error "The newly generated AST fragments have no semantic info")
 
 emptyList :: AnnList e dom SrcTemplateStage
-emptyList = AnnList (fromTemplate list) []
+emptyList = AnnListC (fromTemplate list) []
               
 replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom SrcTemplateStage -> AnnMaybe e dom SrcTemplateStage           
 replaceWithJust e (AnnMaybe temp _) = AnnMaybe temp (Just e)
@@ -33,7 +33,7 @@ wrapperAnn = mkAnn child
 
 -- | Transforms the list of elements to an AnnList with the given source template.
 mkAnnList :: ListInfo SrcTemplateStage -> [Ann e dom SrcTemplateStage] -> AnnList e dom SrcTemplateStage
-mkAnnList temp = AnnList (fromTemplate temp)
+mkAnnList temp = AnnListC (fromTemplate temp)
 
 -- | Transforms the Maybe element to an AnnMaybe with the given source template.
 mkAnnMaybe :: OptionalInfo SrcTemplateStage -> Maybe (Ann e dom SrcTemplateStage) -> AnnMaybe e dom SrcTemplateStage

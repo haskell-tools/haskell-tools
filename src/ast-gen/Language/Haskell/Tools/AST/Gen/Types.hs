@@ -20,75 +20,75 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 -- * Generation of types
 
 mkTyForall :: [Ann TyVar dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyForall vars t = mkAnn ("forall " <> child <> " . " <> child) (TyForall (mkAnnList (listSep " ") vars) t)
+mkTyForall vars t = mkAnn ("forall " <> child <> " . " <> child) (UTyForall (mkAnnList (listSep " ") vars) t)
 
 mkTypeVar' :: GHC.Name -> Ann TyVar dom SrcTemplateStage
 mkTypeVar' = mkTypeVar . mkUnqualName'
 
 mkTyCtx :: Ann Context dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyCtx ctx t = mkAnn (child <> " " <> child) (TyCtx ctx t)
+mkTyCtx ctx t = mkAnn (child <> " " <> child) (UTyCtx ctx t)
 
 mkTyFun :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyFun at rt = mkAnn (child <> " -> " <> child) (TyFun at rt)
+mkTyFun at rt = mkAnn (child <> " -> " <> child) (UTyFun at rt)
 
 mkTyTuple :: [Ann Type dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage
-mkTyTuple args = mkAnn ("(" <> child <> ")") (TyTuple (mkAnnList (listSep ", ") args))
+mkTyTuple args = mkAnn ("(" <> child <> ")") (UTyTuple (mkAnnList (listSep ", ") args))
 
 mkTyUnbTuple :: [Ann Type dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage
-mkTyUnbTuple args = mkAnn ("(#" <> child <> "#)") (TyUnbTuple (mkAnnList (listSep ", ") args))
+mkTyUnbTuple args = mkAnn ("(#" <> child <> "#)") (UTyUnbTuple (mkAnnList (listSep ", ") args))
 
 mkTyList :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyList = mkAnn ("[" <> child <> "]") . TyList
+mkTyList = mkAnn ("[" <> child <> "]") . UTyList
 
 mkTyParArray :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyParArray = mkAnn ("[:" <> child <> ":]") . TyParArray
+mkTyParArray = mkAnn ("[:" <> child <> ":]") . UTyParArray
 
 mkTyApp :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyApp ft at = mkAnn (child <> " " <> child) (TyApp ft at)
+mkTyApp ft at = mkAnn (child <> " " <> child) (UTyApp ft at)
 
 mkTyInfix :: Ann Type dom SrcTemplateStage -> Ann Operator dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyInfix left op right = mkAnn (child <> " " <> child <> " " <> child) (TyInfix left op right)
+mkTyInfix left op right = mkAnn (child <> " " <> child <> " " <> child) (UTyInfix left op right)
              
 mkTyParen :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyParen = mkAnn ("(" <> child <> ")") . TyParen
+mkTyParen = mkAnn ("(" <> child <> ")") . UTyParen
            
 mkTypeVar :: Ann Name dom SrcTemplateStage -> Ann TyVar dom SrcTemplateStage
-mkTypeVar n = mkAnn (child <> child) (TyVarDecl n noth)
+mkTypeVar n = mkAnn (child <> child) (UTyVarDecl n noth)
 
 mkTyVar :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyVar = wrapperAnn . TyVar
+mkTyVar = wrapperAnn . UTyVar
 
 mkTyKinded :: Ann Type dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyKinded t k = mkAnn (child <> " :: " <> child) (TyKinded t k)
+mkTyKinded t k = mkAnn (child <> " :: " <> child) (UTyKinded t k)
 
 mkTyBang :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyBang = mkAnn ("!" <> child) . TyBang
+mkTyBang = mkAnn ("!" <> child) . UTyBang
 
 mkTyLazy :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyLazy = mkAnn ("~" <> child) . TyLazy
+mkTyLazy = mkAnn ("~" <> child) . UTyLazy
 
 mkTyUnpack :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyUnpack = mkAnn ("{-# UNPACK #-} " <> child) . TyUnpack
+mkTyUnpack = mkAnn ("{-# UNPACK #-} " <> child) . UTyUnpack
 
 mkTyWildcard :: Ann Type dom SrcTemplateStage
-mkTyWildcard = mkAnn "_" TyWildcard
+mkTyWildcard = mkAnn "_" UTyWildcard
 
 mkTyNamedWildcard :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyNamedWildcard = mkAnn ("_" <> child) . TyNamedWildc
+mkTyNamedWildcard = mkAnn ("_" <> child) . UTyNamedWildc
 
 -- * Generation of contexts
 
 mkContextOne :: Ann Assertion dom SrcTemplateStage -> Ann Context dom SrcTemplateStage
-mkContextOne = mkAnn (child <> " =>") . ContextOne
+mkContextOne = mkAnn (child <> " =>") . UContextOne
 
 mkContextMulti :: [Ann Assertion dom SrcTemplateStage] -> Ann Context dom SrcTemplateStage
-mkContextMulti = mkAnn ("(" <> child <> ") =>") . ContextMulti . mkAnnList (listSep ", ")
+mkContextMulti = mkAnn ("(" <> child <> ") =>") . UContextMulti . mkAnnList (listSep ", ")
 
 -- * Generation of assertions
 
 mkClassAssert :: Ann Name dom SrcTemplateStage -> [Ann Type dom SrcTemplateStage] -> Ann Assertion dom SrcTemplateStage
 -- fixme: class assertion without parameters should not have the last space
-mkClassAssert n args = mkAnn (child <> " " <> child) $ ClassAssert n (mkAnnList (listSep " ") args)
+mkClassAssert n args = mkAnn (child <> " " <> child) $ UClassAssert n (mkAnnList (listSep " ") args)
 
 mkInfixAssert :: Ann Type dom SrcTemplateStage -> Ann Operator dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Assertion dom SrcTemplateStage
-mkInfixAssert left op right = mkAnn (child <> " " <> child <> " " <> child) $ InfixAssert left op right
+mkInfixAssert left op right = mkAnn (child <> " " <> child <> " " <> child) $ UInfixAssert left op right

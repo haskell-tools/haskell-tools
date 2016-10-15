@@ -10,6 +10,7 @@
            , AllowAmbiguousTypes
            , TypeApplications
            , ScopedTypeVariables
+           , PatternSynonyms
            #-}
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
@@ -269,10 +270,13 @@ makeReferences ''Ann
 
 
 -- | A list of AST elements
-data AnnList elem dom stage = AnnList { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnList elem)) (ListInfo stage) 
-                                      , _annListElems :: [Ann elem dom stage]
-                                      }
-                           
+data AnnList elem dom stage = AnnListC { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnList elem)) (ListInfo stage) 
+                                       , _annListElems :: [Ann elem dom stage]
+                                       }
+                        
+pattern AnnList :: [Ann elem dom stage] -> AnnList elem dom stage
+pattern AnnList elems <- AnnListC _ elems
+
 makeReferences ''AnnList
         
 annList :: Traversal (AnnList e d s) (AnnList e d s) (Ann e d s) (Ann e d s)                          
@@ -284,13 +288,19 @@ data AnnMaybe elem dom stage = AnnMaybe { _annMaybeAnnot :: NodeInfo (SemanticIn
                                         }
                              
 makeReferences ''AnnMaybe
+
+pattern AnnNothing :: AnnMaybe elem dom stage
+pattern AnnNothing <- AnnMaybe _ Nothing
+
+pattern AnnJust :: Ann elem dom stage -> AnnMaybe elem dom stage
+pattern AnnJust elem <- AnnMaybe _ (Just elem)
                           
 annJust :: Partial (AnnMaybe e d s) (AnnMaybe e d s) (Ann e d s) (Ann e d s)                          
 annJust = annMaybe & just
 
 -- | An empty list of AST elements
 annNil :: NodeInfo (SemanticInfo d (AnnList e)) (ListInfo s) -> AnnList e d s
-annNil a = AnnList a []
+annNil a = AnnListC a []
 
 isAnnNothing :: AnnMaybe e d s -> Bool
 isAnnNothing (AnnMaybe _ Nothing) = True
@@ -301,7 +311,7 @@ isAnnJust (AnnMaybe _ (Just _)) = True
 isAnnJust (AnnMaybe _ _) = False
 
 annLength :: AnnList e d s -> Int
-annLength (AnnList _ ls) = length ls
+annLength (AnnListC _ ls) = length ls
 
 -- | A non-existing AST part
 annNothing :: NodeInfo (SemanticInfo d (AnnMaybe e)) (OptionalInfo s) -> AnnMaybe e d s
@@ -339,7 +349,7 @@ instance SourceInfo stage => HasRange (Ann elem dom stage) where
   setRange sp = annotation & sourceInfo .- setRange sp
 
 instance SourceInfo stage => HasRange (AnnList elem dom stage) where
-  getRange (AnnList a _) = getRange (a ^. sourceInfo)
+  getRange (AnnListC a _) = getRange (a ^. sourceInfo)
   setRange sp = annListAnnot & sourceInfo .- setRange sp
 
 instance SourceInfo stage => HasRange (AnnMaybe elem dom stage) where
@@ -375,7 +385,7 @@ instance forall e . (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) 
   semaTraverse f (Ann (NodeInfo sema src) e) = Ann <$> (NodeInfo <$> appSemaChange @(SemaInfoClassify e) f sema <*> pure src) <*> semaTraverse f e
 
 instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (AnnList e) where
-  semaTraverse f (AnnList (NodeInfo sema src) e) = AnnList <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> mapM (semaTraverse f) e
+  semaTraverse f (AnnListC (NodeInfo sema src) e) = AnnListC <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> mapM (semaTraverse f) e
 
 instance (ApplySemaChange (SemaInfoClassify e), SemanticTraversal e) => SemanticTraversal (AnnMaybe e) where
   semaTraverse f (AnnMaybe (NodeInfo sema src) e) = AnnMaybe <$> (NodeInfo <$> trfSemaDefault f sema <*> pure src) <*> sequence (fmap (semaTraverse f) e)
@@ -401,12 +411,12 @@ instance SourceInfoTraversal e => SourceInfoTraversal (Ann e) where
     = flip Ann <$> (desc *> sourceInfoTraverseUp trf desc asc e <* asc) <*> (NodeInfo sema <$> trfSpanInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnList e) where
-  sourceInfoTraverse trf (AnnList (NodeInfo sema src) e) 
-    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> mapM (sourceInfoTraverse trf) e
-  sourceInfoTraverseDown trf desc asc (AnnList (NodeInfo sema src) e) 
-    = AnnList <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc)
-  sourceInfoTraverseUp trf desc asc (AnnList (NodeInfo sema src) e) 
-    = flip AnnList <$> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
+  sourceInfoTraverse trf (AnnListC (NodeInfo sema src) e) 
+    = AnnListC <$> (NodeInfo sema <$> trfListInfo trf src) <*> mapM (sourceInfoTraverse trf) e
+  sourceInfoTraverseDown trf desc asc (AnnListC (NodeInfo sema src) e) 
+    = AnnListC <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc)
+  sourceInfoTraverseUp trf desc asc (AnnListC (NodeInfo sema src) e) 
+    = flip AnnListC <$> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnMaybe e) where
   sourceInfoTraverse trf (AnnMaybe (NodeInfo sema src) e) 

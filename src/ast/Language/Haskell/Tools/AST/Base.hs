@@ -10,46 +10,46 @@ module Language.Haskell.Tools.AST.Base where
 import Language.Haskell.Tools.AST.Ann
 
 data Operator dom stage
-  = BacktickOp { _operatorName :: Ann QualifiedName dom stage } -- ^ Backtick operator name: @ a `mod` b @
-  | NormalOp { _operatorName :: Ann QualifiedName dom stage }
+  = UBacktickOp { _operatorName :: Ann QualifiedName dom stage } -- ^ Backtick operator name: @ a `mod` b @
+  | UNormalOp { _operatorName :: Ann QualifiedName dom stage }
 
 data Name dom stage
-  = ParenName { _simpleName :: Ann QualifiedName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
-  | NormalName { _simpleName :: Ann QualifiedName dom stage }
-  | ImplicitName { _simpleName :: Ann QualifiedName dom stage } -- ^ Implicit name: @ ?var @
+  = UParenName { _simpleName :: Ann QualifiedName dom stage } -- ^ Parenthesized name: @ foldl (+) 0 @
+  | UNormalName { _simpleName :: Ann QualifiedName dom stage }
+  | UImplicitName { _simpleName :: Ann QualifiedName dom stage } -- ^ Implicit name: @ ?var @
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
 data QualifiedName dom stage
-  = QualifiedName { _qualifiers :: AnnList UnqualName dom stage
-                  , _unqualifiedName :: Ann UnqualName dom stage
+  = QualifiedName { _qualifiers :: AnnList NamePart dom stage
+                  , _unqualifiedName :: Ann NamePart dom stage
                   }
 
-nameFromList :: AnnList UnqualName dom stage -> QualifiedName dom stage
-nameFromList (AnnList a xs) | not (null xs) 
-  = QualifiedName (AnnList a (init xs)) (last xs) 
+nameFromList :: AnnList NamePart dom stage -> QualifiedName dom stage
+nameFromList (AnnListC a xs) | not (null xs) 
+  = QualifiedName (AnnListC a (init xs)) (last xs) 
 nameFromList _ = error "nameFromList: empty list"
          
 -- | Parts of a qualified name.         
-data UnqualName dom stage
-  = UnqualName { _simpleNameStr :: String } 
+data NamePart dom stage
+  = UNamePart { _simpleNameStr :: String } 
                
 -- | Program elements formatted as string literals (import packages, pragma texts)
 data StringNode dom stage
-  = StringNode { _stringNodeStr :: String }
+  = UStringNode { _stringNodeStr :: String }
 
 -- | The name of a module
-data ModuleName dom stage = ModuleName { _moduleNameString :: String }
+data ModuleName dom stage = UModuleName { _moduleNameString :: String }
                    
 -- | The @data@ or the @newtype@ keyword to define ADTs.
 data DataOrNewtypeKeyword dom stage
-  = DataKeyword
-  | NewtypeKeyword
+  = UDataKeyword
+  | UNewtypeKeyword
     
 -- | Keywords @do@ or @mdo@ to start a do-block
 data DoKind dom stage
-  = DoKeyword
-  | MDoKeyword
+  = UDoKeyword
+  | UMDoKeyword
   
 -- | The @type@ keyword used to qualify that the type and not the constructor of the same name is referred
 data TypeKeyword dom stage = TypeKeyword

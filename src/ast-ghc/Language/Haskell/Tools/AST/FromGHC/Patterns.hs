@@ -34,8 +34,8 @@ trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern (Dom 
 trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
   = do let (fromWC, notWC) = partition ((l ==) . getLoc) flds
        normalFields <- mapM (trfLocNoSema trfPatternField') notWC
-       wildc <- annLocNoSema (tokenLoc AnnDotdot) (AST.FieldWildcardPattern <$> annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -> n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))
-       annLocNoSema (pure l) (AST.RecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
+       wildc <- annLocNoSema (tokenLoc AnnDotdot) (AST.UFieldWildcardPattern <$> annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -> n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))
+       annLocNoSema (pure l) (AST.URecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
 trfPattern p | otherwise = trfLocNoSema trfPattern' (correctPatternLoc p)
 
 -- | Locations for right-associative infix patterns are incorrect in GHC AST
@@ -45,27 +45,27 @@ correctPatternLoc (L l p@(ConPatIn name (InfixCon left right)))
 correctPatternLoc p = p
 
 trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern (Dom r) RangeStage)
-trfPattern' (WildPat _) = pure AST.WildPat
-trfPattern' (VarPat name) = define $ AST.VarPat <$> trfName name
-trfPattern' (LazyPat pat) = AST.IrrPat <$> trfPattern pat
-trfPattern' (AsPat name pat) = AST.AsPat <$> define (trfName name) <*> trfPattern pat
-trfPattern' (ParPat pat) = AST.ParenPat <$> trfPattern pat
-trfPattern' (BangPat pat) = AST.BangPat <$> trfPattern pat
-trfPattern' (ListPat pats _ _) = AST.ListPat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (TuplePat pats Boxed _) = AST.TuplePat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (PArrPat pats _) = AST.ParArrPat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (ConPatIn name (PrefixCon args)) = AST.AppPat <$> trfName name <*> trfAnnList " " trfPattern' args
-trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.RecPat <$> trfName name <*> trfAnnList ", " trfPatternField' flds
-trfPattern' (ConPatIn name (InfixCon left right)) = AST.InfixPat <$> trfPattern left <*> trfOperator name <*> trfPattern right
-trfPattern' (ViewPat expr pat _) = AST.ViewPat <$> trfExpr expr <*> trfPattern pat
-trfPattern' (SplicePat splice) = AST.SplicePat <$> annContNoSema (trfSplice' splice)
-trfPattern' (LitPat lit) = AST.LitPat <$> annContNoSema (trfLiteral' lit)
-trfPattern' (SigPatIn pat (hswc_body . hsib_body -> typ)) = AST.TypeSigPat <$> trfPattern pat <*> trfType typ
-trfPattern' (NPat (ol_val . unLoc -> lit) _ _ _) = AST.LitPat <$> annContNoSema (trfOverloadedLit lit)
-trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.NPlusKPat <$> define (trfName id) <*> annLocNoSema (pure l) (trfOverloadedLit (ol_val lit))
+trfPattern' (WildPat _) = pure AST.UWildPat
+trfPattern' (VarPat name) = define $ AST.UVarPat <$> trfName name
+trfPattern' (LazyPat pat) = AST.UIrrefutablePat <$> trfPattern pat
+trfPattern' (AsPat name pat) = AST.UAsPat <$> define (trfName name) <*> trfPattern pat
+trfPattern' (ParPat pat) = AST.UParenPat <$> trfPattern pat
+trfPattern' (BangPat pat) = AST.UBangPat <$> trfPattern pat
+trfPattern' (ListPat pats _ _) = AST.UListPat <$> trfAnnList ", " trfPattern' pats
+trfPattern' (TuplePat pats Boxed _) = AST.UTuplePat <$> trfAnnList ", " trfPattern' pats
+trfPattern' (PArrPat pats _) = AST.UParArrPat <$> trfAnnList ", " trfPattern' pats
+trfPattern' (ConPatIn name (PrefixCon args)) = AST.UAppPat <$> trfName name <*> trfAnnList " " trfPattern' args
+trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.URecPat <$> trfName name <*> trfAnnList ", " trfPatternField' flds
+trfPattern' (ConPatIn name (InfixCon left right)) = AST.UInfixAppPat <$> trfPattern left <*> trfOperator name <*> trfPattern right
+trfPattern' (ViewPat expr pat _) = AST.UViewPat <$> trfExpr expr <*> trfPattern pat
+trfPattern' (SplicePat splice) = AST.USplicePat <$> annContNoSema (trfSplice' splice)
+trfPattern' (LitPat lit) = AST.ULitPat <$> annContNoSema (trfLiteral' lit)
+trfPattern' (SigPatIn pat (hswc_body . hsib_body -> typ)) = AST.UTypeSigPat <$> trfPattern pat <*> trfType typ
+trfPattern' (NPat (ol_val . unLoc -> lit) _ _ _) = AST.ULitPat <$> annContNoSema (trfOverloadedLit lit)
+trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat <$> define (trfName id) <*> annLocNoSema (pure l) (trfOverloadedLit (ol_val lit))
 -- coercion pattern introduced by GHC
 trfPattern' (CoPat _ pat _) = trfPattern' pat
 
 trfPatternField' :: TransformName n r => HsRecField n (LPat n) -> Trf (AST.PatternField (Dom r) RangeStage)
-trfPatternField' (HsRecField id arg False) = AST.NormalFieldPattern <$> trfName (getFieldOccName id) <*> trfPattern arg
-trfPatternField' (HsRecField id _ True) = AST.FieldPunPattern <$> trfName (getFieldOccName id)
+trfPatternField' (HsRecField id arg False) = AST.UNormalFieldPattern <$> trfName (getFieldOccName id) <*> trfPattern arg
+trfPatternField' (HsRecField id _ True) = AST.UFieldPunPattern <$> trfName (getFieldOccName id)

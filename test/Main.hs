@@ -20,7 +20,7 @@ import System.Exit
 import System.FilePath
 
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.Gen as G
+import Language.Haskell.Tools.AST.Rewrite as G
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
 import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate

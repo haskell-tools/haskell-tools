@@ -28,7 +28,7 @@ import Data.Maybe
 import Data.Generics.Uniplate.Data
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace

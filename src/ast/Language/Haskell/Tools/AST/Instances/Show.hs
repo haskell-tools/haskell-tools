@@ -23,7 +23,7 @@ instance (Show (e dom stage)) => Show (AnnMaybe e dom stage) where
   show (AnnMaybe _ e) = show e
   
 instance (Show (e dom stage)) => Show (AnnList e dom stage) where
-  show (AnnList _ e) = show e
+  show (AnnList e) = show e
 
 -- Modules
 deriving instance Show (Module dom stage)
@@ -120,7 +120,7 @@ deriving instance Show (Operator dom stage)
 deriving instance Show (Name dom stage)
 deriving instance Show (QualifiedName dom stage)
 deriving instance Show (ModuleName dom stage)
-deriving instance Show (UnqualName dom stage)
+deriving instance Show (NamePart dom stage)
 deriving instance Show (StringNode dom stage)
 deriving instance Show (DataOrNewtypeKeyword dom stage)
 deriving instance Show (DoKind dom stage)

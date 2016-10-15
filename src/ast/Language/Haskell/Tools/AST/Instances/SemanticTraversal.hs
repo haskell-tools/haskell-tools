@@ -114,7 +114,7 @@ deriveSemanticTraversal ''Operator
 deriveSemanticTraversal ''Name
 deriveSemanticTraversal ''QualifiedName
 deriveSemanticTraversal ''ModuleName
-deriveSemanticTraversal ''UnqualName
+deriveSemanticTraversal ''NamePart
 deriveSemanticTraversal ''StringNode
 deriveSemanticTraversal ''DataOrNewtypeKeyword
 deriveSemanticTraversal ''DoKind

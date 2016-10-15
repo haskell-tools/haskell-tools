@@ -94,7 +94,7 @@ checkImportVisible imp name
   | otherwise = return True
 
 ieSpecMatches :: (HsHasName n, GhcMonad m) => AST.IESpec (Dom n) stage -> GHC.Name -> m Bool
-ieSpecMatches (AST.IESpec (hsGetNames <=< (^? element&simpleName&semantics&nameInfo) -> [n]) ss) name
+ieSpecMatches (AST.UIESpec (hsGetNames <=< (^? element&simpleName&semantics&nameInfo) -> [n]) ss) name
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
@@ -109,37 +109,37 @@ nothing :: String -> String -> Trf SrcLoc -> Trf (AnnMaybe e (Dom n) RangeStage)
 nothing bef aft pos = annNothing . noSemaInfo . OptionalPos bef aft <$> pos 
 
 emptyList :: String -> Trf SrcLoc -> Trf (AnnList e (Dom n) RangeStage)
-emptyList sep ann = AnnList <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> pure []
+emptyList sep ann = AnnListC <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> pure []
 
 -- | Creates a place for a list of nodes with a default place if the list is empty.
 makeList :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeList sep ann ls = AnnList <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> ls
+makeList sep ann ls = AnnListC <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> ls
 
 makeListBefore :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
 makeListBefore bef sep ann ls = do isEmpty <- null <$> ls 
-                                   AnnList <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" sep False <$> ann) <*> ls
+                                   AnnListC <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" sep False <$> ann) <*> ls
 
 makeListAfter :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
 makeListAfter aft sep ann ls = do isEmpty <- null <$> ls 
-                                  AnnList <$> (noSemaInfo . ListPos "" (if isEmpty then aft else "") sep False <$> ann) <*> ls
+                                  AnnListC <$> (noSemaInfo . ListPos "" (if isEmpty then aft else "") sep False <$> ann) <*> ls
 
 makeNonemptyList :: String -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeNonemptyList sep ls = AnnList (noSemaInfo $ ListPos "" "" sep False noSrcLoc) <$> ls
+makeNonemptyList sep ls = AnnListC (noSemaInfo $ ListPos "" "" sep False noSrcLoc) <$> ls
 
 -- | Creates a place for an indented list of nodes with a default place if the list is empty.
 makeIndentedList :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeIndentedList ann ls = AnnList <$> (noSemaInfo . ListPos  "" "" "\n" True <$> ann) <*> ls
+makeIndentedList ann ls = AnnListC <$> (noSemaInfo . ListPos  "" "" "\n" True <$> ann) <*> ls
 
 makeIndentedListNewlineBefore :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
 makeIndentedListNewlineBefore ann ls = do isEmpty <- null <$> ls 
-                                          AnnList <$> (noSemaInfo . ListPos (if isEmpty then "\n" else "") "" "\n" True <$> ann) <*> ls
+                                          AnnListC <$> (noSemaInfo . ListPos (if isEmpty then "\n" else "") "" "\n" True <$> ann) <*> ls
 
 makeIndentedListBefore :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
 makeIndentedListBefore bef sp ls = do isEmpty <- null <$> ls 
-                                      AnnList <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" "\n" True <$> sp) <*> ls
+                                      AnnListC <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" "\n" True <$> sp) <*> ls
   
 makeNonemptyIndentedList :: Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeNonemptyIndentedList ls = AnnList (noSemaInfo $ ListPos "" "" "\n" True noSrcLoc) <$> ls
+makeNonemptyIndentedList ls = AnnListC (noSemaInfo $ ListPos "" "" "\n" True noSrcLoc) <$> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
@@ -183,7 +183,7 @@ trfAnnList' sep f ls = makeList sep (pure $ noSrcLoc) (mapM f ls)
 
 -- | Creates a place for a list of nodes that cannot be empty.
 nonemptyAnnList :: [Ann e (Dom n) RangeStage] -> AnnList e (Dom n) RangeStage
-nonemptyAnnList = AnnList (noSemaInfo $ ListPos "" "" "" False noSrcLoc)
+nonemptyAnnList = AnnListC (noSemaInfo $ ListPos "" "" "" False noSrcLoc)
 
 -- | Creates an optional node from an existing element
 makeJust :: Ann e (Dom n) RangeStage -> AnnMaybe e (Dom n) RangeStage
@@ -347,7 +347,7 @@ orderDefs = sortBy (compare `on` AST.ordSrcSpan . (^. AST.annotation & AST.sourc
 
 -- | Orders a list of elements to the order they are defined in the source file.
 orderAnnList :: AnnList e (Dom n) RangeStage -> AnnList e (Dom n) RangeStage
-orderAnnList (AnnList a ls) = AnnList a (orderDefs ls)
+orderAnnList (AnnListC a ls) = AnnListC a (orderDefs ls)
 
 
 -- | Transform a list of definitions where the defined names are in scope for subsequent definitions

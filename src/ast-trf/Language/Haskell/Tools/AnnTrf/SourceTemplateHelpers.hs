@@ -19,8 +19,8 @@ filterList pred ls = replaceList (filter pred (ls ^. annListElems)) ls
        
 -- | Replaces the list with a new one with the given elements, keeping the most common separator as the new one.
 replaceList :: [Ann e dom SrcTemplateStage] -> AnnList e dom SrcTemplateStage -> AnnList e dom SrcTemplateStage
-replaceList elems (AnnList (NodeInfo sema src) _)
-  = AnnList (NodeInfo sema (listSep mostCommonSeparator)) elems
+replaceList elems (AnnListC (NodeInfo sema src) _)
+  = AnnListC (NodeInfo sema (listSep mostCommonSeparator)) elems
   where mostCommonSeparator  
           = case group $ sort (src ^. srcTmpSeparators) of 
                    [] -> src ^. srcTmpDefaultSeparator

@@ -33,24 +33,24 @@ trfDoStmt' :: TransformName n r => Stmt n (Located (HsExpr n)) -> Trf (AST.Stmt'
 trfDoStmt' = gTrfDoStmt' trfExpr
 
 gTrfDoStmt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Stmt n (Located (ge n)) -> Trf (AST.Stmt' ae (Dom r) RangeStage)
-gTrfDoStmt' et (BindStmt pat expr _ _ _) = AST.BindStmt <$> trfPattern pat <*> et expr
-gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.ExprStmt <$> et expr
-gTrfDoStmt' et (LetStmt (unLoc -> binds)) = AST.LetStmt <$> addToScope binds (trfLocalBinds binds)
-gTrfDoStmt' et (LastStmt body _ _) = AST.ExprStmt <$> et body
-gTrfDoStmt' et (RecStmt { recS_stmts = stmts }) = AST.RecStmt <$> trfAnnList "," (gTrfDoStmt' et) stmts
+gTrfDoStmt' et (BindStmt pat expr _ _ _) = AST.UBindStmt <$> trfPattern pat <*> et expr
+gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.UExprStmt <$> et expr
+gTrfDoStmt' et (LetStmt (unLoc -> binds)) = AST.ULetStmt <$> addToScope binds (trfLocalBinds binds)
+gTrfDoStmt' et (LastStmt body _ _) = AST.UExprStmt <$> et body
+gTrfDoStmt' et (RecStmt { recS_stmts = stmts }) = AST.URecStmt <$> trfAnnList "," (gTrfDoStmt' et) stmts
 
 trfListCompStmts :: TransformName n r => [Located (Stmt n (LHsExpr n))] -> Trf (AnnList AST.ListCompBody (Dom r) RangeStage)
 trfListCompStmts [unLoc -> ParStmt blocks _ _ _, unLoc -> (LastStmt {})]
   = nonemptyAnnList
       <$> trfScopedSequence (\(ParStmtBlock stmts _ _) -> 
                                 let ann = collectLocs $ getNormalStmts stmts
-                                 in annLocNoSema (pure ann) (AST.ListCompBody <$> makeList "," (pure $ srcSpanStart ann) (concat <$> trfScopedSequence trfListCompStmt stmts))
+                                 in annLocNoSema (pure ann) (AST.UListCompBody <$> makeList "," (pure $ srcSpanStart ann) (concat <$> trfScopedSequence trfListCompStmt stmts))
                             ) blocks
 trfListCompStmts others 
   = let ann = (collectLocs $ getNormalStmts others)
      in makeList "|" (pure $ srcSpanStart ann)
           ((:[]) <$> annLocNoSema (pure ann)
-                                  (AST.ListCompBody <$> makeList "," (pure $ srcSpanStart ann) (concat <$> trfScopedSequence trfListCompStmt others)))
+                                  (AST.UListCompBody <$> makeList "," (pure $ srcSpanStart ann) (concat <$> trfScopedSequence trfListCompStmt others)))
 
 trfListCompStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf [Ann AST.CompStmt (Dom r) RangeStage]
 trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts })) 
@@ -58,14 +58,14 @@ trfListCompStmt (L l trst@(TransStmt { trS_stmts = stmts }))
          <*> ((:[]) <$> extractActualStmt trst)
 -- last statement is extracted
 trfListCompStmt (unLoc -> LastStmt _ _ _) = pure []
-trfListCompStmt other = (:[]) <$> copyAnnot AST.CompStmt (trfDoStmt other)
+trfListCompStmt other = (:[]) <$> copyAnnot AST.UCompStmt (trfDoStmt other)
   
 extractActualStmt :: TransformName n r => Stmt n (LHsExpr n) -> Trf (Ann AST.CompStmt (Dom r) RangeStage)
 extractActualStmt = \case
   TransStmt { trS_form = ThenForm, trS_using = using, trS_by = by } 
-    -> addAnnotation by using (AST.ThenStmt <$> trfExpr using <*> trfMaybe "," "" trfExpr by)
+    -> addAnnotation by using (AST.UThenStmt <$> trfExpr using <*> trfMaybe "," "" trfExpr by)
   TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by } 
-    -> addAnnotation by using (AST.GroupStmt <$> trfMaybe "," "" trfExpr by <*> (makeJust <$> trfExpr using))
+    -> addAnnotation by using (AST.UGroupStmt <$> trfMaybe "," "" trfExpr by <*> (makeJust <$> trfExpr using))
   where addAnnotation by using
           = annLocNoSema (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
                             <$> tokenLocBack AnnThen)

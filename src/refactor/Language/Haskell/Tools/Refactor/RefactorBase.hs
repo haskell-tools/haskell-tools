@@ -11,7 +11,7 @@
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)

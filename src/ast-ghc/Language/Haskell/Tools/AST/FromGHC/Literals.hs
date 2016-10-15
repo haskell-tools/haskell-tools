@@ -18,21 +18,21 @@ import Language.Haskell.Tools.AST (Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfLiteral' :: HsLit -> Trf (AST.Literal (Dom r) RangeStage)
-trfLiteral' (HsChar _ ch) = pure $ AST.CharLit ch
-trfLiteral' (HsCharPrim _ ch) = pure $ AST.PrimCharLit ch
-trfLiteral' (HsString _ str) = pure $ AST.StringLit (unpackFS str)
-trfLiteral' (HsStringPrim _ str) = pure $ AST.PrimStringLit (BS.foldr (:) "" str)
-trfLiteral' (HsInt _ i) = pure $ AST.IntLit i
-trfLiteral' (HsIntPrim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsWordPrim _ i) = pure $ AST.PrimWordLit i
-trfLiteral' (HsInt64Prim _ i) = pure $ AST.PrimIntLit i
-trfLiteral' (HsWord64Prim _ i) = pure $ AST.PrimWordLit i
-trfLiteral' (HsInteger _ i _) = pure $ AST.PrimIntLit i
-trfLiteral' (HsRat frac _) = pure $ AST.FracLit (fl_value frac)
-trfLiteral' (HsFloatPrim frac) = pure $ AST.PrimFloatLit (fl_value frac)
-trfLiteral' (HsDoublePrim frac) = pure $ AST.PrimDoubleLit (fl_value frac)
+trfLiteral' (HsChar _ ch) = pure $ AST.UCharLit ch
+trfLiteral' (HsCharPrim _ ch) = pure $ AST.UPrimCharLit ch
+trfLiteral' (HsString _ str) = pure $ AST.UStringLit (unpackFS str)
+trfLiteral' (HsStringPrim _ str) = pure $ AST.UPrimStringLit (BS.foldr (:) "" str)
+trfLiteral' (HsInt _ i) = pure $ AST.UIntLit i
+trfLiteral' (HsIntPrim _ i) = pure $ AST.UPrimIntLit i
+trfLiteral' (HsWordPrim _ i) = pure $ AST.UPrimWordLit i
+trfLiteral' (HsInt64Prim _ i) = pure $ AST.UPrimIntLit i
+trfLiteral' (HsWord64Prim _ i) = pure $ AST.UPrimWordLit i
+trfLiteral' (HsInteger _ i _) = pure $ AST.UPrimIntLit i
+trfLiteral' (HsRat frac _) = pure $ AST.UFracLit (fl_value frac)
+trfLiteral' (HsFloatPrim frac) = pure $ AST.UPrimFloatLit (fl_value frac)
+trfLiteral' (HsDoublePrim frac) = pure $ AST.UPrimDoubleLit (fl_value frac)
   
 trfOverloadedLit :: OverLitVal -> Trf (AST.Literal (Dom r) RangeStage)
-trfOverloadedLit (HsIntegral _ i) = pure $ AST.IntLit i
-trfOverloadedLit (HsFractional frac) = pure $ AST.FracLit (fl_value frac)
-trfOverloadedLit (HsIsString _ str) = pure $ AST.StringLit (unpackFS str)
+trfOverloadedLit (HsIntegral _ i) = pure $ AST.UIntLit i
+trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit (fl_value frac)
+trfOverloadedLit (HsIsString _ str) = pure $ AST.UStringLit (unpackFS str)

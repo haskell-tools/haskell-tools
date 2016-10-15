@@ -3,6 +3,8 @@
            , RankNTypes 
            , ScopedTypeVariables
            , TypeFamilies
+           , FlexibleInstances
+           , UndecidableInstances
            #-}
 
 -- | Helper functions for using the AST.
@@ -26,6 +28,7 @@ import Language.Haskell.Tools.AST.Types
 import Language.Haskell.Tools.AST.Base
 import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.SemaInfoTypes
+import Language.Haskell.Tools.AST.SemaInfoClasses
 
 import Debug.Trace
 
@@ -79,10 +82,10 @@ declHeadNames = element & (dhName&element&simpleName &+& dhBody&declHeadNames &+
                
 typeParams :: Simple Traversal (Ann Type dom stage) (Ann Type dom stage)
 typeParams = fromTraversal typeParamsTrav
-  where typeParamsTrav f (Ann a (TyFun p r)) = Ann a <$> (TyFun <$> f p <*> typeParamsTrav f r)
-        typeParamsTrav f (Ann a (TyForall vs t)) = Ann a <$> (TyForall vs <$> typeParamsTrav f t)
-        typeParamsTrav f (Ann a (TyCtx ctx t)) = Ann a <$> (TyCtx ctx <$> typeParamsTrav f t)
-        typeParamsTrav f (Ann a (TyParen t)) = Ann a <$> (TyParen <$> typeParamsTrav f t)
+  where typeParamsTrav f (Ann a (UTyFun p r)) = Ann a <$> (UTyFun <$> f p <*> typeParamsTrav f r)
+        typeParamsTrav f (Ann a (UTyForall vs t)) = Ann a <$> (UTyForall vs <$> typeParamsTrav f t)
+        typeParamsTrav f (Ann a (UTyCtx ctx t)) = Ann a <$> (UTyCtx ctx <$> typeParamsTrav f t)
+        typeParamsTrav f (Ann a (UTyParen t)) = Ann a <$> (UTyParen <$> typeParamsTrav f t)
         typeParamsTrav f t = f t
         
 
@@ -105,21 +108,21 @@ class BindingElem d where
 instance BindingElem Decl where
   sigBind = declTypeSig
   valBind = declValBind
-  createTypeSig = TypeSigDecl
-  createBinding = ValueBinding
-  isTypeSig (TypeSigDecl _) = True
+  createTypeSig = UTypeSigDecl
+  createBinding = UValueBinding
+  isTypeSig (UTypeSigDecl _) = True
   isTypeSig _ = False
-  isBinding (ValueBinding _) = True
+  isBinding (UValueBinding _) = True
   isBinding _ = False
 
 instance BindingElem LocalBind where
   sigBind = localSig
   valBind = localVal
-  createTypeSig = LocalSignature
-  createBinding = LocalValBind
-  isTypeSig (LocalSignature _) = True
+  createTypeSig = ULocalSignature
+  createBinding = ULocalValBind
+  isTypeSig (ULocalSignature _) = True
   isTypeSig _ = False
-  isBinding (LocalValBind _) = True
+  isBinding (ULocalValBind _) = True
   isBinding _ = False
 
 bindName :: (BindingElem d, SemanticInfo dom QualifiedName ~ k) => Simple Traversal (d dom stage) k
@@ -184,3 +187,16 @@ getNode sp node = case node ^? nodesWithRange sp of
   [] -> error "getNode: The node cannot be found"
   [n] -> n
   _ -> error "getNode: Multiple nodes"
+
+-- | A class to access the names of named elements. Have to locate where does the AST element store its name.
+-- The returned name will be the one that was marked isDefining.
+class NamedElement elem where
+  elementName :: elem -> [GHC.Name]
+
+instance HasNameInfo dom => NamedElement (Ann Decl dom st) where
+  elementName d = catMaybes names
+    where names = map semanticsName (d ^? element & declHead & dhNames) 
+                    ++ map semanticsName (d ^? element & declTypeFamily & element & tfHead & dhNames)
+                    ++ map semanticsName (d ^? element & declValBind & bindingName)
+                    ++ map semanticsName (d ^? element & declName & element & simpleName & semantics)
+                    ++ map semanticsName (d ^? element & declPatSyn & element & patLhs & element & (patName & element & simpleName &+& patSynOp & element & operatorName) & semantics)

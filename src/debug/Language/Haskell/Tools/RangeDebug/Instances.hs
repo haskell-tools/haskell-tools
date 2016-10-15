@@ -22,7 +22,7 @@ identLine :: Int -> String
 identLine i = "\n" ++ replicate (i*2) ' '
   
 instance TreeDebug e dom st => TreeDebug (AnnList e) dom st where
-  treeDebug' i (AnnList a ls) = identLine i ++ show (a ^. sourceInfo) ++ " <*>" ++ concatMap (treeDebug' (i + 1)) ls 
+  treeDebug' i (AnnListC a ls) = identLine i ++ show (a ^. sourceInfo) ++ " <*>" ++ concatMap (treeDebug' (i + 1)) ls 
   
 instance TreeDebug e dom st => TreeDebug (AnnMaybe e) dom st where
   treeDebug' i (AnnMaybe a e) = identLine i ++ show (a ^. sourceInfo) ++ " <?>" ++ maybe "" (\e -> treeDebug' (i + 1) e) e
@@ -121,7 +121,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug Operator dom st
 instance (SourceInfo st, Domain dom) => TreeDebug Name dom st
 instance (SourceInfo st, Domain dom) => TreeDebug QualifiedName dom st
 instance (SourceInfo st, Domain dom) => TreeDebug ModuleName dom st
-instance (SourceInfo st, Domain dom) => TreeDebug UnqualName dom st
+instance (SourceInfo st, Domain dom) => TreeDebug NamePart dom st
 instance (SourceInfo st, Domain dom) => TreeDebug StringNode dom st
 instance (SourceInfo st, Domain dom) => TreeDebug DataOrNewtypeKeyword dom st
 instance (SourceInfo st, Domain dom) => TreeDebug DoKind dom st

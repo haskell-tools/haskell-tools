@@ -36,10 +36,10 @@ instance ASTDebug e dom st => ASTDebug (Ann e) dom st where
 
 -- FIXME: WHY do I have to write it separately?
 instance {-# OVERLAPPING #-} (ASTDebug ImportDecl dom st) => ASTDebug (AnnList ImportDecl) dom st where
-  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
+  astDebug' (AnnListC a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
 
 instance (ASTDebug e dom st) => ASTDebug (AnnList e) dom st where
-  astDebug' (AnnList a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
+  astDebug' (AnnListC a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
   
 instance (ASTDebug e dom st) => ASTDebug (AnnMaybe e) dom st where
   astDebug' (AnnMaybe a e) = [TreeNode "" (TreeDebugNode "?" (DefaultInfoType (getRange (a ^. sourceInfo))) (maybe [] astDebug' e))]
@@ -139,7 +139,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug Operator dom st
 instance (Domain dom, SourceInfo st) => ASTDebug Name dom st
 instance (Domain dom, SourceInfo st) => ASTDebug QualifiedName dom st
 instance (Domain dom, SourceInfo st) => ASTDebug ModuleName dom st
-instance (Domain dom, SourceInfo st) => ASTDebug UnqualName dom st
+instance (Domain dom, SourceInfo st) => ASTDebug NamePart dom st
 instance (Domain dom, SourceInfo st) => ASTDebug StringNode dom st
 instance (Domain dom, SourceInfo st) => ASTDebug DataOrNewtypeKeyword dom st
 instance (Domain dom, SourceInfo st) => ASTDebug DoKind dom st

@@ -53,5 +53,5 @@ script:
 
 after_script:
 - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
-- ./shc --partial-coverage haskell-tools-refactor haskell-tools-test haskell-tools-cli haskell-tools-cli-test
+- ./shc --partial-coverage haskell-tools-refactor haskell-tools-test
 - bash ./deploy.sh

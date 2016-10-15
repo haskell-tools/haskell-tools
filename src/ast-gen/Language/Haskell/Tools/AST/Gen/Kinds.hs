@@ -17,43 +17,43 @@ import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 mkKindConstraint :: Ann Kind dom SrcTemplateStage -> Ann KindConstraint dom SrcTemplateStage
-mkKindConstraint = mkAnn (" :: " <> child) . KindConstraint
+mkKindConstraint = mkAnn (" :: " <> child) . UKindConstraint
 
 mkKindStar :: Ann Kind dom SrcTemplateStage
-mkKindStar = mkAnn "*" KindStar
+mkKindStar = mkAnn "*" UStarKind
 
 mkKindUnbox :: Ann Kind dom SrcTemplateStage
-mkKindUnbox = mkAnn "#" KindUnbox
+mkKindUnbox = mkAnn "#" UUnboxKind
 
 mkKindFun :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkKindFun lhs rhs = mkAnn (child <> " -> " <> child) $ KindFn lhs rhs
+mkKindFun lhs rhs = mkAnn (child <> " -> " <> child) $ UFunKind lhs rhs
 
 mkKindParen :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkKindParen = mkAnn ("(" <> child <> ")") . KindParen
+mkKindParen = mkAnn ("(" <> child <> ")") . UParenKind
 
 mkKindVar :: Ann Name dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkKindVar = mkAnn child . KindVar
+mkKindVar = mkAnn child . UVarKind
 
 mkKindApp :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkKindApp lhs rhs = mkAnn (child <> " " <> child) $ KindApp lhs rhs
+mkKindApp lhs rhs = mkAnn (child <> " " <> child) $ UAppKind lhs rhs
 
 mkKindList :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkKindList = mkAnn ("[" <> child <> "]") . KindList
+mkKindList = mkAnn ("[" <> child <> "]") . UListKind
 
 mkIntKind :: Integer -> Ann Kind dom SrcTemplateStage
-mkIntKind i = mkAnn child $ KindPromoted $ mkAnn (fromString $ show i) (PromotedInt i)
+mkIntKind i = mkAnn child $ UPromotedKind $ mkAnn (fromString $ show i) (UPromotedInt i)
 
 mkStringKind :: String -> Ann Kind dom SrcTemplateStage
-mkStringKind i = mkAnn child $ KindPromoted $ mkAnn (fromString $ show i) (PromotedString i)
+mkStringKind i = mkAnn child $ UPromotedKind $ mkAnn (fromString $ show i) (UPromotedString i)
 
 mkConKind :: Ann Name dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
-mkConKind = mkAnn child . KindPromoted . mkAnn child . PromotedCon
+mkConKind = mkAnn child . UPromotedKind . mkAnn child . UPromotedCon
 
 mkListKind :: [Ann Kind dom SrcTemplateStage] -> Ann Kind dom SrcTemplateStage
-mkListKind = mkAnn child . KindPromoted . mkAnn ("[" <> child <> "]") . PromotedList . mkAnnList (listSep ", ")
+mkListKind = mkAnn child . UPromotedKind . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (listSep ", ")
 
 mkTupleKind :: [Ann Kind dom SrcTemplateStage] -> Ann Kind dom SrcTemplateStage
-mkTupleKind = mkAnn child . KindPromoted . mkAnn ("(" <> child <> ")") . PromotedTuple . mkAnnList (listSep ", ")
+mkTupleKind = mkAnn child . UPromotedKind . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (listSep ", ")
 
 mkUnitKind :: Ann Kind dom SrcTemplateStage
-mkUnitKind = mkAnn child $ KindPromoted $ mkAnn "()" PromotedUnit
+mkUnitKind = mkAnn child $ UPromotedKind $ mkAnn "()" UPromotedUnit

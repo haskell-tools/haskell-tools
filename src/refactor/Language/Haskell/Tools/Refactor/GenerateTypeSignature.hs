@@ -25,24 +25,22 @@ import Control.Monad.State
 import Control.Reference hiding (element)
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
-import Language.Haskell.Tools.AST.Gen
+import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-type Ann' e dom = Ann e dom SrcTemplateStage
-type AnnList' e dom = AnnList e dom SrcTemplateStage
 type GenerateSignatureDomain dom = ( HasModuleInfo dom, HasIdInfo dom, HasImportInfo dom ) 
 
 generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> LocalRefactoring dom
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 
 
 -- | Perform the refactoring on either local or top-level definition
-generateTypeSignature :: GenerateSignatureDomain dom => Simple Traversal (Ann' Module dom) (AnnList' Decl dom) 
+generateTypeSignature :: GenerateSignatureDomain dom => Simple Traversal (Ann Module dom SrcTemplateStage) (AnnList Decl dom SrcTemplateStage) 
                                 -- ^ Access for a top-level definition if it is the selected definition
-                           -> Simple Traversal (Ann' Module dom) (AnnList' LocalBind dom) 
+                           -> Simple Traversal (Ann Module dom SrcTemplateStage) (AnnList LocalBind dom SrcTemplateStage) 
                                 -- ^ Access for a definition list if it contains the selected definition
                            -> (forall d . (Show (d dom SrcTemplateStage), Data (d dom SrcTemplateStage), Typeable d, BindingElem d) 
-                                => AnnList' d dom -> Maybe (Ann' ValueBind dom)) 
+                                => AnnList d dom SrcTemplateStage -> Maybe (Ann ValueBind dom SrcTemplateStage)) 
                                 -- ^ Selector for either local or top-level declaration in the definition list
                            -> LocalRefactoring dom
 generateTypeSignature topLevelRef localRef vbAccess
@@ -50,8 +48,8 @@ generateTypeSignature topLevelRef localRef vbAccess
      (topLevelRef !~ genTypeSig vbAccess
         <=< localRef !~ genTypeSig vbAccess)
   
-genTypeSig :: (GenerateSignatureDomain dom, BindingElem d) => (AnnList' d dom -> Maybe (Ann' ValueBind dom))  
-                -> AnnList' d dom -> StateT Bool (LocalRefactor dom) (AnnList' d dom)
+genTypeSig :: (GenerateSignatureDomain dom, BindingElem d) => (AnnList d dom SrcTemplateStage -> Maybe (Ann ValueBind dom SrcTemplateStage))  
+                -> AnnList d dom SrcTemplateStage -> StateT Bool (LocalRefactor dom) (AnnList d dom SrcTemplateStage)
 genTypeSig vbAccess ls 
   | Just vb <- vbAccess ls 
   , not (typeSignatureAlreadyExist ls vb)
@@ -69,11 +67,11 @@ genTypeSig vbAccess ls
   | otherwise = return ls
 
 
-generateTSFor :: GenerateSignatureDomain dom => GHC.Name -> GHC.Type -> LocalRefactor dom (Ann' TypeSignature dom)
+generateTSFor :: GenerateSignatureDomain dom => GHC.Name -> GHC.Type -> LocalRefactor dom (Ann TypeSignature dom SrcTemplateStage)
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) <$> generateTypeFor (-1) (dropForAlls t)
 
 -- | Generates the source-level type for a GHC internal type
-generateTypeFor :: GenerateSignatureDomain dom => Int -> GHC.Type -> LocalRefactor dom (Ann' AST.Type dom) 
+generateTypeFor :: GenerateSignatureDomain dom => Int -> GHC.Type -> LocalRefactor dom (Ann AST.Type dom SrcTemplateStage) 
 generateTypeFor prec t 
   -- context
   | (break (not . isPredTy) -> (preds, other), rt) <- splitFunTys t
@@ -116,24 +114,24 @@ generateTypeFor prec t
   | (tvs@(_:_), t') <- splitForAllTys t
   = wrapParen (-1) <$> (mkTyForall (map (mkTypeVar' . getName) tvs) <$> generateTypeFor 0 t')
   | otherwise = error ("Cannot represent type: " ++ showSDocUnsafe (ppr t))
-  where wrapParen :: Int -> Ann' AST.Type dom -> Ann' AST.Type dom
+  where wrapParen :: Int -> Ann AST.Type dom SrcTemplateStage -> Ann AST.Type dom SrcTemplateStage
         wrapParen prec' node = if prec' < prec then mkTyParen node else node
 
         getTCId :: GHC.TyCon -> GHC.Id
         getTCId tc = GHC.mkVanillaGlobal (GHC.tyConName tc) (tyConKind tc)
 
-        generateAssertionFor :: GenerateSignatureDomain dom => GHC.Type -> LocalRefactor dom (Ann' AST.Assertion dom)
+        generateAssertionFor :: GenerateSignatureDomain dom => GHC.Type -> LocalRefactor dom (Ann AST.Assertion dom SrcTemplateStage)
         generateAssertionFor t 
           | Just (tc, types) <- splitTyConApp_maybe t
           = mkClassAssert <$> referenceName (idName $ getTCId tc) <*> mapM (generateTypeFor 0) types
         -- TODO: infix things
     
 -- | Check whether the definition already has a type signature
-typeSignatureAlreadyExist :: (GenerateSignatureDomain dom, BindingElem d) => AnnList' d dom -> Ann' ValueBind dom -> Bool
+typeSignatureAlreadyExist :: (GenerateSignatureDomain dom, BindingElem d) => AnnList d dom SrcTemplateStage -> Ann ValueBind dom SrcTemplateStage -> Bool
 typeSignatureAlreadyExist ls vb = 
   getBindingName vb `elem` (map semanticsId $ concatMap (^? bindName) (filter isTypeSig $ ls ^? annList&element))
   
-getBindingName :: GenerateSignatureDomain dom => Ann' ValueBind dom -> GHC.Id
+getBindingName :: GenerateSignatureDomain dom => Ann ValueBind dom SrcTemplateStage -> GHC.Id
 getBindingName vb = case nub $ map semanticsId $ vb ^? bindingName of 
   [n] -> n
   [] -> error "Trying to generate a signature for a binding with no name"

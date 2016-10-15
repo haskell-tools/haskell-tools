@@ -49,8 +49,8 @@ trfOperator = trfLocNoSema trfOperator'
 
 trfOperator' :: TransformName n r => n -> Trf (AST.Operator (Dom r) RangeStage)
 trfOperator' n
-  | isSymOcc (occName n) = AST.NormalOp <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
-  | otherwise = AST.BacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
+  | isSymOcc (occName n) = AST.UNormalOp <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
+  | otherwise = AST.UBacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 trfName :: TransformName n r => Located n -> Trf (Ann AST.Name (Dom r) RangeStage)
@@ -58,8 +58,8 @@ trfName = trfLocNoSema trfName'
 
 trfName' :: TransformName n r => n -> Trf (AST.Name (Dom r) RangeStage)
 trfName' n
-  | isSymOcc (occName n) = AST.ParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
-  | otherwise = AST.NormalName <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
+  | isSymOcc (occName n) = AST.UParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
+  | otherwise = AST.UNormalName <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.Name (Dom r) RangeStage)
@@ -72,7 +72,7 @@ trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
   = do locals <- asks localsInScope
        isDefining <- asks defining
        annLocNoSema (pure l) 
-         $ AST.NormalName 
+         $ AST.UNormalName 
          <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
 
 class (DataId n, Eq n, GHCName n) => TransformableName n where
@@ -108,7 +108,7 @@ trfImplicitName (HsIPName fs)
   = let nstr = unpackFS fs 
      in do rng <- asks contRange
            let rng' = mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (srcSpanEnd rng)
-           annContNoSema (AST.ImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
+           annContNoSema (AST.UImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
 
 trfQualifiedName :: TransformName n r => Located n -> Trf (Ann AST.QualifiedName (Dom r) RangeStage)
 trfQualifiedName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfQualifiedName' n)
@@ -117,13 +117,13 @@ trfQualifiedName' :: TransformName n r => n -> Trf (AST.QualifiedName (Dom r) Ra
 trfQualifiedName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
 
 -- | Creates a qualified name from a name string
-trfNameStr :: String -> Trf (AnnList AST.UnqualName (Dom r) RangeStage)
+trfNameStr :: String -> Trf (AnnList AST.NamePart (Dom r) RangeStage)
 trfNameStr str = makeList "." atTheStart (trfNameStr' str <$> atTheStart)
 
-trfNameStr' :: String -> SrcLoc -> [Ann AST.UnqualName (Dom r) RangeStage]
+trfNameStr' :: String -> SrcLoc -> [Ann AST.NamePart (Dom r) RangeStage]
 trfNameStr' str srcLoc = fst $
   foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                         in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UnqualName np)], advanceAllSrcLoc nextLoc "." ) ) 
+                         in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UNamePart np)], advanceAllSrcLoc nextLoc "." ) ) 
   ([], srcLoc) (nameParts str)
   where -- | Move the source location according to a string
         advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
@@ -146,14 +146,14 @@ trfModuleName :: Located ModuleName -> Trf (Ann AST.ModuleName (Dom r) RangeStag
 trfModuleName = trfLocNoSema trfModuleName'
 
 trfModuleName' :: ModuleName -> Trf (AST.ModuleName (Dom r) RangeStage)
-trfModuleName' = pure . AST.ModuleName . moduleNameString
+trfModuleName' = pure . AST.UModuleName . moduleNameString
 
 trfFastString :: Located FastString -> Trf (Ann AST.StringNode (Dom r) RangeStage)
-trfFastString = trfLocNoSema $ pure . AST.StringNode . unpackFS
+trfFastString = trfLocNoSema $ pure . AST.UStringNode . unpackFS
   
 trfDataKeyword ::  NewOrData -> Trf (Ann AST.DataOrNewtypeKeyword (Dom r) RangeStage)
-trfDataKeyword NewType = annLocNoSema (tokenLoc AnnNewtype) (pure AST.NewtypeKeyword)
-trfDataKeyword DataType = annLocNoSema (tokenLoc AnnData) (pure AST.DataKeyword)
+trfDataKeyword NewType = annLocNoSema (tokenLoc AnnNewtype) (pure AST.UNewtypeKeyword)
+trfDataKeyword DataType = annLocNoSema (tokenLoc AnnData) (pure AST.UDataKeyword)
      
 trfCallConv :: Located CCallConv -> Trf (Ann AST.CallConv (Dom r) RangeStage)
 trfCallConv = trfLocNoSema trfCallConv'

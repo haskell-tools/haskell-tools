@@ -53,7 +53,7 @@ trfBracket' (ExpBr expr) = AST.ExprBracket <$> trfExpr expr
 trfBracket' (TExpBr expr) = AST.ExprBracket <$> trfExpr expr
 trfBracket' (VarBr isSingle expr) 
   = AST.ExprBracket <$> annLoc createScopeInfo (updateStart (updateCol (if isSingle then (+1) else (+2))) <$> asks contRange) 
-      (AST.Var <$> (annContNoSema (trfName' expr)))
+      (AST.UVar <$> (annContNoSema (trfName' expr)))
 trfBracket' (PatBr pat) = AST.PatternBracket <$> trfPattern pat
 trfBracket' (DecBrL decls) = AST.DeclsBracket <$> trfDecls decls
 trfBracket' (DecBrG decls) = AST.DeclsBracket <$> trfDeclsGroup decls

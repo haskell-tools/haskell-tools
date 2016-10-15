@@ -108,7 +108,7 @@ makeReferences ''Operator
 makeReferences ''Name
 makeReferences ''QualifiedName
 makeReferences ''ModuleName
-makeReferences ''UnqualName
+makeReferences ''NamePart
 makeReferences ''StringNode
 makeReferences ''DataOrNewtypeKeyword
 makeReferences ''DoKind

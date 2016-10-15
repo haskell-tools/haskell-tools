@@ -23,7 +23,7 @@ instance (Eq (e dom stage)) => Eq (AnnMaybe e dom stage) where
   AnnMaybe _ e1 == AnnMaybe _ e2 = e1 == e2
 
 instance (Eq (e dom stage)) => Eq (AnnList e dom stage) where
-  AnnList _ e1 == AnnList _ e2 = e1 == e2
+  AnnList e1 == AnnList e2 = e1 == e2
 
 -- Modules
 deriving instance Eq (Module dom stage)
@@ -119,7 +119,7 @@ deriving instance Eq (Operator dom stage)
 deriving instance Eq (Name dom stage)
 deriving instance Eq (QualifiedName dom stage)
 deriving instance Eq (ModuleName dom stage)
-deriving instance Eq (UnqualName dom stage)
+deriving instance Eq (NamePart dom stage)
 deriving instance Eq (StringNode dom stage)
 deriving instance Eq (DataOrNewtypeKeyword dom stage)
 deriving instance Eq (DoKind dom stage)

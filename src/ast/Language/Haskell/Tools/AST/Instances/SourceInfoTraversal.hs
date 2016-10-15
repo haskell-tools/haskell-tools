@@ -114,7 +114,7 @@ deriveSourceInfoTraversal ''Operator
 deriveSourceInfoTraversal ''Name
 deriveSourceInfoTraversal ''QualifiedName
 deriveSourceInfoTraversal ''ModuleName
-deriveSourceInfoTraversal ''UnqualName
+deriveSourceInfoTraversal ''NamePart
 deriveSourceInfoTraversal ''StringNode
 deriveSourceInfoTraversal ''DataOrNewtypeKeyword
 deriveSourceInfoTraversal ''DoKind
