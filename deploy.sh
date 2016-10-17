@@ -26,13 +26,13 @@ git clone git@github.com:haskell-tools/haskell-tools.github.io out
 rm -rf out/**/* || exit 0
 
 # Copy generated haddock documentation
-cp -r .stack-work/install/x86_64-linux/nightly-2016-09-10/8.0.1/doc out/api
+cp -r .stack-work/install/x86_64-linux/nightly-2016-09-10/8.0.1/doc/* out/api
 cd out
 
 git config user.name "Travis CI"
 git config user.email "nboldi@caesar.elte.hu"
 git config push.default simple
 
-git add .
+git add -A .
 git commit -m "Updating API documentation for: https://github.com/haskell-tools/haskell-tools/commit/$TRAVIS_COMMIT"
 git push -f
