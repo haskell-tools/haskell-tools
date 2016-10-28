@@ -12,83 +12,148 @@ import Data.String
 import Data.Function (on)
 import Control.Reference
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.Gen.Base
+import Language.Haskell.Tools.AST.ElementTypes
+import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
 -- * Generation of types
 
-mkTyForall :: [Ann TyVar dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyForall vars t = mkAnn ("forall " <> child <> " . " <> child) (UTyForall (mkAnnList (listSep " ") vars) t)
+-- | Forall types (@ forall x y . type @)
+mkForallType :: [TyVar dom] -> Type dom -> Type dom
+mkForallType vars t = mkAnn ("forall " <> child <> " . " <> child) (UTyForall (mkAnnList (listSep " ") vars) t)
 
-mkTypeVar' :: GHC.Name -> Ann TyVar dom SrcTemplateStage
+-- | Simplified creation of type variables
+mkTypeVar' :: GHC.Name -> TyVar dom
 mkTypeVar' = mkTypeVar . mkUnqualName'
 
-mkTyCtx :: Ann Context dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyCtx ctx t = mkAnn (child <> " " <> child) (UTyCtx ctx t)
+-- | Type with a context (@ forall x y . type @)
+mkCtxType :: Context dom -> Type dom -> Type dom
+mkCtxType ctx t = mkAnn (child <> " " <> child) (UTyCtx ctx t)
 
-mkTyFun :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyFun at rt = mkAnn (child <> " -> " <> child) (UTyFun at rt)
+-- | Function types (@ a -> b @)
+mkFunctionType :: Type dom -> Type dom -> Type dom
+mkFunctionType at rt = mkAnn (child <> " -> " <> child) (UTyFun at rt)
 
-mkTyTuple :: [Ann Type dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage
-mkTyTuple args = mkAnn ("(" <> child <> ")") (UTyTuple (mkAnnList (listSep ", ") args))
+-- | Tuple types (@ (a,b) @)
+mkTupleType :: [Type dom] -> Type dom
+mkTupleType args = mkAnn ("(" <> child <> ")") (UTyTuple (mkAnnList (listSep ", ") args))
 
-mkTyUnbTuple :: [Ann Type dom SrcTemplateStage] -> Ann Type dom SrcTemplateStage
-mkTyUnbTuple args = mkAnn ("(#" <> child <> "#)") (UTyUnbTuple (mkAnnList (listSep ", ") args))
+-- | Unboxed tuple types (@ (#a,b#) @)
+mkUnboxedTupleType :: [Type dom] -> Type dom
+mkUnboxedTupleType args = mkAnn ("(#" <> child <> "#)") (UTyUnbTuple (mkAnnList (listSep ", ") args))
 
-mkTyList :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyList = mkAnn ("[" <> child <> "]") . UTyList
+-- | List type with special syntax (@ [a] @)
+mkListType :: Type dom -> Type dom
+mkListType = mkAnn ("[" <> child <> "]") . UTyList
 
-mkTyParArray :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyParArray = mkAnn ("[:" <> child <> ":]") . UTyParArray
+-- | Parallel array type (@ [:a:] @)
+mkParArrayType :: Type dom -> Type dom
+mkParArrayType = mkAnn ("[:" <> child <> ":]") . UTyParArray
 
-mkTyApp :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyApp ft at = mkAnn (child <> " " <> child) (UTyApp ft at)
+-- | Type application (@ F a @)
+mkTypeApp :: Type dom -> Type dom -> Type dom
+mkTypeApp ft at = mkAnn (child <> " " <> child) (UTyApp ft at)
 
-mkTyInfix :: Ann Type dom SrcTemplateStage -> Ann Operator dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyInfix left op right = mkAnn (child <> " " <> child <> " " <> child) (UTyInfix left op right)
+-- | Infix type constructor (@ (a <: b) @)
+mkInfixTypeApp :: Type dom -> Operator dom -> Type dom -> Type dom
+mkInfixTypeApp left op right = mkAnn (child <> " " <> child <> " " <> child) (UTyInfix left op right)
              
-mkTyParen :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyParen = mkAnn ("(" <> child <> ")") . UTyParen
+-- | Type surrounded by parentheses (@ (T a) @)
+mkParenType :: Type dom -> Type dom
+mkParenType = mkAnn ("(" <> child <> ")") . UTyParen
            
-mkTypeVar :: Ann Name dom SrcTemplateStage -> Ann TyVar dom SrcTemplateStage
+mkTypeVar :: Name dom -> TyVar dom
 mkTypeVar n = mkAnn (child <> child) (UTyVarDecl n noth)
 
-mkTyVar :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyVar = wrapperAnn . UTyVar
+-- | Type variable or constructor (@ a @)
+mkVarType :: Name dom -> Type dom
+mkVarType = wrapperAnn . UTyVar
 
-mkTyKinded :: Ann Type dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyKinded t k = mkAnn (child <> " :: " <> child) (UTyKinded t k)
+-- | Type with explicit kind signature (@ a :: * @)
+mkKindedType :: Type dom -> Kind dom -> Type dom
+mkKindedType t k = mkAnn (child <> " :: " <> child) (UTyKinded t k)
 
-mkTyBang :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyBang = mkAnn ("!" <> child) . UTyBang
+-- | Strict type marked with @!@.
+mkBangType :: Type dom -> Type dom
+mkBangType = mkAnn ("!" <> child) . UTyBang
 
-mkTyLazy :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyLazy = mkAnn ("~" <> child) . UTyLazy
+-- | Lazy type marked with @~@. (Should only be used if @Strict@ or @StrictData@ language extension is used)
+mkLazyType :: Type dom -> Type dom
+mkLazyType = mkAnn ("~" <> child) . UTyLazy
 
-mkTyUnpack :: Ann Type dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyUnpack = mkAnn ("{-# UNPACK #-} " <> child) . UTyUnpack
+-- | Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
+mkUnpackType :: Type dom -> Type dom
+mkUnpackType = mkAnn ("{-# UNPACK #-} " <> child) . UTyUnpack
 
-mkTyWildcard :: Ann Type dom SrcTemplateStage
-mkTyWildcard = mkAnn "_" UTyWildcard
+-- | Strict type marked with UNPACK pragma. (Usually contains the bang mark.)
+mkNoUnpackType :: Type dom -> Type dom
+mkNoUnpackType = mkAnn ("{-# NOUNPACK #-} " <> child) . UTyNoUnpack
 
-mkTyNamedWildcard :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage
-mkTyNamedWildcard = mkAnn ("_" <> child) . UTyNamedWildc
+-- | A wildcard type (@ _ @) with @-XPartialTypeSignatures@
+mkWildcardType :: Type dom
+mkWildcardType = mkAnn "_" UTyWildcard
+
+-- | A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
+mkNamedWildcardType :: Name dom -> Type dom
+mkNamedWildcardType = mkAnn ("_" <> child) . UTyNamedWildc
+
+-- | A Template Haskell splice type (@ $(genType) @).
+mkSpliceType :: Splice dom -> Type dom
+mkSpliceType = mkAnn child . UTySplice
+
+-- | A Template Haskell quasi-quote type (@ [quoter| ... ] @).
+mkQuasiQuoteType :: QuasiQuote dom -> Type dom
+mkQuasiQuoteType = mkAnn child . UTyQuasiQuote
+
+
+-- | Numeric value promoted to the kind level.
+mkPromotedIntType :: Integer -> Type dom
+mkPromotedIntType i = mkAnn child $ UTyPromoted $ mkAnn (fromString $ show i) (UPromotedInt i)
+
+-- | String value promoted to the kind level.
+mkPromotedStringType :: String -> Type dom
+mkPromotedStringType i = mkAnn child $ UTyPromoted $ mkAnn (fromString $ show i) (UPromotedString i)
+
+-- | A data constructor value promoted to the kind level.
+mkPromotedConType :: Name dom -> Type dom
+mkPromotedConType = mkAnn child . UTyPromoted . mkAnn child . UPromotedCon
+
+-- | A list of elements as a kind.
+mkPromotedListType :: [Type dom] -> Type dom
+mkPromotedListType = mkAnn child . UTyPromoted . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (listSep ", ")
+
+-- | A tuple of elements as a kind.
+mkPromotedTupleType :: [Type dom] -> Type dom
+mkPromotedTupleType = mkAnn child . UTyPromoted . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (listSep ", ")
+
+-- | Kind of the unit value @()@. 
+mkPromotedUnitType :: Type dom
+mkPromotedUnitType = mkAnn child $ UTyPromoted $ mkAnn "()" UPromotedUnit
 
 -- * Generation of contexts
 
-mkContextOne :: Ann Assertion dom SrcTemplateStage -> Ann Context dom SrcTemplateStage
+-- | Creates a context of one assertion (@ C a => ... @)
+mkContextOne :: Assertion dom -> Context dom
 mkContextOne = mkAnn (child <> " =>") . UContextOne
 
-mkContextMulti :: [Ann Assertion dom SrcTemplateStage] -> Ann Context dom SrcTemplateStage
+-- | Creates a context of a set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
+mkContextMulti :: [Assertion dom] -> Context dom
 mkContextMulti = mkAnn ("(" <> child <> ") =>") . UContextMulti . mkAnnList (listSep ", ")
 
 -- * Generation of assertions
 
-mkClassAssert :: Ann Name dom SrcTemplateStage -> [Ann Type dom SrcTemplateStage] -> Ann Assertion dom SrcTemplateStage
+-- | Class assertion (@Cls x@)
+mkClassAssert :: Name dom -> [Type dom] -> Assertion dom
 -- fixme: class assertion without parameters should not have the last space
 mkClassAssert n args = mkAnn (child <> " " <> child) $ UClassAssert n (mkAnnList (listSep " ") args)
 
-mkInfixAssert :: Ann Type dom SrcTemplateStage -> Ann Operator dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann Assertion dom SrcTemplateStage
+-- | Infix class assertion, also contains type equations (@ a ~ X y @)
+mkInfixAssert :: Type dom -> Operator dom -> Type dom -> Assertion dom
 mkInfixAssert left op right = mkAnn (child <> " " <> child <> " " <> child) $ UInfixAssert left op right
+
+-- | Creates an assertion for implicit parameter binding (@ ?cmp :: a -> a -> Bool @)
+mkImplicitAssert :: Name dom -> Type dom -> Assertion dom
+mkImplicitAssert n t = mkAnn (child <> " :: " <> child) $ UImplicitAssert n t
+

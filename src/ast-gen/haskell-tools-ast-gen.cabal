@@ -13,6 +13,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Haskell.Tools.AST.Rewrite
+                     , Language.Haskell.Tools.AST.ElementTypes
                      , Language.Haskell.Tools.AST.Gen.Modules
                      , Language.Haskell.Tools.AST.Gen.Decls
                      , Language.Haskell.Tools.AST.Gen.Binds
@@ -22,7 +23,8 @@ library
                      , Language.Haskell.Tools.AST.Gen.Literals
                      , Language.Haskell.Tools.AST.Gen.Stmts
                      , Language.Haskell.Tools.AST.Gen.Patterns
-                     , Language.Haskell.Tools.AST.Gen.Base
+                     , Language.Haskell.Tools.AST.Gen.Names
+                     , Language.Haskell.Tools.AST.Gen.TH
                      , Language.Haskell.Tools.AST.Gen.Utils
                      , Language.Haskell.Tools.AST.Match.Modules
                      , Language.Haskell.Tools.AST.Match.Decls
@@ -33,7 +35,8 @@ library
                      , Language.Haskell.Tools.AST.Match.Literals
                      , Language.Haskell.Tools.AST.Match.Stmts
                      , Language.Haskell.Tools.AST.Match.Patterns
-                     , Language.Haskell.Tools.AST.Match.Base
+                     , Language.Haskell.Tools.AST.Match.Names
+                     , Language.Haskell.Tools.AST.Match.TH
   build-depends:       base                  >=4.9   && <5.0
                      , ghc                   >=8.0   && <8.1
                      , mtl                   >=2.2   && <2.3

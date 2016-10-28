@@ -1,6 +1,6 @@
 module Refactors.Rename where
 
--- TODO: use [Ctrl, Alt and/or Shift + R] to rename the selected definition
+-- TODO: use [Ctrl, UAlt and/or Shift + R] to rename the selected definition
 -- The function f calculates the average of two numbers. Rename it to 'avg' for clarity.
 -- Bonus: also rename the type variable.
 f :: (Num a, Integral a) => a -> a -> a

@@ -24,7 +24,8 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.DebugGhcAST
 import Language.Haskell.Tools.RangeDebug
 import Language.Haskell.Tools.RangeDebug.Instances
-import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Prepare
+import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 -- | Should be only used for testing

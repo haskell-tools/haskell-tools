@@ -10,18 +10,18 @@ import Language.Haskell.Tools.AST.Instances
 import Language.Haskell.Tools.AST.References as Exported
 import Language.Haskell.Tools.AST.Helpers as Exported
 
-import Language.Haskell.Tools.AST.Modules as Exported
-import Language.Haskell.Tools.AST.TH as Exported
-import Language.Haskell.Tools.AST.Decls as Exported
-import Language.Haskell.Tools.AST.Binds as Exported
-import Language.Haskell.Tools.AST.Exprs as Exported
-import Language.Haskell.Tools.AST.Stmts as Exported
-import Language.Haskell.Tools.AST.Patterns as Exported
-import Language.Haskell.Tools.AST.Types as Exported
-import Language.Haskell.Tools.AST.Kinds as Exported
-import Language.Haskell.Tools.AST.Literals as Exported
-import Language.Haskell.Tools.AST.Base as Exported
+import Language.Haskell.Tools.AST.Representation.Modules as Exported
+import Language.Haskell.Tools.AST.Representation.TH as Exported
+import Language.Haskell.Tools.AST.Representation.Decls as Exported
+import Language.Haskell.Tools.AST.Representation.Binds as Exported
+import Language.Haskell.Tools.AST.Representation.Exprs as Exported
+import Language.Haskell.Tools.AST.Representation.Stmts as Exported
+import Language.Haskell.Tools.AST.Representation.Patterns as Exported
+import Language.Haskell.Tools.AST.Representation.Types as Exported
+import Language.Haskell.Tools.AST.Representation.Kinds as Exported
+import Language.Haskell.Tools.AST.Representation.Literals as Exported
+import Language.Haskell.Tools.AST.Representation.Names as Exported
 import Language.Haskell.Tools.AST.Ann as Exported
 import Language.Haskell.Tools.AST.Utils.OrdSrcSpan as Exported
-import Language.Haskell.Tools.AST.SemaInfoTypes as Exported
 import Language.Haskell.Tools.AST.SemaInfoClasses as Exported
+-- import Language.Haskell.Tools.AST.SemaInfoTypes (NoSemanticInfo, ScopeInfo, NameInfo, ) as Exported

@@ -38,6 +38,7 @@ import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
 import Language.Haskell.Tools.AnnTrf.RangeTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 --import Language.Haskell.Tools.Refactor.RangeDebug
+import Language.Haskell.Tools.AST.SemaInfoTypes
 
 
 data DebugNode dom = TreeNode { _nodeLabel :: String
@@ -135,52 +136,43 @@ instance AssocSema dom => AssocData (SemanticInfoType dom) where
 
 
 instance AssocData ScopeInfo where
-  assocName (ScopeInfo {}) = "ScopeInfo"
-  toAssoc (ScopeInfo locals) = [ ("namesInScope", inspectScope locals) ]
+  assocName si = "ScopeInfo"
+  toAssoc si = [ ("namesInScope", inspectScope (semanticsScope si)) ]
 
-instance InspectableName n => AssocData (NameInfo n) where
-  assocName (NameInfo {}) = "NameInfo"
-  assocName (AmbiguousNameInfo {}) = "AmbiguousNameInfo"
-  assocName (ImplicitNameInfo {}) = "ImplicitNameInfo"
+instance HasNameInfo' (NameInfo n) => AssocData (NameInfo n) where
+  assocName si = "NameInfo"
 
-  toAssoc (NameInfo locals defined nameInfo) = [ ("name", inspect nameInfo)
-                                               , ("isDefined", show defined)
-                                               , ("namesInScope", inspectScope locals) 
-                                               ]
-  toAssoc (AmbiguousNameInfo locals defined name _) = [ ("name", inspect name)
-                                                      , ("isDefined", show defined)
-                                                      , ("namesInScope", inspectScope locals) 
-                                                      ]
-  toAssoc (ImplicitNameInfo locals defined name _) = [ ("name", name)
-                                                     , ("isDefined", show defined)
-                                                     , ("namesInScope", inspectScope locals) 
-                                                     ]
+  toAssoc ni = [ ("name", maybe "<ambiguous>" inspect (semanticsName ni))
+               , ("isDefined", show (semanticsDefining ni))
+               , ("namesInScope", inspectScope (semanticsScope ni)) 
+               ]
+
 instance AssocData CNameInfo where
-  assocName (CNameInfo {}) = "CNameInfo"
-  toAssoc (CNameInfo locals defined nameInfo fixity) = [ ("name", inspect nameInfo)
-                                                       , ("isDefined", show defined)
-                                                       , ("fixity", maybe "" (showSDocUnsafe . ppr) fixity) 
-                                                       , ("namesInScope", inspectScope locals) 
-                                                       ]
+  assocName _ = "CNameInfo"
+  toAssoc ni = [ ("name", inspect (semanticsId ni))
+               , ("isDefined", show (semanticsDefining ni))
+               , ("fixity", maybe "" (showSDocUnsafe . ppr) (semanticsFixity ni)) 
+               , ("namesInScope", inspectScope (semanticsScope ni)) 
+               ]
 
-instance InspectableName n => AssocData (ModuleInfo n) where
-  assocName (ModuleInfo {}) = "ModuleInfo"
-  toAssoc (ModuleInfo mod isboot imps) = [ ("moduleName", showSDocUnsafe (ppr mod))
-                                         , ("isBoot", show isboot)
-                                         , ("implicitImports", concat (intersperse ", " (map inspect imps)))
-                                         ]
+instance (HasModuleInfo' (ModuleInfo n), InspectableName n) => AssocData (ModuleInfo n) where
+  assocName _ = "ModuleInfo"
+  toAssoc mi = [ ("moduleName", showSDocUnsafe (ppr (semanticsModule mi)))
+               , ("isBoot", show (isBootModule mi))
+               , ("implicitImports", concat (intersperse ", " (map inspect (semanticsImplicitImports mi))))
+               ]
   
-instance InspectableName n => AssocData (ImportInfo n) where
-  assocName (ImportInfo {}) = "ImportInfo"
-  toAssoc (ImportInfo mod avail imported) = [ ("moduleName", showSDocUnsafe (ppr mod)) 
-                                            , ("availableNames", concat (intersperse ", " (map inspect avail))) 
-                                            , ("importedNames", concat (intersperse ", " (map inspect imported))) 
-                                            ]      
+instance (HasImportInfo' (ImportInfo n), InspectableName n) => AssocData (ImportInfo n) where
+  assocName _ = "ImportInfo"
+  toAssoc ii = [ ("moduleName", showSDocUnsafe (ppr (semanticsImportedModule ii))) 
+               , ("availableNames", concat (intersperse ", " (map inspect (semanticsAvailable ii)))) 
+               , ("importedNames", concat (intersperse ", " (map inspect (semanticsImported ii)))) 
+               ]      
   
 instance AssocData ImplicitFieldInfo where
-  assocName (ImplicitFieldInfo {}) = "ImplicitFieldInfo"
-  toAssoc (ImplicitFieldInfo bnds) = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") bnds)))
-                                     ]                                               
+  assocName _ = "ImplicitFieldInfo"
+  toAssoc ifi = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") (semanticsImplicitFlds ifi))))
+                ]                                               
 
 inspectScope :: InspectableName n => [[n]] -> String
 inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)

@@ -1,7 +1,7 @@
 -- In this example we present how comments are attached to elements
 -- of the syntax tree.
 
--- TODO: use [Ctrl, Alt and/or Shift + O] organize the imports in this module.
+-- TODO: use [Ctrl, UAlt and/or Shift + O] organize the imports in this module.
 -- The second import is redundant. See which comments are kept.
 module Features.KeepsFormatting where
 

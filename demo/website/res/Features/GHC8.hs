@@ -4,7 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module Features.GHC8 where
 
--- TODO: rename one field with [Ctrl, Alt and/or Shift + R]
+-- TODO: rename one field with [Ctrl, UAlt and/or Shift + R]
 -- notice that only the corresponding field selector is changed.
 data A = A { x, y :: Int }
 data B = B { x, y :: Int }

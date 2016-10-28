@@ -11,37 +11,48 @@ import Data.String
 import Data.Function (on)
 import Control.Reference
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Base
+import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkCharLit :: Char -> Ann Literal dom SrcTemplateStage
+-- | Character literal: @'c'@
+mkCharLit :: Char -> Literal dom
 mkCharLit c = mkAnn (fromString $ show c) $ UCharLit c
 
-mkStringLit :: String -> Ann Literal dom SrcTemplateStage
+-- | String literal: @"abc"@
+mkStringLit :: String -> Literal dom
 mkStringLit s = mkAnn (fromString $ show s) $ UStringLit s
 
-mkIntLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Integer literal: @12@
+mkIntLit :: Integer -> Literal dom
 mkIntLit i = mkAnn (fromString $ show i) $ UIntLit i
 
-mkFracLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Fractional literal: @3.14@
+mkFracLit :: Rational -> Literal dom
 mkFracLit f = mkAnn (fromString $ show f) $ UFracLit f
 
-mkPrimIntLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Primitive integer literal (of type @Int#@): @32#@
+mkPrimIntLit :: Integer -> Literal dom
 mkPrimIntLit i = mkAnn (fromString $ show i ++ "#") $ UPrimIntLit i
 
-mkPrimWordLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Primitive word literal (of type @Word#@): @32##@
+mkPrimWordLit :: Integer -> Literal dom
 mkPrimWordLit i = mkAnn (fromString $ show i ++ "##") $ UPrimWordLit i
 
-mkPrimFloatLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Primitive float literal (of type @Float#@): @3.14#@
+mkPrimFloatLit :: Rational -> Literal dom
 mkPrimFloatLit f = mkAnn (fromString $ show f ++ "#") $ UPrimFloatLit f
 
-mkPrimDoubleLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Primitive double literal (of type @Double#@): @3.14##@
+mkPrimDoubleLit :: Rational -> Literal dom
 mkPrimDoubleLit f = mkAnn (fromString $ show f ++ "##") $ UPrimDoubleLit f
 
-mkPrimCharLit :: Char -> Ann Literal dom SrcTemplateStage
+-- | Primitive character literal (of type @Char#@): @'c'#@
+mkPrimCharLit :: Char -> Literal dom
 mkPrimCharLit c = mkAnn (fromString $ show c ++ "#") $ UPrimCharLit c
 
-mkPrimStringLit :: String -> Ann Literal dom SrcTemplateStage
+-- | Primitive string literal (of type @Addr#@): @"xxx"#@
+mkPrimStringLit :: String -> Literal dom
 mkPrimStringLit s = mkAnn (fromString $ show s ++ "#") $ UPrimStringLit s

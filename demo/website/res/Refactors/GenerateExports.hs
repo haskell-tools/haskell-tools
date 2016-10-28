@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 -- Quite a few things are defined in this module, but maybe not all of them should be exposed.
--- TODO: use [Ctrl, Alt and/or Shift + E] generate exports for the module
+-- TODO: use [Ctrl, UAlt and/or Shift + E] generate exports for the module
 -- and narrow the generated interface.
 module Refactors.GenerateExports where
 
@@ -12,7 +12,7 @@ data TypeCtor = DataCtor { recordName :: Int }
 class TypeClass a where
   classFunction :: a -> a
 
-type family TypeFamily a :: *
+type family UTypeFamily a :: *
 
 data family DataFamily a :: *
 

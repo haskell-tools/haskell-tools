@@ -7,6 +7,7 @@ module Language.Haskell.Tools.AST.FromGHC.Decls where
 
 import qualified GHC
 import RdrName as GHC
+import Var as GHC
 import Class as GHC
 import HsSyn as GHC
 import SrcLoc as GHC
@@ -20,6 +21,8 @@ import Bag as GHC
 import ForeignCall as GHC
 import Outputable as GHC
 import Unique as GHC
+import TyCon as GHC
+import BooleanFormula as GHC
 
 import Control.Monad.Reader
 import Control.Reference
@@ -31,7 +34,7 @@ import Data.Data (toConstr)
 import Data.Generics.Uniplate.Data
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Base
+import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Types
 import Language.Haskell.Tools.AST.FromGHC.Exprs
@@ -41,17 +44,18 @@ import Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), getRange, Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), getRange, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 
 import Data.Dynamic
 import Debug.Trace
 
-trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnList AST.Decl (Dom r) RangeStage)
+trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 -- TODO: filter documentation comments
 trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
-trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnList AST.Decl (Dom r) RangeStage)
+trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
   = do spls <- getDeclSplices
        let (sigs, bagToList -> binds) = getBindsAndSigs vals
@@ -79,20 +83,18 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
       = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
     
-    getDeclsToInsert :: Trf [Ann AST.Decl (Dom r) RangeStage]
+    getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
                           locals <- asks (head . localsInScope)
                           liftGhc $ mapM (loadIdsForDecls locals) decls
-       where loadIdsForDecls :: [GHC.Name] -> Ann AST.Decl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.Decl (Dom r) RangeStage)
+       where loadIdsForDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
              loadIdsForDecls locals = AST.semaTraverse $
-                AST.SemaTrf (AST.nameInfo !~ findName) pure 
-                            (\(AST.ImportInfo mod avail actual) -> AST.ImportInfo mod <$> mapM findName avail <*> mapM findName actual)
-                            pure pure pure
+                AST.SemaTrf (AST.nameInfo !~ findName) pure (traverse findName) pure pure pure
                where findName rdr = pure $ fromGHCName $ fromMaybe (error $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr) 
                                                                               ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals)) 
                                                        $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
            
-trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.Decl (Dom r) RangeStage)
+trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.UDecl (Dom r) RangeStage)
 trfDecl = trfLocNoSema $ \case
   TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _)) 
     -> AST.UClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars) 
@@ -142,7 +144,7 @@ trfDecl = trfLocNoSema $ \case
 
 trfGADT :: TransformName n r => NewOrData -> Located n -> LHsQTyVars n -> Located (HsContext n) 
                                  -> Maybe (Located (HsKind n)) -> [Located (ConDecl n)] 
-                                 -> Maybe (Located [LHsSigType n]) -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.Decl (Dom r) RangeStage)
+                                 -> Maybe (Located [LHsSigType n]) -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.UDecl (Dom r) RangeStage)
 trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
   = AST.UGDataDecl <$> trfDataKeyword nd
                    <*> trfCtx (after ctxTok) ctx
@@ -153,7 +155,7 @@ trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
 
 trfDataDef :: TransformName n r => NewOrData -> Located n -> LHsQTyVars n -> Located (HsContext n) 
                                      -> [Located (ConDecl n)] -> Maybe (Located [LHsSigType n]) 
-                                     -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.Decl (Dom r) RangeStage)
+                                     -> AnnKeywordId -> Trf SrcLoc -> Trf (AST.UDecl (Dom r) RangeStage)
 trfDataDef nd name vars ctx cons derivs ctxTok consLoc
   = AST.UDataDecl <$> trfDataKeyword nd
                   <*> trfCtx (after ctxTok) ctx
@@ -161,11 +163,11 @@ trfDataDef nd name vars ctx cons derivs ctxTok consLoc
                   <*> makeListBefore "=" " | " consLoc (mapM trfConDecl cons)
                   <*> trfMaybe "" "" trfDerivings derivs
 
-trfVal :: TransformName n r => HsBindLR n n -> Trf (AST.Decl (Dom r) RangeStage)
+trfVal :: TransformName n r => HsBindLR n n -> Trf (AST.UDecl (Dom r) RangeStage)
 trfVal (PatSynBind psb) = AST.UPatternSynonymDecl <$> annContNoSema (trfPatternSynonym psb)
 trfVal bind = AST.UValueBinding <$> (annContNoSema $ trfBind' bind)
 
-trfSig :: TransformName n r => Sig n -> Trf (AST.Decl (Dom r) RangeStage)
+trfSig :: TransformName n r => Sig n -> Trf (AST.UDecl (Dom r) RangeStage)
 trfSig (ts @ (TypeSig {})) = AST.UTypeSigDecl <$> defineTypeVars (annContNoSema $ trfTypeSig' ts)
 trfSig (FixSig fs) = AST.UFixityDecl <$> (annContNoSema $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
@@ -185,14 +187,14 @@ trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase))
                                        <*> (orderAnnList <$> trfAnnList ", " trfType' types))
 trfSig s = error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
 
-trfConlike :: [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybe AST.ConlikeAnnot (Dom r) RangeStage)
-trfConlike parts ConLike = makeJust <$> annLocNoSema (pure $ parts !! 2) (pure AST.ConlikeAnnot)
+trfConlike :: [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybeG AST.UConlikeAnnot (Dom r) RangeStage)
+trfConlike parts ConLike = makeJust <$> annLocNoSema (pure $ parts !! 2) (pure AST.UConlikeAnnot)
 trfConlike parts FunLike = nothing " " "" (pure $ srcSpanEnd $ parts !! 1)
 
-trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.ConDecl (Dom r) RangeStage)
+trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.UConDecl (Dom r) RangeStage)
 trfConDecl = trfLocNoSema trfConDecl'
 
-trfConDecl' :: TransformName n r => ConDecl n -> Trf (AST.ConDecl (Dom r) RangeStage)
+trfConDecl' :: TransformName n r => ConDecl n -> Trf (AST.UConDecl (Dom r) RangeStage)
 trfConDecl' (ConDeclH98 { con_name = name, con_details = PrefixCon args })
   = AST.UConDecl <$> define (trfName name) <*> makeList " " atTheEnd (mapM trfType args)
 trfConDecl' (ConDeclH98 { con_name = name, con_details = RecCon (unLoc -> flds) })
@@ -200,33 +202,33 @@ trfConDecl' (ConDeclH98 { con_name = name, con_details = RecCon (unLoc -> flds) 
 trfConDecl' (ConDeclH98 { con_name = name, con_details = InfixCon t1 t2 })
   = AST.UInfixConDecl <$> trfType t1 <*> define (trfOperator name) <*> trfType t2
 
-trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.GadtConDecl (Dom r) RangeStage)
+trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.UGadtConDecl (Dom r) RangeStage)
 trfGADTConDecl = trfLocNoSema $ \(ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
   -> AST.UGadtConDecl <$> define (trfAnnList ", " trfName' names) 
                      <*> trfGadtConType typ
 
-trfGadtConType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.GadtConType (Dom r) RangeStage)
+trfGadtConType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UGadtConType (Dom r) RangeStage)
 trfGadtConType = trfLocNoSema $ \case 
   HsFunTy (cleanHsType . unLoc -> HsRecTy flds) resType 
     -> AST.UGadtRecordType <$> between AnnOpenC AnnCloseC (trfAnnList ", " trfFieldDecl' flds) 
                           <*> trfType resType
   typ -> AST.UGadtNormalType <$> annContNoSema (trfType' typ)
 
-trfFieldDecl :: TransformName n r => Located (ConDeclField n) -> Trf (Ann AST.FieldDecl (Dom r) RangeStage)
+trfFieldDecl :: TransformName n r => Located (ConDeclField n) -> Trf (Ann AST.UFieldDecl (Dom r) RangeStage)
 trfFieldDecl = trfLocNoSema trfFieldDecl'
 
-trfFieldDecl' :: TransformName n r => ConDeclField n -> Trf (AST.FieldDecl (Dom r) RangeStage)
+trfFieldDecl' :: TransformName n r => ConDeclField n -> Trf (AST.UFieldDecl (Dom r) RangeStage)
 trfFieldDecl' (ConDeclField names typ _) = AST.UFieldDecl <$> (define $ nonemptyAnnList <$> mapM (trfName . getFieldOccName) names) <*> trfType typ
 
-trfDerivings :: TransformName n r => Located [LHsSigType n] -> Trf (Ann AST.Deriving (Dom r) RangeStage)
+trfDerivings :: TransformName n r => Located [LHsSigType n] -> Trf (Ann AST.UDeriving (Dom r) RangeStage)
 trfDerivings = trfLocNoSema $ \case
   [hsib_body -> typ@(unLoc -> HsTyVar cls)] -> AST.UDerivingOne <$> trfInstanceHead typ
   derivs -> AST.UDerivings <$> trfAnnList ", " trfInstanceHead' (map hsib_body derivs)
   
-trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceRule (Dom r) RangeStage)
+trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UInstanceRule (Dom r) RangeStage)
 trfInstanceRule = trfLocNoSema (trfInstanceRule' . cleanHsType)
 
-trfInstanceRule' :: TransformName n r => HsType n -> Trf (AST.InstanceRule (Dom r) RangeStage)
+trfInstanceRule' :: TransformName n r => HsType n -> Trf (AST.UInstanceRule (Dom r) RangeStage)
 trfInstanceRule' (HsForAllTy bndrs (unLoc -> HsQualTy ctx typ))
   = AST.UInstanceRule <$> (makeJust <$> annLocNoSema (pure $ collectLocs bndrs) (trfBindings bndrs)) 
                       <*> trfCtx (after AnnDot) ctx
@@ -234,15 +236,15 @@ trfInstanceRule' (HsForAllTy bndrs (unLoc -> HsQualTy ctx typ))
 trfInstanceRule' (HsQualTy ctx typ) = AST.UInstanceRule <$> nothing "" " . " atTheStart 
                                                         <*> trfCtx atTheStart ctx
                                                         <*> trfInstanceHead typ
-trfInstanceRule' (HsParTy typ) = AST.UInstanceParen <$> trfInstanceRule typ
+trfInstanceRule' (HsParTy typ) = instanceHead $ annContNoSema (AST.UInstanceHeadParen <$> trfInstanceHead typ)
 trfInstanceRule' (HsTyVar tv) = instanceHead $ annContNoSema (AST.UInstanceHeadCon <$> trfName tv)
 trfInstanceRule' (HsAppTy t1 t2) = instanceHead $ annContNoSema (AST.UInstanceHeadApp <$> trfInstanceHead t1 <*> trfType t2)
 trfInstanceRule' t = error (showSDocUnsafe $ ppr t)
 
-instanceHead :: Trf (Ann AST.InstanceHead (Dom r) RangeStage) -> Trf (AST.InstanceRule (Dom r) RangeStage)
+instanceHead :: Trf (Ann AST.UInstanceHead (Dom r) RangeStage) -> Trf (AST.UInstanceRule (Dom r) RangeStage)
 instanceHead hd = AST.UInstanceRule <$> (nothing "" " . " atTheStart) <*> (nothing " " "" atTheStart) <*> hd
                             
-makeInstanceRuleTyVars :: TransformName n r => Located n -> HsImplicitBndrs n [LHsType n] -> Trf (Ann AST.InstanceRule (Dom r) RangeStage)
+makeInstanceRuleTyVars :: TransformName n r => Located n -> HsImplicitBndrs n [LHsType n] -> Trf (Ann AST.UInstanceRule (Dom r) RangeStage)
 makeInstanceRuleTyVars n vars = annContNoSema
   $ AST.UInstanceRule <$> nothing "" " . " atTheStart
                       <*> nothing " " "" atTheStart
@@ -250,10 +252,10 @@ makeInstanceRuleTyVars n vars = annContNoSema
                                 (copyAnnot AST.UInstanceHeadCon (trfName n))
                                 (hsib_body vars)
 
-trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.InstanceHead (Dom r) RangeStage)
+trfInstanceHead :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UInstanceHead (Dom r) RangeStage)
 trfInstanceHead = trfLocNoSema trfInstanceHead'
 
-trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.InstanceHead (Dom r) RangeStage)
+trfInstanceHead' :: TransformName n r => HsType n -> Trf (AST.UInstanceHead (Dom r) RangeStage)
 trfInstanceHead' = trfInstanceHead'' . cleanHsType where
   trfInstanceHead'' (HsForAllTy [] (unLoc -> t)) = trfInstanceHead' t
   trfInstanceHead'' (HsTyVar tv) = AST.UInstanceHeadCon <$> trfName tv
@@ -265,33 +267,33 @@ trfInstanceHead' = trfInstanceHead'' . cleanHsType where
                           <*> trfType t2
   trfInstanceHead'' t = error ("Illegal instance head: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
  
-trfTypeEqs :: TransformName n r => Maybe [Located (TyFamInstEqn n)] -> Trf (AnnList AST.TypeEqn (Dom r) RangeStage)
+trfTypeEqs :: TransformName n r => Maybe [Located (TyFamInstEqn n)] -> Trf (AnnListG AST.UTypeEqn (Dom r) RangeStage)
 trfTypeEqs Nothing = makeList "\n" (after AnnWhere) (pure [])
 trfTypeEqs (Just eqs) = makeNonemptyList "\n" (mapM trfTypeEq eqs)
 
-trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.TypeEqn (Dom r) RangeStage)
+trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.UTypeEqn (Dom r) RangeStage)
 trfTypeEq = trfLocNoSema $ \(TyFamEqn name pats rhs) 
   -> AST.UTypeEqn <$> defineTypeVars (focusBefore AnnEqual (combineTypes name (hsib_body pats))) <*> trfType rhs
-  where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.Type (Dom r) RangeStage)
+  where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.UType (Dom r) RangeStage)
         combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
           = annContNoSema $ AST.UTyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
         combineTypes name pats = wrapTypes (annLocNoSema (pure $ getLoc name) (AST.UTyVar <$> trfName name)) pats
 
-        wrapTypes :: TransformName n r => Trf (Ann AST.Type (Dom r) RangeStage) -> [LHsType n] -> Trf (Ann AST.Type (Dom r) RangeStage)
+        wrapTypes :: TransformName n r => Trf (Ann AST.UType (Dom r) RangeStage) -> [LHsType n] -> Trf (Ann AST.UType (Dom r) RangeStage)
         wrapTypes base pats 
           = foldl (\t p -> do typ <- t
                               annLocNoSema (pure $ combineSrcSpans (getRange typ) (getLoc p)) 
                                      (AST.UTyApp <$> pure typ <*> trfType p)) base pats
                  
-trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybe AST.FunDeps (Dom r) RangeStage)
+trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybeG AST.UFunDeps (Dom r) RangeStage)
 trfFunDeps [] = nothing "| " "" $ focusBeforeIfPresent AnnWhere atTheEnd
 trfFunDeps fundeps = makeJust <$> annLocNoSema (combineSrcSpans (collectLocs fundeps) <$> tokenLoc AnnVbar) 
                                          (AST.UFunDeps <$> trfAnnList ", " trfFunDep' fundeps)
   
-trfFunDep' :: TransformName n r => FunDep (Located n) -> Trf (AST.FunDep (Dom r) RangeStage)
+trfFunDep' :: TransformName n r => FunDep (Located n) -> Trf (AST.UFunDep (Dom r) RangeStage)
 trfFunDep' (lhs, rhs) = AST.UFunDep <$> trfAnnList ", " trfName' lhs <*> trfAnnList ", " trfName' rhs
 
-createDeclHead :: TransformName n r => Located n -> LHsQTyVars n -> Trf (Ann AST.DeclHead (Dom r) RangeStage)
+createDeclHead :: TransformName n r => Located n -> LHsQTyVars n -> Trf (Ann AST.UDeclHead (Dom r) RangeStage)
 createDeclHead name (hsq_explicit -> lhs : rhs : rest)
   | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
   -- infix declaration
@@ -300,7 +302,7 @@ createDeclHead name (hsq_explicit -> lhs : rhs : rest)
                      (AST.UDHInfix <$> defineTypeVars (trfTyVar lhs) <*> define (trfOperator name) <*> defineTypeVars (trfTyVar rhs))
 createDeclHead name vars = defineTypeVars $ wrapDeclHead (hsq_explicit vars) (define $ copyAnnot AST.UDeclHead (trfName name))
 
-wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.DeclHead (Dom r) RangeStage) -> Trf (Ann AST.DeclHead (Dom r) RangeStage)
+wrapDeclHead :: TransformName n r => [LHsTyVarBndr n] -> Trf (Ann AST.UDeclHead (Dom r) RangeStage) -> Trf (Ann AST.UDeclHead (Dom r) RangeStage)
 wrapDeclHead vars base
   = foldl (\t p -> do typ <- t 
                       annLocNoSema (addParenLocs $ combineSrcSpans (getRange typ) (getLoc p)) 
@@ -316,7 +318,7 @@ addParenLocs sp
       
          
 createClassBody :: TransformName n r => [LSig n] -> LHsBinds n -> [LFamilyDecl n] 
-                               -> [LTyFamDefltEqn n] -> Trf (AnnMaybe AST.ClassBody (Dom r) RangeStage)
+                               -> [LTyFamDefltEqn n] -> Trf (AnnMaybeG AST.UClassBody (Dom r) RangeStage)
 createClassBody sigs binds typeFams typeFamDefs 
   = do isThereWhere <- isGoodSrcSpan <$> (tokenLoc AnnWhere)
        if isThereWhere 
@@ -332,7 +334,7 @@ createClassBody sigs binds typeFams typeFamDefs
         getFams = mapM (copyAnnot AST.UClsTypeFam . trfTypeFam) typeFams
         getFamDefs = mapM trfTypeFamDef typeFamDefs
        
-trfClassElemSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.ClassElement (Dom r) RangeStage)
+trfClassElemSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.UClassElement (Dom r) RangeStage)
 trfClassElemSig = trfLocNoSema $ \case
   TypeSig names typ -> AST.UClsSig <$> (annContNoSema $ AST.UTypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                   <*> trfType (hswc_body $ hsib_body typ))
@@ -342,10 +344,10 @@ trfClassElemSig = trfLocNoSema $ \case
   MinimalSig _ formula -> AST.UClsMinimal <$> trfMinimalFormula formula
   s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
-trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.TypeFamily (Dom r) RangeStage)
+trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.UTypeFamily (Dom r) RangeStage)
 trfTypeFam = trfLocNoSema trfTypeFam'
 
-trfTypeFam' :: TransformName n r => FamilyDecl n -> Trf (AST.TypeFamily (Dom r) RangeStage)
+trfTypeFam' :: TransformName n r => FamilyDecl n -> Trf (AST.UTypeFamily (Dom r) RangeStage)
 trfTypeFam' (FamilyDecl DataFamily name tyVars kindSig _)
   = AST.UDataFamily <$> (case unLoc kindSig of KindSig _ -> between AnnData AnnDcolon; _ -> id) (createDeclHead name tyVars) 
                    <*> trfFamilyKind kindSig
@@ -353,11 +355,11 @@ trfTypeFam' (FamilyDecl OpenTypeFamily name tyVars kindSig injectivity)
   = AST.UTypeFamily <$> (case unLoc kindSig of KindSig _ -> between AnnType AnnDcolon; _ -> id) (createDeclHead name tyVars) 
                    <*> trfFamilyResultSig kindSig injectivity
 
-trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.ClassElement (Dom r) RangeStage)
+trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.UClassElement (Dom r) RangeStage)
 trfTypeFamDef = trfLocNoSema $ \(TyFamEqn con pats rhs) 
   -> AST.UClsTypeDef <$> between AnnType AnnEqual (createDeclHead con pats) <*> trfType rhs
           
-trfInstBody :: TransformName n r => LHsBinds n -> [LSig n] -> [LTyFamInstDecl n] -> [LDataFamInstDecl n] -> Trf (AnnMaybe AST.InstBody (Dom r) RangeStage)
+trfInstBody :: TransformName n r => LHsBinds n -> [LSig n] -> [LTyFamInstDecl n] -> [LDataFamInstDecl n] -> Trf (AnnMaybeG AST.UInstBody (Dom r) RangeStage)
 trfInstBody binds sigs fams dats = do
     wh <- tokenLoc AnnWhere
     if isGoodSrcSpan wh then
@@ -373,7 +375,7 @@ trfInstBody binds sigs fams dats = do
         getFams = mapM trfInstTypeFam fams
         getDats = mapM trfInstDataFam dats
           
-trfClassInstSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.InstBodyDecl (Dom r) RangeStage)
+trfClassInstSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
 trfClassInstSig = trfLocNoSema $ \case
   TypeSig names typ -> AST.UInstBodyTypeSig <$> (annContNoSema $ AST.UTypeSignature <$> makeNonemptyList ", " (mapM trfName names) 
                                            <*> trfType (hswc_body $ hsib_body typ))
@@ -382,10 +384,10 @@ trfClassInstSig = trfLocNoSema $ \case
   SpecInstSig _ typ -> AST.USpecializeInstance <$> trfType (hsib_body typ)
   s -> error ("Illegal class instance signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
           
-trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.InstBodyDecl (Dom r) RangeStage)
+trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
 trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.UInstBodyTypeDecl (trfTypeEq eqn)
 
-trfInstDataFam :: TransformName n r => Located (DataFamInstDecl n) -> Trf (Ann AST.InstBodyDecl (Dom r) RangeStage)
+trfInstDataFam :: TransformName n r => Located (DataFamInstDecl n) -> Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
 trfInstDataFam = trfLocNoSema $ \case 
   (DataFamInstDecl tc (hsib_body -> pats) (HsDataDefn dn ctx _ _ cons derivs) _) 
     -> AST.UInstBodyDataDecl 
@@ -399,7 +401,7 @@ trfInstDataFam = trfLocNoSema $ \case
          <*> trfAnnList "" trfConDecl' cons
          <*> trfMaybe " deriving " "" trfDerivings derivs
           
-trfPatternSynonym :: forall n r . TransformName n r => PatSynBind n n -> Trf (AST.PatternSynonym (Dom r) RangeStage)
+trfPatternSynonym :: forall n r . TransformName n r => PatSynBind n n -> Trf (AST.UPatternSynonym (Dom r) RangeStage)
 trfPatternSynonym (PSB id _ lhs def dir)
   = let sep = case dir of ImplicitBidirectional -> AnnEqual
                           _                     -> AnnLarrow
@@ -411,7 +413,7 @@ trfPatternSynonym (PSB id _ lhs def dir)
      in AST.UPatternSynonym <$> trfPatSynLhs id lhs
                             <*> annLocNoSema rhsLoc (trfPatSynRhs dir changedRhs)
 
-  where trfPatSynLhs :: TransformName n r => Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.PatSynLhs (Dom r) RangeStage)
+  where trfPatSynLhs :: TransformName n r => Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
         trfPatSynLhs id (PrefixPatSyn args)
           = annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn <$> trfName id <*> trfAnnList " " trfName' args
         trfPatSynLhs op (InfixPatSyn lhs rhs)
@@ -420,29 +422,95 @@ trfPatternSynonym (PSB id _ lhs def dir)
           = annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) <$> before AnnEqual) 
               $ AST.URecordPatSyn <$> trfName id <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
 
-        trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.PatSynRhs (Dom r) RangeStage)
+        trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.UPatSynRhs (Dom r) RangeStage)
         trfPatSynRhs ImplicitBidirectional pat = AST.UBidirectionalPatSyn <$> trfPattern pat <*> nothing " where " "" atTheEnd
         trfPatSynRhs (ExplicitBidirectional mg) pat = AST.UBidirectionalPatSyn <$> trfPattern pat <*> (makeJust <$> trfPatSynWhere mg)
         trfPatSynRhs Unidirectional pat = AST.UOneDirectionalPatSyn <$> trfPattern pat
-        trfPatSynWhere :: TransformName n r => MatchGroup n (LHsExpr n) -> Trf (Ann AST.PatSynWhere (Dom r) RangeStage)
+        trfPatSynWhere :: TransformName n r => MatchGroup n (LHsExpr n) -> Trf (Ann AST.UPatSynWhere (Dom r) RangeStage)
         trfPatSynWhere (MG { mg_alts = alts }) = annLocNoSema (pure $ getLoc alts) (AST.UPatSynWhere <$> makeIndentedList (after AnnWhere) (mapM (trfMatch (unLoc id)) (unLoc alts)))
 
-trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybe AST.KindConstraint (Dom r) RangeStage)
+trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
 trfFamilyKind (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
 
-trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybe AST.TypeFamilySpec (Dom r) RangeStage)
+trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybeG AST.UTypeFamilySpec (Dom r) RangeStage)
 trfFamilyResultSig (L l fr) Nothing = case fr of 
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyKind <$> trfKindSig' k)
 trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps))) 
   = makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity <$> (annContNoSema $ AST.UInjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))
 
-trfAnnotationSubject :: TransformName n r => SourceText -> AnnProvenance n -> SrcLoc -> Trf (Ann AST.AnnotationSubject (Dom r) RangeStage)
+trfAnnotationSubject :: TransformName n r => SourceText -> AnnProvenance n -> SrcLoc -> Trf (Ann AST.UAnnotationSubject (Dom r) RangeStage)
 trfAnnotationSubject stxt subject payloadEnd
   = do payloadStart <- advanceStr stxt <$> atTheStart
        case subject of ValueAnnProvenance name@(L l _) -> annLocNoSema (pure l) (AST.UNameAnnotation <$> trfName name)
                        TypeAnnProvenance name@(L l _) -> annLocNoSema (pure $ mkSrcSpan payloadStart (srcSpanEnd l)) 
                                                                       (AST.UTypeAnnotation <$> trfName name)
                        ModuleAnnProvenance -> annLocNoSema (pure $ mkSrcSpan payloadStart payloadEnd) (pure AST.UModuleAnnotation)
+  
+trfDataKeyword ::  NewOrData -> Trf (Ann AST.UDataOrNewtypeKeyword (Dom r) RangeStage)
+trfDataKeyword NewType = annLocNoSema (tokenLoc AnnNewtype) (pure AST.UNewtypeKeyword)
+trfDataKeyword DataType = annLocNoSema (tokenLoc AnnData) (pure AST.UDataKeyword)
+     
+trfCallConv :: Located CCallConv -> Trf (Ann AST.UCallConv (Dom r) RangeStage)
+trfCallConv = trfLocNoSema trfCallConv'
+   
+trfCallConv' :: CCallConv -> Trf (AST.UCallConv (Dom r) RangeStage)
+trfCallConv' CCallConv = pure AST.UCCall
+trfCallConv' CApiConv = pure AST.UCApi
+trfCallConv' StdCallConv = pure AST.UStdCall
+-- trfCallConv' PrimCallConv = 
+trfCallConv' JavaScriptCallConv = pure AST.UJavaScript
+
+trfSafety :: SrcSpan -> Located Safety -> Trf (AnnMaybeG AST.USafety (Dom r) RangeStage)
+trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l 
+  = makeJust <$> trfLocNoSema (pure . \case
+      PlaySafe -> AST.USafe
+      PlayInterruptible -> AST.UInterruptible
+      PlayRisky -> AST.UUnsafe) lsaf
+  | otherwise = nothing " " "" (pure $ srcSpanEnd ccLoc)
+
+trfOverlap :: Located OverlapMode -> Trf (Ann AST.UOverlapPragma (Dom r) RangeStage)
+trfOverlap = trfLocNoSema $ pure . \case
+  NoOverlap _ -> AST.UDisableOverlap
+  Overlappable _ -> AST.UOverlappable
+  Overlapping _ -> AST.UOverlapping
+  Overlaps _ -> AST.UOverlaps
+  Incoherent _ -> AST.UIncoherentOverlap
+
+trfRole :: Located (Maybe Role) -> Trf (Ann AST.URole (Dom r) RangeStage)
+trfRole = trfLocNoSema $ \case Just Nominal -> pure AST.UNominal
+                               Just Representational -> pure AST.URepresentational
+                               Just GHC.Phantom -> pure AST.UPhantom
+         
+trfPhase :: Trf SrcLoc -> Activation -> Trf (AnnMaybeG AST.UPhaseControl (Dom r) RangeStage)
+trfPhase l AlwaysActive = nothing "" " " l
+trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS) 
+                                                          (AST.UPhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
+                                                           (AST.UPhaseControl <$> (makeJust <$> annLocNoSema (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+
+trfPhaseNum ::  PhaseNum -> Trf (Ann AST.PhaseNumber (Dom r) RangeStage)
+trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 
+   
+trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.URule (Dom r) RangeStage)
+trfRewriteRule = trfLocNoSema $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ right _) ->
+  AST.URule <$> trfFastString (L nameLoc ruleName) 
+            <*> trfPhase (before AnnForall) act
+            <*> makeNonemptyList " " (mapM trfRuleBndr bndrs)
+            <*> trfExpr left
+            <*> trfExpr right
+
+trfRuleBndr :: TransformName n r =>  Located (RuleBndr n) -> Trf (Ann AST.UTyVar (Dom r) RangeStage)
+trfRuleBndr = trfLocNoSema $ \case (RuleBndr n) -> AST.UTyVarDecl <$> trfName n <*> nothing " " "" atTheEnd
+                                   (RuleBndrSig n k) -> AST.UTyVarDecl <$> trfName n <*> (makeJust <$> (trfKindSig' (hswc_body $ hsib_body k)))
+
+trfMinimalFormula :: TransformName n r => Located (BooleanFormula (Located n)) -> Trf (Ann AST.UMinimalFormula (Dom r) RangeStage)
+trfMinimalFormula = trfLocNoSema trfMinimalFormula'
+
+trfMinimalFormula' :: TransformName n r => BooleanFormula (Located n) -> Trf (AST.UMinimalFormula (Dom r) RangeStage)
+trfMinimalFormula' (Var name) = AST.UMinimalName <$> trfName name
+trfMinimalFormula' (And formulas) = AST.UMinimalAnd <$> trfAnnList " & " trfMinimalFormula' formulas
+trfMinimalFormula' (Or formulas) = AST.UMinimalOr <$> trfAnnList " | " trfMinimalFormula' formulas
+trfMinimalFormula' (Parens formula) = AST.UMinimalParen <$> trfMinimalFormula formula

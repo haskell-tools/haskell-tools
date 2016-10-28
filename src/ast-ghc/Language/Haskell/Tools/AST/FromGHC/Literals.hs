@@ -10,14 +10,14 @@ import BasicTypes as GHC
 import HsLit as GHC
 import HsTypes as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Base
+import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
 import Language.Haskell.Tools.AST (Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
-trfLiteral' :: HsLit -> Trf (AST.Literal (Dom r) RangeStage)
+trfLiteral' :: HsLit -> Trf (AST.ULiteral (Dom r) RangeStage)
 trfLiteral' (HsChar _ ch) = pure $ AST.UCharLit ch
 trfLiteral' (HsCharPrim _ ch) = pure $ AST.UPrimCharLit ch
 trfLiteral' (HsString _ str) = pure $ AST.UStringLit (unpackFS str)
@@ -32,7 +32,7 @@ trfLiteral' (HsRat frac _) = pure $ AST.UFracLit (fl_value frac)
 trfLiteral' (HsFloatPrim frac) = pure $ AST.UPrimFloatLit (fl_value frac)
 trfLiteral' (HsDoublePrim frac) = pure $ AST.UPrimDoubleLit (fl_value frac)
   
-trfOverloadedLit :: OverLitVal -> Trf (AST.Literal (Dom r) RangeStage)
+trfOverloadedLit :: OverLitVal -> Trf (AST.ULiteral (Dom r) RangeStage)
 trfOverloadedLit (HsIntegral _ i) = pure $ AST.UIntLit i
 trfOverloadedLit (HsFractional frac) = pure $ AST.UFracLit (fl_value frac)
 trfOverloadedLit (HsIsString _ str) = pure $ AST.UStringLit (unpackFS str)

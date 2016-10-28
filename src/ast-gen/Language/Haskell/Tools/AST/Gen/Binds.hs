@@ -1,6 +1,6 @@
 -- | Generation of binding-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
--- For example, @mkMatch@ creates the annotated version of the @Match@ constructor.
+-- For example, @mkMatch@ creates the annotated version of the @UMatch@ constructor.
 {-# LANGUAGE OverloadedStrings
            , TypeFamilies
            #-}
@@ -12,83 +12,105 @@ import Data.String
 import Data.Function (on)
 import Control.Reference
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Patterns
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Base
+import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkSimpleBind' :: Ann Name dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann ValueBind dom SrcTemplateStage
+-- | A simplified function to generate simple value bindings without local definitions, guards or complex lhs.
+mkSimpleBind' :: Name dom -> Expr dom -> ValueBind dom
 mkSimpleBind' n e = mkSimpleBind (mkVarPat n) (mkUnguardedRhs e) Nothing
 
-mkSimpleBind :: Ann Pattern dom SrcTemplateStage -> Ann Rhs dom SrcTemplateStage -> Maybe (Ann LocalBinds dom SrcTemplateStage) -> Ann ValueBind dom SrcTemplateStage
+-- | Creates a value binding (@ v = "12" @).
+mkSimpleBind :: Pattern dom -> Rhs dom -> Maybe (LocalBinds dom) -> ValueBind dom
 mkSimpleBind p r l = mkAnn (child <> child <> child) (USimpleBind p r (mkAnnMaybe opt l))
 
-mkFunctionBind :: [Ann Match dom SrcTemplateStage] -> Ann ValueBind dom SrcTemplateStage
+-- | Creates a function binding (@ f 0 = 1; f x = x @). All matches must have the same name.
+mkFunctionBind :: [Match dom] -> ValueBind dom
 mkFunctionBind = mkAnn child . UFunBind . mkAnnList indentedList
 
-mkFunctionBind' :: Ann Name dom SrcTemplateStage -> [([Ann Pattern dom SrcTemplateStage], Ann Expr dom SrcTemplateStage)] -> Ann ValueBind dom SrcTemplateStage
+-- | A simplified function for creating function bindings without local definitions or guards.
+mkFunctionBind' :: Name dom -> [([Pattern dom], Expr dom)] -> ValueBind dom
 mkFunctionBind' name matches = mkFunctionBind $ map (\(args, rhs) -> mkMatch (mkMatchLhs name args) (mkUnguardedRhs rhs) Nothing) matches
 
-mkMatch :: Ann MatchLhs dom SrcTemplateStage -> Ann Rhs dom SrcTemplateStage -> Maybe (Ann LocalBinds dom SrcTemplateStage) -> Ann Match dom SrcTemplateStage
+-- | Creates a clause of function binding   
+mkMatch :: MatchLhs dom -> Rhs dom -> Maybe (LocalBinds dom) -> Match dom
 mkMatch lhs rhs locs 
   = mkAnn (child <> child <> child) 
       $ UMatch lhs rhs (mkAnnMaybe (optBefore " ") locs)
 
-mkMatchLhs :: Ann Name dom SrcTemplateStage -> [Ann Pattern dom SrcTemplateStage] -> Ann MatchLhs dom SrcTemplateStage
+-- | Creates a match lhs with the function name and parameter names (@ f a b @)
+mkMatchLhs :: Name dom -> [Pattern dom] -> MatchLhs dom
 mkMatchLhs n pats = mkAnn (child <> child) $ UNormalLhs n (mkAnnList (listSepBefore " " " ") pats)
 
-mkInfixLhs :: Ann Pattern dom SrcTemplateStage -> Ann Operator dom SrcTemplateStage -> Ann Pattern dom SrcTemplateStage 
-                -> [Ann Pattern dom SrcTemplateStage] -> Ann MatchLhs dom SrcTemplateStage
+-- | Creates an infix match lhs for an operator (@ a + b @)
+mkInfixLhs :: Pattern dom -> Operator dom -> Pattern dom -> [Pattern dom] -> MatchLhs dom
 mkInfixLhs lhs op rhs pats = mkAnn (child <> child <> child <> child) $ UInfixLhs lhs op rhs (mkAnnList (listSepBefore " " " ") pats)
 
-mkLocalBinds :: Int -> [Ann LocalBind dom SrcTemplateStage] -> AnnMaybe LocalBinds dom SrcTemplateStage
+-- | Local bindings attached to a declaration (@ where x = 42 @)
+mkLocalBinds :: Int -> [LocalBind dom] -> MaybeLocalBinds dom
+-- TODO: make the indentation automatic
 mkLocalBinds col = mkAnnMaybe (optBefore ("\n" ++ replicate (col - 1) ' ' ++ "where ")) 
                      . Just . mkAnn child . ULocalBinds . mkAnnList indentedList
 
-mkLocalBinds' :: [Ann LocalBind dom SrcTemplateStage] -> Ann LocalBinds dom SrcTemplateStage
+mkLocalBinds' :: [LocalBind dom] -> LocalBinds dom
 mkLocalBinds' = mkAnn (" where " <> child) . ULocalBinds . mkAnnList indentedList
 
-mkLocalValBind :: Ann ValueBind dom SrcTemplateStage -> Ann LocalBind dom SrcTemplateStage
+-- | Creates a local binding for a value
+mkLocalValBind :: ValueBind dom -> LocalBind dom
 mkLocalValBind = mkAnn child . ULocalValBind
 
-mkLocalTypeSig :: Ann TypeSignature dom SrcTemplateStage -> Ann LocalBind dom SrcTemplateStage
+-- | Creates a local type signature
+mkLocalTypeSig :: TypeSignature dom -> LocalBind dom
 mkLocalTypeSig = mkAnn child . ULocalSignature
 
-mkLocalFixity :: Ann FixitySignature dom SrcTemplateStage -> Ann LocalBind dom SrcTemplateStage
+-- | Creates a local fixity declaration
+mkLocalFixity :: FixitySignature dom -> LocalBind dom
 mkLocalFixity = mkAnn child . ULocalFixity
 
-mkTypeSignature :: Ann Name dom SrcTemplateStage -> Ann Type dom SrcTemplateStage -> Ann TypeSignature dom SrcTemplateStage
+-- | Creates a type signature (@ f :: Int -> Int @)
+mkTypeSignature :: Name dom -> Type dom -> TypeSignature dom
 mkTypeSignature n t = mkAnn (child <> " :: " <> child) (UTypeSignature (mkAnnList (listSep ", ") [n]) t)
 
-mkInfixL :: Int -> Ann Operator dom SrcTemplateStage -> Ann FixitySignature dom SrcTemplateStage
+-- | Creates a left-associative fixity declaration (@ infixl 5 +, - @).
+mkInfixL :: Int -> Operator dom -> FixitySignature dom
 mkInfixL prec op = mkAnn (child <> " " <> child <> " " <> child) 
                      $ UFixitySignature (mkAnn "infixl" AssocLeft) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (listSep ", ") [op])
 
-mkInfixR :: Int -> Ann Operator dom SrcTemplateStage -> Ann FixitySignature dom SrcTemplateStage
+-- | Creates a right-associative fixity declaration (@ infixr 5 +, - @).
+mkInfixR :: Int -> Operator dom -> FixitySignature dom
 mkInfixR prec op = mkAnn (child <> " " <> child <> " " <> child) 
                      $ UFixitySignature (mkAnn "infixr" AssocRight) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (listSep ", ") [op])
 
-mkInfix :: Int -> Ann Operator dom SrcTemplateStage -> Ann FixitySignature dom SrcTemplateStage
+-- | Creates a non-associative fixity declaration (@ infix 5 +, - @).
+mkInfix :: Int -> Operator dom -> FixitySignature dom
 mkInfix prec op = mkAnn (child <> " " <> child <> " " <> child) 
                     $ UFixitySignature (mkAnn "infix" AssocNone) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (listSep ", ") [op])
 
-mkUnguardedRhs :: Ann Expr dom SrcTemplateStage -> Ann Rhs dom SrcTemplateStage
+-- | Creates an unguarded right-hand-side (@ = 3 @)
+mkUnguardedRhs :: Expr dom -> Rhs dom
 mkUnguardedRhs = mkAnn (" = " <> child) . UUnguardedRhs
 
-mkGuardedRhss :: [Ann GuardedRhs dom SrcTemplateStage] -> Ann Rhs dom SrcTemplateStage
+-- | Creates an unguarded right-hand-side (@ | x == 1 = 3; | otherwise = 4 @)
+mkGuardedRhss :: [GuardedRhs dom] -> Rhs dom
 mkGuardedRhss = mkAnn child . UGuardedRhss . mkAnnList indentedList
 
-mkGuardedRhs :: [Ann RhsGuard dom SrcTemplateStage] -> Ann Expr dom SrcTemplateStage -> Ann GuardedRhs dom SrcTemplateStage
+-- | Creates a guarded right-hand side of a value binding (@ | x > 3 = 2 @)    
+mkGuardedRhs :: [RhsGuard dom] -> Expr dom -> GuardedRhs dom
 mkGuardedRhs guards expr = mkAnn ("| " <> child <> " = " <> child) $ UGuardedRhs (mkAnnList (listSep ", ") guards) expr
 
-mkGuardBind :: Ann Pattern dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage -> Ann RhsGuard dom SrcTemplateStage
+-- | Creates a bind statement in a pattern guard (@ Just v <- x @)
+mkGuardBind :: Pattern dom -> Expr dom -> RhsGuard dom
 mkGuardBind pat expr = mkAnn (child <> " <- " <> child) $ UGuardBind pat expr
 
-mkGuardLet :: [Ann LocalBind dom SrcTemplateStage] -> Ann RhsGuard dom SrcTemplateStage
+-- | Creates a let statement in a pattern guard (@ let x = 3 @)
+mkGuardLet :: [LocalBind dom] -> RhsGuard dom
 mkGuardLet = mkAnn ("let " <> child) . UGuardLet . mkAnnList indentedList
 
-mkGuardCheck :: Ann Expr dom SrcTemplateStage -> Ann RhsGuard dom SrcTemplateStage
+-- | Creates an expression to check for a pattern guard
+mkGuardCheck :: Expr dom -> RhsGuard dom
 mkGuardCheck = mkAnn child . UGuardCheck
 
 -- pragmas are omitted

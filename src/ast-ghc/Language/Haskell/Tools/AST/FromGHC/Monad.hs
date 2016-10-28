@@ -24,7 +24,7 @@ type Trf = ReaderT TrfInput Ghc
 data TrfInput
   = TrfInput { srcMap :: SourceMap -- ^ The lexical tokens of the source file
              , pragmaComms :: Map String [Located String] -- ^ Pragma comments
-             , declsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -- ^ Declarations that are from the parsed AST
+             , declsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -- ^ Declarations that are from the parsed AST
              , contRange :: SrcSpan -- ^ The focus of the transformation
              , localsInScope :: [[GHC.Name]] -- ^ Local names visible
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
@@ -99,7 +99,7 @@ setSplices declSpls typeSpls exprSpls
   = local (\s -> s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })
 
 -- | Set the list of declarations that will be missing from AST
-setDeclsToInsert :: [Ann Decl (Dom RdrName) RangeStage] -> Trf a -> Trf a
+setDeclsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -> Trf a -> Trf a
 setDeclsToInsert decls = local (\s -> s {declsToInsert = decls})
 
 -- Remove the splice that has already been added

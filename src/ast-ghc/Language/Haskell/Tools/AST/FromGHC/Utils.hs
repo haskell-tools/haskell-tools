@@ -16,6 +16,7 @@ import SrcLoc
 import GHC
 import Avail
 import HscTypes
+import BasicTypes
 import HsSyn
 import Module
 import Name
@@ -31,6 +32,7 @@ import Data.Function hiding ((&))
 import Data.List
 import Data.Char
 import Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
@@ -40,37 +42,36 @@ import Debug.Trace
 createNameInfo :: n -> Trf (NameInfo n)
 createNameInfo name = do locals <- asks localsInScope
                          isDefining <- asks defining
-                         return (NameInfo locals isDefining name)
+                         return (mkNameInfo locals isDefining name)
 
 
 -- | Creates a semantic information for an ambiguous name (caused by field disambiguation for example)
 createAmbigousNameInfo :: RdrName -> SrcSpan -> Trf (NameInfo n)
 createAmbigousNameInfo name span = do locals <- asks localsInScope
                                       isDefining <- asks defining
-                                      return (AmbiguousNameInfo locals isDefining name span)
+                                      return (mkAmbiguousNameInfo locals isDefining name span)
 
 -- | Creates a semantic information for an implicit name
 createImplicitNameInfo :: String -> Trf (NameInfo n)
 createImplicitNameInfo name = do locals <- asks localsInScope
                                  isDefining <- asks defining
                                  rng <- asks contRange
-                                 return (ImplicitNameInfo locals isDefining name rng)
+                                 return (mkImplicitNameInfo locals isDefining name rng)
 
 -- | Creates a semantic information for an implicit name
 createImplicitFldInfo :: (GHCName n, HsHasName n) => (a -> n) -> [HsRecField n a] -> Trf ImplicitFieldInfo
-createImplicitFldInfo select flds = return (ImplicitFieldInfo (map getLabelAndExpr flds))
+createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))
   where getLabelAndExpr fld = ( head $ hsGetNames $ unLoc (getFieldOccName (hsRecFieldLbl fld))
                               , head $ hsGetNames $ select (hsRecFieldArg fld) )
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
-createImportData :: (HsHasName n, GHCName n) => AST.ImportDecl (Dom n) stage -> Trf (ImportInfo n)
-createImportData imp = 
-  do (mod,importedNames) <- getImportedNames (imp ^. importModule&element&AST.moduleNameString)
-                                             (imp ^? importPkg&annJust&element&stringNodeStr)
-     names <- liftGhc $ filterM (checkImportVisible imp) importedNames
+createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
+createImportData (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) = 
+  do (mod,importedNames) <- getImportedNames (Module.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
+     names <- liftGhc $ filterM (checkImportVisible declHiding) importedNames
      lookedUpNames <- liftGhc $ mapM (getFromNameUsing getTopLevelId) names
      lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId) importedNames
-     return $ ImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames)
+     return $ mkImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames)
 
 -- | Get names that are imported from a given import
 getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [GHC.Name])
@@ -85,16 +86,14 @@ getImportedNames name pkg = liftGhc $ do
   return (mod, ifaceNames ++ loadedNames)
 
 -- | Check is a given name is imported from an import with given import specification.
-checkImportVisible :: (HsHasName n, GhcMonad m) => AST.ImportDecl (Dom n) stage -> GHC.Name -> m Bool
-checkImportVisible imp name
-  | importIsExact imp 
-  = or @[] <$> mapM (`ieSpecMatches` name) (imp ^? importExacts)
-  | importIsHiding imp 
-  = not . or  @[] <$> mapM (`ieSpecMatches` name) (imp ^? importHidings)
-  | otherwise = return True
+checkImportVisible :: (HsHasName name, GhcMonad m) => Maybe (Bool, Located [LIE name]) -> GHC.Name -> m Bool
+checkImportVisible (Just (isHiding, specs)) name
+  | isHiding  = not . or  @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
+  | otherwise = or @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
+checkImportVisible _ _ = return True
 
-ieSpecMatches :: (HsHasName n, GhcMonad m) => AST.IESpec (Dom n) stage -> GHC.Name -> m Bool
-ieSpecMatches (AST.UIESpec (hsGetNames <=< (^? element&simpleName&semantics&nameInfo) -> [n]) ss) name
+ieSpecMatches :: (HsHasName name, GhcMonad m) => IE name -> GHC.Name -> m Bool
+ieSpecMatches (hsGetNames . HsSyn.ieName -> [n]) name
   | n == name = return True
   | isTyConName n
   = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
@@ -102,44 +101,44 @@ ieSpecMatches (AST.UIESpec (hsGetNames <=< (^? element&simpleName&semantics&name
 ieSpecMatches _ _ = return False
 
 noSemaInfo :: src -> NodeInfo NoSemanticInfo src
-noSemaInfo = NodeInfo NoSemanticInfo
+noSemaInfo = NodeInfo mkNoSemanticInfo
 
 -- | Creates a place for a missing node with a default location
-nothing :: String -> String -> Trf SrcLoc -> Trf (AnnMaybe e (Dom n) RangeStage)
+nothing :: String -> String -> Trf SrcLoc -> Trf (AnnMaybeG e (Dom n) RangeStage)
 nothing bef aft pos = annNothing . noSemaInfo . OptionalPos bef aft <$> pos 
 
-emptyList :: String -> Trf SrcLoc -> Trf (AnnList e (Dom n) RangeStage)
-emptyList sep ann = AnnListC <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> pure []
+emptyList :: String -> Trf SrcLoc -> Trf (AnnListG e (Dom n) RangeStage)
+emptyList sep ann = AnnListG <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> pure []
 
 -- | Creates a place for a list of nodes with a default place if the list is empty.
-makeList :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeList sep ann ls = AnnListC <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> ls
+makeList :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
+makeList sep ann ls = AnnListG <$> (noSemaInfo . ListPos "" "" sep False <$> ann) <*> ls
 
-makeListBefore :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
+makeListBefore :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
 makeListBefore bef sep ann ls = do isEmpty <- null <$> ls 
-                                   AnnListC <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" sep False <$> ann) <*> ls
+                                   AnnListG <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" sep False <$> ann) <*> ls
 
-makeListAfter :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
+makeListAfter :: String -> String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
 makeListAfter aft sep ann ls = do isEmpty <- null <$> ls 
-                                  AnnListC <$> (noSemaInfo . ListPos "" (if isEmpty then aft else "") sep False <$> ann) <*> ls
+                                  AnnListG <$> (noSemaInfo . ListPos "" (if isEmpty then aft else "") sep False <$> ann) <*> ls
 
-makeNonemptyList :: String -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeNonemptyList sep ls = AnnListC (noSemaInfo $ ListPos "" "" sep False noSrcLoc) <$> ls
+makeNonemptyList :: String -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
+makeNonemptyList sep ls = AnnListG (noSemaInfo $ ListPos "" "" sep False noSrcLoc) <$> ls
 
 -- | Creates a place for an indented list of nodes with a default place if the list is empty.
-makeIndentedList :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeIndentedList ann ls = AnnListC <$> (noSemaInfo . ListPos  "" "" "\n" True <$> ann) <*> ls
+makeIndentedList :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
+makeIndentedList ann ls = AnnListG <$> (noSemaInfo . ListPos  "" "" "\n" True <$> ann) <*> ls
 
-makeIndentedListNewlineBefore :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
+makeIndentedListNewlineBefore :: Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
 makeIndentedListNewlineBefore ann ls = do isEmpty <- null <$> ls 
-                                          AnnListC <$> (noSemaInfo . ListPos (if isEmpty then "\n" else "") "" "\n" True <$> ann) <*> ls
+                                          AnnListG <$> (noSemaInfo . ListPos (if isEmpty then "\n" else "") "" "\n" True <$> ann) <*> ls
 
-makeIndentedListBefore :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
+makeIndentedListBefore :: String -> Trf SrcLoc -> Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
 makeIndentedListBefore bef sp ls = do isEmpty <- null <$> ls 
-                                      AnnListC <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" "\n" True <$> sp) <*> ls
+                                      AnnListG <$> (noSemaInfo . ListPos (if isEmpty then bef else "") "" "\n" True <$> sp) <*> ls
   
-makeNonemptyIndentedList :: Trf [Ann e (Dom n) RangeStage] -> Trf (AnnList e (Dom n) RangeStage)
-makeNonemptyIndentedList ls = AnnListC (noSemaInfo $ ListPos "" "" "\n" True noSrcLoc) <$> ls
+makeNonemptyIndentedList :: Trf [Ann e (Dom n) RangeStage] -> Trf (AnnListG e (Dom n) RangeStage)
+makeNonemptyIndentedList ls = AnnListG (noSemaInfo $ ListPos "" "" "\n" True noSrcLoc) <$> ls
   
 -- | Transform a located part of the AST by automatically transforming the location.
 -- Sets the source range for transforming children.
@@ -147,14 +146,14 @@ trfLoc :: (a -> Trf (b (Dom n) RangeStage)) -> Trf (SemanticInfo (Dom n) b) -> L
 trfLoc f sema = trfLocCorrect sema pure f
 
 trfLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo => (a -> Trf (b (Dom n) RangeStage)) -> Located a -> Trf (Ann b (Dom n) RangeStage)
-trfLocNoSema f = trfLoc f (pure NoSemanticInfo)
+trfLocNoSema f = trfLoc f (pure mkNoSemanticInfo)
 
 -- | Transforms a possibly-missing node with the default location of the end of the focus.
-trfMaybe :: String -> String -> (Located a -> Trf (Ann e (Dom n) RangeStage)) -> Maybe (Located a) -> Trf (AnnMaybe e (Dom n) RangeStage)
+trfMaybe :: String -> String -> (Located a -> Trf (Ann e (Dom n) RangeStage)) -> Maybe (Located a) -> Trf (AnnMaybeG e (Dom n) RangeStage)
 trfMaybe bef aft f = trfMaybeDefault bef aft f atTheEnd
 
 -- | Transforms a possibly-missing node with a default location
-trfMaybeDefault :: String -> String -> (Located a -> Trf (Ann e (Dom n) RangeStage)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybe e (Dom n) RangeStage)
+trfMaybeDefault :: String -> String -> (Located a -> Trf (Ann e (Dom n) RangeStage)) -> Trf SrcLoc -> Maybe (Located a) -> Trf (AnnMaybeG e (Dom n) RangeStage)
 trfMaybeDefault _   _   f _   (Just e) = makeJust <$> f e
 trfMaybeDefault bef aft _ loc Nothing  = nothing bef aft loc
 
@@ -169,25 +168,25 @@ trfMaybeLoc :: (a -> Trf (Maybe (b (Dom n) RangeStage))) -> SemanticInfo (Dom n)
 trfMaybeLoc f sema (L l e) = do fmap (Ann (NodeInfo sema (NodeSpan l))) <$> local (\s -> s { contRange = l }) (f e)
 
 trfMaybeLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo => (a -> Trf (Maybe (b (Dom n) RangeStage))) -> Located a -> Trf (Maybe (Ann b (Dom n) RangeStage))
-trfMaybeLocNoSema f = trfMaybeLoc f NoSemanticInfo
+trfMaybeLocNoSema f = trfMaybeLoc f mkNoSemanticInfo
 
 -- | Creates a place for a list of nodes with the default place at the end of the focus if the list is empty.
-trfAnnList ::SemanticInfo (Dom n) b ~ NoSemanticInfo =>  String -> (a -> Trf (b (Dom n) RangeStage)) -> [Located a] -> Trf (AnnList b (Dom n) RangeStage)
+trfAnnList :: SemanticInfo (Dom n) b ~ NoSemanticInfo => String -> (a -> Trf (b (Dom n) RangeStage)) -> [Located a] -> Trf (AnnListG b (Dom n) RangeStage)
 trfAnnList sep _ [] = makeList sep atTheEnd (pure [])
-trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f (pure NoSemanticInfo)) ls)
+trfAnnList sep f ls = makeList sep (pure $ noSrcLoc) (mapM (trfLoc f (pure mkNoSemanticInfo)) ls)
 
-trfAnnList' :: String -> (Located a -> Trf (Ann b (Dom n) RangeStage)) -> [Located a] -> Trf (AnnList b (Dom n) RangeStage)
+trfAnnList' :: String -> (Located a -> Trf (Ann b (Dom n) RangeStage)) -> [Located a] -> Trf (AnnListG b (Dom n) RangeStage)
 trfAnnList' sep _ [] = makeList sep atTheEnd (pure [])
 trfAnnList' sep f ls = makeList sep (pure $ noSrcLoc) (mapM f ls)
 
 
 -- | Creates a place for a list of nodes that cannot be empty.
-nonemptyAnnList :: [Ann e (Dom n) RangeStage] -> AnnList e (Dom n) RangeStage
-nonemptyAnnList = AnnListC (noSemaInfo $ ListPos "" "" "" False noSrcLoc)
+nonemptyAnnList :: [Ann e (Dom n) RangeStage] -> AnnListG e (Dom n) RangeStage
+nonemptyAnnList = AnnListG (noSemaInfo $ ListPos "" "" "" False noSrcLoc)
 
 -- | Creates an optional node from an existing element
-makeJust :: Ann e (Dom n) RangeStage -> AnnMaybe e (Dom n) RangeStage
-makeJust e = AnnMaybe (noSemaInfo $ OptionalPos "" "" noSrcLoc) (Just e)
+makeJust :: Ann e (Dom n) RangeStage -> AnnMaybeG e (Dom n) RangeStage
+makeJust e = AnnMaybeG (noSemaInfo $ OptionalPos "" "" noSrcLoc) (Just e)
 
 -- | Annotates a node with the given location and focuses on the given source span.
 annLoc :: Trf (SemanticInfo (Dom n) b) -> Trf SrcSpan -> Trf (b (Dom n) RangeStage) -> Trf (Ann b (Dom n) RangeStage)
@@ -197,7 +196,7 @@ annLoc semam locm nodem = do loc <- locm
                              return (Ann (NodeInfo sema (NodeSpan loc)) node)
 
 annLocNoSema :: SemanticInfo (Dom n) b ~ NoSemanticInfo => Trf SrcSpan -> Trf (b (Dom n) RangeStage) -> Trf (Ann b (Dom n) RangeStage)
-annLocNoSema = annLoc (pure NoSemanticInfo)
+annLocNoSema = annLoc (pure mkNoSemanticInfo)
 
 -- * Focus manipulation
 
@@ -261,7 +260,7 @@ annFrom :: AnnKeywordId -> Trf (SemanticInfo (Dom n) e) -> Trf (e (Dom n) RangeS
 annFrom kw sema = annLoc sema (combineSrcSpans <$> tokenLoc kw <*> asks (srcLocSpan . srcSpanEnd . contRange))
 
 annFromNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo => AnnKeywordId -> Trf (e (Dom n) RangeStage) -> Trf (Ann e (Dom n) RangeStage)
-annFromNoSema kw = annFrom kw (pure NoSemanticInfo)
+annFromNoSema kw = annFrom kw (pure mkNoSemanticInfo)
 
 -- | Gets the position at the beginning of the focus       
 atTheStart :: Trf SrcLoc
@@ -308,7 +307,7 @@ annCont :: Trf (SemanticInfo (Dom n) e) -> Trf (e (Dom n) RangeStage) -> Trf (An
 annCont sema = annLoc sema (asks contRange)
 
 annContNoSema :: SemanticInfo (Dom n) e ~ NoSemanticInfo => Trf (e (Dom n) RangeStage) -> Trf (Ann e (Dom n) RangeStage)
-annContNoSema = annCont (pure NoSemanticInfo)
+annContNoSema = annCont (pure mkNoSemanticInfo)
 
 -- | Annotates the element with the same annotation that is on the other element
 copyAnnot :: SemanticInfo (Dom n) a ~ SemanticInfo (Dom n) b 
@@ -346,8 +345,8 @@ orderDefs :: [Ann e (Dom n) RangeStage] -> [Ann e (Dom n) RangeStage]
 orderDefs = sortBy (compare `on` AST.ordSrcSpan . (^. AST.annotation & AST.sourceInfo & AST.nodeSpan))
 
 -- | Orders a list of elements to the order they are defined in the source file.
-orderAnnList :: AnnList e (Dom n) RangeStage -> AnnList e (Dom n) RangeStage
-orderAnnList (AnnListC a ls) = AnnListC a (orderDefs ls)
+orderAnnList :: AnnListG e (Dom n) RangeStage -> AnnListG e (Dom n) RangeStage
+orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)
 
 
 -- | Transform a list of definitions where the defined names are in scope for subsequent definitions

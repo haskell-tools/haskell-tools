@@ -4,7 +4,19 @@
            , FlexibleContexts
            , FlexibleInstances
            #-}
-module Language.Haskell.Tools.AST.SemaInfoTypes where
+module Language.Haskell.Tools.AST.SemaInfoTypes
+  ( -- types 
+    NoSemanticInfo, ScopeInfo, NameInfo, CNameInfo, ModuleInfo, ImportInfo, ImplicitFieldInfo
+  , Scope
+    -- references
+  , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
+  , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
+  , defModuleName, defIsBootModule, implicitNames, importedModule, availableNames, importedNames
+  , implicitFieldBindings
+    -- creator functions
+  , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
+  , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
+  ) where
 
 import Name as GHC
 import BasicTypes as GHC
@@ -14,6 +26,7 @@ import SrcLoc as GHC
 import RdrName as GHC
 import Outputable as GHC
 
+import Data.Maybe
 import Data.List
 import Data.Data
 
@@ -26,10 +39,17 @@ type Scope = [[Name]]
 data NoSemanticInfo = NoSemanticInfo 
   deriving (Eq, Data)
 
+mkNoSemanticInfo :: NoSemanticInfo
+mkNoSemanticInfo = NoSemanticInfo
+
 -- | Info for expressions that tells which definitions are in scope
 data ScopeInfo = ScopeInfo { _exprScopedLocals :: Scope 
                            }
   deriving (Eq, Data)
+
+-- | Creates the information about the definitions in scope
+mkScopeInfo :: Scope -> ScopeInfo
+mkScopeInfo = ScopeInfo
 
 -- | Info corresponding to a name
 data NameInfo n = NameInfo { _nameScopedLocals :: Scope
@@ -39,15 +59,27 @@ data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                 | AmbiguousNameInfo { _nameScopedLocals :: Scope
                                     , _nameIsDefined :: Bool
                                     , _ambiguousName :: RdrName
-                                    , _ambiguousLocation :: SrcSpan
+                                    , _nameLocation :: SrcSpan
                                     }
                 | ImplicitNameInfo { _nameScopedLocals :: Scope
                                    , _nameIsDefined :: Bool
                                    , _implicitName :: String
-                                   , _implicitLocation :: SrcSpan
+                                   , _nameLocation :: SrcSpan
                                    }
 
   deriving (Eq, Data)
+
+-- | Creates semantic information for an unambiguous name
+mkNameInfo :: Scope -> Bool -> n -> NameInfo n
+mkNameInfo = NameInfo
+
+-- | Creates semantic information for a name that is ambiguous because the lack of type info
+mkAmbiguousNameInfo :: Scope -> Bool -> RdrName -> SrcSpan -> NameInfo n
+mkAmbiguousNameInfo = AmbiguousNameInfo
+
+-- | Creates semantic information for an implicit name
+mkImplicitNameInfo :: Scope -> Bool -> String -> SrcSpan -> NameInfo n
+mkImplicitNameInfo = ImplicitNameInfo
 
 -- | Info corresponding to a name that is correctly identified
 data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
@@ -57,12 +89,20 @@ data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
                            }
   deriving (Eq, Data)
 
+-- | Create a typed name semantic information
+mkCNameInfo :: Scope -> Bool -> Id -> Maybe GHC.Fixity -> CNameInfo
+mkCNameInfo = CNameInfo
+
 -- | Info for the module element
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module 
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
                                , _implicitNames :: [n] -- ^ Implicitely imported names
                                } 
   deriving (Eq, Data)
+
+-- | Creates semantic information for the module element
+mkModuleInfo :: GHC.Module -> Bool -> [n] -> ModuleInfo n
+mkModuleInfo = ModuleInfo
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
@@ -71,10 +111,18 @@ data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and
                                } 
   deriving (Eq, Data)
 
+-- | Creates semantic information for an import declaration
+mkImportInfo :: GHC.Module -> [n] -> [n] -> ImportInfo n
+mkImportInfo = ImportInfo
+
 -- | Info corresponding to an record-wildcard
 data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
                                            } 
   deriving (Eq, Data)
+
+-- | Creates semantic information for a wildcard field binding
+mkImplicitFieldInfo :: [(Name, Name)] -> ImplicitFieldInfo
+mkImplicitFieldInfo = ImplicitFieldInfo
 
 instance Show ScopeInfo where
   show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
@@ -107,11 +155,32 @@ makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
 makeReferences ''ImplicitFieldInfo
 
--- | Semantic and source code related information for an AST node.
-data NodeInfo sema src 
-  = NodeInfo { _semanticInfo :: sema
-             , _sourceInfo :: src
-             }
-  deriving (Eq, Show, Data)
-             
-makeReferences ''NodeInfo
+instance Functor NameInfo where
+  fmap f = nameInfo .- f
+
+instance Functor ModuleInfo where
+  fmap f = implicitNames .- map f
+
+instance Functor ImportInfo where
+  fmap f (ImportInfo mod avail imps) = ImportInfo mod (map f avail) (map f imps)
+
+instance Foldable NameInfo where
+  foldMap f si = maybe mempty f (si ^? nameInfo)
+
+instance Foldable ModuleInfo where
+  foldMap f si = foldMap f (si ^. implicitNames)
+
+instance Foldable ImportInfo where
+  foldMap f si = foldMap f ((si ^. availableNames) ++ (si ^. importedNames))
+
+instance Traversable NameInfo where
+  traverse f (NameInfo locals defined nameInfo) = NameInfo locals defined <$> f nameInfo
+  traverse f (AmbiguousNameInfo locals defined nameInfo span) = pure $ AmbiguousNameInfo locals defined nameInfo span
+  traverse f (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
+
+instance Traversable ModuleInfo where
+  traverse f (ModuleInfo mod isboot imp) = ModuleInfo mod isboot <$> traverse f imp 
+
+instance Traversable ImportInfo where
+  traverse f (ImportInfo mod avail imps) = ImportInfo mod <$> traverse f avail <*> traverse f imps
+

@@ -27,14 +27,14 @@ cliTests :: [(String, [String], String)]
 cliTests 
   = [ ( ".." </> ".." </> "examples" </> "Project" </> "source-dir"
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
+      , "### UModule changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
     , ( ".." </> ".." </> "examples" </> "Project" </> "source-dir-outside"
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
+      , "### UModule changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
     , ( ".." </> ".." </> "examples" </> "Project" </> "no-cabal"
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
+      , "### UModule changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
     , ( ".." </> ".." </> "examples" </> "Project" </> "has-cabal"
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
+      , "### UModule changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()")
     ]

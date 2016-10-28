@@ -18,10 +18,9 @@ import HscTypes as GHC
 import Module as GHC
 import GHC.Paths ( libdir )
 
-import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Session
 
@@ -43,7 +42,7 @@ refactorSession args = runGhc (Just libdir) $ flip evalStateT initSession $
         initializeSession workingDirs flags = do
           moduleNames <- liftIO $ concat <$> mapM getModules workingDirs
           lift $ useDirs (concatMap fst moduleNames)
-          lift $ setTargets $ map (\mod -> (Target (TargetModule (mkModuleName mod)) True Nothing)) 
+          lift $ setTargets $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) 
                                   (concatMap snd moduleNames)
           liftIO $ putStrLn "Compiling modules. This may take some time. Please wait."
           lift $ load LoadAllTargets
@@ -141,9 +140,9 @@ performSessionCommand (RefactorCommand cmd)
           return ""
         performChanges True resMods = concat <$> forM resMods (liftIO . \case 
           ContentChanged (n,m) -> do
-            return $ "### Module changed: " ++ n ++ "\n### new content:\n" ++ prettyPrint m
+            return $ "### UModule changed: " ++ n ++ "\n### new content:\n" ++ prettyPrint m
           ModuleRemoved mod ->
-            return $ "### Module removed: " ++ mod)
+            return $ "### UModule removed: " ++ mod)
 
         getModSummary name boot
           = do allMods <- lift getModuleGraph

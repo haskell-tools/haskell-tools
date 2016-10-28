@@ -18,7 +18,7 @@ import Debug.Trace
 import Data.List
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
-import Language.Haskell.Tools.AST.FromGHC.Base
+import Language.Haskell.Tools.AST.FromGHC.Names
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Literals
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -29,7 +29,7 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann(..), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
-trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.Pattern (Dom r) RangeStage)
+trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.UPattern (Dom r) RangeStage)
 -- field wildcards are not directly represented in GHC AST
 trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
   = do let (fromWC, notWC) = partition ((l ==) . getLoc) flds
@@ -44,7 +44,7 @@ correctPatternLoc (L l p@(ConPatIn name (InfixCon left right)))
   = L (getLoc (correctPatternLoc left) `combineSrcSpans` getLoc (correctPatternLoc right)) p
 correctPatternLoc p = p
 
-trfPattern' :: TransformName n r => Pat n -> Trf (AST.Pattern (Dom r) RangeStage)
+trfPattern' :: TransformName n r => Pat n -> Trf (AST.UPattern (Dom r) RangeStage)
 trfPattern' (WildPat _) = pure AST.UWildPat
 trfPattern' (VarPat name) = define $ AST.UVarPat <$> trfName name
 trfPattern' (LazyPat pat) = AST.UIrrefutablePat <$> trfPattern pat
@@ -66,6 +66,6 @@ trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat <$> define (trfNam
 -- coercion pattern introduced by GHC
 trfPattern' (CoPat _ pat _) = trfPattern' pat
 
-trfPatternField' :: TransformName n r => HsRecField n (LPat n) -> Trf (AST.PatternField (Dom r) RangeStage)
+trfPatternField' :: TransformName n r => HsRecField n (LPat n) -> Trf (AST.UPatternField (Dom r) RangeStage)
 trfPatternField' (HsRecField id arg False) = AST.UNormalFieldPattern <$> trfName (getFieldOccName id) <*> trfPattern arg
 trfPatternField' (HsRecField id _ True) = AST.UFieldPunPattern <$> trfName (getFieldOccName id)

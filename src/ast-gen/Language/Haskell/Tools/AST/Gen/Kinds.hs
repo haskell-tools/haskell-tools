@@ -11,49 +11,65 @@ import Data.String
 import Data.Function (on)
 import Control.Reference
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Base
+import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.AnnTrf.SourceTemplate
 import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
 
-mkKindConstraint :: Ann Kind dom SrcTemplateStage -> Ann KindConstraint dom SrcTemplateStage
+
+-- | Kind constraint (@ :: * -> * @)
+mkKindConstraint :: Kind dom -> KindConstraint dom
 mkKindConstraint = mkAnn (" :: " <> child) . UKindConstraint
 
-mkKindStar :: Ann Kind dom SrcTemplateStage
+-- | @*@, the kind of types
+mkKindStar :: Kind dom
 mkKindStar = mkAnn "*" UStarKind
 
-mkKindUnbox :: Ann Kind dom SrcTemplateStage
+-- | @#@, the kind of unboxed types
+mkKindUnbox :: Kind dom
 mkKindUnbox = mkAnn "#" UUnboxKind
 
-mkKindFun :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | @->@, the kind of type constructor
+mkKindFun :: Kind dom -> Kind dom -> Kind dom
 mkKindFun lhs rhs = mkAnn (child <> " -> " <> child) $ UFunKind lhs rhs
 
-mkKindParen :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | A parenthesised kind
+mkKindParen :: Kind dom -> Kind dom
 mkKindParen = mkAnn ("(" <> child <> ")") . UParenKind
 
-mkKindVar :: Ann Name dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | Kind variable (using @PolyKinds@ extension)
+mkKindVar :: Name dom -> Kind dom
 mkKindVar = mkAnn child . UVarKind
 
-mkKindApp :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | Kind application (@ k1 k2 @)
+mkKindApp :: Kind dom -> Kind dom -> Kind dom
 mkKindApp lhs rhs = mkAnn (child <> " " <> child) $ UAppKind lhs rhs
 
-mkKindList :: Ann Kind dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | A list kind (@ [k] @)
+mkKindList :: Kind dom -> Kind dom
 mkKindList = mkAnn ("[" <> child <> "]") . UListKind
 
-mkIntKind :: Integer -> Ann Kind dom SrcTemplateStage
+-- | Numeric value promoted to the kind level.
+mkIntKind :: Integer -> Kind dom
 mkIntKind i = mkAnn child $ UPromotedKind $ mkAnn (fromString $ show i) (UPromotedInt i)
 
-mkStringKind :: String -> Ann Kind dom SrcTemplateStage
+-- | String value promoted to the kind level.
+mkStringKind :: String -> Kind dom
 mkStringKind i = mkAnn child $ UPromotedKind $ mkAnn (fromString $ show i) (UPromotedString i)
 
-mkConKind :: Ann Name dom SrcTemplateStage -> Ann Kind dom SrcTemplateStage
+-- | A data constructor value promoted to the kind level.
+mkConKind :: Name dom -> Kind dom
 mkConKind = mkAnn child . UPromotedKind . mkAnn child . UPromotedCon
 
-mkListKind :: [Ann Kind dom SrcTemplateStage] -> Ann Kind dom SrcTemplateStage
+-- | A list of elements as a kind.
+mkListKind :: [Kind dom] -> Kind dom
 mkListKind = mkAnn child . UPromotedKind . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (listSep ", ")
 
-mkTupleKind :: [Ann Kind dom SrcTemplateStage] -> Ann Kind dom SrcTemplateStage
+-- | A tuple of elements as a kind.
+mkTupleKind :: [Kind dom] -> Kind dom
 mkTupleKind = mkAnn child . UPromotedKind . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (listSep ", ")
 
-mkUnitKind :: Ann Kind dom SrcTemplateStage
+-- | Kind of the unit value @()@. 
+mkUnitKind :: Kind dom
 mkUnitKind = mkAnn child $ UPromotedKind $ mkAnn "()" UPromotedUnit

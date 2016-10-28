@@ -1,35 +1,46 @@
--- | Pattern matching on literals for refactorings.
+-- | UPattern matching on literals for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
 module Language.Haskell.Tools.AST.Match.Literals where
 
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.ElementTypes
 
-pattern CharLit :: Char -> Ann Literal dom SrcTemplateStage
+-- | Character literal: @'c'@
+pattern CharLit :: Char -> Literal dom
 pattern CharLit c <- Ann _ (UCharLit c)
 
-pattern StringLit :: String -> Ann Literal dom SrcTemplateStage
+-- | String literal: @"abc"@
+pattern StringLit :: String -> Literal dom
 pattern StringLit s <- Ann _ (UStringLit s)
 
-pattern IntLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Integer literal: @12@
+pattern IntLit :: Integer -> Literal dom
 pattern IntLit i <- Ann _ (UIntLit i)
 
-pattern FracLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Fractional literal: @3.14@
+pattern FracLit :: Rational -> Literal dom
 pattern FracLit f <- Ann _ (UFracLit f)
 
-pattern PrimIntLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Primitive integer literal (of type @Int#@): @32#@
+pattern PrimIntLit :: Integer -> Literal dom
 pattern PrimIntLit i <- Ann _ (UPrimIntLit i)
 
-pattern PrimWordLit :: Integer -> Ann Literal dom SrcTemplateStage
+-- | Primitive word literal (of type @Word#@): @32##@
+pattern PrimWordLit :: Integer -> Literal dom
 pattern PrimWordLit i <- Ann _ (UPrimWordLit i)
 
-pattern PrimFloatLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Primitive float literal (of type @Float#@): @3.14#@
+pattern PrimFloatLit :: Rational -> Literal dom
 pattern PrimFloatLit i <- Ann _ (UPrimFloatLit i)
 
-pattern PrimDoubleLit :: Rational -> Ann Literal dom SrcTemplateStage
+-- | Primitive double literal (of type @Double#@): @3.14##@
+pattern PrimDoubleLit :: Rational -> Literal dom
 pattern PrimDoubleLit i <- Ann _ (UPrimDoubleLit i)
 
-pattern PrimCharLit :: Char -> Ann Literal dom SrcTemplateStage
+-- | Primitive character literal (of type @Char#@): @'c'#@
+pattern PrimCharLit :: Char -> Literal dom
 pattern PrimCharLit i <- Ann _ (UPrimCharLit i)
 
-pattern PrimStringLit :: String -> Ann Literal dom SrcTemplateStage
+-- | Primitive string literal (of type @Addr#@): @"xxx"#@
+pattern PrimStringLit :: String -> Literal dom
 pattern PrimStringLit s <- Ann _ (UPrimStringLit s)

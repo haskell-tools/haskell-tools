@@ -65,11 +65,12 @@ import UniqFM as GHC
 import HeaderInfo as GHC
 import Language.Haskell.TH.LanguageExtensions
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybe(..), AnnList(..), Dom, IdDom, RangeStage, NoSemanticInfo(..), NameInfo(..), CNameInfo(..), ScopeInfo(..), ImportInfo(..), ModuleInfo(..), ImplicitFieldInfo(..)
-                                  , semanticInfo, sourceInfo, semantics, annotation, nameInfo, nodeSpan, semaTraverse)
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, IdDom, RangeStage
+                                  , semanticInfo, sourceInfo, semantics, annotation, nodeSpan, semaTraverse)
 import qualified Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 
-import Language.Haskell.Tools.AST.FromGHC.Base
+import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
@@ -77,30 +78,27 @@ import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 import Debug.Trace
 
-addTypeInfos :: LHsBinds Id -> Ann AST.Module (Dom GHC.Name) RangeStage -> Ghc (Ann AST.Module IdDom RangeStage)
+addTypeInfos :: LHsBinds Id -> Ann AST.UModule (Dom GHC.Name) RangeStage -> Ghc (Ann AST.UModule IdDom RangeStage)
 addTypeInfos bnds mod = do
   ut <- liftIO mkUnknownType
   let getType = getType' ut
   fixities <- getFixities
-  let createCName sc def id = CNameInfo sc def id fixity
+  let createCName sc def id = mkCNameInfo sc def id fixity
         where fixity = if any (any ((getOccName id ==) . getOccName)) (init sc) 
                           then Nothing 
                           else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> mod == (nameModule $ varName id) && occ == getOccName id) fixities
   evalStateT (semaTraverse 
     (AST.SemaTrf
-      (\case (NameInfo sc def ni) -> lift $ createCName sc def <$> getType ni 
-             (AmbiguousNameInfo sc d rdr l) | Just id <- Map.lookup l locMapping -> return $ createCName sc d id
-             (AmbiguousNameInfo sc d rdr l) | otherwise -> error $ "Ambiguous name missing: " ++ showSDocUnsafe (ppr rdr) ++ ", at: " ++ show l
-             (ImplicitNameInfo sc d str l) | Just id <- Map.lookup l locMapping -> return $ createCName sc d id
-             (ImplicitNameInfo sc d str (RealSrcSpan l)) | otherwise
-                -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` l) . fst))
-                      case rest of [] -> error $ "Implicit name missing: " ++ str ++ ", at: " ++ show l
-                                   ((_,id):more) -> do put (none ++ more)
-                                                       return $ createCName sc d id)
-      pure
-      (\(ImportInfo mod access used) -> lift $ ImportInfo mod <$> mapM getType access <*> mapM getType used)
-      (\(ModuleInfo mod isboot imps) -> lift $ ModuleInfo mod isboot <$> mapM getType imps)
-      (\(ImplicitFieldInfo wcbinds) -> return $ ImplicitFieldInfo wcbinds)
+      (\ni -> case (AST.semanticsSourceInfo ni, AST.semanticsName ni) of 
+                (_, Just name) -> lift $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) <$> getType name
+                (Just l@(RealSrcSpan loc), _) 
+                  -> case Map.lookup l locMapping of 
+                            Just id -> return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
+                            _ -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
+                                    case rest of [] -> error $ "Ambiguous or implicit name missing, at: " ++ show loc
+                                                 ((_,id):more) -> do put (none ++ more)
+                                                                     return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id)
+      pure (traverse (lift . getType)) (traverse (lift . getType)) pure
         pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         getType' ut name = fromMaybe (mkVanillaGlobal name ut) <$> ((<|> Map.lookup name ids) <$> getTopLevelId name)
@@ -145,9 +143,9 @@ extractSigBindIds = catMaybes . map (\case L l bs@(IPBind (Right id) _) -> Just 
 createModuleInfo :: ModSummary -> Trf (AST.ModuleInfo GHC.Name)
 createModuleInfo mod = do let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
                           (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
-                          return $ AST.ModuleInfo (ms_mod mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True) preludeImports
+                          return $ mkModuleInfo (ms_mod mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True) preludeImports
 
-trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.Module (Dom RdrName) RangeStage)
+trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
 trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
                   \(HsModule name exports imports decls deprec _) -> 
                     AST.UModule <$> trfFilePragmas
@@ -155,22 +153,22 @@ trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr 
                                 <*> trfImports imports
                                 <*> trfDecls decls
        
-trfModuleRename :: ModSummary -> Ann AST.Module (Dom RdrName) RangeStage 
+trfModuleRename :: ModSummary -> Ann AST.UModule (Dom RdrName) RangeStage 
                               -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString) 
                               -> Located (HsModule RdrName) 
-                              -> Trf (Ann AST.Module (Dom GHC.Name) RangeStage)
+                              -> Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod 
     = do info <- createModuleInfo mod
-         trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. AST.implicitNames)) hsMod      
-  where roleAnnots = rangeMod ^? AST.element&AST.modDecl&AST.annList&filtered ((\case AST.URoleDecl {} -> True; _ -> False) . (^. AST.element))
+         trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod      
+  where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
         originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef) 
-        getSourceAndInfo :: Ann AST.QualifiedName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
+        getSourceAndInfo :: Ann AST.UQualifiedName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
         
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
            
-          addToScope (concat @[] (transformedImports ^? AST.annList&semantics&AST.importedNames) ++ preludeImports)
+          addToScope (concat @[] (transformedImports ^? AST.annList&semantics&importedNames) ++ preludeImports)
             $ loadSplices mod hsMod gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
               $ AST.UModule <$> trfFilePragmas
                             <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
@@ -194,7 +192,7 @@ loadSplices mod hsMod group trf = do
       $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv }) 
       $ (,,) <$> mapM tcHsSplice declSpls <*> mapM tcHsSplice' typeSpls <*> mapM tcHsSplice' exprSpls
     let (declSplices, typeSplices, exprSplices) 
-          = fromMaybe (error $ "Splice expression could not be typechecked: " 
+          = fromMaybe (error $ "USplice expression could not be typechecked: " 
                                  ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))) 
                                                       <+> vcat (pprErrMsgBagWithLoc (snd (fst tcdSplices))))) 
                       (snd tcdSplices)
@@ -209,7 +207,7 @@ loadSplices mod hsMod group trf = do
     tcHsSplice' (HsQuasiQuote id1 id2 sp fs) 
       = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
 
-trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModuleHead (Dom r) RangeStage) 
+trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage) 
 trfModuleHead (Just mn) exports modPrag
   = makeJust <$> (annLocNoSema (tokensLoc [AnnModule, AnnWhere])
                                (AST.UModuleHead <$> trfModuleName mn 
@@ -219,56 +217,56 @@ trfModuleHead _ Nothing _ = nothing "" "" moduleHeadPos
   where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
                                                  _ -> atTheStart
 
-trfFilePragmas :: Trf (AnnList AST.FilePragma (Dom r) RangeStage)
+trfFilePragmas :: Trf (AnnListG AST.UFilePragma (Dom r) RangeStage)
 trfFilePragmas = do pragmas <- asks pragmaComms
                     languagePragmas <- mapM trfLanguagePragma (fromMaybe [] $ (Map.lookup "LANGUAGE") pragmas)
                     optionsPragmas <- mapM trfOptionsPragma (fromMaybe [] $ (Map.lookup "OPTIONS_GHC") pragmas)
                     makeList "" atTheStart $ pure $ orderDefs $ languagePragmas ++ optionsPragmas
 
-trfLanguagePragma :: Located String -> Trf (Ann AST.FilePragma (Dom r) RangeStage)
+trfLanguagePragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
 trfLanguagePragma lstr@(L l str) = annLocNoSema (pure l) (AST.ULanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems) 
                                                                                                 (mapM (trfLocNoSema (pure . AST.ULanguageExtension)) extensions))
   where pragmaElems = splitLocated lstr
         extensions = init $ drop 2 pragmaElems
 
-trfOptionsPragma :: Located String -> Trf (Ann AST.FilePragma (Dom r) RangeStage)
+trfOptionsPragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
 trfOptionsPragma (L l str) = annLocNoSema (pure l) (AST.UOptionsPragma <$> annContNoSema (pure $ AST.UStringNode str))
 
-trfModulePragma :: Maybe (Located WarningTxt) -> Trf (AnnMaybe AST.ModulePragma (Dom r) RangeStage)
+trfModulePragma :: Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModulePragma (Dom r) RangeStage)
 trfModulePragma = trfMaybeDefault " " "" (trfLocNoSema $ \case WarningTxt _ txts -> AST.UModuleWarningPragma <$> trfAnnList " " trfText' txts
                                                                DeprecatedTxt _ txts -> AST.UModuleDeprecatedPragma <$> trfAnnList " " trfText' txts) 
                                   (before AnnWhere)
 
-trfText' :: StringLiteral -> Trf (AST.StringNode (Dom r) RangeStage)
+trfText' :: StringLiteral -> Trf (AST.UStringNode (Dom r) RangeStage)
 trfText' = pure . AST.UStringNode . unpackFS . sl_fs
 
 
 
-trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybe AST.ExportSpecList (Dom r) RangeStage)
+trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybeG AST.UExportSpecs (Dom r) RangeStage)
 trfExportList loc = trfMaybeDefault " " "" (trfLocNoSema trfExportList') (pure loc)
 
-trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.ExportSpecList (Dom r) RangeStage)
-trfExportList' exps = AST.UExportSpecList <$> (makeList ", " (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))
+trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.UExportSpecs (Dom r) RangeStage)
+trfExportList' exps = AST.UExportSpecs <$> (makeList ", " (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))
   
-trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.ExportSpec (Dom r) RangeStage))
+trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UExportSpec (Dom r) RangeStage))
 trfExport = trfMaybeLocNoSema $ \case 
   IEModuleContents n -> Just . AST.UModuleExport <$> (trfModuleName n)
   other -> do trf <- trfIESpec' other
               fmap AST.UDeclExport <$> (sequence $ fmap (annContNoSema . return) trf)
 
-trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnList AST.ImportDecl (Dom r) RangeStage)
+trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnListG AST.UImportDecl (Dom r) RangeStage)
 trfImports (filter (not . ideclImplicit . unLoc) -> imps) 
-  = AnnListC <$> importDefaultLoc <*> mapM trfImport imps
+  = AnnListG <$> importDefaultLoc <*> mapM trfImport imps
   where importDefaultLoc = noSemaInfo . AST.ListPos (if List.null imps then "\n" else "") "" "\n" True . srcSpanEnd 
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
-trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.ImportDecl (Dom r) RangeStage)
-trfImport (L l (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding)) =
+trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
+trfImport (L l impDecl@(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding)) =
   let -- default positions of optional parts of an import declaration
       annBeforeQual = if isSrc then AnnClose else AnnImport
       annBeforeSafe = if isQual then AnnQualified else annBeforeQual
       annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
-  in (\impdecl -> annLoc (createImportData =<< impdecl) (pure l) impdecl) $ AST.UImportDecl 
+  in annLoc (createImportData impDecl) (pure l) $ AST.UImportDecl 
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)
                      else nothing " " "" (after AnnImport))
        <*> (if isQual then makeJust <$> (annLocNoSema (tokenLoc AnnQualified) (pure AST.UImportQualified)) 
@@ -285,17 +283,17 @@ trfImport (L l (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs de
                          (AST.UImportRenaming <$> (annLocNoSema (tokenLoc AnnVal) 
                                                   (trfModuleName' mn)))  
   
-trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybe AST.ImportSpec (Dom r) RangeStage)
+trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybeG AST.UImportSpec (Dom r) RangeStage)
 trfImportSpecs (Just (True, l)) 
   = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecHiding <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
 trfImportSpecs (Just (False, l)) 
   = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecList <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
 trfImportSpecs Nothing = nothing " " "" atTheEnd
     
-trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.IESpec (Dom r) RangeStage)) 
+trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UIESpec (Dom r) RangeStage)) 
 trfIESpec = trfMaybeLocNoSema trfIESpec'
   
-trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.IESpec (Dom r) RangeStage))
+trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
 trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n) 
@@ -306,4 +304,9 @@ trfIESpec' (IEThingWith n _ ls _)
                                                    (annContNoSema $ AST.USubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfName ls))))
 trfIESpec' _ = pure Nothing
   
+trfModuleName :: Located ModuleName -> Trf (Ann AST.UModuleName (Dom r) RangeStage)
+trfModuleName = trfLocNoSema trfModuleName'
+
+trfModuleName' :: ModuleName -> Trf (AST.UModuleName (Dom r) RangeStage)
+trfModuleName' = pure . AST.UModuleName . moduleNameString 
  
