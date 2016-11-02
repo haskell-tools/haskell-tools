@@ -72,6 +72,7 @@ test-suite haskell-tools-test
                      , references                >=0.3.2 && <1.0
                      , split                     >=0.2 && <1.0
                      , time                      >=1.5 && <2.0
+                     , old-time                  >=1.1 && <2.0
                      , template-haskell          >=2.0 && <3.0
                      , Cabal                     >=1.24 && <2.0
                      , polyparse                 >=1.12 && <2.0
