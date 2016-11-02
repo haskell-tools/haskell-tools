@@ -22,10 +22,7 @@ import System.FilePath
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite as G
 import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
-import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import Language.Haskell.Tools.AnnTrf.PlaceComments
+import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Prepare
@@ -436,7 +433,7 @@ parseAST modSum = do
   p <- parseModule modSum
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (snd annots) 
+  prepareAST srcBuffer . placeComments (snd annots) 
      <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum $ pm_parsed_source p)          
 
 type RenamedModule = Ann AST.UModule (Dom GHC.Name) SrcTemplateStage
@@ -447,7 +444,7 @@ parseRenamed modSum = do
   tc <- typecheckModule p
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
+  prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
     <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
             runTrf (fst annots) (getPragmaComments $ snd annots)
               $ trfModuleRename modSum parseTrf

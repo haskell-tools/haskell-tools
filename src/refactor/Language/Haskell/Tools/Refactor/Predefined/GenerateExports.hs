@@ -3,7 +3,7 @@
            , TypeFamilies
            , FlexibleContexts
            #-}
-module Language.Haskell.Tools.Refactor.Predefined.GenerateExports where
+module Language.Haskell.Tools.Refactor.Predefined.GenerateExports (generateExports, DomGenerateExports) where
 
 import Control.Reference hiding (element)
 
@@ -13,7 +13,7 @@ import Data.Maybe
 import Control.Applicative ((<|>))
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.Refactor.RefactorBase

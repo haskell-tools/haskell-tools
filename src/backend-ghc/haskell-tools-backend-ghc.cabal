@@ -1,0 +1,45 @@
+name:                haskell-tools-backend-ghc
+version:             0.2.0.0
+synopsis:            Creating the Haskell-Tools AST from GHC's representations
+description:         This package collects information from various representations of a Haskell program in GHC. Basically GHC provides us with the parsed, the renamed and the type checked representation of the program, if it was type correct. Each version contains different information. For example, the renamed AST contains the unique names of the definitions, however, template haskell splices are already resolved and thus missing from that version of the AST. To get the final representation we perform a transformation on the parsed and renamed representation, and then use the type checked one to look up the types of the names. The whole transformation is defined in the `Modules` module. Other modules define the functions that convert elements of the GHC AST to our AST.
+homepage:            https://github.com/nboldi/haskell-tools
+license:             BSD3
+license-file:        LICENSE
+author:              Boldizsar Nemeth
+maintainer:          nboldi@elte.hu
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Language.Haskell.Tools.AST.FromGHC   
+                     , Language.Haskell.Tools.AST.FromGHC.Modules
+                     , Language.Haskell.Tools.AST.FromGHC.TH
+                     , Language.Haskell.Tools.AST.FromGHC.Decls
+                     , Language.Haskell.Tools.AST.FromGHC.Binds
+                     , Language.Haskell.Tools.AST.FromGHC.Exprs
+                     , Language.Haskell.Tools.AST.FromGHC.Stmts
+                     , Language.Haskell.Tools.AST.FromGHC.Patterns
+                     , Language.Haskell.Tools.AST.FromGHC.Types
+                     , Language.Haskell.Tools.AST.FromGHC.Kinds
+                     , Language.Haskell.Tools.AST.FromGHC.Literals
+                     , Language.Haskell.Tools.AST.FromGHC.Names
+                     , Language.Haskell.Tools.AST.FromGHC.GHCUtils                  
+  other-modules:       Language.Haskell.Tools.AST.FromGHC.Monad
+                     , Language.Haskell.Tools.AST.FromGHC.Utils
+                     , Language.Haskell.Tools.AST.FromGHC.SourceMap
+                     , Language.Haskell.Tools.AST.FromGHC.AddTypeInfo
+
+  build-depends:       base              >=4.9   && <5.0
+                     , ghc               >=8.0   && <8.1
+                     , transformers      >=0.5   && <1.0
+                     , haskell-tools-ast >=0.2   && <0.3
+                     , references        >=0.3.2 && <1.0
+                     , bytestring        >=0.10  && <1.0
+                     , safe              >=0.3   && <1.0
+                     , uniplate          >=1.6   && <2.0
+                     , containers        >=0.5   && <0.6
+                     , mtl               >=2.2   && <2.3
+                     , split             >=0.2   && <0.3
+                     , template-haskell  >=2.11  && <3.0
+  default-language:    Haskell2010

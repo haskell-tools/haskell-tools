@@ -27,7 +27,7 @@ import Language.Haskell.Tools.Refactor.Session
 import Debug.Trace
 
 tryOut = refactorSession [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
-                         , "-package", "ghc", "src/ast", "src/ast-trf", "src/ast-ghc", "src/ast-ppr", "src/ast-gen", "src/refactor"]
+                         , "-package", "ghc", "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
 
 refactorSession :: [String] -> IO String
 refactorSession args = runGhc (Just libdir) $ flip evalStateT initSession $

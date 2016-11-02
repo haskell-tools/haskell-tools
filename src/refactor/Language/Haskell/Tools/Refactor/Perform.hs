@@ -15,12 +15,7 @@ module Language.Haskell.Tools.Refactor.Perform where
 
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
-import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import Language.Haskell.Tools.AnnTrf.RangeTemplate
-import Language.Haskell.Tools.AnnTrf.PlaceComments
-import Language.Haskell.Tools.PrettyPrint.RoseTree
+import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.PrettyPrint
  
 import Data.List

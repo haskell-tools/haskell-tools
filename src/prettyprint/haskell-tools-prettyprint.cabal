@@ -1,0 +1,32 @@
+name:                haskell-tools-prettyprint
+version:             0.2.0.0
+synopsis:            Pretty printing of Haskell-Tools AST
+description:         Converts the Haskell-Tools AST to text. Prepares the AST for this conversion. If the AST was created from the GHC AST this pretty printing will result in the original source code. Generated AST parts will get the default formatting. Works using the source annotations that are present in the AST. Creates a rose tree first to simplify the conversion.
+homepage:            https://github.com/haskell-tools/haskell-tools
+license:             BSD3
+license-file:        LICENSE
+author:              Boldizsar Nemeth
+maintainer:          nboldi@elte.hu
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Language.Haskell.Tools.PrettyPrint
+                     , Language.Haskell.Tools.Transform
+  other-modules:       Language.Haskell.Tools.PrettyPrint.RoseTree
+                     , Language.Haskell.Tools.Transform.RangeToRangeTemplate
+                     , Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate
+                     , Language.Haskell.Tools.Transform.RangeTemplate
+                     , Language.Haskell.Tools.Transform.SourceTemplate
+                     , Language.Haskell.Tools.Transform.SourceTemplateHelpers
+                     , Language.Haskell.Tools.Transform.PlaceComments
+  build-depends:       base              >=4.9   && <5.0
+                     , ghc               >=8.0   && <8.1
+                     , mtl               >=2.2   && <2.3
+                     , containers        >=0.5   && <0.6
+                     , references        >=0.3.2 && <1.0
+                     , uniplate          >=1.6   && <2.0
+                     , haskell-tools-ast >=0.2   && <0.3
+                     , split             >=0.2   && <0.3
+  default-language: Haskell2010

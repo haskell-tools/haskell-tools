@@ -36,11 +36,7 @@ import Data.List.Split
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
-import Language.Haskell.Tools.AnnTrf.RangeTemplateToSourceTemplate
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
-import Language.Haskell.Tools.AnnTrf.RangeTemplate
-import Language.Haskell.Tools.AnnTrf.PlaceComments
+import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 tryRefactor :: Refactoring IdDom -> String -> IO ()
@@ -112,7 +108,7 @@ parseTyped modSum = do
   tc <- typecheckModule p
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  rangeToSource srcBuffer . cutUpRanges . fixRanges . placeComments (getNormalComments $ snd annots) 
+  prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
            =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
                    runTrf (fst annots) (getPragmaComments $ snd annots)

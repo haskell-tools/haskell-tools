@@ -14,9 +14,7 @@ import Control.Reference
 import SrcLoc
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AnnTrf.RangeToRangeTemplate
-import Language.Haskell.Tools.AnnTrf.RangeTemplate
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.Transform
 
 srcInfoDebug :: TreeDebug e dom st => e dom st -> String
 srcInfoDebug = treeDebug' 0

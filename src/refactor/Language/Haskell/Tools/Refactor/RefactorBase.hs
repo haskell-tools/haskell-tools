@@ -12,8 +12,7 @@ module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.AnnTrf.SourceTemplateHelpers
-import Language.Haskell.Tools.AnnTrf.SourceTemplate
+import Language.Haskell.Tools.Transform
 import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
 import Exception (ExceptionMonad(..))
 import DynFlags (HasDynFlags(..))

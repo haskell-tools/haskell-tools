@@ -35,8 +35,7 @@ executable haskell-tools-demo
                      , bytestring
                      , filepath
                      , haskell-tools-ast         >=0.2 && <0.3
-                     , haskell-tools-ast-fromghc >=0.2 && <0.3
-                     , haskell-tools-ast-trf     >=0.2 && <0.3
+                     , haskell-tools-backend-ghc >=0.2 && <0.3
                      , haskell-tools-prettyprint >=0.2 && <0.3
                      , haskell-tools-refactor    >=0.2 && <0.3
 

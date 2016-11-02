@@ -38,10 +38,9 @@ resolver: nightly-2016-09-10
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - src/ast
-- src/ast-ghc
-- src/ast-trf
-- src/ast-gen
-- src/ast-ppr
+- src/backend-ghc
+- src/rewrite
+- src/prettyprint
 - src/refactor
 
 # Dependency packages to be pulled from upstream that are not in the resolver
