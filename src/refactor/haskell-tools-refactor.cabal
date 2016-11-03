@@ -51,7 +51,7 @@ library
 test-suite haskell-tools-test
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
-  hs-source-dirs:      ../../test
+  hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.9  && < 4.10
                      , HUnit                     >= 1.3  && < 1.4
