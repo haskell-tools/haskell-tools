@@ -61,6 +61,11 @@ When the interactive session is started:
   - Continous integration is backed by Travis-CI. Status: [![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools/master.svg)](https://travis-ci.org/haskell-tools/haskell-tools)
   - Test coverage is automatically calculated, but is currently very low because of generated fields/instances/references defined for API consistency but not being used by any refactoring: [![Coverage Status](https://coveralls.io/repos/github/haskell-tools/haskell-tools/badge.svg)](https://coveralls.io/github/haskell-tools/haskell-tools)
 
+## How to contribute / develop your own refactorings?
+
+ - If you want to create new refactorings, check out the [tutorial](https://github.com/haskell-tools/haskell-tools/wiki/How-to-write-refactorings%3F). Good general purpose refactorings should be shared with other developers by creating pull requests.
+ - If you want to help with the development of the framework, check out the [Developer Resources](https://github.com/haskell-tools/haskell-tools/wiki/Developer-Resources).
+
 ## Known limitations
 
   - Generate type signature does not generate `ScopedTypeVariables` extension and explicit `forall` in cases when it would be needed to create a compilable result. These have to be added manually.
@@ -69,15 +74,14 @@ When the interactive session is started:
 
 ## Plans
   
-  - 2016: Refinements in project handling.
+  - 2016: Refinements in project handling, performance improvements for generics.
   - Editor support in early 2017. Better layout handling. Refinement and wider variety of refactorings.
 
 ## Repository contents
 
-This repository contains 6 packages that provide different functionality.
+This repository contains 5 packages that provide different functionality, so you can choose which ones you need.
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast.svg)](http://hackage.haskell.org/package/haskell-tools-ast) **haskell-tools-ast** contains the representations of our syntax tree and utility functions.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-fromghc.svg)](http://hackage.haskell.org/package/haskell-tools-ast-fromghc) **haskell-tools-ast-fromghc** contains how can our AST be generated from the different representations of GHC.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-trf.svg)](http://hackage.haskell.org/package/haskell-tools-ast-trf) **haskell-tools-ast-trf** contains transformations that can be performed to make the syntax tree ready for rewriting.
-  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast-gen.svg)](http://hackage.haskell.org/package/haskell-tools-ast-gen) **haskell-tools-ast-gen** contains functions for generating parts of the syntax tree.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-backend-ghc.svg)](http://hackage.haskell.org/package/haskell-tools-backend-ghc) **haskell-tools-backend-ghc** contains how can our AST be generated from the different representations of GHC.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-rewrite.svg)](http://hackage.haskell.org/package/haskell-tools-rewrite) **haskell-tools-rewrite** contains functions for changing parts of the syntax tree.
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-prettyprint.svg)](http://hackage.haskell.org/package/haskell-tools-prettyprint) **haskell-tools-prettyprint** enables us to pretty print the AST in its original form.
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg)](http://hackage.haskell.org/package/haskell-tools-refactor) **haskell-tools-refactor** defines the actual refactorings.
