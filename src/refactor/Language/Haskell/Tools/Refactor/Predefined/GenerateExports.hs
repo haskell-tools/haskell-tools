@@ -5,18 +5,13 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.GenerateExports (generateExports, DomGenerateExports) where
 
-import Control.Reference hiding (element)
+import Language.Haskell.Tools.Refactor
+import Control.Reference
 
 import qualified GHC
 
 import Data.Maybe
 import Control.Applicative ((<|>))
-
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.Transform
-import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.Refactor.RefactorBase
 
 type DomGenerateExports dom = (Domain dom, HasNameInfo dom)
 

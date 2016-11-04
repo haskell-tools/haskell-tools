@@ -1,8 +1,7 @@
 module Language.Haskell.Tools.Refactor.Predefined.DataToNewtype (dataToNewtype) where
 
-import Control.Reference
-
 import Language.Haskell.Tools.Refactor
+import Control.Reference
 
 tryItOut moduleName = tryRefactor (localRefactoring $ dataToNewtype) moduleName
 

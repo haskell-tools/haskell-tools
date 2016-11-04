@@ -25,13 +25,8 @@ import Data.List.Split
 import Data.List
 import Data.Maybe
 import Data.Generics.Uniplate.Data
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.Transform
-import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.Refactor.RefactorBase
 
-import Debug.Trace
+import Language.Haskell.Tools.Refactor
 
 type DomainRenameDefinition dom = ( HasNameInfo dom, HasScopeInfo dom, HasDefiningInfo dom
                                   , HasImplicitFieldsInfo dom, HasModuleInfo dom )

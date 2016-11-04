@@ -18,7 +18,7 @@ import Unique
 import Data.Char
 import Data.Maybe
 import Data.Generics.Uniplate.Data
-import Control.Reference hiding (element)
+import Control.Reference
 import Control.Monad.State
 
 import Language.Haskell.Tools.Refactor

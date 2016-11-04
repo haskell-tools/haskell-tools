@@ -1,26 +1,20 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts, ViewPatterns #-}
 module Language.Haskell.Tools.Refactor.Predefined.IfToGuards (ifToGuards) where
 
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.Refactor.RefactorBase
-
-import Control.Reference hiding (element)
+import Language.Haskell.Tools.Refactor
+import Control.Reference
 import SrcLoc
 import Data.Generics.Uniplate.Data
-
-import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.Refactor
 
 tryItOut moduleName sp = tryRefactor (localRefactoring $ ifToGuards (readSrcSpan (toFileName "." moduleName) sp)) moduleName
 
 ifToGuards :: Domain dom => RealSrcSpan -> LocalRefactoring dom
-ifToGuards sp = return . (nodesContaining sp .- ifToGuards')
+ifToGuards sp = return . (nodesContaining sp .- changeBindings)
 
-ifToGuards' :: ValueBind dom -> ValueBind dom
-ifToGuards' (SimpleBind (VarPat name) (UnguardedRhs (If pred thenE elseE)) locals) 
+changeBindings :: ValueBind dom -> ValueBind dom
+changeBindings (SimpleBind (VarPat name) (UnguardedRhs (If pred thenE elseE)) locals) 
   = mkFunctionBind [mkMatch (mkMatchLhs name []) (createSimpleIfRhss pred thenE elseE) (locals ^. annMaybe) ]
-ifToGuards' fbs@(FunctionBind {}) 
+changeBindings fbs@(FunctionBind {}) 
   = funBindMatches&annList&matchRhs .- trfRhs $ fbs
   where trfRhs :: Rhs dom -> Rhs dom
         trfRhs (UnguardedRhs (If pred thenE elseE)) = createSimpleIfRhss pred thenE elseE

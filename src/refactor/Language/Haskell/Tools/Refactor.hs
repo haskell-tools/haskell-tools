@@ -9,7 +9,8 @@ module Language.Haskell.Tools.Refactor
   , module Language.Haskell.Tools.Refactor.Prepare
   , module Language.Haskell.Tools.Refactor.ListOperations
   , module Language.Haskell.Tools.Refactor.BindingElem
-  , HasRange(..), annListElems, annList, annJust, isAnnNothing, Domain
+  , HasRange(..), annListElems, annList, annJust, annMaybe, isAnnNothing, Domain
+  , shortShowSpan
   ) where
 
 -- Important: Haddock doesn't support the rename all exported modules and export them at once hack

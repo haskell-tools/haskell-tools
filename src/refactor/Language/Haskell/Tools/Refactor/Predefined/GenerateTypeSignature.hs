@@ -22,7 +22,7 @@ import Data.Data
 import Data.Generics.Uniplate.Data
 import Control.Monad
 import Control.Monad.State
-import Control.Reference hiding (element)
+import Control.Reference
 
 import Language.Haskell.Tools.Refactor as AST
 
