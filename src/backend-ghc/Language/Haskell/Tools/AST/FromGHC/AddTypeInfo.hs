@@ -42,7 +42,7 @@ addTypeInfos bnds mod = do
   let createCName sc def id = mkCNameInfo sc def id fixity
         where fixity = if any (any ((getOccName id ==) . getOccName)) (init sc) 
                           then Nothing 
-                          else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> mod == (nameModule $ varName id) && occ == getOccName id) fixities
+                          else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> Just mod == (nameModule_maybe $ varName id) && occ == getOccName id) fixities
   evalStateT (semaTraverse 
     (AST.SemaTrf
       (\ni -> case (AST.semanticsSourceInfo ni, AST.semanticsName ni) of 

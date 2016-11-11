@@ -124,13 +124,16 @@ loadSplices mod hsMod group trf = do
     env <- liftGhc getSession
 
     locals <- asks ((hsGetNames group ++) . concat . localsInScope)
-    let readEnv = mkOccEnv (map (\n -> (GHC.occName n, [GRE n NoParent False [ImpSpec (ImpDeclSpec (moduleName $ nameModule n) (moduleName $ nameModule n) False noSrcSpan) ImpAll]])) locals)
+    let createGRE n | Just modName <- nameModule_maybe n
+                    = [GRE n NoParent False [ImpSpec (ImpDeclSpec (moduleName modName) (moduleName modName) False noSrcSpan) ImpAll]]
+                    | otherwise = []
+        readEnv = mkOccEnv (map (\n -> (GHC.occName n, createGRE n)) locals)
 
     tcdSplices <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
       $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv }) 
       $ (,,) <$> mapM tcHsSplice declSpls <*> mapM tcHsSplice' typeSpls <*> mapM tcHsSplice' exprSpls
     let (declSplices, typeSplices, exprSplices) 
-          = fromMaybe (error $ "USplice expression could not be typechecked: " 
+          = fromMaybe (error $ "Splice expression could not be typechecked: " 
                                  ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices))) 
                                                       <+> vcat (pprErrMsgBagWithLoc (snd (fst tcdSplices))))) 
                       (snd tcdSplices)
