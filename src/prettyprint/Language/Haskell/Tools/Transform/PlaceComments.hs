@@ -33,7 +33,7 @@ getPragmaComments comms = Map.fromListWith (++) $ map (\(L l (AnnBlockComment st
   where getPragmaCommand = takeWhile (\c -> isAlphaNum c || c == '_') . dropWhile isSpace . drop 3
 
 isPragma :: AnnotationComment -> Bool
-isPragma (AnnBlockComment str) = take 3 str == "{-#" && take 3 (reverse str) == "#-}"
+isPragma (AnnBlockComment str) = take 3 str == "{-#" && take 3 (reverse str) == "}-#"
 isPragma _ = False
 
 -- | Puts comments in the nodes they should be attached to. Leaves the AST in a state where parent nodes
