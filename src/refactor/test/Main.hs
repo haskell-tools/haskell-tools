@@ -59,6 +59,7 @@ functionalTests :: [Test]
 functionalTests = map makeReprintTest checkTestCases
               ++ map makeOrganizeImportsTest organizeImportTests
               ++ map makeGenerateSignatureTest generateSignatureTests
+              ++ map makeWrongGenerateSigTest wrongGenerateSigTests
               ++ map makeGenerateExportsTest generateExportsTests
               ++ map makeRenameDefinitionTest renameDefinitionTests
               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
@@ -212,6 +213,13 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.Let", "3:9-3:18")
   , ("Refactor.GenerateTypeSignature.TypeDefinedInModule", "3:1-3:1")
   , ("Refactor.GenerateTypeSignature.BringToScope.AlreadyQualImport", "6:1-6:2")
+  , ("Refactor.GenerateTypeSignature.CanCaptureVariable", "8:10-8:10")
+  , ("Refactor.GenerateTypeSignature.CanCaptureVariableHasOtherDef", "8:10-8:10")
+  ]
+
+wrongGenerateSigTests = 
+  [ ("Refactor.GenerateTypeSignature.CannotCaptureVariable", "7:10-7:10")
+  , ("Refactor.GenerateTypeSignature.CannotCaptureVariableNoExt", "8:10-8:10")
   ]
 
 generateExportsTests = 
@@ -335,6 +343,9 @@ makeRenameDefinitionTest (mod, rng, newName) = createTest "RenameDefinition" [rn
 
 makeWrongRenameDefinitionTest :: (String, String, String) -> Test
 makeWrongRenameDefinitionTest (mod, rng, newName) = createFailTest "RenameDefinition" [rng, newName] mod
+
+makeWrongGenerateSigTest :: (String, String) -> Test
+makeWrongGenerateSigTest (mod, rng) = createFailTest "GenerateSignature" [rng] mod
 
 makeExtractBindingTest :: (String, String, String) -> Test
 makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod

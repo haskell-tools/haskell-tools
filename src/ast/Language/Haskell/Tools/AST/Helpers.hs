@@ -24,6 +24,8 @@ import Data.Generics.Uniplate.Operations
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Representation.Modules
 import Language.Haskell.Tools.AST.Representation.Decls
+import Language.Haskell.Tools.AST.Representation.Patterns
+import Language.Haskell.Tools.AST.Representation.Exprs
 import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Types
 import Language.Haskell.Tools.AST.Representation.Names
@@ -56,7 +58,9 @@ typeParams = fromTraversal typeParamsTrav
         typeParamsTrav f (Ann a (UTyCtx ctx t)) = Ann a <$> (UTyCtx ctx <$> typeParamsTrav f t)
         typeParamsTrav f (Ann a (UTyParen t)) = Ann a <$> (UTyParen <$> typeParamsTrav f t)
         typeParamsTrav f t = f t
-        
+
+valBindPats :: Simple Traversal (Ann UValueBind dom stage) (Ann UPattern dom stage)
+valBindPats = valBindPat &+& funBindMatches & annList & matchLhs & (matchLhsArgs & annList &+& matchLhsLhs &+& matchLhsRhs)
 
 -- | Access the semantic information of an AST node.
 semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)

@@ -41,7 +41,7 @@ instance HasNameInfo dom => HasNameInfo' (Ann UQualifiedName dom st) where
 type HasIdInfo dom = (Domain dom, HasIdInfo' (SemanticInfo dom UQualifiedName))
 
 -- | Infos that may have a typed name that can be extracted
-class HasIdInfo' si where
+class HasNameInfo' si => HasIdInfo' si where
   semanticsId :: si -> Id
 
 instance HasIdInfo' CNameInfo where

@@ -31,6 +31,7 @@ import Name as GHC
 import Id as GHC
 import RdrName as GHC
 import Unique as GHC
+import Type as GHC
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -185,7 +186,15 @@ instance InspectableName GHC.RdrName where
   inspect name = showSDocUnsafe (ppr name)
 
 instance InspectableName GHC.Id where
-  inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "] :: " ++ showSDocOneLine unsafeGlobalDynFlags (ppr (idType name))
+  inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "] :: " ++ showSDocOneLine unsafeGlobalDynFlags (ppr (idType name)) ++ " (" ++ addendum ++ ")"
+    where addendum = concat $ intersperse "," $ map (\v -> showSDocUnsafe (ppr v) ++ "[" ++ show (getUnique v) ++ "]") (getTVs (idType name))
+
+getTVs :: GHC.Type -> [GHC.Var]
+getTVs t
+  | Just tv <- getTyVar_maybe t = [tv]
+  | Just (op, arg) <- splitAppTy_maybe t = getTVs op `union` getTVs arg
+  | Just (_, t') <- splitForAllTy_maybe t = getTVs t'
+  | otherwise = []
 
 class (Domain dom, SourceInfo st) 
          => ASTDebug e dom st where
