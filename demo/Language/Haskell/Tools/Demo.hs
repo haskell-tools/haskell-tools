@@ -147,7 +147,7 @@ updateClient _ (PerformRefactoring "UpdateAST" modName _ _) = do
 updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a test"
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
-    allModules <- gets (map moduleNameAndContent . Map.assocs . (^. refSessMods))
+    allModules <- gets (filter ((modName /=) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
     let command = analyzeCommand (toFileName dir modName) refact (selection:args)
     liftIO $ putStrLn $ (toFileName dir modName)
     liftIO $ putStrLn $ maybe "" (show . getRange . snd) mod

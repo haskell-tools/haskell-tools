@@ -40,6 +40,7 @@ import Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.Predefined.GenerateExports
 import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Predefined.ExtractBinding
+import Language.Haskell.Tools.Refactor.Predefined.InlineBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Prepare
@@ -64,6 +65,7 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
         selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctSp mod sp)
         selectCommand (RenameDefinition sp str) = renameDefinition' (correctSp mod sp) str
         selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctSp mod sp) str
+        selectCommand (InlineBinding sp) = inlineBinding (correctSp mod sp)
 
         correctSp mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
                                          (updateSrcFile fileName $ realSrcSpanEnd sp)
@@ -77,6 +79,7 @@ data RefactorCommand = NoRefactor
                      | GenerateSignature RealSrcSpan
                      | RenameDefinition RealSrcSpan String
                      | ExtractBinding RealSrcSpan String
+                     | InlineBinding RealSrcSpan
     deriving Show
 
 readCommand :: String -> String -> RefactorCommand
@@ -90,5 +93,6 @@ analyzeCommand _ "GenerateExports" _ = GenerateExports
 analyzeCommand fileName "GenerateSignature" [sp] = GenerateSignature (readSrcSpan fileName sp)
 analyzeCommand fileName "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan fileName sp) newName
 analyzeCommand fileName "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan fileName sp) newName
+analyzeCommand fileName "InlineBinding" [sp] = InlineBinding (readSrcSpan fileName sp)
 analyzeCommand _ ref _ = error $ "Unknown command: " ++ ref
 

@@ -122,16 +122,25 @@
       </div>
       <div class="featurebox">
         <div class="featurecaption">
+          Inline binding
+          <button class="featurebutton" type="button" data-demoname="Refactors.InlineBind">Try it out</button>
+        </div>
+        <div class="featuretext">The inline binding is the inverse of the extract binding refactoring. It removes a function
+        or value definition and replaces all uses with the right-hand-side of the binding. Only allows removing definitions
+        if they are not used in other modules. You need to select the definition you want to inline.</div>
+      </div>
+      <div class="featurebox">
+        <div class="featurecaption">
           Organize imports
         <button class="featurebutton" type="button" data-demoname="Refactors.OrganizeImports">Try it out</button>
         </div>
         <div class="featuretext">When you are constantly changing the code of your module import lists can quickly become very long and messy. The organize imports refactoring helps you to keep this in check by sorting your imports and narrowing them to only import the definitions you want to use. Removes imports that are redundant and marks those that might also be.</div>
       </div>
-      <div class="featurebox extrafeaturebox">
-      <div class="featuretext extrafeaturetext"><span class="extrafeature">One more thing to try out</span>: by pressing the U key with some modifier keys you can get the AST view of the current haskell source. This shows our custom syntax tree representation with semantic infos. The selection in the tree and the editor are synchronized. If you modify the editor content don't forget to press the key combination again to update the tree view.<br/>Also, you can typecheck the content of the editor by pressing the H key with some modifier keys.</div>
-      </div>
     </div>
     <div class="spacer"></div>
+      <div class="featurebox extrafeaturebox">
+      <div class="featuretext extrafeaturetext"><span class="extrafeature">One more thing to try out</span>: by pressing the U key with some modifier keys you can get the AST view of the current haskell source. This shows our custom syntax tree representation with semantic infos. The selection in the tree and the editor are synchronized. If you modify the editor content don't forget to press the key combination again to update the tree view. Also, you can typecheck the content of the editor by pressing the H key with some modifier keys.</div>
+      </div>
   </div>
   <div class="spacer"></div>
 </div>
@@ -161,6 +170,7 @@
   <div id="demobuttons">
     <button class="refactorbutton" type="button" data-refactor="RenameDefinition">Rename definition (R)</button>
     <button class="refactorbutton" type="button" data-refactor="ExtractBinding">Extract binding (B)</button>
+    <button class="refactorbutton" type="button" data-refactor="ExtractBinding">Inline binding (I)</button>
     <button class="refactorbutton" type="button" data-refactor="GenerateSignature">Generate type signature (S)</button>
     <button class="refactorbutton" type="button" data-refactor="OrganizeImports">Organize Imports (O)</button>
     <button class="refactorbutton" type="button" data-refactor="GenerateExports">Generate Exports (E)</button>

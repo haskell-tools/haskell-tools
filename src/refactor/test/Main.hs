@@ -65,7 +65,9 @@ functionalTests = map makeReprintTest checkTestCases
               ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
-              ++ map makeMultiModuleTest multiModuleTests
+              ++ map makeInlineBindingTest inlineBindingTests
+              ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
+              ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
               ++ map makeMiscRefactorTest miscRefactorTests
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
@@ -75,6 +77,7 @@ functionalTests = map makeReprintTest checkTestCases
                           ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
                           ++ map (\(mod,_,_) -> mod) extractBindingTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
+                          ++ map (\(mod,_) -> mod) inlineBindingTests
 
 rootDir = ".." </> ".." </> "examples"
         
@@ -286,6 +289,20 @@ wrongExtractBindingTests =
   , ("Refactor.ExtractBinding.NameConflict", "3:19-3:27", "stms")
   ]
 
+inlineBindingTests =
+  [ ("Refactor.InlineBinding.Simplest", "4:1-4:2")
+  , ("Refactor.InlineBinding.WithLocals", "4:1-4:2")
+  , ("Refactor.InlineBinding.MultiMatch", "4:1-4:2")
+  , ("Refactor.InlineBinding.SimpleMultiMatch", "4:1-4:2")
+  , ("Refactor.InlineBinding.AlreadyApplied", "4:1-4:2")
+  , ("Refactor.InlineBinding.PatternMatched", "4:1-4:2")
+  , ("Refactor.InlineBinding.MultiApplied", "4:1-4:2")
+  , ("Refactor.InlineBinding.Operator", "4:1-4:2")
+  , ("Refactor.InlineBinding.MultiMatchGuarded", "4:1-4:2")
+  , ("Refactor.InlineBinding.RemoveSignatures", "5:1-5:2")
+  , ("Refactor.InlineBinding.FilterSignatures", "5:1-5:2")
+  ]
+
 multiModuleTests =
   [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor" </> "RenameDefinition" </> "MultiModule", [])
   , ("RenameDefinition 1:8-1:9 C", "B", "Refactor" </> "RenameDefinition" </> "RenameModule", ["B"])
@@ -293,6 +310,10 @@ multiModuleTests =
   , ("RenameDefinition 6:1-6:9 hello", "Use", "Refactor" </> "RenameDefinition" </> "SpliceDecls", [])
   , ("RenameDefinition 5:1-5:5 exprSplice", "Define", "Refactor" </> "RenameDefinition" </> "SpliceExpr", [])
   , ("RenameDefinition 6:1-6:4 spliceTyp", "Define", "Refactor" </> "RenameDefinition" </> "SpliceType", [])
+  ]
+
+wrongMultiModuleTests =
+  [ ("InlineBinding 3:1-3:2", "A", "Refactor" </> "InlineBinding" </> "AppearsInAnother", [])
   ]
 
 miscRefactorTests =
@@ -305,21 +326,28 @@ miscRefactorTests =
   , ("Refactor.DollarApp.ImportDollar", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "6:5-6:12"))
   ]
 
-makeMultiModuleTest :: (String, String, String, [String]) -> Test
-makeMultiModuleTest (refact, mod, root, removed)
+makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()) 
+                         -> (String, String, String, [String]) -> Test
+makeMultiModuleTest checker test@(refact, mod, root, removed)
   = TestLabel (root ++ ":" ++ mod) $ TestCase 
       $ do res <- performRefactors refact (rootDir </> root) [] mod
-           case res of Right result -> checkResults result removed
-                       Left err -> assertFailure $ "The transformation failed : " ++ err
-  where checkResults :: [(String, Maybe String)] -> [String] -> IO ()
-        checkResults ((name, Just mod):rest) removed = 
-          do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
-             assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
-                                                                          (standardizeLineEndings mod)
-             checkResults rest removed
-        checkResults ((name, Nothing) : rest) removed = checkResults rest (delete name removed)
-        checkResults [] [] = return ()
-        checkResults [] removed = assertFailure $ "Modules has not been marked as removed: " ++ concat (intersperse ", " removed)
+           checker test res
+           
+checkMultiResults :: (String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()
+checkMultiResults _ (Left err) = assertFailure $ "The transformation failed : " ++ err
+checkMultiResults test@(_,_,root,removed) (Right ((name, Just mod):rest)) = 
+  do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
+     assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
+                                                                  (standardizeLineEndings mod)
+     checkMultiResults test (Right rest)
+checkMultiResults (r,m,root,removed) (Right ((name, Nothing) : rest)) = checkMultiResults (r,m,root,delete name removed) (Right rest)
+checkMultiResults (_,_,_,[]) (Right []) = return ()
+checkMultiResults (_,_,_,removed) (Right []) 
+  = assertFailure $ "Modules has not been marked as removed: " ++ concat (intersperse ", " removed)
+
+checkMultiFail :: (String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()
+checkMultiFail _ (Left _) = return ()
+checkMultiFail _ (Right _) = assertFailure "The transformation should fail."
 
 createTest :: String -> [String] -> String -> Test
 createTest refactoring args mod
@@ -349,9 +377,12 @@ makeWrongGenerateSigTest (mod, rng) = createFailTest "GenerateSignature" [rng] m
 
 makeExtractBindingTest :: (String, String, String) -> Test
 makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod
-  
+
 makeWrongExtractBindingTest :: (String, String, String) -> Test
 makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod
+  
+makeInlineBindingTest :: (String, String) -> Test
+makeInlineBindingTest (mod, rng) = createTest "InlineBinding" [rng] mod
 
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName

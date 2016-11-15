@@ -28,6 +28,7 @@ library
                      , Language.Haskell.Tools.Refactor.Predefined.DataToNewtype
                      , Language.Haskell.Tools.Refactor.Predefined.IfToGuards
                      , Language.Haskell.Tools.Refactor.Predefined.DollarApp
+                     , Language.Haskell.Tools.Refactor.Predefined.InlineBinding
                      
   build-depends:       base                      >= 4.9  && < 4.10
                      , mtl                       >= 2.2  && < 2.3

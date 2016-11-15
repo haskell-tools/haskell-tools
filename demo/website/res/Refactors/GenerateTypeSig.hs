@@ -6,7 +6,7 @@ import Data.Ord (comparing)
 data HTree a = Leaf a | Branch (HTree a) (HTree a)
                 deriving Show
  
--- TODO: use [Ctrl, UAlt and/or Shift + S] to generate the type signature of the function
+-- TODO: use [Ctrl, Alt and/or Shift + S] to generate the type signature of the function
 -- Bonus: do the same to the two local definitions (hint: if struck try to generate the signature of htree first)
 
 -- | Huffman encoding

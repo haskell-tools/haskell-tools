@@ -144,6 +144,7 @@ $(function() {
     createGeneralCommandNoDetails("GenerateExports", 'Generate Exports', 'E');
     createGeneralCommand("RenameDefinition", 'Rename Definition', 'R', renameDetails);
     createGeneralCommand("ExtractBinding", 'Extract Binding', 'B', extractBindingDetails);
+    createGeneralCommandNoDetails("InlineBinding", 'Inline Binding', 'I');
     createCommandNoDetails("TestErrorLogging", 'Test Error Logging', {win: 'Shift-Ctrl-Alt-L'});
     createGeneralCommandNoDetails("UpdateAST", 'Update AST View', 'U');
 
