@@ -291,6 +291,8 @@ wrongExtractBindingTests =
 
 inlineBindingTests =
   [ ("Refactor.InlineBinding.Simplest", "4:1-4:2")
+  , ("Refactor.InlineBinding.Local", "4:9-4:10")
+  , ("Refactor.InlineBinding.LocalNested", "5:17-5:18")
   , ("Refactor.InlineBinding.WithLocals", "4:1-4:2")
   , ("Refactor.InlineBinding.MultiMatch", "4:1-4:2")
   , ("Refactor.InlineBinding.SimpleMultiMatch", "4:1-4:2")

@@ -40,7 +40,7 @@ inlineBinding span namedMod@(_,mod) mods
         elemAccess :: (Domain dom, BindingElem d) => AnnList d dom -> Maybe (ValueBind dom)
         elemAccess = getValBindInList span
         removed = catMaybes $ map elemAccess (mod ^? topLevel) ++ map elemAccess (mod ^? local)
-     in case removed of 
+     in case reverse removed of 
           [] -> refactError "No binding is selected."
           removedBinding:_ -> 
            let [removedBindingName] = nub $ catMaybes $ map semanticsName (removedBinding ^? bindingName)
