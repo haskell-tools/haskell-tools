@@ -6,6 +6,8 @@
            , TypeApplications
            , ScopedTypeVariables
            #-}
+-- | Defines the inline binding refactoring that removes a value binding and replaces all occurences
+-- with an expression equivalent to the body of the binding.
 module Language.Haskell.Tools.Refactor.Predefined.InlineBinding (inlineBinding, InlineBindingDomain) where
 
 import Control.Reference
@@ -29,8 +31,6 @@ tryItOut moduleName sp = tryRefactor (inlineBinding (readSrcSpan (toFileName "."
 
 type InlineBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom, HasModuleInfo dom )
 
--- TODO: check that the name is not used outside of the module
-
 inlineBinding :: InlineBindingDomain dom => RealSrcSpan -> Refactoring dom
 inlineBinding span namedMod@(_,mod) mods 
   = let topLevel :: Domain dom => Simple Traversal (Module dom) (DeclList dom)
@@ -48,6 +48,7 @@ inlineBinding span namedMod@(_,mod) mods
                  then refactError "Cannot inline the definition, it is used in other modules." 
                  else localRefactoring (inlineBinding' topLevel local removedBinding removedBindingName) namedMod mods
 
+-- | Performs the inline binding on a single module.
 inlineBinding' :: InlineBindingDomain dom 
                     => Simple Traversal (Module dom) (DeclList dom) 
                     -> Simple Traversal (Module dom) (LocalBindList dom) 
@@ -59,11 +60,12 @@ inlineBinding' topLevelRef localRef removedBinding removedBindingName mod
            mod'' = descendBi (replaceInvocations removedBindingName replacement) mod'
        return mod''
 
+-- | True if the given module contains the name of the inlined definition.
 containInlined :: forall dom . InlineBindingDomain dom => GHC.Name -> ModuleDom dom -> Bool
 containInlined name (_,mod) 
   = any (\qn -> semanticsName qn == Just name) $ (mod ^? biplateRef :: [QualifiedName dom])
 
--- | Removes the inlined binding
+-- | Removes the inlined binding and the accompanying type and fixity signatures.
 removeBindingAndSig :: InlineBindingDomain dom 
                          => Simple Traversal (Module dom) (DeclList dom) 
                          -> Simple Traversal (Module dom) (LocalBindList dom) 
@@ -87,6 +89,8 @@ removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notT
           = createFixitySig $ fixityOperators .- filterList (\n -> semanticsName (n ^. operatorName) /= Just name) $ fs
           | otherwise = d
 
+-- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
+-- the captured arguments of the function call to generate simpler results.
 replaceInvocations :: InlineBindingDomain dom => GHC.Name -> ([[GHC.Name]] -> [Expr dom] -> Expr dom) -> Expr dom -> Expr dom
 replaceInvocations name replacement expr
   | (Var n, args) <- splitApps expr
@@ -95,6 +99,7 @@ replaceInvocations name replacement expr
   | otherwise 
   = descend (replaceInvocations name replacement) expr
 
+-- | Splits an application into function and arguments. Works also for operators.
 splitApps :: Expr dom -> (Expr dom, [Expr dom])
 splitApps (App f a) = case splitApps f of (fun, args) -> (fun, args ++ [a]) 
 splitApps (InfixApp l (NormalOp qn) r) = (mkVar (mkParenName qn), [l,r])
@@ -102,10 +107,12 @@ splitApps (InfixApp l (BacktickOp qn) r) = (mkVar (mkNormalName qn), [l,r])
 splitApps (Paren expr) = splitApps expr
 splitApps expr = (expr, [])
 
+-- | Rejoins the function and the arguments as an expression.
 joinApps :: Expr dom -> [Expr dom] -> Expr dom
 joinApps f [] = f
 joinApps f args = mkParen (foldl mkApp f args)
 
+-- | Create an expression that is equivalent to calling the given bind.
 createReplacement :: InlineBindingDomain dom => ValueBind dom -> LocalRefactor dom ([[GHC.Name]] -> [Expr dom] -> Expr dom)
 createReplacement (SimpleBind (VarPat _) (UnguardedRhs e) locals) 
   = return $ \_ args -> joinApps (parenIfNeeded $ wrapLocals locals e) args
@@ -126,7 +133,7 @@ createReplacement (FunctionBind matches)
   where getArgNum (MatchLhs n (AnnList args)) = length args
         getArgNum (InfixLhs _ _ _ (AnnList more)) = length more + 2
 
-
+-- | Replaces names with expressions according to a mapping.
 replaceExprs :: InlineBindingDomain dom => [(GHC.Name, Expr dom)] -> Expr dom -> Expr dom
 replaceExprs [] = id
 replaceExprs replaces = (uniplateRef .-) $ \case 
@@ -135,6 +142,7 @@ replaceExprs replaces = (uniplateRef .-) $ \case
           -> replace
     e -> e
 
+-- | Matches a pattern list with an expression list and generates bindings. Matches until an argument cannot be matched.
 matchArguments :: InlineBindingDomain dom => [Pattern dom] -> [Expr dom] -> ([(GHC.Name, Expr dom)], [Pattern dom], [Expr dom])
 matchArguments (ParenPat p : pats) exprs = matchArguments (p:pats) exprs
 matchArguments (p:pats) (e:exprs) 
@@ -145,6 +153,7 @@ matchArguments (p:pats) (e:exprs)
 matchArguments pats [] = ([], pats, [])
 matchArguments [] exprs = ([], [], exprs)
 
+-- | Matches a pattern with an expression. Generates a mapping of names to expressions.
 staticPatternMatch :: InlineBindingDomain dom => Pattern dom -> Expr dom -> Maybe [(GHC.Name, Expr dom)]
 staticPatternMatch (VarPat n) e
   | Just name <- semanticsName $ n ^. simpleName
