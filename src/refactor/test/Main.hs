@@ -9,9 +9,12 @@ import DynFlags
 import GHC.Paths ( libdir )
 import Module as GHC
 
+import Control.Reference
 import Control.Monad.IO.Class
+import Control.Monad.State
 import Control.Monad
 import Data.Maybe
+import qualified Data.Map as Map
 import Data.List
 import Data.Either.Combinators
 import Test.HUnit hiding (test)
@@ -33,6 +36,7 @@ import Language.Haskell.Tools.Refactor.Predefined.GenerateExports
 import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Predefined.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.Session
 
 import Language.Haskell.Tools.Refactor.Predefined.DataToNewtype
 import Language.Haskell.Tools.Refactor.Predefined.IfToGuards
@@ -319,13 +323,13 @@ wrongMultiModuleTests =
   ]
 
 miscRefactorTests =
-  [ ("Refactor.DataToNewtype.Cases", \_ _ -> dataToNewtype)
-  , ("Refactor.IfToGuards.Simple", \wd mod -> ifToGuards (readSrcSpan (toFileName wd mod) "3:11-3:33"))
-  , ("Refactor.DollarApp.FirstSingle", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:12"))
-  , ("Refactor.DollarApp.FirstMulti", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:16"))
-  , ("Refactor.DollarApp.InfixOperator", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:16"))
-  , ("Refactor.DollarApp.AnotherOperator", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "5:5-5:15"))
-  , ("Refactor.DollarApp.ImportDollar", \wd mod -> dollarApp (readSrcSpan (toFileName wd mod) "6:5-6:12"))
+  [ ("Refactor.DataToNewtype.Cases", \m -> dataToNewtype)
+  , ("Refactor.IfToGuards.Simple", \m -> ifToGuards (correctRefactorSpan m $ readSrcSpan "3:11-3:33"))
+  , ("Refactor.DollarApp.FirstSingle", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:12"))
+  , ("Refactor.DollarApp.FirstMulti", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
+  , ("Refactor.DollarApp.InfixOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
+  , ("Refactor.DollarApp.AnotherOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:15"))
+  , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
   ]
 
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()) 
@@ -392,21 +396,21 @@ checkCorrectlyTransformed command workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
-makeMiscRefactorTest :: (String, FilePath -> String -> LocalRefactoring IdDom) -> Test
+makeMiscRefactorTest :: (String, ModuleDom IdDom -> LocalRefactoring IdDom) -> Test
 makeMiscRefactorTest (moduleName, refact)
   = TestLabel moduleName $ TestCase $
       do expected <- loadExpected True rootDir moduleName
-         res <- testRefactor (localRefactoring (refact rootDir moduleName)) moduleName
+         res <- testRefactor refact moduleName
          assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
-                                                                    (mapRight standardizeLineEndings res)
+                                                                      (mapRight standardizeLineEndings res)
         
-testRefactor :: Refactoring IdDom -> String -> IO (Either String String)
+testRefactor :: (ModuleDom IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
 testRefactor refact moduleName 
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs [rootDir]
       mod <- loadModule rootDir moduleName >>= parseTyped
-      res <- runRefactor (toFileName rootDir moduleName, mod) [] refact 
+      res <- runRefactor (moduleName, mod) [] (localRefactoring $ refact (moduleName, mod)) 
       case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
                   Left err -> return $ Left err
 
@@ -447,28 +451,43 @@ checkCorrectlyPrinted workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
 
-
+-- TODO: find out why the commented-out code doesn't work for the two Template Haskell tests. These work for CLI. 
+-- performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
+-- performRefactors command workingDir flags target = runGhc (Just libdir) $ flip evalStateT (initSession :: RefactorSessionState) $ do 
+  -- lift initGhcFlags
+  -- mods <- loadPackagesFrom ({- const $ return () -} \m -> liftIO $ (putStrLn ("Loaded module: " ++ workingDir ++ " " ++ m) >> hFlush stdout)) [workingDir]
+  -- (selectedMod, otherMods) <- getMods (Just $ SourceFileKey NormalHs target)
+  -- case selectedMod of 
+  --   Just (_, selMod) -> do 
+  --     res <- lift $ performCommand (readCommand command) (target, selMod) (map assocToNamedMod otherMods)
+      -- return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+      --                                                ModuleRemoved m -> (m, Nothing)
+      --                                         )) r
+      --                 Left l -> Left l) 
+      --        $ res
+    -- Nothing -> error "The selected module is not found"
+    
 performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 performRefactors command workingDir flags target = do 
-  mods <- getModules workingDir
-  runGhc (Just libdir) $ do
-    initGhcFlags
-    useFlags flags
-    useDirs (concatMap fst mods)
-    setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap snd mods))
-    load LoadAllTargets
-    allMods <- getModuleGraph
-    selectedMod <- getModSummary (GHC.mkModuleName target)
-    let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
-    targetMod <- parseTyped selectedMod
-    otherMods <- mapM parseTyped otherModules
-    res <- performCommand (readCommand (toFileName workingDir target) command) 
-                          (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
-    return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
-                                                   ModuleRemoved m -> (m, Nothing)
-                                            )) r
-                    Left l -> Left l) 
-           $ res
+    mods <- getAllModules [workingDir]
+    runGhc (Just libdir) $ do
+      initGhcFlags
+      useFlags flags
+      useDirs [workingDir]
+      setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) mods))
+      load LoadAllTargets
+      allMods <- getModuleGraph
+      selectedMod <- getModSummary (GHC.mkModuleName target)
+      let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
+      targetMod <- parseTyped selectedMod
+      otherMods <- mapM parseTyped otherModules
+      res <- performCommand (readCommand command) 
+                            (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
+      return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+                                                     ModuleRemoved m -> (m, Nothing)
+                                              )) r
+                      Left l -> Left l) 
+             $ res
 
 type ParsedModule = Ann AST.UModule (Dom RdrName) SrcTemplateStage
 
@@ -502,7 +521,7 @@ performRefactor command workingDir flags target =
     useFlags flags
     useDirs [workingDir]
     ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
-  where refact m = performCommand (readCommand (toFileName workingDir target) command) (target,m) []
+  where refact m = performCommand (readCommand command) (target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress
 

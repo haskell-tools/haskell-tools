@@ -63,6 +63,8 @@ data RefactorSessionState
                          , _actualMod :: Maybe (String, String, IsBoot)
                          }
 
+data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
+
 makeReferences ''RefactorSessionState
 
 initSession :: RefactorSessionState
@@ -148,7 +150,7 @@ updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a 
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (filter ((modName /=) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
-    let command = analyzeCommand (toFileName dir modName) refact (selection:args)
+    let command = analyzeCommand refact (selection:args)
     liftIO $ putStrLn $ (toFileName dir modName)
     liftIO $ putStrLn $ maybe "" (show . getRange . snd) mod
     case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules 
@@ -190,18 +192,7 @@ userDir :: FilePath -> ClientId -> FilePath
 userDir wd id = dataDirs wd </> show id
 
 initGhcSession :: FilePath -> IO Session
-initGhcSession workingDir = Session <$> (newIORef =<< runGhc (Just libdir) (do 
-    dflags <- getSessionDynFlags
-    -- don't generate any code
-    setSessionDynFlags 
-      $ flip gopt_set Opt_KeepRawTokenStream
-      $ flip gopt_set Opt_NoHsMain
-      $ dflags { importPaths = [workingDir]
-               , hscTarget = HscAsm -- needed for static pointers
-               , ghcLink = LinkInMemory
-               , ghcMode = CompManager 
-               }
-    getSession))
+initGhcSession workingDir = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))
 
 handleErrors :: FilePath -> ClientMessage -> (ResponseMsg -> IO ()) -> IO () -> IO ()
 handleErrors wd req next io = io `catch` (next <=< handleException)

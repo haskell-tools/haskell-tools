@@ -27,7 +27,7 @@ import Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-tryItOut moduleName sp = tryRefactor (inlineBinding (readSrcSpan (toFileName "." moduleName) sp)) moduleName
+tryItOut moduleName sp = tryRefactor (inlineBinding (readSrcSpan sp)) moduleName
 
 type InlineBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom, HasModuleInfo dom )
 

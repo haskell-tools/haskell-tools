@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase
            , TupleSections
            , FlexibleContexts
+           , TemplateHaskell
            #-}
 module Language.Haskell.Tools.Refactor.CLI (refactorSession) where
 
@@ -14,6 +15,7 @@ import Control.Monad.State
 import Control.Reference
 
 import GHC
+import Digraph
 import HscTypes as GHC
 import Module as GHC
 import GHC.Paths ( libdir )
@@ -26,124 +28,127 @@ import Language.Haskell.Tools.Refactor.Session
 
 import Debug.Trace
 
-tryOut = refactorSession [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
-                         , "-package", "ghc", "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
+type CLIRefactorSession = StateT CLISessionState Ghc
 
-refactorSession :: [String] -> IO String
-refactorSession args = runGhc (Just libdir) $ flip evalStateT initSession $
+data CLISessionState = 
+  CLISessionState { _refactState :: RefactorSessionState
+                  , _actualMod :: Maybe SourceFileKey
+                  , _exiting :: Bool
+                  , _dryMode :: Bool
+                  }
+
+makeReferences ''CLISessionState
+
+tryOut = refactorSession stdin stdout 
+           [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
+           , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
+
+refactorSession :: Handle -> Handle -> [String] -> IO ()
+refactorSession input output args = runGhc (Just libdir) $ flip evalStateT initSession $
   do lift $ initGhcFlags
      workingDirsAndHtFlags <- lift $ useFlags args
      let (htFlags, workingDirs) = partition (\f -> head f == '-') workingDirsAndHtFlags
-     if null workingDirs then return usageMessage
-                         else do initializeSession workingDirs htFlags
-                                 runSession htFlags
+     if null workingDirs then liftIO $ hPutStrLn output usageMessage
+                         else do initializeSession output workingDirs htFlags
+                                 runSession input output htFlags
      
-  where initializeSession :: [FilePath] -> [String] -> RefactorSession Ghc ()
-        initializeSession workingDirs flags = do
-          moduleNames <- liftIO $ concat <$> mapM getModules workingDirs
-          lift $ useDirs (concatMap fst moduleNames)
-          lift $ setTargets $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) 
-                                  (concatMap snd moduleNames)
-          liftIO $ putStrLn "Compiling modules. This may take some time. Please wait."
-          lift $ load LoadAllTargets
-          allMods <- lift getModuleGraph
-          mods <- lift $ forM allMods loadModule
-          liftIO $ putStrLn "All modules loaded. Use 'SelectModule module-name' to select a module"
-          modify $ refSessMods .= Map.fromList mods
-          liftIO $ hSetBuffering stdout NoBuffering
+  where initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession ()
+        initializeSession output workingDirs flags = do
+          liftIO $ hSetBuffering output NoBuffering
+          liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."
+          (_, ignoredMods) <- loadPackagesFrom (\m -> liftIO $ hPutStrLn output ("Loaded module: " ++ m)) workingDirs
+          when (not $ null ignoredMods) 
+            $ liftIO $ hPutStrLn output 
+            $ "The following modules are ignored: " 
+                ++ concat (intersperse ", " $ map (\(id,mod) -> mod ++ " (from " ++ moduleCollectionIdString id ++ ")") ignoredMods)
+                ++ ". Multiple modules with the same qualified name are not supported."
+          liftIO $ hPutStrLn output "All modules loaded. Use 'SelectModule module-name' to select a module"
           when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
 
-        loadModule :: ModSummary -> Ghc ((FilePath, String, IsBoot), TypedModule)
-        loadModule ms = 
-          do mm <- parseTyped ms
-             let modName = GHC.moduleNameString $ moduleName $ ms_mod ms
-                 wd = srcDirFromRoot (fromJust $ ml_hs_file $ ms_location ms) modName            
-             liftIO $ putStrLn ("Loaded module: " ++ modName)
-             return ((wd, modName, case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot), mm)
-
-        runSession :: [String] -> RefactorSession Ghc String
-        runSession flags | "-one-shot" `elem` flags
+        runSession :: Handle -> Handle -> [String] -> CLIRefactorSession ()
+        runSession _ output flags | "-one-shot" `elem` flags
           = let modName = catMaybes $ map (\f -> case splitOn "=" f of ["-module-name", mod] -> Just mod; _ -> Nothing) flags
                 refactoring = catMaybes $ map (\f -> case splitOn "=" f of ["-refactoring", ref] -> Just ref; _ -> Nothing) flags
              in case (modName, refactoring) of 
                   ([modName],[refactoring]) ->
-                    do performSessionCommand (LoadModule modName)
-                       command <- readSessionCommand (takeWhile (/='"') $ dropWhile (=='"') $ refactoring)
-                       performSessionCommand command
-                  _ -> return usageMessage
-        runSession _ = runSessionLoop
+                    do performSessionCommand output (LoadModule modName)
+                       command <- readSessionCommand output (takeWhile (/='"') $ dropWhile (=='"') $ refactoring)
+                       performSessionCommand output command
+                  _ -> liftIO $ hPutStrLn output usageMessage
+        runSession input output _ = runSessionLoop input output
 
-        runSessionLoop :: RefactorSession Ghc String
-        runSessionLoop = do 
+        runSessionLoop :: Handle -> Handle -> CLIRefactorSession ()
+        runSessionLoop input output = do 
           actualMod <- gets (^. actualMod)
-          liftIO $ putStr (maybe "no-module-selected" (\(_,m,_) -> m) actualMod ++ ">")
-          cmd <- liftIO $ getLine 
-          sessionComm <- readSessionCommand cmd
-          liftIO . putStrLn =<< performSessionCommand sessionComm
+          liftIO $ hPutStr output (maybe "no-module-selected> " (\sfk -> (sfk ^. sfkModuleName) ++ "> ") actualMod)
+          cmd <- liftIO $ hGetLine input 
+          sessionComm <- readSessionCommand output cmd
+          performSessionCommand output sessionComm
           doExit <- gets (^. exiting)
-          when (not doExit) (void runSessionLoop)
-          return ""
+          when (not doExit) (void (runSessionLoop input output))
 
         usageMessage = "Usage: ht-refact [ht-flags, ghc-flags] package-pathes\n"
                          ++ "ht-flags: -dry-run -one-shot -module-name=modulename -refactoring=\"refactoring\""
 
 data RefactorSessionCommand 
   = LoadModule String
+  | Skip
   | Exit
   | RefactorCommand RefactorCommand
   deriving Show
 
-readSessionCommand :: Monad m => String -> RefactorSession m RefactorSessionCommand
-readSessionCommand cmd = case splitOn " " cmd of 
+readSessionCommand :: Handle -> String -> CLIRefactorSession RefactorSessionCommand
+readSessionCommand output cmd = case splitOn " " cmd of 
     ["SelectModule", mod] -> return $ LoadModule mod
     ["Exit"] -> return Exit
     _ -> do actualMod <- gets (^. actualMod)
-            case actualMod of Just (wd,m,_) -> return $ RefactorCommand $ readCommand (toFileName wd m) cmd
-                              Nothing -> error "Set the actual module first"
+            case actualMod of Just _ -> return $ RefactorCommand $ readCommand cmd
+                              Nothing -> do liftIO $ hPutStrLn output "Set the actual module first"
+                                            return Skip
 
-performSessionCommand :: RefactorSessionCommand -> RefactorSession Ghc String
-performSessionCommand (LoadModule mod) = do fnd <- gets (find (\(_,m,hs) -> m == mod && hs == NormalHs) . Map.keys . (^. refSessMods))
-                                            if isJust fnd then modify $ actualMod .= fnd
-                                                          else liftIO $ putStrLn ("Cannot find module: " ++ mod)
-                                            return ""
-performSessionCommand Exit = do modify $ exiting .= True
-                                return ""
-performSessionCommand (RefactorCommand cmd) 
-  = do RefactorSessionState { _refSessMods = mods, _actualMod = Just act@(_, mod, _) } <- get
-       res <- lift $ performCommand cmd (mod, mods Map.! act) (map (\((_,m,_),mod) -> (m,mod)) $ Map.assocs (Map.delete act mods))
+performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession ()
+performSessionCommand output (LoadModule modName) = do 
+  mod <- gets (lookupModInSCs (SourceFileKey NormalHs modName) . (^. refSessMCs))
+  if isJust mod then modify $ actualMod .= fmap fst mod
+                else liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
+performSessionCommand _ Skip = return ()
+performSessionCommand _ Exit = modify $ exiting .= True
+performSessionCommand output (RefactorCommand cmd) 
+  = do actMod <- gets (^. actualMod)
+       (Just actualMod, otherMods) <- getMods actMod
+       res <- lift $ performCommand cmd (assocToNamedMod actualMod) (map assocToNamedMod otherMods)
        inDryMode <- gets (^. dryMode)
-       case res of Left err -> return err
-                   Right resMods -> performChanges inDryMode resMods
-                     
-  where performChanges False resMods = do 
-          mss <- forM resMods $ \case 
+       case res of Left err -> liftIO $ hPutStrLn output err
+                   Right resMods -> performChanges output inDryMode resMods
+
+  where performChanges output False resMods = do 
+          changedMods <- forM resMods $ \case 
             ContentChanged (n,m) -> do
               let modName = semanticsModule $ m ^. semantics
               ms <- getModSummary modName (isBootModule $ m ^. semantics)
-              let isBoot = case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot
-              Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == n && b == isBoot) . Map.keys . (^. refSessMods))
-              liftIO $ withBinaryFile ((case isBoot of NormalHs -> toFileName; IsHsBoot -> toBootFileName) workingDir n) 
-                                      WriteMode (`hPutStr` prettyPrint m)
-              return $ Just (n, workingDir, modName, isBoot)
+              let file = fromJust $ ml_hs_file $ ms_location ms
+              liftIO $ withBinaryFile file WriteMode (`hPutStr` prettyPrint m)
+              return n
             ModuleRemoved mod -> do
-              Just (workingDir,_,_) <- gets (find (\(_,m,b) -> m == mod) . Map.keys . (^. refSessMods))
-              liftIO $ removeFile (toFileName workingDir mod)
-              modify $ refSessMods .- Map.delete (workingDir, mod, IsHsBoot) . Map.delete (workingDir, mod, NormalHs)
-              return Nothing
-          lift $ load LoadAllTargets
-          forM_ (catMaybes mss) $ \(n, workingDir, modName, isBoot) -> do
-              -- TODO: add target if module is added as a change
-              ms <- getModSummary modName (isBoot == IsHsBoot)
-              newm <- lift $ parseTyped ms
-              modify $ refSessMods .- Map.insert (workingDir, n, isBoot) newm
-              liftIO $ putStrLn ("Re-loaded module: " ++ n)
-          return ""
-        performChanges True resMods = concat <$> forM resMods (liftIO . \case 
+              Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
+              let modName = semanticsModule m 
+              ms <- getModSummary modName (isBootModule $ m ^. semantics)
+              let file = fromJust $ ml_hs_file $ ms_location ms
+              modify $ (refSessMCs .- removeModule mod)
+              liftIO $ removeFile file
+              return mod
+          void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++)) changedMods
+        performChanges output True resMods = forM_ resMods (liftIO . \case 
           ContentChanged (n,m) -> do
-            return $ "### UModule changed: " ++ n ++ "\n### new content:\n" ++ prettyPrint m
+            hPutStrLn output $ "### Module changed: " ++ n ++ "\n### new content:\n" ++ prettyPrint m
           ModuleRemoved mod ->
-            return $ "### UModule removed: " ++ mod)
+            hPutStrLn output $ "### Module removed: " ++ mod)
 
         getModSummary name boot
           = do allMods <- lift getModuleGraph
                return $ fromJust $ find (\ms -> ms_mod ms == name && (ms_hsc_src ms == HsSrcFile) /= boot) allMods 
+
+
+instance IsRefactSessionState CLISessionState where
+  refSessMCs = refactState & _refSessMCs
+  initSession = CLISessionState initSession Nothing False False

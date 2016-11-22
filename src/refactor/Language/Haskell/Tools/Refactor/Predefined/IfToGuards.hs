@@ -6,7 +6,7 @@ import Control.Reference
 import SrcLoc
 import Data.Generics.Uniplate.Data
 
-tryItOut moduleName sp = tryRefactor (localRefactoring $ ifToGuards (readSrcSpan (toFileName "." moduleName) sp)) moduleName
+tryItOut moduleName sp = tryRefactor (localRefactoring $ ifToGuards (readSrcSpan sp)) moduleName
 
 ifToGuards :: Domain dom => RealSrcSpan -> LocalRefactoring dom
 ifToGuards sp = return . (nodesContaining sp .- changeBindings)

@@ -86,6 +86,17 @@ instance (ExceptionMonad m, Monoid s) => ExceptionMonad (WriterT s m) where
   gcatch w c = WriterT (runWriterT w `gcatch` (runWriterT . c))
   gmask m = WriterT $ gmask (\f -> runWriterT $ m (WriterT . f . runWriterT))
 
+instance (Monad m, HasDynFlags m) => HasDynFlags (StateT s m) where
+  getDynFlags = lift getDynFlags
+
+instance (GhcMonad m) => GhcMonad (StateT s m) where
+  getSession = lift getSession
+  setSession env = lift (setSession env)
+
+instance (ExceptionMonad m) => ExceptionMonad (StateT s m) where
+  gcatch r c = StateT (\ctx -> runStateT r ctx `gcatch` (flip runStateT ctx . c))
+  gmask m = StateT $ \ctx -> gmask (\f -> runStateT (m (\a -> StateT $ \ctx' -> f (runStateT a ctx'))) ctx)
+
 instance GhcMonad m => GhcMonad (ReaderT s m) where
   getSession = lift getSession
   setSession env = lift (setSession env)

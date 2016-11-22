@@ -62,14 +62,15 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
         selectCommand GenerateExports = localRefactoring generateExports 
-        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctSp mod sp)
-        selectCommand (RenameDefinition sp str) = renameDefinition' (correctSp mod sp) str
-        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctSp mod sp) str
-        selectCommand (InlineBinding sp) = inlineBinding (correctSp mod sp)
+        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctRefactorSpan mod sp)
+        selectCommand (RenameDefinition sp str) = renameDefinition' (correctRefactorSpan mod sp) str
+        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctRefactorSpan mod sp) str
+        selectCommand (InlineBinding sp) = inlineBinding (correctRefactorSpan mod sp)
 
-        correctSp mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
-                                         (updateSrcFile fileName $ realSrcSpanEnd sp)
-        fileName = case srcSpanStart $ getRange (snd mod) of RealSrcLoc loc -> srcLocFile loc 
+correctRefactorSpan :: ModuleDom dom -> RealSrcSpan -> RealSrcSpan
+correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
+                                           (updateSrcFile fileName $ realSrcSpanEnd sp)
+  where fileName = case srcSpanStart $ getRange (snd mod) of RealSrcLoc loc -> srcLocFile loc 
         updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc) 
 
 -- | A refactoring command
@@ -82,17 +83,17 @@ data RefactorCommand = NoRefactor
                      | InlineBinding RealSrcSpan
     deriving Show
 
-readCommand :: String -> String -> RefactorCommand
-readCommand fileName (splitOn " " -> refact:args) = analyzeCommand fileName refact args
+readCommand :: String -> RefactorCommand
+readCommand (splitOn " " -> refact:args) = analyzeCommand refact args
 
-analyzeCommand :: String -> String -> [String] -> RefactorCommand
-analyzeCommand _ "" _ = NoRefactor
-analyzeCommand _ "CheckSource" _ = NoRefactor
-analyzeCommand _ "OrganizeImports" _ = OrganizeImports
-analyzeCommand _ "GenerateExports" _ = GenerateExports
-analyzeCommand fileName "GenerateSignature" [sp] = GenerateSignature (readSrcSpan fileName sp)
-analyzeCommand fileName "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan fileName sp) newName
-analyzeCommand fileName "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan fileName sp) newName
-analyzeCommand fileName "InlineBinding" [sp] = InlineBinding (readSrcSpan fileName sp)
-analyzeCommand _ ref _ = error $ "Unknown command: " ++ ref
+analyzeCommand :: String -> [String] -> RefactorCommand
+analyzeCommand "" _ = NoRefactor
+analyzeCommand "CheckSource" _ = NoRefactor
+analyzeCommand "OrganizeImports" _ = OrganizeImports
+analyzeCommand "GenerateExports" _ = GenerateExports
+analyzeCommand "GenerateSignature" [sp] = GenerateSignature (readSrcSpan sp)
+analyzeCommand "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan sp) newName
+analyzeCommand "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan sp) newName
+analyzeCommand "InlineBinding" [sp] = InlineBinding (readSrcSpan sp)
+analyzeCommand ref _ = error $ "Unknown command: " ++ ref
 
