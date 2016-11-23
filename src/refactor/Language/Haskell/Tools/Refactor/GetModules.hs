@@ -2,6 +2,7 @@
            , NamedFieldPuns
            , LambdaCase
            , TemplateHaskell
+           , FlexibleContexts
            #-}
 module Language.Haskell.Tools.Refactor.GetModules where
 
@@ -23,21 +24,33 @@ import DynFlags (DynFlags, xopt_set, xopt_unset)
 import GHC (parseDynamicFlags)
 import qualified DynFlags as GHC
 import SrcLoc as GHC
+import RdrName as GHC (RdrName)
+import Name as GHC (Name)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
 
 import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.AST (IdDom)
-
-type AnalyzedModColl = ModuleCollection ()
+import Language.Haskell.Tools.AST (Dom, IdDom)
 
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
-data ModuleCollection mod
+data ModuleCollection
   = ModuleCollection { _mcId :: ModuleCollectionId
                      , _mcSourceDirs :: [FilePath]
-                     , _mcModules :: Map.Map SourceFileKey mod
+                     , _mcModules :: Map.Map SourceFileKey ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
                      , _mcDependencies :: [ModuleCollectionId]
                      }
+
+instance Show ModuleCollection where
+  show (ModuleCollection id srcDirs mods _ deps) 
+    = "ModuleCollection (" ++ show id ++ ") " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
+
+data ModuleRecord 
+       = ModuleNotLoaded { _recModuleWillNeedCode :: Bool }
+       | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName) }
+       | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom Name) }
+       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom }
+       | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom }
+  deriving (Eq, Show)
 
 -- | Module name and marker to separate .hs-boot module definitions. Specifies a source file in a working directory.
 data SourceFileKey = SourceFileKey { _sfkIsBoot :: IsBoot
@@ -65,30 +78,48 @@ data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
 makeReferences ''ModuleCollection
 makeReferences ''SourceFileKey
+makeReferences ''ModuleRecord
 
-lookupModuleColl :: String -> [ModuleCollection mod] -> Maybe (ModuleCollection mod)
+lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
 
-lookupModInSCs :: SourceFileKey -> [ModuleCollection mod] -> Maybe (SourceFileKey, mod)
+lookupModInSCs :: SourceFileKey -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
 lookupModInSCs moduleName = find ((moduleName ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
-removeModule :: String -> [ModuleCollection mod] -> [ModuleCollection mod]
+removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
 removeModule moduleName = map (mcModules .- Map.filterWithKey (\k v -> moduleName /= (k ^. sfkModuleName)))
 
-updateModule :: String -> IsBoot -> mod -> [ModuleCollection mod] -> [ModuleCollection mod]
+updateModule :: String -> IsBoot -> ModuleRecord -> [ModuleCollection] -> [ModuleCollection]
 updateModule moduleName boot mod = map (mcModules .- Map.insert (SourceFileKey boot moduleName) mod)
+
+hasGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
+hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False) 
+                         . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+needsGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
+needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True) -> True; _ -> False) 
+                           . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
+codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod) -> ModuleCodeGenerated mod
+                                                           ModuleNotLoaded _ -> ModuleNotLoaded True
+                                                           r -> r) key)
+
+isAlreadyLoaded :: SourceFileKey -> [ModuleCollection] -> Bool
+isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True) 
+                         . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 -- | Gets all ModuleCollections from a list of source directories. It also orders the source directories that are package roots so that
 -- they can be loaded in the order they are defined (no backward imports). This matters in those cases because for them there can be
 -- special compilation flags.
-getAllModules :: [FilePath] -> IO [AnalyzedModColl]
+getAllModules :: [FilePath] -> IO [ModuleCollection]
 getAllModules pathes = orderMCs . concat <$> mapM getModules pathes
 
 -- | Sorts model collection in an order to remove all backward references.
 -- Works because module collections defined by directories cannot be recursive.
-orderMCs :: [ModuleCollection a] -> [ModuleCollection a]
+orderMCs :: [ModuleCollection] -> [ModuleCollection]
 orderMCs = sortBy compareMCs
-  where compareMCs :: ModuleCollection a -> ModuleCollection a -> Ordering
+  where compareMCs :: ModuleCollection -> ModuleCollection -> Ordering
         compareMCs mc _ | DirectoryMC _ <- (mc ^. mcId) = GT
         compareMCs _ mc | DirectoryMC _ <- (mc ^. mcId) = LT
         compareMCs mc1 mc2 | (mc2 ^. mcId) `elem` (mc1 ^. mcDependencies) = GT
@@ -99,13 +130,13 @@ orderMCs = sortBy compareMCs
 -- | Get modules of the project with the indicated root directory.
 -- If there is a cabal file, it uses that, otherwise it just scans the directory recursively for haskell sourcefiles.
 -- Only returns the non-boot haskell modules, the boot modules will be found during loading.
-getModules :: FilePath -> IO [AnalyzedModColl]
+getModules :: FilePath -> IO [ModuleCollection]
 getModules root
   = do files <- listDirectory root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) [root] (Map.fromList $ map ((, ()) . SourceFileKey NormalHs) mods) return []]
+                               return [ModuleCollection (DirectoryMC root) [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return []]
 
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
 -- now recognizing only .hs files
@@ -123,7 +154,7 @@ srcDirFromRoot fileName "" = fileName
 srcDirFromRoot fileName moduleName 
   = srcDirFromRoot (takeDirectory fileName) (dropWhile (/= '.') $ dropWhile (== '.') moduleName)
 
-modulesFromCabalFile :: FilePath -> FilePath -> IO [AnalyzedModColl]
+modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
 modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> readPackageDescription silent (root </> cabal)
   where getModules pkg = maybe [] ((:[]) . toModuleCollection pkg) (library pkg) 
@@ -131,11 +162,11 @@ modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> rea
                            ++ map (toModuleCollection pkg) (testSuites pkg) 
                            ++ map (toModuleCollection pkg) (benchmarks pkg)
            
-        toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> AnalyzedModColl
+        toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> ModuleCollection
         toModuleCollection pkg tmc = let bi = getBuildInfo tmc 
                                       in ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc) 
                                                           (map (normalise . (root </>)) $ hsSourceDirs bi) 
-                                                          (Map.fromList $ map ((, ()) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
+                                                          (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
                                                           (flagsFromBuildInfo bi)
                                                           (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
 

@@ -29,10 +29,15 @@ import CmdLineParser
 import DynFlags
 import StringBuffer
 
+import Control.Monad
 import Control.Monad.IO.Class
 import System.FilePath
 import Data.Maybe
+import Data.List (isInfixOf)
 import Data.List.Split
+import System.Info (os)
+import Data.IntSet (member)
+import Language.Haskell.TH.LanguageExtensions
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
@@ -61,26 +66,29 @@ useFlags args = do
 
 -- | Initialize GHC flags to default values that support refactoring
 initGhcFlags :: Ghc ()
-initGhcFlags = do
+initGhcFlags = initGhcFlags' False
+
+initGhcFlagsForTest :: Ghc ()
+initGhcFlagsForTest = initGhcFlags' True
+
+initGhcFlags' :: Bool -> Ghc ()
+initGhcFlags' needsCodeGen = do
   dflags <- getSessionDynFlags
-  setSessionDynFlags 
+  void $ setSessionDynFlags 
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ dflags { importPaths = []
-             , -- TODO: switch to HscNone, only generate code if explicitely needed
-               hscTarget = HscAsm -- needed for static pointers
-             , ghcLink = LinkInMemory -- needed for template haskell
+             , hscTarget = if needsCodeGen || ("linux" `isInfixOf` os) then HscInterpreted else HscNothing
+             , ghcLink = if needsCodeGen || ("linux" `isInfixOf` os) then LinkInMemory else NoLink
              , ghcMode = CompManager 
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
              }
-  return () 
 
 -- | Use the given source directories
 useDirs :: [FilePath] -> Ghc ()
 useDirs workingDirs = do
   dynflags <- getSessionDynFlags
-  setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }
-  return ()
+  void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }
   
 -- | Translates module name and working directory into the name of the file where the given module should be defined
 toFileName :: String -> String -> FilePath
@@ -106,18 +114,31 @@ type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 -- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = do
-  p <- parseModule modSum
+  let compExts = extensionFlags $ ms_hspp_opts modSum
+      hasStaticFlags = fromEnum StaticPointers `member` compExts
+      ms = if hasStaticFlags then forceAsmGen modSum else modSum
+  p <- parseModule ms
   tc <- typecheckModule p
   GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
     <$> (addTypeInfos (typecheckedSource tc) 
-           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
+           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
                    runTrf (fst annots) (getPragmaComments $ snd annots)
-                     $ trfModuleRename modSum parseTrf
+                     $ trfModuleRename ms parseTrf
                          (fromJust $ tm_renamed_source tc) 
                          (pm_parsed_source p)))
+
+forceCodeGen :: ModSummary -> ModSummary
+forceCodeGen ms = ms { ms_hspp_opts = modOpts' }
+  where modOpts = (ms_hspp_opts ms) { hscTarget = HscInterpreted }
+        modOpts' = modOpts { ghcLink = LinkInMemory }
+
+forceAsmGen :: ModSummary -> ModSummary
+forceAsmGen ms = ms { ms_hspp_opts = modOpts' }
+  where modOpts = (ms_hspp_opts ms) { hscTarget = HscAsm }
+        modOpts' = modOpts { ghcLink = LinkInMemory }
 
 readSrcSpan :: String -> RealSrcSpan
 readSrcSpan s = case splitOn "-" s of

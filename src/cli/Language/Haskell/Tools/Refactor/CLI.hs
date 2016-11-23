@@ -2,6 +2,7 @@
            , TupleSections
            , FlexibleContexts
            , TemplateHaskell
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor.CLI (refactorSession) where
 
@@ -12,6 +13,7 @@ import Data.Maybe
 import Data.List
 import Data.List.Split
 import Control.Monad.State
+import Control.Applicative ((<|>))
 import Control.Reference
 
 import GHC
@@ -124,18 +126,21 @@ performSessionCommand output (RefactorCommand cmd)
   where performChanges output False resMods = do 
           changedMods <- forM resMods $ \case 
             ContentChanged (n,m) -> do
-              let modName = semanticsModule $ m ^. semantics
+              let modName = semanticsModule m
               ms <- getModSummary modName (isBootModule $ m ^. semantics)
               let file = fromJust $ ml_hs_file $ ms_location ms
               liftIO $ withBinaryFile file WriteMode (`hPutStr` prettyPrint m)
               return n
             ModuleRemoved mod -> do
               Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
-              let modName = semanticsModule m 
-              ms <- getModSummary modName (isBootModule $ m ^. semantics)
-              let file = fromJust $ ml_hs_file $ ms_location ms
-              modify $ (refSessMCs .- removeModule mod)
-              liftIO $ removeFile file
+              case ( fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule)
+                   , fmap isBootModule (m ^? typedRecModule) <|> fmap isBootModule (m ^? renamedRecModule)) of 
+                (Just modName, Just isBoot) -> do
+                  ms <- getModSummary modName isBoot
+                  let file = fromJust $ ml_hs_file $ ms_location ms
+                  modify $ (refSessMCs .- removeModule mod)
+                  liftIO $ removeFile file
+                _ -> do liftIO $ hPutStrLn output ("Module " ++ mod ++ " could not be removed.")
               return mod
           void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++)) changedMods
         performChanges output True resMods = forM_ resMods (liftIO . \case 

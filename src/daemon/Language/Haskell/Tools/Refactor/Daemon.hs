@@ -27,6 +27,7 @@ import Data.IORef
 import Data.List hiding (insert)
 import Data.Tuple
 import Data.Maybe
+import Control.Applicative ((<|>))
 import Control.Monad
 import Control.Monad.State
 import Control.Concurrent.MVar
@@ -140,14 +141,16 @@ updateClient (PerformRefactoring refact modName selection args) = do
               return n
             ModuleRemoved mod -> do
               Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
-              let modName = GHC.moduleName $ semanticsModule m 
-              ms <- getModSummary modName
-              let file = fromJust $ ml_hs_file $ ms_location ms
-              modify $ (refSessMCs .- removeModule mod)
-              liftIO $ removeFile file
+              let modName = fmap GHC.moduleName (fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule))
+              case modName of 
+                Just mn -> do
+                  ms <- getModSummary mn
+                  let file = fromJust $ ml_hs_file $ ms_location ms
+                  modify $ (refSessMCs .- removeModule mod)
+                  liftIO $ removeFile file
+                Nothing -> return ()
               return mod
           reloadChangedModules (\_ -> return ()) changedMods
-
 
 getModuleFilePath :: UnnamedModule IdDom -> Ghc FilePath
 getModuleFilePath mod = do

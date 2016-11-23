@@ -21,6 +21,8 @@ import Test.HUnit hiding (test)
 import System.IO
 import System.Exit
 import System.FilePath
+import Data.IntSet (member)
+import Language.Haskell.TH.LanguageExtensions
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite as G
@@ -454,24 +456,24 @@ checkCorrectlyPrinted workingDir moduleName
 -- TODO: find out why the commented-out code doesn't work for the two Template Haskell tests. These work for CLI. 
 -- performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 -- performRefactors command workingDir flags target = runGhc (Just libdir) $ flip evalStateT (initSession :: RefactorSessionState) $ do 
-  -- lift initGhcFlags
-  -- mods <- loadPackagesFrom ({- const $ return () -} \m -> liftIO $ (putStrLn ("Loaded module: " ++ workingDir ++ " " ++ m) >> hFlush stdout)) [workingDir]
-  -- (selectedMod, otherMods) <- getMods (Just $ SourceFileKey NormalHs target)
-  -- case selectedMod of 
-  --   Just (_, selMod) -> do 
-  --     res <- lift $ performCommand (readCommand command) (target, selMod) (map assocToNamedMod otherMods)
-      -- return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
-      --                                                ModuleRemoved m -> (m, Nothing)
-      --                                         )) r
-      --                 Left l -> Left l) 
-      --        $ res
-    -- Nothing -> error "The selected module is not found"
+--   lift initGhcFlags
+--   mods <- loadPackagesFrom ({- const $ return () -} \m -> liftIO $ (putStrLn ("Loaded module: " ++ workingDir ++ " " ++ m) >> hFlush stdout)) [workingDir]
+--   (selectedMod, otherMods) <- getMods (Just $ SourceFileKey NormalHs target)
+--   case selectedMod of 
+--     Just (_, selMod) -> do 
+--       res <- lift $ performCommand (readCommand command) (target, selMod) (map assocToNamedMod otherMods)
+--       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+--                                                      ModuleRemoved m -> (m, Nothing)
+--                                               )) r
+--                       Left l -> Left l) 
+--              $ res
+--     Nothing -> error "The selected module is not found"
     
 performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 performRefactors command workingDir flags target = do 
     mods <- getAllModules [workingDir]
     runGhc (Just libdir) $ do
-      initGhcFlags
+      initGhcFlagsForTest
       useFlags flags
       useDirs [workingDir]
       setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) mods))
@@ -493,24 +495,30 @@ type ParsedModule = Ann AST.UModule (Dom RdrName) SrcTemplateStage
 
 parseAST :: ModSummary -> Ghc ParsedModule
 parseAST modSum = do
-  p <- parseModule modSum
+  let compExts = extensionFlags $ ms_hspp_opts modSum
+      hasStaticFlags = fromEnum StaticPointers `member` compExts
+      ms = if hasStaticFlags then forceAsmGen modSum else modSum
+  p <- parseModule ms
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   prepareAST srcBuffer . placeComments (snd annots) 
-     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum $ pm_parsed_source p)          
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms $ pm_parsed_source p)          
 
 type RenamedModule = Ann AST.UModule (Dom GHC.Name) SrcTemplateStage
 
 parseRenamed :: ModSummary -> Ghc RenamedModule
 parseRenamed modSum = do
-  p <- parseModule modSum
+  let compExts = extensionFlags $ ms_hspp_opts modSum
+      hasStaticFlags = fromEnum StaticPointers `member` compExts
+      ms = if hasStaticFlags then forceAsmGen modSum else modSum
+  p <- parseModule ms
   tc <- typecheckModule p
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
-    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
+    <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
             runTrf (fst annots) (getPragmaComments $ snd annots)
-              $ trfModuleRename modSum parseTrf
+              $ trfModuleRename ms parseTrf
                   (fromJust $ tm_renamed_source tc) 
                   (pm_parsed_source p))
 
