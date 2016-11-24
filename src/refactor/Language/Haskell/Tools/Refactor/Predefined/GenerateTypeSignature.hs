@@ -30,7 +30,7 @@ import Language.Haskell.Tools.Refactor as AST
 
 type GenerateSignatureDomain dom = ( HasModuleInfo dom, HasIdInfo dom, HasImportInfo dom, HasScopeInfo dom ) 
 
-tryItOut moduleName sp = tryRefactor (localRefactoring $ generateTypeSignature' (readSrcSpan sp)) moduleName
+tryItOut = tryRefactor (localRefactoring . generateTypeSignature')
 
 generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> LocalRefactoring dom
 generateTypeSignature' sp = generateTypeSignature (nodesContaining sp) (nodesContaining sp) (getValBindInList sp) 

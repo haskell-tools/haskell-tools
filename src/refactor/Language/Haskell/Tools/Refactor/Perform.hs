@@ -62,16 +62,10 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
         selectCommand GenerateExports = localRefactoring generateExports 
-        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctRefactorSpan mod sp)
-        selectCommand (RenameDefinition sp str) = renameDefinition' (correctRefactorSpan mod sp) str
-        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctRefactorSpan mod sp) str
-        selectCommand (InlineBinding sp) = inlineBinding (correctRefactorSpan mod sp)
-
-correctRefactorSpan :: ModuleDom dom -> RealSrcSpan -> RealSrcSpan
-correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
-                                           (updateSrcFile fileName $ realSrcSpanEnd sp)
-  where fileName = case srcSpanStart $ getRange (snd mod) of RealSrcLoc loc -> srcLocFile loc 
-        updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc) 
+        selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctRefactorSpan (snd mod) sp)
+        selectCommand (RenameDefinition sp str) = renameDefinition' (correctRefactorSpan (snd mod) sp) str
+        selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctRefactorSpan (snd mod) sp) str
+        selectCommand (InlineBinding sp) = inlineBinding (correctRefactorSpan (snd mod) sp)
 
 -- | A refactoring command
 data RefactorCommand = NoRefactor 

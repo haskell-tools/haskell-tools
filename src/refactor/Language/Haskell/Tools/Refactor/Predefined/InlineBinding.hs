@@ -27,7 +27,7 @@ import Language.Haskell.Tools.AST as AST
 
 import Debug.Trace
 
-tryItOut moduleName sp = tryRefactor (inlineBinding (readSrcSpan sp)) moduleName
+tryItOut = tryRefactor inlineBinding
 
 type InlineBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom, HasModuleInfo dom )
 
@@ -56,8 +56,9 @@ inlineBinding' :: InlineBindingDomain dom
                     -> LocalRefactoring dom
 inlineBinding' topLevelRef localRef removedBinding removedBindingName mod
   = do replacement <- createReplacement removedBinding
-       let mod' = removeBindingAndSig topLevelRef localRef removedBindingName mod
-           mod'' = descendBi (replaceInvocations removedBindingName replacement) mod'
+       let RealSrcSpan bindingSpan = getRange removedBinding
+       mod' <- descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod
+       let mod'' = removeBindingAndSig topLevelRef localRef removedBindingName mod'
        return mod''
 
 -- | True if the given module contains the name of the inlined definition.
@@ -91,13 +92,17 @@ removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notT
 
 -- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
 -- the captured arguments of the function call to generate simpler results.
-replaceInvocations :: InlineBindingDomain dom => GHC.Name -> ([[GHC.Name]] -> [Expr dom] -> Expr dom) -> Expr dom -> Expr dom
-replaceInvocations name replacement expr
+replaceInvocations :: InlineBindingDomain dom 
+                   => RealSrcSpan -> GHC.Name -> ([[GHC.Name]] -> [Expr dom] -> Expr dom) -> Expr dom -> LocalRefactor dom (Expr dom)
+replaceInvocations bindingRange name replacement expr
   | (Var n, args) <- splitApps expr
   , semanticsName (n ^. simpleName) == Just name
-  = replacement (semanticsScope expr) args
+  = case getRange expr of 
+      RealSrcSpan ownRange | bindingRange `containsSpan` ownRange
+        -> refactError "Cannot inline definitions containing direct recursion."
+      _ -> replacement (semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
   | otherwise 
-  = descend (replaceInvocations name replacement) expr
+  = descendM (replaceInvocations bindingRange name replacement) expr
 
 -- | Splits an application into function and arguments. Works also for operators.
 splitApps :: Expr dom -> (Expr dom, [Expr dom])
@@ -110,7 +115,7 @@ splitApps expr = (expr, [])
 -- | Rejoins the function and the arguments as an expression.
 joinApps :: Expr dom -> [Expr dom] -> Expr dom
 joinApps f [] = f
-joinApps f args = mkParen (foldl mkApp f args)
+joinApps f args = parenIfNeeded (foldl mkApp f args)
 
 -- | Create an expression that is equivalent to calling the given bind.
 createReplacement :: InlineBindingDomain dom => ValueBind dom -> LocalRefactor dom ([[GHC.Name]] -> [Expr dom] -> Expr dom)
@@ -120,16 +125,16 @@ createReplacement (SimpleBind _ _ _)
   = refactError "Cannot inline, illegal simple bind. Only variable left-hand sides and unguarded right-hand sides are accepted."
 createReplacement (FunctionBind (AnnList [Match lhs (UnguardedRhs expr) locals]))
   = return $ \_ args -> let (argReplacement, matchedPats, appliedArgs) = matchArguments (getArgsOf lhs) args
-                         in joinApps (mkParen (createLambda matchedPats (wrapLocals locals (replaceExprs argReplacement expr)))) appliedArgs
+                         in joinApps (parenIfNeeded (createLambda matchedPats (wrapLocals locals (replaceExprs argReplacement expr)))) appliedArgs
   where getArgsOf (MatchLhs _ (AnnList args)) = args
         getArgsOf (InfixLhs lhs _ rhs (AnnList more)) = lhs:rhs:more
 createReplacement (FunctionBind matches) 
   = return $ \sc args -> let numArgs = getArgNum (head (matches ^? annList & matchLhs)) - length args
                              newArgs = take numArgs $ map mkName $ filter notInScope $ map (("x" ++ ) . show @Int) [1..]
                              notInScope str = not $ any (any ((== str) . occNameString . getOccName)) sc 
-                          in mkParen $ createLambda (map mkVarPat newArgs) 
-                                     $ mkCase (mkTuple $ map mkVar newArgs ++ args) 
-                                     $ map replaceMatch (matches ^? annList)
+                          in parenIfNeeded $ createLambda (map mkVarPat newArgs) 
+                                           $ mkCase (mkTuple $ map mkVar newArgs ++ args) 
+                                           $ map replaceMatch (matches ^? annList)
   where getArgNum (MatchLhs n (AnnList args)) = length args
         getArgNum (InfixLhs _ _ _ (AnnList more)) = length more + 2
 

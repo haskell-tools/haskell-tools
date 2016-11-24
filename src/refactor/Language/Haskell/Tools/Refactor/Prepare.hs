@@ -45,15 +45,23 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-tryRefactor :: Refactoring IdDom -> String -> IO ()
-tryRefactor refact moduleName 
+tryRefactor :: (RealSrcSpan -> Refactoring IdDom) -> String -> String -> IO ()
+tryRefactor refact moduleName span
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs ["."]
       mod <- loadModule "." moduleName >>= parseTyped
-      res <- runRefactor (toFileName "." moduleName, mod) [] refact 
+      res <- runRefactor (toFileName "." moduleName, mod) [] 
+               $ refact $ correctRefactorSpan mod $ readSrcSpan span 
       case res of Right r -> liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r
                   Left err -> liftIO $ putStrLn err
+
+-- | Adjust the source range to be applied to the refactored module
+correctRefactorSpan :: UnnamedModule dom -> RealSrcSpan -> RealSrcSpan
+correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
+                                           (updateSrcFile fileName $ realSrcSpanEnd sp)
+  where fileName = case srcSpanStart $ getRange mod of RealSrcLoc loc -> srcLocFile loc 
+        updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc) 
 
 -- | Set the given flags for the GHC session
 useFlags :: [String] -> Ghc [String]

@@ -3,7 +3,7 @@ module Language.Haskell.Tools.Refactor.Predefined.DataToNewtype (dataToNewtype) 
 import Language.Haskell.Tools.Refactor
 import Control.Reference
 
-tryItOut moduleName = tryRefactor (localRefactoring $ dataToNewtype) moduleName
+tryItOut moduleName = tryRefactor (\_ -> localRefactoring dataToNewtype) moduleName ""
 
 dataToNewtype :: Domain dom => LocalRefactoring dom
 dataToNewtype = return . (modDecl & annList .- changeDeclaration)

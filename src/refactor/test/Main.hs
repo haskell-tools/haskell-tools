@@ -72,6 +72,7 @@ functionalTests = map makeReprintTest checkTestCases
               ++ map makeExtractBindingTest extractBindingTests
               ++ map makeWrongExtractBindingTest wrongExtractBindingTests
               ++ map makeInlineBindingTest inlineBindingTests
+              ++ map makeWrongInlineBindingTest wrongInlineBindingTests
               ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
               ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
               ++ map makeMiscRefactorTest miscRefactorTests
@@ -297,6 +298,7 @@ wrongExtractBindingTests =
 
 inlineBindingTests =
   [ ("Refactor.InlineBinding.Simplest", "4:1-4:2")
+  , ("Refactor.InlineBinding.Nested", "4:1-4:2")
   , ("Refactor.InlineBinding.Local", "4:9-4:10")
   , ("Refactor.InlineBinding.LocalNested", "5:17-5:18")
   , ("Refactor.InlineBinding.WithLocals", "4:1-4:2")
@@ -310,6 +312,11 @@ inlineBindingTests =
   , ("Refactor.InlineBinding.RemoveSignatures", "5:1-5:2")
   , ("Refactor.InlineBinding.FilterSignatures", "5:1-5:2")
   ]
+
+wrongInlineBindingTests = 
+  [ ("Refactor.InlineBinding.Recursive", "4:1-4:2")
+  ]
+
 
 multiModuleTests =
   [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor" </> "RenameDefinition" </> "MultiModule", [])
@@ -391,6 +398,9 @@ makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding
   
 makeInlineBindingTest :: (String, String) -> Test
 makeInlineBindingTest (mod, rng) = createTest "InlineBinding" [rng] mod
+  
+makeWrongInlineBindingTest :: (String, String) -> Test
+makeWrongInlineBindingTest (mod, rng) = createFailTest "InlineBinding" [rng] mod
 
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName
@@ -398,7 +408,7 @@ checkCorrectlyTransformed command workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
-makeMiscRefactorTest :: (String, ModuleDom IdDom -> LocalRefactoring IdDom) -> Test
+makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> Test
 makeMiscRefactorTest (moduleName, refact)
   = TestLabel moduleName $ TestCase $
       do expected <- loadExpected True rootDir moduleName
@@ -406,13 +416,13 @@ makeMiscRefactorTest (moduleName, refact)
          assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                       (mapRight standardizeLineEndings res)
         
-testRefactor :: (ModuleDom IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
+testRefactor :: (UnnamedModule IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
 testRefactor refact moduleName 
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs [rootDir]
       mod <- loadModule rootDir moduleName >>= parseTyped
-      res <- runRefactor (moduleName, mod) [] (localRefactoring $ refact (moduleName, mod)) 
+      res <- runRefactor (moduleName, mod) [] (localRefactoring $ refact mod) 
       case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
                   Left err -> return $ Left err
 
