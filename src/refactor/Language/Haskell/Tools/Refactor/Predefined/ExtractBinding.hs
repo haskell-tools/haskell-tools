@@ -25,6 +25,8 @@ import Language.Haskell.Tools.Refactor
 
 type ExtractBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom )
 
+tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name) mod sp
+
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod
   = if isValidBindingName name then extractBinding (nodesContaining sp) (nodesContaining sp) name mod

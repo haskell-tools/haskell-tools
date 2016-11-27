@@ -15,7 +15,7 @@ import Control.Reference
 import Data.Generics.Uniplate.Data
 import Debug.Trace
 
-tryItOut moduleName sp = tryRefactor (localRefactoring . dollarApp) moduleName
+tryItOut = tryRefactor (localRefactoring . dollarApp)
 
 type DollarMonad dom = StateT [SrcSpan] (LocalRefactor dom)
 type DollarDomain dom = (HasImportInfo dom, HasModuleInfo dom, HasFixityInfo dom, HasNameInfo dom)
