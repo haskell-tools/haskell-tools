@@ -289,6 +289,7 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
   , ("Refactor.ExtractBinding.Records", "5:5-5:39", "plus")
   , ("Refactor.ExtractBinding.RecordWildcards", "6:5-6:27", "plus")
+  , ("Refactor.ExtractBinding.ExistingLocalDef", "3:5-3:10", "a")
   ]
 
 wrongExtractBindingTests = 
@@ -315,6 +316,7 @@ inlineBindingTests =
 
 wrongInlineBindingTests = 
   [ ("Refactor.InlineBinding.Recursive", "4:1-4:2")
+  , ("Refactor.InlineBinding.InExportList", "4:1-4:2")
   ]
 
 

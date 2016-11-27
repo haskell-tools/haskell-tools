@@ -5,6 +5,7 @@
            , LambdaCase
            , TypeApplications
            , ScopedTypeVariables
+           , MultiWayIf
            #-}
 -- | Defines the inline binding refactoring that removes a value binding and replaces all occurences
 -- with an expression equivalent to the body of the binding.
@@ -31,22 +32,25 @@ tryItOut = tryRefactor inlineBinding
 
 type InlineBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom, HasModuleInfo dom )
 
-inlineBinding :: InlineBindingDomain dom => RealSrcSpan -> Refactoring dom
+inlineBinding :: forall dom . InlineBindingDomain dom => RealSrcSpan -> Refactoring dom
 inlineBinding span namedMod@(_,mod) mods 
-  = let topLevel :: Domain dom => Simple Traversal (Module dom) (DeclList dom)
+  = let topLevel :: Simple Traversal (Module dom) (DeclList dom)
         topLevel = nodesContaining span
-        local :: Domain dom => Simple Traversal (Module dom) (LocalBindList dom)
+        local :: Simple Traversal (Module dom) (LocalBindList dom)
         local = nodesContaining span
-        elemAccess :: (Domain dom, BindingElem d) => AnnList d dom -> Maybe (ValueBind dom)
+        elemAccess :: (BindingElem d) => AnnList d dom -> Maybe (ValueBind dom)
         elemAccess = getValBindInList span
         removed = catMaybes $ map elemAccess (mod ^? topLevel) ++ map elemAccess (mod ^? local)
      in case reverse removed of 
           [] -> refactError "No binding is selected."
           removedBinding:_ -> 
            let [removedBindingName] = nub $ catMaybes $ map semanticsName (removedBinding ^? bindingName)
-            in if any (containInlined removedBindingName) mods
-                 then refactError "Cannot inline the definition, it is used in other modules." 
-                 else localRefactoring (inlineBinding' topLevel local removedBinding removedBindingName) namedMod mods
+            in if | any (containInlined removedBindingName) mods
+                    -> refactError "Cannot inline the definition, it is used in other modules." 
+                  | _:_ <- mod ^? modHead & annJust & mhExports & annJust & biplateRef 
+                                          & filtered (\n -> semanticsName (n :: QualifiedName dom) == Just removedBindingName)
+                    -> refactError "Cannot inline the definition, it is present in the export list."
+                  | otherwise -> localRefactoring (inlineBinding' topLevel local removedBinding removedBindingName) namedMod mods
 
 -- | Performs the inline binding on a single module.
 inlineBinding' :: InlineBindingDomain dom 

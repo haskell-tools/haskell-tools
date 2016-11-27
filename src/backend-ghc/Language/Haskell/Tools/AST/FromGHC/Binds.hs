@@ -102,15 +102,15 @@ getBindLocs (HsIPBinds (IPBinds binds _)) = foldLocs $ map getLoc binds
   
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnListG AST.ULocalBind (Dom r) RangeStage)
 trfLocalBinds (HsValBinds (ValBindsIn binds sigs)) 
-  = makeIndentedList (after AnnWhere)
+  = makeIndentedListBefore " " (after AnnWhere)
       (orderDefs <$> ((++) <$> mapM (copyAnnot AST.ULocalValBind . trfBind) (bagToList binds) 
                            <*> mapM trfLocalSig sigs))
 trfLocalBinds (HsValBinds (ValBindsOut binds sigs)) 
-  = makeIndentedList (after AnnWhere)
+  = makeIndentedListBefore " " (after AnnWhere)
       (orderDefs <$> ((++) <$> (concat <$> mapM (mapM (copyAnnot AST.ULocalValBind . trfBind) . bagToList . snd) binds)
                            <*> mapM trfLocalSig sigs))
 trfLocalBinds (HsIPBinds (IPBinds binds _))
-  = makeIndentedList (after AnnWhere) (mapM trfIpBind binds)
+  = makeIndentedListBefore " " (after AnnWhere) (mapM trfIpBind binds)
 
 trfIpBind :: TransformName n r => Located (IPBind n) -> Trf (Ann AST.ULocalBind (Dom r) RangeStage)
 trfIpBind = trfLocNoSema $ \case
