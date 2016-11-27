@@ -316,6 +316,7 @@ inlineBindingTests =
 
 wrongInlineBindingTests = 
   [ ("Refactor.InlineBinding.Recursive", "4:1-4:2")
+  , ("Refactor.InlineBinding.InExportList", "4:1-4:2")
   ]
 
 
