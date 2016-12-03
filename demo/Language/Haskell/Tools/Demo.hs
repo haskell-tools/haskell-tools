@@ -63,8 +63,6 @@ data RefactorSessionState
                          , _actualMod :: Maybe (String, String, IsBoot)
                          }
 
-data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
-
 makeReferences ''RefactorSessionState
 
 initSession :: RefactorSessionState
@@ -149,7 +147,7 @@ updateClient _ (PerformRefactoring "UpdateAST" modName _ _) = do
 updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a test"
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
-    allModules <- gets (filter ((modName /=) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
+    allModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
     let command = analyzeCommand refact (selection:args)
     liftIO $ putStrLn $ (toFileName dir modName)
     liftIO $ putStrLn $ maybe "" (show . getRange . snd) mod
@@ -159,16 +157,16 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
                                Right diff -> do applyChanges diff
                                                 return $ Just $ RefactorChanges (map trfDiff diff)
                 Nothing -> return $ Just $ ErrorMessage "The module is not found"
-  where trfDiff (ContentChanged (name,cont)) = (name, Just (prettyPrint cont))
+  where trfDiff (ContentChanged (key,cont)) = (key ^. sfkModuleName, Just (prettyPrint cont))
         trfDiff (ModuleRemoved name) = (name, Nothing)
 
         applyChanges 
           = mapM_ $ \case 
               ContentChanged (n,m) -> do
-                liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
-                w <- gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
-                newm <- lift $ (parseTyped =<< loadModule dir n)
-                modify $ refSessMods .- Map.insert (dir, n, NormalHs) newm
+                liftIO $ withBinaryFile (toFileName dir (n ^. sfkModuleName)) WriteMode (`hPutStr` prettyPrint m)
+                w <- gets (find ((n ^. sfkModuleName ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
+                newm <- lift $ (parseTyped =<< loadModule dir (n ^. sfkModuleName))
+                modify $ refSessMods .- Map.insert (dir, (n ^. sfkModuleName), NormalHs) newm
               ModuleRemoved mod -> do
                 liftIO $ removeFile (toFileName dir mod)
                 modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
@@ -182,8 +180,8 @@ createFileForModule dir name newContent = do
 removeDirectoryIfPresent :: FilePath -> IO ()
 removeDirectoryIfPresent dir = removeDirectoryRecursive dir `catch` \e -> if isDoesNotExistError e then return () else throwIO e
 
-moduleNameAndContent :: ((String,String,IsBoot), mod) -> (String, mod)
-moduleNameAndContent ((_,name,_), mod) = (name, mod)
+moduleNameAndContent :: ((String,String,IsBoot), mod) -> (SourceFileKey, mod)
+moduleNameAndContent ((_,name,isBoot), mod) = (SourceFileKey isBoot name, mod)
 
 dataDirs :: FilePath -> FilePath
 dataDirs wd = normalise $ wd </> "demoSources"

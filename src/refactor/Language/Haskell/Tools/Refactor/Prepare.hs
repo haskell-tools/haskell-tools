@@ -33,9 +33,10 @@ import Control.Monad
 import Control.Monad.IO.Class
 import System.FilePath
 import Data.Maybe
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, (\\))
 import Data.List.Split
 import System.Info (os)
+import System.Directory
 import Data.IntSet (member)
 import Language.Haskell.TH.LanguageExtensions
 
@@ -51,7 +52,7 @@ tryRefactor refact moduleName span
       initGhcFlags
       useDirs ["."]
       mod <- loadModule "." moduleName >>= parseTyped
-      res <- runRefactor (toFileName "." moduleName, mod) [] 
+      res <- runRefactor (SourceFileKey NormalHs moduleName, mod) [] 
                $ refact $ correctRefactorSpan mod $ readSrcSpan span 
       case res of Right r -> liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r
                   Left err -> liftIO $ putStrLn err
@@ -97,14 +98,30 @@ useDirs :: [FilePath] -> Ghc ()
 useDirs workingDirs = do
   dynflags <- getSessionDynFlags
   void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }
+
+deregisterDirs :: [FilePath] -> Ghc ()
+deregisterDirs workingDirs = do
+  dynflags <- getSessionDynFlags
+  void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags \\ workingDirs }
   
 -- | Translates module name and working directory into the name of the file where the given module should be defined
-toFileName :: String -> String -> FilePath
+toFileName :: FilePath -> String -> FilePath
 toFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs"
 
 -- | Translates module name and working directory into the name of the file where the boot module should be defined
-toBootFileName :: String -> String -> FilePath
+toBootFileName :: FilePath -> String -> FilePath
 toBootFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
+
+getSourceDir :: ModSummary -> IO FilePath
+getSourceDir ms 
+  = do filePath <- canonicalizePath $ getModSumOrig ms
+       let modNameParts = splitOn "." $ GHC.moduleNameString (moduleName (ms_mod ms)) 
+           filePathParts = splitPath filePath
+       let srcDirParts = reverse $ drop (length modNameParts) $ reverse filePathParts
+       return $ joinPath srcDirParts
+
+getModSumOrig :: ModSummary -> FilePath
+getModSumOrig = normalise . fromMaybe (error "getModSumOrig: The given module doesn't have haskell source file.") . ml_hs_file . ms_location
 
 -- | Load the summary of a module given by the working directory and module name.
 loadModule :: String -> String -> Ghc ModSummary

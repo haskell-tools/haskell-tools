@@ -58,11 +58,11 @@ refactorSession input output args = runGhc (Just libdir) $ flip evalStateT initS
         initializeSession output workingDirs flags = do
           liftIO $ hSetBuffering output NoBuffering
           liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."
-          (_, ignoredMods) <- loadPackagesFrom (\m -> liftIO $ hPutStrLn output ("Loaded module: " ++ m)) workingDirs
+          (_, ignoredMods) <- loadPackagesFrom (\ms -> liftIO $ hPutStrLn output ("Loaded module: " ++ modSumName ms)) workingDirs
           when (not $ null ignoredMods) 
             $ liftIO $ hPutStrLn output 
             $ "The following modules are ignored: " 
-                ++ concat (intersperse ", " $ map (\(id,mod) -> mod ++ " (from " ++ moduleCollectionIdString id ++ ")") ignoredMods)
+                ++ concat (intersperse ", " $ ignoredMods)
                 ++ ". Multiple modules with the same qualified name are not supported."
           liftIO $ hPutStrLn output "All modules loaded. Use 'SelectModule module-name' to select a module"
           when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
@@ -118,13 +118,20 @@ performSessionCommand _ Exit = modify $ exiting .= True
 performSessionCommand output (RefactorCommand cmd) 
   = do actMod <- gets (^. actualMod)
        (Just actualMod, otherMods) <- getMods actMod
-       res <- lift $ performCommand cmd (assocToNamedMod actualMod) (map assocToNamedMod otherMods)
+       res <- lift $ performCommand cmd actualMod otherMods
        inDryMode <- gets (^. dryMode)
        case res of Left err -> liftIO $ hPutStrLn output err
                    Right resMods -> performChanges output inDryMode resMods
 
   where performChanges output False resMods = do 
           changedMods <- forM resMods $ \case 
+            ModuleCreated n m otherM -> do 
+              Just (_, otherMR) <- gets (lookupModInSCs otherM . (^. refSessMCs))
+              let Just otherMS = otherMR ^? modRecMS
+              otherSrcDir <- liftIO $ getSourceDir otherMS
+              let loc = srcDirFromRoot otherSrcDir n
+              liftIO $ withBinaryFile loc WriteMode (`hPutStr` prettyPrint m)
+              return (SourceFileKey NormalHs n)
             ContentChanged (n,m) -> do
               let modName = semanticsModule m
               ms <- getModSummary modName (isBootModule $ m ^. semantics)
@@ -141,18 +148,18 @@ performSessionCommand output (RefactorCommand cmd)
                   modify $ (refSessMCs .- removeModule mod)
                   liftIO $ removeFile file
                 _ -> do liftIO $ hPutStrLn output ("Module " ++ mod ++ " could not be removed.")
-              return mod
-          void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++)) changedMods
+              return (SourceFileKey NormalHs mod)
+          void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++) . modSumName) 
+                   (\ms -> keyFromMS ms `elem` changedMods)
         performChanges output True resMods = forM_ resMods (liftIO . \case 
           ContentChanged (n,m) -> do
-            hPutStrLn output $ "### Module changed: " ++ n ++ "\n### new content:\n" ++ prettyPrint m
+            hPutStrLn output $ "### Module changed: " ++ (n ^. sfkModuleName) ++ "\n### new content:\n" ++ prettyPrint m
           ModuleRemoved mod ->
             hPutStrLn output $ "### Module removed: " ++ mod)
 
         getModSummary name boot
           = do allMods <- lift getModuleGraph
                return $ fromJust $ find (\ms -> ms_mod ms == name && (ms_hsc_src ms == HsSrcFile) /= boot) allMods 
-
 
 instance IsRefactSessionState CLISessionState where
   refSessMCs = refactState & _refSessMCs

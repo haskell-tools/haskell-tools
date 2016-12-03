@@ -424,7 +424,7 @@ testRefactor refact moduleName
       initGhcFlags
       useDirs [rootDir]
       mod <- loadModule rootDir moduleName >>= parseTyped
-      res <- runRefactor (moduleName, mod) [] (localRefactoring $ refact mod) 
+      res <- runRefactor (SourceFileKey NormalHs moduleName, mod) [] (localRefactoring $ refact mod) 
       case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
                   Left err -> return $ Left err
 
@@ -496,8 +496,9 @@ performRefactors command workingDir flags target = do
       targetMod <- parseTyped selectedMod
       otherMods <- mapM parseTyped otherModules
       res <- performCommand (readCommand command) 
-                            (target, targetMod) (zip (map (GHC.moduleNameString . moduleName . ms_mod) otherModules) otherMods)
-      return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+                            (SourceFileKey NormalHs target, targetMod) (zip (map keyFromMS otherModules) otherMods)
+      return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n ^. sfkModuleName, Just $ prettyPrint m)
+                                                     ModuleCreated n m _ -> (n, Just $ prettyPrint m)
                                                      ModuleRemoved m -> (m, Nothing)
                                               )) r
                       Left l -> Left l) 
@@ -541,8 +542,9 @@ performRefactor command workingDir flags target =
     useFlags flags
     useDirs [workingDir]
     ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
-  where refact m = performCommand (readCommand command) (target,m) []
+  where refact m = performCommand (readCommand command) (SourceFileKey NormalHs target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
+        newContent ((ModuleCreated _ newContent _) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress
 
 -- tests for ast-gen

@@ -7,8 +7,10 @@
 module Language.Haskell.Tools.Refactor.GetModules where
 
 import Control.Reference
+import Data.Function (on)
 import Data.List (intersperse, find, sortBy)
 import qualified Data.Map as Map
+import Data.Maybe
 import Distribution.Package (Dependency(..), PackageName(..), pkgName)
 import Distribution.Verbosity (silent)
 import Distribution.ModuleName (components)
@@ -21,7 +23,7 @@ import System.Directory
 import Language.Haskell.Extension
 
 import DynFlags (DynFlags, xopt_set, xopt_unset)
-import GHC (parseDynamicFlags)
+import GHC hiding (ModuleName)
 import qualified DynFlags as GHC
 import SrcLoc as GHC
 import RdrName as GHC (RdrName)
@@ -34,51 +36,64 @@ import Language.Haskell.Tools.AST (Dom, IdDom)
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
 data ModuleCollection
   = ModuleCollection { _mcId :: ModuleCollectionId
+                     , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
                      , _mcModules :: Map.Map SourceFileKey ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
                      , _mcDependencies :: [ModuleCollectionId]
                      }
 
+instance Eq ModuleCollection where
+  (==) = (==) `on` _mcId
+
 instance Show ModuleCollection where
-  show (ModuleCollection id srcDirs mods _ deps) 
-    = "ModuleCollection (" ++ show id ++ ") " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
+  show (ModuleCollection id root srcDirs mods _ deps) 
+    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
 
 data ModuleRecord 
        = ModuleNotLoaded { _recModuleWillNeedCode :: Bool }
-       | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName) }
-       | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom Name) }
-       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom }
-       | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom }
-  deriving (Eq, Show)
-
--- | Module name and marker to separate .hs-boot module definitions. Specifies a source file in a working directory.
-data SourceFileKey = SourceFileKey { _sfkIsBoot :: IsBoot
-                                   , _sfkModuleName :: String
-                                   }
-  deriving (Eq, Ord, Show)
+       | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
+                      , _modRecMS :: ModSummary
+                      }
+       | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom Name)
+                       , _modRecMS :: ModSummary 
+                       }
+       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom 
+                           , _modRecMS :: ModSummary
+                           }
+       | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom
+                             , _modRecMS :: ModSummary
+                             }
 
 -- | This data structure identifies a module collection
 data ModuleCollectionId = DirectoryMC FilePath
                         | LibraryMC String
-                        | ExecutableMC String
-                        | TestSuiteMC String
-                        | BenchmarkMC String
+                        | ExecutableMC String String
+                        | TestSuiteMC String String
+                        | BenchmarkMC String String
   deriving (Eq, Ord, Show)
 
 moduleCollectionIdString :: ModuleCollectionId -> String
 moduleCollectionIdString (DirectoryMC fp) = fp
 moduleCollectionIdString (LibraryMC id) = id
-moduleCollectionIdString (ExecutableMC id) = id
-moduleCollectionIdString (TestSuiteMC id) = id
-moduleCollectionIdString (BenchmarkMC id) = id
+moduleCollectionIdString (ExecutableMC _ id) = id
+moduleCollectionIdString (TestSuiteMC _ id) = id
+moduleCollectionIdString (BenchmarkMC _ id) = id
 
--- | Decides if a module is a .hs-boot file or a normal .hs file
-data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
+moduleCollectionPkgId :: ModuleCollectionId -> Maybe String
+moduleCollectionPkgId (DirectoryMC fp) = Nothing
+moduleCollectionPkgId (LibraryMC id) = Just id
+moduleCollectionPkgId (ExecutableMC id _) = Just id
+moduleCollectionPkgId (TestSuiteMC id _) = Just id
+moduleCollectionPkgId (BenchmarkMC id _) = Just id
 
 makeReferences ''ModuleCollection
-makeReferences ''SourceFileKey
 makeReferences ''ModuleRecord
+
+instance Show ModuleRecord where
+  show (ModuleNotLoaded code) = "ModuleNotLoaded " ++ show code
+  show mr = GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS
+
 
 lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
@@ -89,9 +104,6 @@ lookupModInSCs moduleName = find ((moduleName ==) . fst) . concatMap (Map.assocs
 removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
 removeModule moduleName = map (mcModules .- Map.filterWithKey (\k v -> moduleName /= (k ^. sfkModuleName)))
 
-updateModule :: String -> IsBoot -> ModuleRecord -> [ModuleCollection] -> [ModuleCollection]
-updateModule moduleName boot mod = map (mcModules .- Map.insert (SourceFileKey boot moduleName) mod)
-
 hasGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
 hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False) 
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
@@ -101,7 +113,7 @@ needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True;
                            . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
-codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod) -> ModuleCodeGenerated mod
+codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod ms) -> ModuleCodeGenerated mod ms
                                                            ModuleNotLoaded _ -> ModuleNotLoaded True
                                                            r -> r) key)
 
@@ -136,7 +148,7 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return []]
 
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
 -- now recognizing only .hs files
@@ -165,6 +177,7 @@ modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> rea
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> ModuleCollection
         toModuleCollection pkg tmc = let bi = getBuildInfo tmc 
                                       in ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc) 
+                                                          root
                                                           (map (normalise . (root </>)) $ hsSourceDirs bi) 
                                                           (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
                                                           (flagsFromBuildInfo bi)
@@ -183,34 +196,39 @@ instance ToModuleCollection Library where
   getModuleNames = libModules
 
 instance ToModuleCollection Executable where
-  mkModuleCollKey _ exe = ExecutableMC (exeName exe)
+  mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
   getModuleNames = exeModules
 
 instance ToModuleCollection TestSuite where
-  mkModuleCollKey _ test = TestSuiteMC (testName test)
+  mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
   getModuleNames = testModules
 
 instance ToModuleCollection Benchmark where
-  mkModuleCollKey _ test = BenchmarkMC (benchmarkName test)
+  mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
   getModuleNames = benchmarkModules
 
 
+compileInContext :: ModuleCollection -> [ModuleCollection] -> DynFlags -> IO DynFlags
+compileInContext mc mcs dfs 
+  = (\dfs' -> dfs' { GHC.packageFlags = catMaybes $ map dependencyToPkgFlag (mc ^. mcDependencies) }) 
+       <$> (mc ^. mcFlagSetup $ dfs)
+  where dependencyToPkgFlag lib@(LibraryMC pkgName) 
+          = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs 
+              then Just $ GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
+              else Nothing
 
 flagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 -- the import pathes are already set globally
-flagsFromBuildInfo BuildInfo{ defaultExtensions, targetBuildDepends, options } df
+flagsFromBuildInfo BuildInfo{ defaultExtensions, options } df
   = do (df,_,_) <- parseDynamicFlags df (map (L noSrcSpan) $ concatMap snd options)
-       return $ foldl (.) (\df -> df { GHC.packageFlags = map dependencyToPkgFlag targetBuildDepends }) 
-                          (map (\case EnableExtension ext -> translateExtension ext
-                                      _                   -> id                               
-                               ) defaultExtensions) 
+       return $ foldl (.) id (map (\case EnableExtension ext -> translateExtension ext
+                                         _                   -> id                               
+                                  ) defaultExtensions)
                           $ df
-  where dependencyToPkgFlag (Dependency (PackageName pkgName) _) = GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
-
-        translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances
+  where translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances
         translateExtension UndecidableInstances = flip xopt_set GHC.UndecidableInstances
         translateExtension IncoherentInstances = flip xopt_set GHC.IncoherentInstances
         translateExtension DoRec = flip xopt_set GHC.RecursiveDo

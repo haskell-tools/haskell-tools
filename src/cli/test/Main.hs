@@ -66,16 +66,16 @@ cliTests
           ++ reloads ["B", "A"] ++ "B> ")
     , ( map ((testRoot </> "multi-packages") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , prefixText ["A", "B"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n" 
+      , prefixText ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n" 
       )
     , ( map ((testRoot </> "multi-packages-flags") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , prefixText ["A", "B"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
+      , prefixText ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
       )
     , ( map ((testRoot </> "multi-packages-same-module") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
       , "Compiling modules. This may take some time. Please wait.\nLoaded module: A\n" 
-          ++ "The following modules are ignored: A (from package2). Multiple modules with the same qualified name are not supported.\n"
+          ++ "The following modules are ignored: A. Multiple modules with the same qualified name are not supported.\n"
           ++ "All modules loaded. Use 'SelectModule module-name' to select a module\n" 
           ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
       )

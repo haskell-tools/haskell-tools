@@ -46,9 +46,16 @@ renameModule :: forall dom . DomainRenameDefinition dom => String -> String -> R
 renameModule from to m mods 
     | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module" 
     | not (validModuleName to) = refactError "The given name is not a valid module name" 
-    | otherwise = fmap (\ls -> ModuleRemoved from : map (\(ContentChanged (mod,res)) -> ContentChanged (if mod == from then to else mod, res)) ls)
+    | otherwise = -- here it is important that the delete is the last, because rename 
+                  -- can still use the info about the deleted module
+                  fmap (\ls -> map (alterChange from to) ls ++ [ModuleRemoved from])
                     $ localRefactoring (replaceModuleNames >=> alterNormalNames) m mods
-  where replaceModuleNames :: LocalRefactoring dom
+  where alterChange from to (ContentChanged (mod,res)) 
+          | (mod ^. sfkModuleName) == from 
+          = ModuleCreated to res (SourceFileKey NormalHs from)
+        alterChange _ _ c = c 
+
+        replaceModuleNames :: LocalRefactoring dom
         replaceModuleNames = biplateRef @_ @(ModuleName dom) & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
 
         alterNormalNames :: LocalRefactoring dom
