@@ -78,6 +78,9 @@ loadingTests =
                     , testRoot </> "multi-packages-dependent" </> "package2" ]]
     , [ LoadedModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs"
                       , testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs"]] )
+  , ( "has-th"
+    , [AddPackages [testRoot </> "has-th"]]
+    , [LoadedModules [testRoot </> "has-th" </> "TH.hs", testRoot </> "has-th" </> "A.hs"]] )
   ]
 
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg])]
