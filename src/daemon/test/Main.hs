@@ -182,8 +182,12 @@ makeDaemonTest :: (Maybe FilePath, String, [ClientMessage], [ResponseMsg]) -> Te
 makeDaemonTest (Nothing, label, input, expected) = testCase label $ do  
     actual <- communicateWithDaemon (map Right input)
     assertEqual "" expected actual
-makeDaemonTest (Just dir, label, input, expected) = testCase label $ do   
+makeDaemonTest (Just dir, label, input, expected) = testCase label $ do 
+    exists <- doesDirectoryExist (dir ++ "_orig")
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ "_orig")
     copyDir dir (dir ++ "_orig")
+    exists <- doesDirectoryExist (dir ++ "_orig")
     actual <- communicateWithDaemon (map Right input)
     assertEqual "" expected actual
   `finally` do removeDirectoryRecursive dir
@@ -191,6 +195,9 @@ makeDaemonTest (Just dir, label, input, expected) = testCase label $ do
 
 makeReloadTest :: (String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg]) -> TestTree
 makeReloadTest (label, dir, input1, io, input2, expected) = testCase label $ do  
+    exists <- doesDirectoryExist (dir ++ "_orig")
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ "_orig")
     copyDir dir (dir ++ "_orig")
     actual <- communicateWithDaemon (map Right input1 ++ [Left io] ++ map Right input2)
     assertEqual "" expected actual

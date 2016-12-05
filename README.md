@@ -18,13 +18,13 @@ The goal of this project is to create developer tools for the functional program
 ## Installation (last build from source)
 
   - *Recommended*: use [stack](https://docs.haskellstack.org/en/stable/README/) for building the project
-    - `stack --stack-yaml=stack-all.yaml setup`
-    - `stack --stack-yaml=stack-all.yaml build`
+    - `stack setup`
+    - `stack build`
   - *Alternative*: you have to cabal-install each package of the repository in the following order: `ast`, `ast-ghc`, `ast-trf`, `ast-gen`, `ast-ppr`, `refactor`.
   
 ## Running the CLI
 
-  - If you are using stack to build from source: `stack --stack-yaml=stack-all.yaml exec ht-refact -- [flags] package-roots`
+  - If you are using stack to build from source: `stack exec ht-refact -- [flags] package-roots`
   - Otherwise, install the `haskell-tools-cli` package and use `ht-refact [flags] package-roots`.
   - You can use [ghc flags](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html) to control how modules are loaded and checked.
   - By setting the `-one-shot`, `-module-name=<modulename>` and `-refactoring=<refactor-command>` flags, you can perform a refactoring without the interactive mode.

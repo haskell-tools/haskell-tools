@@ -46,25 +46,25 @@ before_install:
 
 install:
 
-  # install dependecies
-  - stack --no-terminal --install-ghc test --only-dependencies
+  # Install all dependecies of Haskell-tools, including test requirements
+  - stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
 
 script:
   
-  # build Haskell-tools
-  - stack --no-terminal build --stack-yaml=stack-all.yaml --coverage  --haddock --no-haddock-deps 
+  # Build Haskell-tools with all library, executable, test and benchmark
+  - stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps 
 
-  # run tests
-  - stack --no-terminal test --stack-yaml=stack-all.yaml --coverage
+  # Run tests. We record test coverage information.
+  - stack --no-terminal test --coverage
 
 after_script:
   
-  # run benchmarks
-  - stack --no-terminal --stack-yaml=stack-all.yaml bench haskell-tools-cli > benchmark.txt 2>&1
+  # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
+  - stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
 
-  # send test coverage info
+  # Send test coverage info
   - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
   - ./shc --partial-coverage haskell-tools-refactor haskell-tools-test
 
-  # publish API and coverage data to our site
+  # Publish API, coverage and benchmark data to our site
   - bash ./deploy.sh

@@ -4,7 +4,7 @@ import Test.HUnit
 import System.Exit
 import System.Directory
 import System.FilePath
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Control.Exception
 import qualified Data.List as List
 import Data.Knob
@@ -94,6 +94,9 @@ reloads mods = concatMap (\m -> "Re-loaded module: " ++ m ++ "\n") mods
 
 copyDir ::  FilePath -> FilePath -> IO ()
 copyDir src dst = do
+  exists <- doesDirectoryExist dst
+  -- clear the target directory from possible earlier test runs
+  when exists $ removeDirectoryRecursive dst
   createDirectory dst
   content <- getDirectoryContents src
   let xs = filter (`notElem` [".", ".."]) content
