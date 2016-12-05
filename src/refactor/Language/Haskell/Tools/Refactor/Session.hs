@@ -53,7 +53,6 @@ loadPackagesFrom report packages =
      let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
      checkEvaluatedMods report modsToParse
      mods <- mapM (loadModule report) modsToParse
-     -- TODO: check modules defined in multiple packages
      return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])

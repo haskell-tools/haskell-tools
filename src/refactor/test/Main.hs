@@ -468,13 +468,14 @@ checkCorrectlyPrinted workingDir moduleName
 -- TODO: find out why the commented-out code doesn't work for the two Template Haskell tests. These work for CLI. 
 -- performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 -- performRefactors command workingDir flags target = runGhc (Just libdir) $ flip evalStateT (initSession :: RefactorSessionState) $ do 
---   lift initGhcFlags
---   mods <- loadPackagesFrom ({- const $ return () -} \m -> liftIO $ (putStrLn ("Loaded module: " ++ workingDir ++ " " ++ m) >> hFlush stdout)) [workingDir]
+--   lift initGhcFlagsForTest
+--   mods <- loadPackagesFrom (const $ return ()) [workingDir]
 --   (selectedMod, otherMods) <- getMods (Just $ SourceFileKey NormalHs target)
 --   case selectedMod of 
 --     Just (_, selMod) -> do 
---       res <- lift $ performCommand (readCommand command) (target, selMod) (map assocToNamedMod otherMods)
---       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n, Just $ prettyPrint m)
+--       res <- lift $ performCommand (readCommand command) (SourceFileKey NormalHs target, selMod) otherMods
+--       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n ^. sfkModuleName, Just $ prettyPrint m)
+--                                                      ModuleCreated n m _ -> (n, Just $ prettyPrint m)
 --                                                      ModuleRemoved m -> (m, Nothing)
 --                                               )) r
 --                       Left l -> Left l) 
@@ -538,9 +539,7 @@ parseRenamed modSum = do
 performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String String)
 performRefactor command workingDir flags target = 
   runGhc (Just libdir) $ do
-    initGhcFlags
     useFlags flags
-    useDirs [workingDir]
     ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand (readCommand command) (SourceFileKey NormalHs target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent

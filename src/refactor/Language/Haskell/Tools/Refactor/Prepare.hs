@@ -87,8 +87,8 @@ initGhcFlags' needsCodeGen = do
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ dflags { importPaths = []
-             , hscTarget = if needsCodeGen || ("linux" `isInfixOf` os) then HscInterpreted else HscNothing
-             , ghcLink = if needsCodeGen || ("linux" `isInfixOf` os) then LinkInMemory else NoLink
+             , hscTarget = if needsCodeGen then HscInterpreted else HscNothing
+             , ghcLink = if needsCodeGen then LinkInMemory else NoLink
              , ghcMode = CompManager 
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
              }
@@ -126,7 +126,7 @@ getModSumOrig = normalise . fromMaybe (error "getModSumOrig: The given module do
 -- | Load the summary of a module given by the working directory and module name.
 loadModule :: String -> String -> Ghc ModSummary
 loadModule workingDir moduleName 
-  = do initGhcFlags
+  = do initGhcFlagsForTest
        useDirs [workingDir]
        target <- guessTarget moduleName Nothing
        setTargets [target]
