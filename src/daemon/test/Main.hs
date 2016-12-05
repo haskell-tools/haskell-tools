@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving, LambdaCase #-}
 module Main where
 
 import Test.Tasty
@@ -19,6 +19,8 @@ import Data.Maybe
 import System.IO
 import System.Directory
 
+import Debug.Trace
+
 import Language.Haskell.Tools.Refactor.Daemon
 
 main :: IO ()
@@ -31,7 +33,7 @@ main = do -- create one daemon process for the whole testing session
 
 allTests :: FilePath -> TestTree
 allTests testRoot
-  = localOption (mkTimeout ({- 5s -} 1000 * 1000 * 5)) 
+  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10)) 
       $ testGroup "daemon-tests" 
           [ testGroup "simple-tests" 
               $ map (makeDaemonTest . (\(label, input, output) -> (Nothing, label, input, output))) simpleTests
@@ -41,6 +43,7 @@ allTests testRoot
               $ map (makeDaemonTest . (\(label, dir, input, output) -> (Just (testRoot </> dir), label, input, output))) (refactorTests testRoot)
           , testGroup "reload-tests" 
               $ map makeReloadTest reloadingTests
+          , selfLoadingTest
           ]
 
 simpleTests :: [(String, [ClientMessage], [ResponseMsg])]
@@ -81,7 +84,23 @@ loadingTests =
   , ( "has-th"
     , [AddPackages [testRoot </> "has-th"]]
     , [LoadedModules [testRoot </> "has-th" </> "TH.hs", testRoot </> "has-th" </> "A.hs"]] )
+  , ( "th-added-later"
+    , [ AddPackages [testRoot </> "th-added-later" </> "package1"]
+      , AddPackages [testRoot </> "th-added-later" </> "package2"] 
+      ]
+    , [ LoadedModules [testRoot </> "th-added-later" </> "package1" </> "A.hs"] 
+      , LoadedModules [testRoot </> "th-added-later" </> "package2" </> "B.hs"]] )
   ]
+
+sourceRoot = ".." </> ".." </> "src"
+
+selfLoadingTest :: TestTree
+selfLoadingTest = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do  
+    actual <- communicateWithDaemon 
+                [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor" {- , "cli", "daemon" -} ] ) ]
+    assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual) 
+               (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
+
 
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg])]
 refactorTests testRoot =
@@ -214,26 +233,27 @@ communicateWithDaemon msgs = withSocketsDo $ do
   sock <- socket (addrFamily serverAddr) Stream defaultProtocol
   connect sock (addrAddress serverAddr)
   intermedRes <- sequence (map (either (\io -> do sendAll sock (encode KeepAlive)
-                                                  r <- readSockResponsesUntil sock KeepAliveResponse
+                                                  r <- readSockResponsesUntil sock KeepAliveResponse BS.empty
                                                   io
                                                   return r)
                                ((>> return []) . sendAll sock . (`BS.snoc` '\n') . encode)) msgs)
   sendAll sock $ encode Disconnect
-  resps <- readSockResponsesUntil sock Disconnected
+  resps <- readSockResponsesUntil sock Disconnected BS.empty
   close sock
   return (concat intermedRes ++ resps)
 
-readSockResponsesUntil :: Socket -> ResponseMsg -> IO [ResponseMsg]
-readSockResponsesUntil sock rsp
+readSockResponsesUntil :: Socket -> ResponseMsg -> BS.ByteString -> IO [ResponseMsg]
+readSockResponsesUntil sock rsp bs
   = do resp <- recv sock 2048
+       let fullBS = bs `BS.append` resp
        if BS.null resp 
          then return []
          else
-           let splitted = BS.split '\n' resp
+           let splitted = BS.split '\n' fullBS
                recognized = catMaybes $ map decode splitted
             in if rsp `elem` recognized 
                  then return $ List.delete rsp recognized 
-                 else (recognized ++) <$> readSockResponsesUntil sock rsp
+                 else readSockResponsesUntil sock rsp fullBS
 
 stopDaemon :: IO ()
 stopDaemon = withSocketsDo $ do

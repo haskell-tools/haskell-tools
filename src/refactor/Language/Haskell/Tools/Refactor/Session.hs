@@ -17,6 +17,7 @@ import GHC
 import GhcMonad as GHC
 import HscTypes as GHC
 import Digraph as GHC
+import DynFlags as GHC
 import FastString as GHC
 import Data.IntSet (member)
 import Language.Haskell.TH.LanguageExtensions
@@ -45,15 +46,18 @@ loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath
 loadPackagesFrom report packages = 
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
+     allModColls <- gets (^. refSessMCs)
      lift $ useDirs (modColls ^? traversal & mcSourceDirs & traversal)
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
-     lift $ mapM addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) 
-                                 ( modNames)
-     modsForColls <- lift $ depanal [] True
-     let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-     checkEvaluatedMods report modsToParse
-     mods <- mapM (loadModule report) modsToParse
-     return (mods, ignored)
+         alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
+     lift $ mapM addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
+     withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+       modsForColls <- lift $ depanal [] True
+       let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
+           actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
+       checkEvaluatedMods report modsToParse
+       mods <- mapM (loadModule report) actuallyCompiled
+       return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
         extractDuplicates (a:rest) 
@@ -101,18 +105,17 @@ reloadChangedModules report isChanged = do
   checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
-getReachableModules :: (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
-getReachableModules selected = do
-  -- FIXME: not sure if depanal is correct here
-  -- it replaces module graph that will cause the module graph of GHC and
-  -- our module collections to be different, not sure if it causes any actual problems
-  allMods <- lift $ depanal [] True
-  let (allModsGraph, lookup) = moduleGraphNodes False allMods
-      changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
-                      $ filter selected allMods
-      recompMods = map (ms_mod . getModFromNode) $ reachablesG (transposeG allModsGraph) changedMods
-      sortedMods = reverse $ topologicalSortG allModsGraph
-  return $ filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
+getReachableModules :: IsRefactSessionState st => (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
+getReachableModules selected = do 
+  allModColls <- gets (^. refSessMCs)
+  withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+    allMods <- lift $ depanal [] True
+    let (allModsGraph, lookup) = moduleGraphNodes False allMods
+        changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
+                        $ filter selected allMods
+        recompMods = map (ms_mod . getModFromNode) $ reachablesG (transposeG allModsGraph) changedMods
+        sortedMods = reverse $ topologicalSortG allModsGraph
+    return $ filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
 
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
 reloadModule report ms = do 

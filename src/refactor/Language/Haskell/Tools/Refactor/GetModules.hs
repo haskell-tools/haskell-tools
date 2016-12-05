@@ -213,12 +213,22 @@ instance ToModuleCollection Benchmark where
 
 compileInContext :: ModuleCollection -> [ModuleCollection] -> DynFlags -> IO DynFlags
 compileInContext mc mcs dfs 
-  = (\dfs' -> dfs' { GHC.packageFlags = catMaybes $ map dependencyToPkgFlag (mc ^. mcDependencies) }) 
+  = (\dfs' -> applyDependencies mcs (mc ^. mcDependencies) dfs') 
        <$> (mc ^. mcFlagSetup $ dfs)
-  where dependencyToPkgFlag lib@(LibraryMC pkgName) 
-          = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs 
-              then Just $ GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
-              else Nothing
+
+applyDependencies :: [ModuleCollection] -> [ModuleCollectionId] -> DynFlags -> DynFlags
+applyDependencies mcs ids dfs = dfs { GHC.packageFlags = catMaybes $ map (dependencyToPkgFlag mcs) ids }
+
+dependencyToPkgFlag :: [ModuleCollection] -> ModuleCollectionId -> Maybe (GHC.PackageFlag)
+dependencyToPkgFlag mcs lib@(LibraryMC pkgName) 
+  = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs 
+      then Just $ GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
+      else Nothing
+dependencyToPkgFlag _ _ = Nothing
+
+enableAllPackages :: [ModuleCollection] -> DynFlags -> DynFlags
+enableAllPackages mcs dfs = applyDependencies mcs allDeps dfs
+  where allDeps = mcs ^? traversal & mcDependencies & traversal
 
 flagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 -- the import pathes are already set globally

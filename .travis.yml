@@ -62,9 +62,5 @@ after_script:
   # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
   - stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
 
-  # Send test coverage info
-  - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
-  - ./shc --partial-coverage haskell-tools-refactor haskell-tools-test
-
   # Publish API, coverage and benchmark data to our site
   - bash ./deploy.sh
