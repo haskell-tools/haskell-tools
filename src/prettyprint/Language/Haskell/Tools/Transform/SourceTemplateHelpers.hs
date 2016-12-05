@@ -32,6 +32,9 @@ optBefore s = SourceTemplateOpt noSrcSpan s ""
 optAfter :: String -> OptionalInfo SrcTemplateStage
 optAfter s = SourceTemplateOpt noSrcSpan "" s
 
+optBeforeAfter :: String -> String -> OptionalInfo SrcTemplateStage
+optBeforeAfter bef aft = SourceTemplateOpt noSrcSpan bef aft
+
 list :: ListInfo SrcTemplateStage
 list = SourceTemplateList noSrcSpan "" "" "" False []
 

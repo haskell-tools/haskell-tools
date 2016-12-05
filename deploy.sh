@@ -34,6 +34,9 @@ cp -r .stack-work/install/x86_64-linux/lts-7.7/8.0.1/doc/* out/$TRAVIS_BRANCH/ap
 mkdir -p out/$TRAVIS_BRANCH/coverage
 cp -r .stack-work/install/x86_64-linux/lts-7.7/8.0.1/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
 
+# Copy the benchmark report
+cp benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
+
 # Create an index page
 cp branch-info-index.html out/$TRAVIS_BRANCH/index.html
 

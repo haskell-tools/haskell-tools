@@ -17,6 +17,7 @@ import Control.Applicative ((<|>))
 import Control.Reference
 
 import GHC
+import ErrUtils
 import Digraph
 import HscTypes as GHC
 import Module as GHC
@@ -46,7 +47,8 @@ tryOut = refactorSession stdin stdout
            , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
 
 refactorSession :: Handle -> Handle -> [String] -> IO ()
-refactorSession input output args = runGhc (Just libdir) $ flip evalStateT initSession $
+refactorSession input output args = runGhc (Just libdir) $ handleSourceError printSrcErrors 
+                                                         $ flip evalStateT initSession $
   do lift $ initGhcFlags
      workingDirsAndHtFlags <- lift $ useFlags args
      let (htFlags, workingDirs) = partition (\f -> head f == '-') workingDirsAndHtFlags
@@ -54,7 +56,10 @@ refactorSession input output args = runGhc (Just libdir) $ flip evalStateT initS
                          else do initializeSession output workingDirs htFlags
                                  runSession input output htFlags
      
-  where initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession ()
+  where printSrcErrors err = do dfs <- getSessionDynFlags 
+                                liftIO $ printBagOfErrors dfs (srcErrorMessages err)
+
+        initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession ()
         initializeSession output workingDirs flags = do
           liftIO $ hSetBuffering output NoBuffering
           liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."

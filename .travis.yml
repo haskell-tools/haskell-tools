@@ -30,28 +30,41 @@ matrix:
     addons: {apt: {packages: [ghc-8.0.1], sources: [hvr-ghc]}}
 
 before_install:
-# Using compiler above sets CC to an invalid value, so unset it
-- unset CC
-
-# Download and unpack the stack executable
-- export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
-- mkdir -p ~/.local/bin
-- |
-  if [ `uname` = "Darwin" ]
-  then
-    travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
-  else
-    travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-  fi
+  # Using compiler above sets CC to an invalid value, so unset it
+  - unset CC
+  
+  # Download and unpack the stack executable
+  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
+  - mkdir -p ~/.local/bin
+  - |
+    if [ `uname` = "Darwin" ]
+    then
+      travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+    else
+      travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+    fi
 
 install:
-- stack --no-terminal --install-ghc test --only-dependencies
+
+  # install dependecies
+  - stack --no-terminal --install-ghc test --only-dependencies
 
 script:
-- stack --no-terminal build --stack-yaml=stack-all.yaml --coverage  --haddock --no-haddock-deps 
-- stack --no-terminal test --stack-yaml=stack-all.yaml --coverage
+  
+  # build Haskell-tools
+  - stack --no-terminal build --stack-yaml=stack-all.yaml --coverage  --haddock --no-haddock-deps 
+
+  # run tests
+  - stack --no-terminal test --stack-yaml=stack-all.yaml --coverage
 
 after_script:
-- travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
-- ./shc --partial-coverage haskell-tools-refactor haskell-tools-test
-- bash ./deploy.sh
+  
+  # run benchmarks
+  - stack --no-terminal --stack-yaml=stack-all.yaml bench haskell-tools-cli > benchmark.txt 2>&1
+
+  # send test coverage info
+  - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
+  - ./shc --partial-coverage haskell-tools-refactor haskell-tools-test
+
+  # publish API and coverage data to our site
+  - bash ./deploy.sh

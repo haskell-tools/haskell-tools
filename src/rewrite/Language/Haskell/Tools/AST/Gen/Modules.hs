@@ -43,15 +43,15 @@ mkModuleExport = mkAnn ("module " <> child) . UModuleExport
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
 mkIESpec :: Name dom -> Maybe (SubSpec dom) -> IESpec dom
-mkIESpec name ss = mkAnn (child <> child) (UIESpec name (mkAnnMaybe opt ss))
+mkIESpec name ss = mkAnn (child <> child) (UIESpec name (mkAnnMaybe (optBeforeAfter "(" ")") ss))
 
 -- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
 mkSubList :: [Name dom] -> SubSpec dom
-mkSubList = mkAnn ("(" <> child <> ")") . USubSpecList . mkAnnList (listSep ", ")
+mkSubList = mkAnn child . USubSpecList . mkAnnList (listSep ", ")
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
 mkSubAll :: SubSpec dom
-mkSubAll = mkAnn "(..)" USubSpecAll
+mkSubAll = mkAnn ".." USubSpecAll
 
 -- | An import declaration: @import Module.Name@         
 mkImportDecl :: Bool -> Bool -> Bool -> Maybe String -> ModuleName dom -> Maybe (ModuleName dom) -> Maybe (ImportSpec dom) 

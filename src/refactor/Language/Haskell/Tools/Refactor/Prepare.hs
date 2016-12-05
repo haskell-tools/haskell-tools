@@ -167,6 +167,7 @@ forceAsmGen ms = ms { ms_hspp_opts = modOpts' }
 
 readSrcSpan :: String -> RealSrcSpan
 readSrcSpan s = case splitOn "-" s of
+  [one] -> mkRealSrcSpan (readSrcLoc one) (readSrcLoc one)
   [from,to] -> mkRealSrcSpan (readSrcLoc from) (readSrcLoc to)
   
 readSrcLoc :: String -> RealSrcLoc
