@@ -5,6 +5,8 @@
            , ScopedTypeVariables
            , LambdaCase
            , TemplateHaskell
+           , PatternGuards
+           , FlexibleContexts
            #-}
 
 module Language.Haskell.Tools.Demo where
@@ -19,7 +21,7 @@ import Data.Aeson hiding ((.=))
 import Data.Map (Map, (!), member, insert)
 import qualified Data.Map as Map
 import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS
 import GHC.Generics
 
 import System.IO
@@ -61,12 +63,13 @@ type ClientId = Int
 data RefactorSessionState
   = RefactorSessionState { _refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
                          , _actualMod :: Maybe (String, String, IsBoot)
+                         , _isDisconnecting :: Bool
                          }
 
 makeReferences ''RefactorSessionState
 
 initSession :: RefactorSessionState
-initSession = RefactorSessionState Map.empty Nothing
+initSession = RefactorSessionState Map.empty Nothing False
 
 runFromCLI :: IO ()
 runFromCLI = getArgs >>= runDemo
@@ -96,7 +99,10 @@ app sessions wd = websocketsOr defaultConnectionOptions wsApp backupApp
     serverLoop sessId ghcSess state conn =
         do Text msg <- receiveDataMessage conn
            respondTo wd sessId ghcSess state (sendTextData conn) msg
-           serverLoop sessId ghcSess state conn
+           currState <- readMVar state
+           if currState ^. isDisconnecting 
+             then sendClose conn ("" :: ByteString)
+             else serverLoop sessId ghcSess state conn
       `catch` \(e :: ConnectionException) -> do 
                  modifyMVar_ sessions (return . delete sessId)
                  liftIO $ removeDirectoryIfPresent (userDir wd sessId)
@@ -106,7 +112,7 @@ app sessions wd = websocketsOr defaultConnectionOptions wsApp backupApp
 
 respondTo :: FilePath -> Int -> Session -> MVar RefactorSessionState -> (ByteString -> IO ()) -> ByteString -> IO ()
 respondTo wd id ghcSess state next mess = case decode mess of
-  Nothing -> next $ encode $ ErrorMessage "WRONG MESSAGE FORMAT"
+  Nothing -> next $ encode (ErrorMessage $ "WRONG MESSAGE FORMAT: " ++ show (BS.unpack mess))
   Just req -> handleErrors wd req (next . encode)
                 $ do resp <- modifyMVar state (\st -> swap <$> reflectGhc (runStateT (updateClient (userDir wd id) req) st) ghcSess)
                      case resp of Just respMsg -> next $ encode respMsg
@@ -115,6 +121,8 @@ respondTo wd id ghcSess state next mess = case decode mess of
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
 updateClient :: FilePath -> ClientMessage -> StateT RefactorSessionState Ghc (Maybe ResponseMsg)
 updateClient dir KeepAlive = return Nothing
+updateClient dir Disconnect = do modify $ isDisconnecting .= True
+                                 return $ Just Disconnected
 updateClient dir (ModuleChanged name newContent) = do
     liftIO $ createFileForModule dir name newContent
     targets <- lift getTargets
@@ -149,8 +157,6 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
     let command = analyzeCommand refact (selection:args)
-    liftIO $ putStrLn $ (toFileName dir modName)
-    liftIO $ putStrLn $ maybe "" (show . getRange . snd) mod
     case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules 
                              case res of
                                Left err -> return $ Just $ ErrorMessage err
@@ -158,18 +164,22 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
                                                 return $ Just $ RefactorChanges (map trfDiff diff)
                 Nothing -> return $ Just $ ErrorMessage "The module is not found"
   where trfDiff (ContentChanged (key,cont)) = (key ^. sfkModuleName, Just (prettyPrint cont))
+        trfDiff (ModuleCreated name mod _) = (name, Just (prettyPrint mod))
         trfDiff (ModuleRemoved name) = (name, Nothing)
 
         applyChanges 
           = mapM_ $ \case 
-              ContentChanged (n,m) -> do
-                liftIO $ withBinaryFile (toFileName dir (n ^. sfkModuleName)) WriteMode (`hPutStr` prettyPrint m)
-                w <- gets (find ((n ^. sfkModuleName ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
-                newm <- lift $ (parseTyped =<< loadModule dir (n ^. sfkModuleName))
-                modify $ refSessMods .- Map.insert (dir, (n ^. sfkModuleName), NormalHs) newm
+              ModuleCreated n m _ -> writeModule n m
+              ContentChanged (n,m) -> writeModule (n ^. sfkModuleName) m
               ModuleRemoved mod -> do
                 liftIO $ removeFile (toFileName dir mod)
                 modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
+
+        writeModule n m = do
+          liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
+          w <- gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
+          newm <- lift $ (parseTyped =<< loadModule dir n)
+          modify $ refSessMods .- Map.insert (dir, n, NormalHs) newm
 
 createFileForModule :: FilePath -> String -> String -> IO ()
 createFileForModule dir name newContent = do
@@ -190,7 +200,8 @@ userDir :: FilePath -> ClientId -> FilePath
 userDir wd id = dataDirs wd </> show id
 
 initGhcSession :: FilePath -> IO Session
-initGhcSession workingDir = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))
+initGhcSession workingDir 
+  = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlagsForTest >> useDirs [workingDir] >> getSession))
 
 handleErrors :: FilePath -> ClientMessage -> (ResponseMsg -> IO ()) -> IO () -> IO ()
 handleErrors wd req next io = io `catch` (next <=< handleException)
@@ -235,9 +246,9 @@ data ClientMessage
                   , newContent :: String
                   }
   | ModuleDeleted { moduleName :: String }
-  deriving (Eq, Show, Generic)
+  | Disconnect
+  deriving (Show, Generic)
 
-instance ToJSON ClientMessage
 instance FromJSON ClientMessage 
 
 data ResponseMsg
@@ -245,7 +256,7 @@ data ResponseMsg
   | ASTViewContent { astContent :: String }
   | ErrorMessage { errorMsg :: String }
   | CompilationProblem { errorMsg :: String }
-  deriving (Eq, Show, Generic)
+  | Disconnected
+  deriving (Show, Generic)
 
 instance ToJSON ResponseMsg
-instance FromJSON ResponseMsg 
