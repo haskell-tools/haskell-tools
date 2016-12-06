@@ -61,9 +61,10 @@ inlineBinding' :: InlineBindingDomain dom
 inlineBinding' topLevelRef localRef removedBinding removedBindingName mod
   = do replacement <- createReplacement removedBinding
        let RealSrcSpan bindingSpan = getRange removedBinding
-       mod' <- descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod
-       let mod'' = removeBindingAndSig topLevelRef localRef removedBindingName mod'
-       return mod''
+       (mod', used) <- runStateT (descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod) False
+       if not used 
+         then refactError "The selected definition is not used, it can be safely deleted."
+         else return $ removeBindingAndSig topLevelRef localRef removedBindingName mod'
 
 -- | True if the given module contains the name of the inlined definition.
 containInlined :: forall dom . InlineBindingDomain dom => GHC.Name -> ModuleDom dom -> Bool
@@ -97,14 +98,15 @@ removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notT
 -- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
 -- the captured arguments of the function call to generate simpler results.
 replaceInvocations :: InlineBindingDomain dom 
-                   => RealSrcSpan -> GHC.Name -> ([[GHC.Name]] -> [Expr dom] -> Expr dom) -> Expr dom -> LocalRefactor dom (Expr dom)
+                   => RealSrcSpan -> GHC.Name -> ([[GHC.Name]] -> [Expr dom] -> Expr dom) -> Expr dom -> StateT Bool (LocalRefactor dom) (Expr dom)
 replaceInvocations bindingRange name replacement expr
   | (Var n, args) <- splitApps expr
   , semanticsName (n ^. simpleName) == Just name
   = case getRange expr of 
       RealSrcSpan ownRange | bindingRange `containsSpan` ownRange
-        -> refactError "Cannot inline definitions containing direct recursion."
-      _ -> replacement (semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
+        -> lift $ refactError "Cannot inline definitions containing direct recursion."
+      _ -> do put True
+              replacement (semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
   | otherwise 
   = descendM (replaceInvocations bindingRange name replacement) expr
 
