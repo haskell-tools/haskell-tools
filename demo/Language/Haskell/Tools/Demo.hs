@@ -190,7 +190,8 @@ userDir :: FilePath -> ClientId -> FilePath
 userDir wd id = dataDirs wd </> show id
 
 initGhcSession :: FilePath -> IO Session
-initGhcSession workingDir = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))
+initGhcSession workingDir 
+  = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlagsForTest >> useDirs [workingDir] >> getSession))
 
 handleErrors :: FilePath -> ClientMessage -> (ResponseMsg -> IO ()) -> IO () -> IO ()
 handleErrors wd req next io = io `catch` (next <=< handleException)
