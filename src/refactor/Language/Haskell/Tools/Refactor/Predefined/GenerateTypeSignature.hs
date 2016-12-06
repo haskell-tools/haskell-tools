@@ -61,29 +61,37 @@ genTypeSig :: forall dom d . (GenerateSignatureDomain dom, BindingElem d) => Boo
 genTypeSig scopedSigs sigBinds vbAccess ls 
   | Just vb <- vbAccess ls 
   , not (typeSignatureAlreadyExist ls vb)
-    = do let id = getBindingName vb
-             isTheBind (Just decl) 
-               = isBinding decl && map semanticsId (decl ^? elementName) == map semanticsId (vb ^? bindingName)
-             isTheBind _ = False
-             
-         alreadyGenerated <- get
-         if alreadyGenerated 
-           then return ls
-           else do put True
-                   -- checking for possible situations when we cannot generate signature because of
-                   -- an implicitly passed value
-                   let myTvs = concatMap @[] (getExternalTVs . idType . semanticsId) (vb ^? bindingName)
-                       dangerousDecls = if scopedSigs then filter (\(_,ts,_) -> not $ isForalledTS ts) sigBinds else sigBinds
-                       dangerousNames = map (\(_,_,bn) -> bn ^? (valBindPats & biplateRef &+& bindingName)) dangerousDecls
-                       dangerousTVs = concatMap (concatMap @[] (getExternalTVs . idType .  semanticsId @(QualifiedName dom))) dangerousNames
-                   if not $ null @[] $ myTvs `intersect` dangerousTVs
-                     then refactError $ "Could not generate type signature: the type variable(s) " 
-                                          ++ concat (intersperse ", " $ map (showSDocUnsafe . ppr) (myTvs `intersect` dangerousTVs)) 
-                                          ++ " cannot be captured. (Use ScopedTypeVariables and forall-ed type signatures)"
-                     else do 
-                       typeSig <- lift $ generateTSFor (getName id) (idType id)
-                       return $ insertWhere (createTypeSig typeSig) (const True) isTheBind ls
+    = if isSimpleBinding vb 
+        then 
+          do let id = getBindingName vb
+                 isTheBind (Just decl) 
+                   = isBinding decl && map semanticsId (decl ^? elementName) == map semanticsId (vb ^? bindingName)
+                 isTheBind _ = False
+                 
+             alreadyGenerated <- get
+             if alreadyGenerated 
+               then return ls
+               else do put True
+                       -- checking for possible situations when we cannot generate signature because of
+                       -- an implicitly passed value
+                       let dangerousTypeVars = dangerousTVs vb scopedSigs sigBinds
+                           myTvs = concatMap @[] (getExternalTVs . idType . semanticsId) (vb ^? bindingName)
+                       if not $ null @[] $ myTvs `intersect` dangerousTypeVars
+                         then refactError $ "Could not generate type signature: the type variable(s) " 
+                                              ++ concat (intersperse ", " $ map (showSDocUnsafe . ppr) (myTvs `intersect` dangerousTypeVars)) 
+                                              ++ " cannot be captured. (Use ScopedTypeVariables and forall-ed type signatures)"
+                         else do 
+                           typeSig <- lift $ generateTSFor (getName id) (idType id)
+                           return $ insertWhere (createTypeSig typeSig) (const True) isTheBind ls
+        else refactError "Signature can only be generated for simple value bindings."
   | otherwise = return ls
+  where isSimpleBinding vb = case vb of SimpleBind (AST.VarPat {}) _ _ -> True
+                                        SimpleBind _ _ _ -> False
+                                        _ -> True
+        dangerousTVs vb scopedSigs sigBinds
+          = let dangerousDecls = if scopedSigs then filter (\(_,ts,_) -> not $ isForalledTS ts) sigBinds else sigBinds
+                dangerousNames = map (\(_,_,bn) -> bn ^? (valBindPats & biplateRef &+& bindingName)) dangerousDecls
+             in concatMap (concatMap @[] (getExternalTVs . idType .  semanticsId @(QualifiedName dom))) dangerousNames
 
 generateTSFor :: GenerateSignatureDomain dom => GHC.Name -> GHC.Type -> LocalRefactor dom (TypeSignature dom)
 generateTSFor n t = mkTypeSignature (mkUnqualName' n) <$> generateTypeFor (-1) (dropForAlls t)
