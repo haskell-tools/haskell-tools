@@ -230,6 +230,10 @@ generateSignatureTests =
 wrongGenerateSigTests = 
   [ ("Refactor.GenerateTypeSignature.CannotCaptureVariable", "7:10-7:10")
   , ("Refactor.GenerateTypeSignature.CannotCaptureVariableNoExt", "8:10-8:10")
+  , ("Refactor.GenerateTypeSignature.ComplexLhs", "3:1")
+  , ("Refactor.GenerateTypeSignature.ComplexLhs", "4:1")
+  , ("Refactor.GenerateTypeSignature.ComplexLhs", "5:1")
+  , ("Refactor.GenerateTypeSignature.ComplexLhs", "6:1")
   ]
 
 generateExportsTests = 
