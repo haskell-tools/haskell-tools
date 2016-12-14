@@ -18,6 +18,7 @@ import Language.Haskell.Tools.AST
 instance SourceInfo SrcTemplateStage where
   data SpanInfo SrcTemplateStage = SourceTemplateNode { _sourceTemplateNodeRange :: SrcSpan
                                                       , _sourceTemplateNodeElems :: [SourceTemplateElem] 
+                                                      , _srcTmpMinInd :: Int
                                                       }
     deriving (Eq, Ord, Data)
   data ListInfo SrcTemplateStage = SourceTemplateList { _sourceTemplateListRange :: SrcSpan
@@ -26,11 +27,13 @@ instance SourceInfo SrcTemplateStage where
                                                       , _srcTmpDefaultSeparator :: String -- ^ The default separator if the list were empty
                                                       , _srcTmpIndented :: Bool -- ^ True, if the elements need to be aligned in the same column
                                                       , _srcTmpSeparators :: [String] -- ^ The actual separators that were found in the source code
+                                                      , _srcTmpListMinInd :: Int
                                                       }
     deriving (Eq, Ord, Data)
   data OptionalInfo SrcTemplateStage = SourceTemplateOpt { _sourceTemplateOptRange :: SrcSpan
                                                          , _srcTmpOptBefore :: String -- ^ Text that should be put before the element if it appears
                                                          , _srcTmpOptAfter :: String -- ^ Text that should be put after the element if it appears
+                                                         , _srcTmpOptMinInd :: Int
                                                          }
     deriving (Eq, Ord, Data)
 
@@ -41,6 +44,9 @@ sourceTemplateNodeRange = lens _sourceTemplateNodeRange (\v s -> s { _sourceTemp
 
 sourceTemplateNodeElems :: Simple Lens (SpanInfo SrcTemplateStage) [SourceTemplateElem]
 sourceTemplateNodeElems = lens _sourceTemplateNodeElems (\v s -> s { _sourceTemplateNodeElems = v })
+
+sourceTemplateMinimalIndent :: Simple Lens (SpanInfo SrcTemplateStage) Int
+sourceTemplateMinimalIndent = lens _srcTmpMinInd (\v s -> s { _srcTmpMinInd = v })
 
 sourceTemplateListRange :: Simple Lens (ListInfo SrcTemplateStage) SrcSpan
 sourceTemplateListRange = lens _sourceTemplateListRange (\v s -> s { _sourceTemplateListRange = v })
@@ -60,6 +66,9 @@ srcTmpIndented = lens _srcTmpIndented (\v s -> s { _srcTmpIndented = v })
 srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [String]
 srcTmpSeparators = lens _srcTmpSeparators (\v s -> s { _srcTmpSeparators = v })
 
+srcTmpListMinimalIndent :: Simple Lens (ListInfo SrcTemplateStage) Int
+srcTmpListMinimalIndent = lens _srcTmpListMinInd (\v s -> s { _srcTmpListMinInd = v })
+
 sourceTemplateOptRange :: Simple Lens (OptionalInfo SrcTemplateStage) SrcSpan
 sourceTemplateOptRange = lens _sourceTemplateOptRange (\v s -> s { _sourceTemplateOptRange = v })
 
@@ -68,10 +77,13 @@ srcTmpOptBefore = lens _srcTmpOptBefore (\v s -> s { _srcTmpOptBefore = v })
 
 srcTmpOptAfter :: Simple Lens (OptionalInfo SrcTemplateStage) String
 srcTmpOptAfter = lens _srcTmpOptAfter (\v s -> s { _srcTmpOptAfter = v })
+
+srcTmpOptMinimalIndent :: Simple Lens (OptionalInfo SrcTemplateStage) Int
+srcTmpOptMinimalIndent = lens _srcTmpOptMinInd (\v s -> s { _srcTmpOptMinInd = v })
       
 -- | An element of a source template for a singleton AST node.
 data SourceTemplateElem
-  = TextElem String -- ^ Source text belonging to the current node
+  = TextElem { _sourceTemplateText :: String } -- ^ Source text belonging to the current node
   | ChildElem -- ^ Placeholder for the next children of the node
      deriving (Eq, Ord, Data)
 
@@ -90,7 +102,7 @@ instance HasRange (OptionalInfo SrcTemplateStage) where
   setRange = (sourceTemplateOptRange .=) 
       
 instance Show (SpanInfo SrcTemplateStage) where
-  show (SourceTemplateNode rng sp) = concatMap show sp
+  show (SourceTemplateNode _ sp _) = concatMap show sp
 instance Show (ListInfo SrcTemplateStage) where
   show SourceTemplateList{..} = "«*" ++ show _srcTmpListBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpListAfter ++ "*»"
 instance Show (OptionalInfo SrcTemplateStage) where

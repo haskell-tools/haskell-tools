@@ -55,12 +55,12 @@ applyFragments :: SourceInfoTraversal node => [String] -> Ann node dom RngTempla
 applyFragments srcs = flip evalState srcs
   . sourceInfoTraverseDown (SourceInfoTrf
      (\ni -> do template <- mapM getTextFor (ni ^. rngTemplateNodeElems)
-                return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) template)
+                return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) template 0)
      (\(RangeTemplateList rng bef aft sep indented seps) 
          -> do (own, rest) <- splitAt (length seps) <$> get 
                put rest
-               return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented own))
-     (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft))) 
+               return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented own 0))
+     (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft 0))) 
      (return ()) (return ())
   where getTextFor RangeChildElem = return ChildElem
         getTextFor (RangeElem sp) = do (src:rest) <- get

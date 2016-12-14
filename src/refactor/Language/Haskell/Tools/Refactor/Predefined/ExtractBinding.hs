@@ -20,6 +20,7 @@ import Data.Maybe
 import Data.Generics.Uniplate.Data
 import Control.Reference
 import Control.Monad.State
+import Control.Monad.Identity
 
 import Language.Haskell.Tools.Refactor
 
@@ -75,13 +76,18 @@ addLocalBinding :: SrcSpan -> SrcSpan -> ValueBind dom -> ValueBind dom -> State
 addLocalBinding declRange exprRange local bind 
   = do done <- get
        if not done then do put True
-                           return $ doAddBinding declRange exprRange local bind
+                           return $ indentBody $ doAddBinding declRange exprRange local bind
                    else return bind 
   where
     doAddBinding declRng _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind declRng local $ sb
     doAddBinding declRng (RealSrcSpan rng) local fb@(FunctionBind {}) 
       = funBindMatches & annList & filtered (isInside rng) & matchBinds 
           .- insertLocalBind declRng local $ fb
+
+    indentBody = (valBindRhs .- updIndent) . (funBindMatches & annList & matchLhs .- updIndent) . (funBindMatches & annList & matchRhs .- updIndent)
+
+    updIndent :: SourceInfoTraversal elem => elem dom SrcTemplateStage -> elem dom SrcTemplateStage
+    updIndent = setMinimalIndent 4
 
 -- | Puts a value definition into a list of local binds
 insertLocalBind :: SrcSpan -> ValueBind dom -> MaybeLocalBinds dom -> MaybeLocalBinds dom

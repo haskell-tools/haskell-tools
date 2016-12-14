@@ -17,10 +17,13 @@ import Language.Haskell.Tools.Transform.SourceTemplate
 import Control.Monad.State
 import Control.Reference
 import Data.Maybe
+import Data.List as List
 import Data.List.Split
 import Data.Foldable
 import Data.Sequence hiding (null, replicate)
 import Language.Haskell.Tools.AST
+
+import Debug.Trace
 
 -- | Pretty prints an AST by using source templates stored as node info
 prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String
@@ -35,30 +38,42 @@ type PPState = State RealSrcLoc
 printRose' :: RoseTree SrcTemplateStage -> PPState (Seq Char)
 -- simple implementation could be optimized a bit
 -- warning: the length of the file should not exceed maxbound::Int
-printRose' (RoseTree (RoseSpan (SourceTemplateNode _ elems)) children) 
-  = printTemplateElems elems children
-  where printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-        printTemplateElems (TextElem txt : rest) children = putString txt >+< printTemplateElems rest children
-        printTemplateElems (ChildElem : rest) (child : children) = printRose' child >+< printTemplateElems rest children
-        printTemplateElems [] [] = return empty
-        printTemplateElems _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
-        printTemplateElems [] _ = error $ "Not all children are used to pretty printing. (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
+printRose' (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd)) children) 
+  = do slide <- calculateSlide rng
+       printTemplateElems slide elems children
+  where printTemplateElems :: Int -> [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+        printTemplateElems slide (TextElem txt : rest) children = putString slide minInd txt >+< printTemplateElems slide rest children
+        printTemplateElems slide (ChildElem : rest) (child : children) = printRose' child >+< printTemplateElems slide rest children
+        printTemplateElems _ [] [] = return empty
+        printTemplateElems _ _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
+        printTemplateElems _ [] _ = error $ "Not all children are used to pretty printing. (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
   
 printRose' (RoseTree (RoseList (SourceTemplateList {})) []) = return empty
-printRose' (RoseTree (RoseList (SourceTemplateList _ bef aft defSep indented [])) children) 
-  = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (repeat defSep) children >+< putString aft
-printRose' (RoseTree (RoseList (SourceTemplateList _ bef aft _ indented seps)) children) 
-  = putString bef >+< (if indented then printListWithSepsIndented else printListWithSeps) (seps ++ repeat (last seps)) children >+< putString aft
-      
+printRose' (RoseTree (RoseList (SourceTemplateList rng bef aft defSep indented seps minInd)) children) 
+    = do slide <- calculateSlide rng
+         putString slide minInd bef >+< (if indented then printListWithSepsIndented else printListWithSeps) slide minInd actualSeps children >+< putString slide minInd aft
+  where actualSeps = case seps of [] -> repeat defSep
+                                  _  -> seps ++ repeat (last seps)
+
 printRose' (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty
-printRose' (RoseTree (RoseOptional (SourceTemplateOpt _ bef aft)) [child]) = putString bef >+< printRose' child >+< putString aft
+printRose' (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd)) [child]) 
+  = do slide <- calculateSlide rng
+       putString slide minInd bef >+< printRose' child >+< putString slide minInd aft
 printRose' (RoseTree (RoseOptional _) _) = error "More than one child element in an optional node."
     
+calculateSlide :: SrcSpan -> PPState Int
+calculateSlide (RealSrcSpan originalSpan) = do 
+  actualSpan <- get
+  return $ srcLocCol actualSpan - srcLocCol (realSrcSpanStart originalSpan)
+calculateSlide _ = return 0
 
-
-putString :: String -> PPState (Seq Char)
-putString s = do modify $ advanceStr s
-                 return (fromList s)
+putString :: Int -> Int -> String -> PPState (Seq Char)
+putString slide minInd s 
+  = do modify $ advanceStr newStr
+       return (fromList newStr)
+  where start:rest = splitOn "\n" s
+        newStr = concat $ intersperse ("\n" ++ replicate slide ' ') (start : map (extendToNSpaces minInd) rest)
+        extendToNSpaces n str = replicate n ' ' ++ (List.dropWhile (== ' ') $ List.take n str) ++ List.drop n str
                   
 advanceStr :: String -> RealSrcLoc -> RealSrcLoc
 advanceStr s loc = foldl advanceSrcLoc loc s
@@ -82,20 +97,21 @@ mapFst f (a, x) = (f a, x)
 (>+<) :: PPState (Seq Char) -> PPState (Seq Char) -> PPState (Seq Char)
 (>+<) = liftM2 (><)
     
-printListWithSeps :: [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+printListWithSeps :: Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
 printListWithSeps = printListWithSeps' putString
 
-printListWithSepsIndented :: [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printListWithSepsIndented seps children
+-- | Prints the elements of a list where the elements must be printed in the same line (do stmts, case alts, let binds, ...)
+printListWithSepsIndented :: Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+printListWithSepsIndented slide minInd seps children
   = do base <- get
-       let putCorrectSep s = do curr <- get
-                                let (shortened, currCol) = untilReaches s curr base
-                                putString $ shortened ++ replicate (srcLocCol base - currCol) ' '
-       printListWithSeps' putCorrectSep seps children
+       let putCorrectSep _ min s = do curr <- get
+                                      let (shortened, currCol) = untilReaches s curr base
+                                      putString 0 min $ shortened ++ replicate (srcLocCol base - currCol) ' '
+       printListWithSeps' putCorrectSep slide minInd seps children
     
-printListWithSeps' :: (String -> PPState (Seq Char)) -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printListWithSeps' _ _ [] = return empty
-printListWithSeps' putCorrectSep _ [child] = printRose' child
-printListWithSeps' putCorrectSep (sep:seps) (child:children) 
-  = printRose' child >+< putCorrectSep sep >+< printListWithSeps' putCorrectSep seps children
+printListWithSeps' :: (Int -> Int -> String -> PPState (Seq Char)) -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+printListWithSeps' _ _ _ _ [] = return empty
+printListWithSeps' putCorrectSep _ _ _ [child] = printRose' child
+printListWithSeps' putCorrectSep slide minInd (sep:seps) (child:children) 
+  = printRose' child >+< putCorrectSep slide minInd sep >+< printListWithSeps' putCorrectSep slide minInd seps children
     

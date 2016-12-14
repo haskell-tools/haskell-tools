@@ -14,6 +14,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Language.Haskell.Tools.PrettyPrint
                      , Language.Haskell.Tools.Transform
+                     , Language.Haskell.Tools.IndentationUtils
   other-modules:       Language.Haskell.Tools.PrettyPrint.RoseTree
                      , Language.Haskell.Tools.Transform.RangeToRangeTemplate
                      , Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate
