@@ -1,0 +1,5 @@
+SelectModule Language.Preprocessor.Cpphs.MacroPass
+ExtractBinding 96:29-96:47 tokenizeTT
+ExtractBinding 90:11-90:67 fun
+OrganizeImports
+Exit
