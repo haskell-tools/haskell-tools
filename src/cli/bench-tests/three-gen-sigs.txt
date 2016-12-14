@@ -1,0 +1,5 @@
+SelectModule Language.Preprocessor.Cpphs.CppIfdef
+GenerateSignature 51:5-51:5
+GenerateSignature 50:5-50:5
+GenerateSignature 49:5-49:5
+Exit

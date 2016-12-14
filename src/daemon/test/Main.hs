@@ -46,6 +46,8 @@ allTests testRoot
           , selfLoadingTest
           ]
 
+testSuffix = "_test"
+
 simpleTests :: [(String, [ClientMessage], [ResponseMsg])]
 simpleTests = 
   [ ( "empty-test", [], [] )
@@ -95,9 +97,9 @@ loadingTests =
 sourceRoot = ".." </> ".." </> "src"
 
 selfLoadingTest :: TestTree
-selfLoadingTest = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do  
+selfLoadingTest = localOption (mkTimeout ({- 2 min -} 1000 * 1000 * 60 * 2)) $ testCase "self-load" $ do  
     actual <- communicateWithDaemon 
-                [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor" {- , "cli", "daemon" -} ] ) ]
+                [ Right $ AddPackages (map (sourceRoot </>) ["ast" {-, "backend-ghc", "prettyprint", "rewrite", "refactor", "cli", "daemon" -} ] ) ]
     assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual) 
                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
 
@@ -105,97 +107,98 @@ selfLoadingTest = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ t
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg])]
 refactorTests testRoot =
   [ ( "simple-refactor", "simple-refactor"
-    , [ AddPackages [ testRoot </> "simple-refactor" ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" </> "A.hs") "3:1-3:2" ["y"]
+    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"]
       ]
-    , [ LoadedModules [ testRoot </> "simple-refactor" </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "simple-refactor" </> "A.hs" ] 
-      , LoadedModules [ testRoot </> "simple-refactor" </> "A.hs" ]
+    , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
+      , ModulesChanged [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ] 
+      , LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
       ] )
   , ( "hs-boots", "hs-boots"
-    , [ AddPackages [ testRoot </> "hs-boots" ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" </> "A.hs") "5:1-5:2" ["aa"]
+    , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"]
       ]
-    , [ LoadedModules [ testRoot </> "hs-boots" </> "B.hs-boot", testRoot </> "hs-boots" </> "A.hs-boot"
-                      , testRoot </> "hs-boots" </> "A.hs", testRoot </> "hs-boots" </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "hs-boots" </> "A.hs", testRoot </> "hs-boots" </> "B.hs", testRoot </> "hs-boots" </> "A.hs-boot" ] 
-      , LoadedModules [ testRoot </> "hs-boots" </> "A.hs-boot" ]
-      , LoadedModules [ testRoot </> "hs-boots" </> "B.hs-boot" ]
-      , LoadedModules [ testRoot </> "hs-boots" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "hs-boots" </> "B.hs" ]
+    , [ LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs-boot", testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot"
+                      , testRoot </> "hs-boots" ++ testSuffix </> "A.hs", testRoot </> "hs-boots" ++ testSuffix </> "B.hs" ]
+      , ModulesChanged [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs", testRoot </> "hs-boots" ++ testSuffix </> "B.hs"
+                       , testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot" ] 
+      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot" ]
+      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs-boot" ]
+      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs" ]
+      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs" ]
       ] )
   , ( "remove-module", "simple-refactor"
-    , [ AddPackages [ testRoot </> "simple-refactor" ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" </> "A.hs") "1:8-1:9" ["AA"]
+    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"]
       ]
-    , [ LoadedModules [ testRoot </> "simple-refactor" </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "simple-refactor" </> "AA.hs" ] 
-      , LoadedModules [ testRoot </> "simple-refactor" </> "AA.hs" ]
+    , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
+      , ModulesChanged [ testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs" ] 
+      , LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs" ]
       ] )
   ]
 
 reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg])]
 reloadingTests =
-  [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ] ]
-    , writeFile (testRoot </> "reloading" </> "C.hs") "module C where\nc = ()" 
-    , [ ReLoad [testRoot </> "reloading" </> "C.hs"] []
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" </> "C.hs") "2:1-2:2" ["d"] 
+  [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ] ]
+    , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()" 
+    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] 
       ]
-    , [ LoadedModules [ testRoot </> "reloading" </> "C.hs"
-                      , testRoot </> "reloading" </> "B.hs"
-                      , testRoot </> "reloading" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "reloading" </> "C.hs"
-                       , testRoot </> "reloading" </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "A.hs" ]
+    , [ LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
+                      , testRoot </> "reloading" ++ testSuffix </> "B.hs"
+                      , testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
+      , ModulesChanged [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
+                       , testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
       ]
     )
   , ( "reloading-package", testRoot </> "changing-cabal"
-    , [ AddPackages [ testRoot </> "changing-cabal" ] ]
-    , appendFile (testRoot </> "changing-cabal" </> "some-test-package.cabal") ", B" 
-    , [ AddPackages [testRoot </> "changing-cabal"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" </> "A.hs") "3:1-3:2" ["z"] 
+    , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ] ]
+    , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B" 
+    , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] 
       ]
-    , [ LoadedModules [ testRoot </> "changing-cabal" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" </> "A.hs"
-                      , testRoot </> "changing-cabal" </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "changing-cabal" </> "A.hs"
-                       , testRoot </> "changing-cabal" </> "B.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" </> "B.hs" ]
+    , [ LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs" ]
+      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs"
+                      , testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
+      , ModulesChanged [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs"
+                       , testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
+      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs" ]
+      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
       ]
     )
-  , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ] ]
-    , do removeFile (testRoot </> "reloading" </> "A.hs")
-         removeFile (testRoot </> "reloading" </> "B.hs")
-    , [ ReLoad [testRoot </> "reloading" </> "C.hs"] 
-               [testRoot </> "reloading" </> "A.hs", testRoot </> "reloading" </> "B.hs"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" </> "C.hs") "3:1-3:2" ["d"] 
+  , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ] ]
+    , do removeFile (testRoot </> "reloading" ++ testSuffix </> "A.hs")
+         removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
+    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] 
+               [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] 
       ]
-    , [ LoadedModules [ testRoot </> "reloading" </> "C.hs"
-                      , testRoot </> "reloading" </> "B.hs"
-                      , testRoot </> "reloading" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "C.hs" ]
-      , ModulesChanged [ testRoot </> "reloading" </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" </> "C.hs" ]
+    , [ LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
+                      , testRoot </> "reloading" ++ testSuffix </> "B.hs"
+                      , testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
+      , ModulesChanged [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
+      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
       ]
     )
   , ( "remove-package", testRoot </> "multi-packages-dependent"
-    , [ AddPackages [ testRoot </> "multi-packages-dependent" </> "package1"
-                    , testRoot </> "multi-packages-dependent" </> "package2" ]]
-    , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" </> "package2")
-    , [ RemovePackages [testRoot </> "multi-packages-dependent" </> "package2"] 
-      , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs") 
+    , [ AddPackages [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1"
+                    , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" ]]
+    , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
+    , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"] 
+      , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs") 
                                               "3:1-3:2" ["d"] 
       ]
-    , [ LoadedModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs"
-                      , testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs" ]
+    , [ LoadedModules [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs"
+                      , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" </> "B.hs" ]
+      , ModulesChanged [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs" ]
+      , LoadedModules [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs" ]
       ]
     )
   ]
@@ -205,26 +208,23 @@ makeDaemonTest (Nothing, label, input, expected) = testCase label $ do
     actual <- communicateWithDaemon (map Right input)
     assertEqual "" expected actual
 makeDaemonTest (Just dir, label, input, expected) = testCase label $ do 
-    exists <- doesDirectoryExist (dir ++ "_orig")
+    exists <- doesDirectoryExist (dir ++ testSuffix)
     -- clear the target directory from possible earlier test runs
-    when exists $ removeDirectoryRecursive (dir ++ "_orig")
-    copyDir dir (dir ++ "_orig")
-    exists <- doesDirectoryExist (dir ++ "_orig")
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
     actual <- communicateWithDaemon (map Right input)
     assertEqual "" expected actual
-  `finally` do removeDirectoryRecursive dir
-               renameDirectory (dir ++ "_orig") dir
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 makeReloadTest :: (String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg]) -> TestTree
 makeReloadTest (label, dir, input1, io, input2, expected) = testCase label $ do  
-    exists <- doesDirectoryExist (dir ++ "_orig")
+    exists <- doesDirectoryExist (dir ++ testSuffix)
     -- clear the target directory from possible earlier test runs
-    when exists $ removeDirectoryRecursive (dir ++ "_orig")
-    copyDir dir (dir ++ "_orig")
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
     actual <- communicateWithDaemon (map Right input1 ++ [Left io] ++ map Right input2)
     assertEqual "" expected actual
-  `finally` do removeDirectoryRecursive dir
-               renameDirectory (dir ++ "_orig") dir
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 communicateWithDaemon :: [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
 communicateWithDaemon msgs = withSocketsDo $ do
