@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-missing-fields #-}
 {-# LANGUAGE QuasiQuotes #-}
 module TH.QuasiQuote.Use where
 

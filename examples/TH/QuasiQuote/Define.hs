@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module TH.QuasiQuote.Define where
 
 import Language.Haskell.TH.Quote
