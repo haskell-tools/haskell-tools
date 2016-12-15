@@ -54,12 +54,9 @@ run tests = do results <- runTestTT $ TestList tests
                   else exitSuccess
 
 nightlyTests :: [Test]
-nightlyTests = unitTests 
+nightlyTests = functionalTests 
                  ++ map makeCpphsTest cppHsTests
                  ++ map makeInstanceControlTest instanceControlTests
-
-unitTests :: [Test]
-unitTests = genTests ++ functionalTests
 
 functionalTests :: [Test]
 functionalTests = map makeReprintTest checkTestCases
@@ -555,103 +552,3 @@ performRefactor command workingDir flags target =
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent ((ModuleCreated _ newContent _) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress
-
--- tests for ast-gen
-
-genTests :: [Test]
-genTests = testBase ++ map makeGenTest testExprs ++ map makeGenTest testPatterns ++ map makeGenTest testType 
-             ++ map makeGenTest testBinds ++ map makeGenTest testDecls ++ map makeGenTest testModules
-
-makeGenTest :: SourceInfoTraversal elem => (String, Ann elem dom SrcTemplateStage) -> Test
-makeGenTest (expected, ast) = TestLabel expected $ TestCase $ assertEqual "The generated AST is not what is expected" expected (prettyPrint ast)
-
-testBase
-  = [ makeGenTest ("A.b", mkNormalName $ mkQualifiedName ["A"] "b")
-    , makeGenTest ("A.+", mkQualOp ["A"] "+")
-    , makeGenTest ("`mod`", mkBacktickOp [] "mod")
-    , makeGenTest ("(+)", mkParenName $ mkSimpleName "+")
-    ]
-
-testExprs 
-  = [ ("a + 3", mkInfixApp (mkVar (mkName "a")) (mkUnqualOp "+") (mkLit $ mkIntLit 3)) 
-    , ("(\"xx\"++)", mkLeftSection (mkLit (mkStringLit "xx")) (mkUnqualOp "++"))
-    , ("(1, [2, 3])", mkTuple [ mkLit (mkIntLit 1), mkList [ mkLit (mkIntLit 2), mkLit (mkIntLit 3) ] ])
-    , ("P { x = 1 }", mkRecCon (mkName "P") [ mkFieldUpdate (mkName "x") (mkLit $ mkIntLit 1) ])
-    , ("if f a then x else y", mkIf (mkApp (mkVar $ mkName "f") (mkVar $ mkName "a")) (mkVar $ mkName "x") (mkVar $ mkName "y"))
-    , ("let nat = [0..] in !z", mkLet [mkLocalValBind $ mkSimpleBind' (mkName "nat") (mkEnum (mkLit (mkIntLit 0)) Nothing Nothing)] 
-                                      (mkPrefixApp (mkUnqualOp "!") (mkVar $ mkName "z")) )
-    , (    "case x of Just y -> y\n"
-        ++ "          Nothing -> 0", mkCase (mkVar (mkName "x")) [ mkAlt (mkAppPat (mkName "Just") [mkVarPat (mkName "y")]) (mkCaseRhs $ mkVar (mkName "y")) Nothing
-                                                                 , mkAlt (mkVarPat $ mkName "Nothing") (mkCaseRhs $ mkLit $ mkIntLit 0) Nothing
-                                                                 ])
-    , (    "if | x > y -> x\n"
-        ++ "   | otherwise -> y", mkMultiIf [ mkGuardedCaseRhs [mkGuardCheck $ mkInfixApp (mkVar (mkName "x")) (mkUnqualOp ">") (mkVar (mkName "y"))] (mkVar (mkName "x"))
-                                            , mkGuardedCaseRhs [mkGuardCheck $ mkVar (mkName "otherwise")] (mkVar (mkName "y"))
-                                            ])
-    , (    "do x <- a\n"
-        ++ "   return x", mkDoBlock [ G.mkBindStmt (mkVarPat (mkName "x")) (mkVar (mkName "a"))
-                                    , mkExprStmt (mkApp (mkVar $ mkName "return") (mkVar $ mkName "x"))
-                                    ])
-    ]
-
-testPatterns
-  = [ ("~[0, a]", mkIrrefutablePat $ mkListPat [ mkLitPat (mkIntLit 0), mkVarPat (mkName "a") ])
-    , ("p@Point{ x = 1 }", mkAsPat (mkName "p") $ mkRecPat (mkName "Point") [ mkPatternField (mkName "x") (mkLitPat (mkIntLit 1)) ])
-    , ("!(_, f -> 3)", mkBangPat $ mkTuplePat [mkWildPat, mkViewPat (mkVar $ mkName "f") (mkLitPat (mkIntLit 3))])
-    ]
-
-testType
-  = [ ("forall x . Eq x => x -> ()", mkForallType [mkTypeVar (mkName "x")] 
-                                       $ mkCtxType (mkContextOne (mkClassAssert (mkName "Eq") [mkVarType (mkName "x")])) 
-                                       $ mkFunctionType (mkVarType (mkName "x")) (mkVarType (mkName "()")))
-    , ("(A :+: B) (x, x)", mkTypeApp (mkParenType $ mkInfixTypeApp (mkVarType (mkName "A")) (mkUnqualOp ":+:") (mkVarType (mkName "B")))
-                                  (mkTupleType [ mkVarType (mkName "x"), mkVarType (mkName "x") ]))
-    ]
-
-testBinds
-  = [(    "x = (a, b) where a = 3\n"
-       ++ "                 b = 4", mkSimpleBind (mkVarPat (mkName "x")) (mkUnguardedRhs (mkTuple [(mkVar (mkName "a")), (mkVar (mkName "b"))]))
-                                                 (Just $ mkLocalBinds' [ mkLocalValBind $ mkSimpleBind' (mkName "a") (mkLit $ mkIntLit 3)
-                                                                       , mkLocalValBind $ mkSimpleBind' (mkName "b") (mkLit $ mkIntLit 4)
-                                                                       ]) )
-    ,(    "f i 0 = i\n"
-       ++ "f i x = x", mkFunctionBind' (mkName "f") [ ([mkVarPat $ mkName "i", mkLitPat $ mkIntLit 0], mkVar $ mkName "i")
-                                                    , ([mkVarPat $ mkName "i", mkVarPat $ mkName "x"], mkVar $ mkName "x")
-                                                    ])
-    ]
-
-testDecls
-  = [ ("id :: a -> a", mkTypeSigDecl $ mkTypeSignature (mkName "id") (mkFunctionType (mkVarType (mkName "a")) (mkVarType (mkName "a"))))
-    , ("id x = x", mkValueBinding $ mkFunctionBind' (mkName "id") [([mkVarPat $ mkName "x"], mkVar $ mkName "x")])
-    , ("data A a = A a deriving Show", mkDataDecl mkDataKeyword Nothing (mkDeclHeadApp (mkNameDeclHead (mkName "A")) (mkTypeVar (mkName "a"))) 
-                                         [mkConDecl (mkName "A") [mkVarType (mkName "a")]] (Just $ mkDeriving [mkInstanceHead (mkName "Show")]))
-    , ("data A = A { x :: Int }", mkDataDecl mkDataKeyword Nothing (mkNameDeclHead (mkName "A")) 
-                                    [mkRecordConDecl (mkName "A") [mkFieldDecl [mkName "x"] (mkVarType (mkName "Int"))]] Nothing)
-    , (    "class A t => C t where f :: t\n"
-        ++ "                       type T t :: *"
-      , mkClassDecl (Just $ mkContextOne (mkClassAssert (mkName "A") [mkVarType (mkName "t")])) 
-                    (mkDeclHeadApp (mkNameDeclHead (mkName "C")) (mkTypeVar (mkName "t"))) []
-                    (Just $ mkClassBody [ mkClassElemSig $ mkTypeSignature (mkName "f") (mkVarType (mkName "t"))
-                                        , mkClassElemTypeFam (mkDeclHeadApp (mkNameDeclHead (mkName "T")) (mkTypeVar (mkName "t"))) 
-                                                             (Just $ mkTypeFamilyKindSpec $ mkKindConstraint $ mkKindStar)
-                                        ])
-      )
-    , ("instance C Int where f = 0", mkInstanceDecl Nothing (mkInstanceRule Nothing $ mkAppInstanceHead (mkInstanceHead $ mkName "C") (mkVarType (mkName "Int"))) 
-                                                    (Just $ mkInstanceBody [mkInstanceBind $ mkSimpleBind' (mkName "f") (mkLit $ mkIntLit 0)]))
-    , ("infixl 6 +", mkFixityDecl $ mkInfixL 6 (mkUnqualOp "+"))
-    ]
-
-testModules
-  = [ ("", G.mkModule [] Nothing [] [])
-    , ("module Test(x, A(a), B(..)) where", G.mkModule [] (Just $ mkModuleHead (G.mkModuleName "Test") (Just $ mkExportSpecs [
-                                                mkExportSpec $ mkIESpec (mkName "x") Nothing
-                                              , mkExportSpec $ mkIESpec (mkName "A") (Just $ mkSubList [mkName "a"])
-                                              , mkExportSpec $ mkIESpec (mkName "B") (Just mkSubAll)
-                                            ]) Nothing) [] [])
-    , ("\nimport qualified A\n"
-      ++ "import B as BB(x)\n"
-      ++ "import B hiding (x)", G.mkModule [] Nothing [ mkImportDecl False True False Nothing (G.mkModuleName "A") Nothing Nothing
-                                                      , mkImportDecl False False False Nothing (G.mkModuleName "B") (Just $ G.mkModuleName "BB") (Just $ mkImportSpecList [mkIESpec (mkName "x") Nothing])
-                                                      , mkImportDecl False False False Nothing (G.mkModuleName "B") Nothing (Just $ mkImportHidingList [mkIESpec (mkName "x") Nothing])
-                                                      ] [])
-    ]
