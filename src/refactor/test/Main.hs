@@ -4,6 +4,9 @@
            #-}
 module Main where
 
+import Test.Tasty
+import Test.Tasty.HUnit
+
 import GHC hiding (loadModule, ParsedModule)
 import DynFlags
 import GHC.Paths ( libdir )
@@ -17,7 +20,6 @@ import Data.Maybe
 import qualified Data.Map as Map
 import Data.List
 import Data.Either.Combinators
-import Test.HUnit hiding (test)
 import System.IO
 import System.Exit
 import System.FilePath
@@ -39,40 +41,38 @@ import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Predefined.ExtractBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Session
-
 import Language.Haskell.Tools.Refactor.Predefined.DataToNewtype
 import Language.Haskell.Tools.Refactor.Predefined.IfToGuards
 import Language.Haskell.Tools.Refactor.Predefined.DollarApp
 
 main :: IO ()
-main = run nightlyTests
+main = defaultMain nightlyTests
 
-run :: [Test] -> IO ()
-run tests = do results <- runTestTT $ TestList tests
-               if errors results + failures results > 0 
-                  then exitFailure
-                  else exitSuccess
+nightlyTests :: TestTree
+nightlyTests 
+  = testGroup "all tests" [ testGroup "functional tests" functionalTests 
+                          , testGroup "CppHs tests" $ map makeCpphsTest cppHsTests
+                          , testGroup "instance-control tests" $ map makeInstanceControlTest instanceControlTests
+                          ]
 
-nightlyTests :: [Test]
-nightlyTests = functionalTests 
-                 ++ map makeCpphsTest cppHsTests
-                 ++ map makeInstanceControlTest instanceControlTests
-
-functionalTests :: [Test]
-functionalTests = map makeReprintTest checkTestCases
-              ++ map makeOrganizeImportsTest organizeImportTests
-              ++ map makeGenerateSignatureTest generateSignatureTests
-              ++ map makeWrongGenerateSigTest wrongGenerateSigTests
-              ++ map makeGenerateExportsTest generateExportsTests
-              ++ map makeRenameDefinitionTest renameDefinitionTests
-              ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-              ++ map makeExtractBindingTest extractBindingTests
-              ++ map makeWrongExtractBindingTest wrongExtractBindingTests
-              ++ map makeInlineBindingTest inlineBindingTests
-              ++ map makeWrongInlineBindingTest wrongInlineBindingTests
-              ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
-              ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
-              ++ map makeMiscRefactorTest miscRefactorTests
+functionalTests :: [TestTree]
+functionalTests 
+  = [ testGroup "reprint tests" (map makeReprintTest checkTestCases)
+    , testGroup "refactor tests" 
+        $ map makeOrganizeImportsTest organizeImportTests
+            ++ map makeGenerateSignatureTest generateSignatureTests
+            ++ map makeWrongGenerateSigTest wrongGenerateSigTests
+            ++ map makeGenerateExportsTest generateExportsTests
+            ++ map makeRenameDefinitionTest renameDefinitionTests
+            ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+            ++ map makeExtractBindingTest extractBindingTests
+            ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+            ++ map makeInlineBindingTest inlineBindingTests
+            ++ map makeWrongInlineBindingTest wrongInlineBindingTests
+            ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
+            ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
+            ++ map makeMiscRefactorTest miscRefactorTests
+    ]
   where checkTestCases = languageTests 
                           ++ organizeImportTests 
                           ++ map fst generateSignatureTests 
@@ -351,9 +351,9 @@ miscRefactorTests =
   ]
 
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()) 
-                         -> (String, String, String, [String]) -> Test
+                         -> (String, String, String, [String]) -> TestTree
 makeMultiModuleTest checker test@(refact, mod, root, removed)
-  = TestLabel (root ++ ":" ++ mod) $ TestCase 
+  = testCase (root ++ ":" ++ mod) 
       $ do res <- performRefactors refact (rootDir </> root) [] mod
            checker test res
            
@@ -373,42 +373,42 @@ checkMultiFail :: (String, String, String, [String]) -> Either String [(String, 
 checkMultiFail _ (Left _) = return ()
 checkMultiFail _ (Right _) = assertFailure "The transformation should fail."
 
-createTest :: String -> [String] -> String -> Test
+createTest :: String -> [String] -> String -> TestTree
 createTest refactoring args mod
-  = TestLabel mod $ TestCase $ checkCorrectlyTransformed (refactoring ++ (concatMap (" "++) args)) rootDir mod
+  = testCase mod $ checkCorrectlyTransformed (refactoring ++ (concatMap (" "++) args)) rootDir mod
 
-createFailTest :: String -> [String] -> String -> Test
+createFailTest :: String -> [String] -> String -> TestTree
 createFailTest refactoring args mod
-  = TestLabel mod $ TestCase $ checkTransformFails (refactoring ++ (concatMap (" "++) args)) rootDir mod
+  = testCase mod $ checkTransformFails (refactoring ++ (concatMap (" "++) args)) rootDir mod
 
-makeOrganizeImportsTest :: String -> Test
+makeOrganizeImportsTest :: String -> TestTree
 makeOrganizeImportsTest = createTest "OrganizeImports" []
 
-makeGenerateSignatureTest :: (String, String) -> Test
+makeGenerateSignatureTest :: (String, String) -> TestTree
 makeGenerateSignatureTest (mod, rng) = createTest "GenerateSignature" [rng] mod
 
-makeGenerateExportsTest :: String -> Test
+makeGenerateExportsTest :: String -> TestTree
 makeGenerateExportsTest mod = createTest "GenerateExports" [] mod
 
-makeRenameDefinitionTest :: (String, String, String) -> Test
+makeRenameDefinitionTest :: (String, String, String) -> TestTree
 makeRenameDefinitionTest (mod, rng, newName) = createTest "RenameDefinition" [rng, newName] mod
 
-makeWrongRenameDefinitionTest :: (String, String, String) -> Test
+makeWrongRenameDefinitionTest :: (String, String, String) -> TestTree
 makeWrongRenameDefinitionTest (mod, rng, newName) = createFailTest "RenameDefinition" [rng, newName] mod
 
-makeWrongGenerateSigTest :: (String, String) -> Test
+makeWrongGenerateSigTest :: (String, String) -> TestTree
 makeWrongGenerateSigTest (mod, rng) = createFailTest "GenerateSignature" [rng] mod
 
-makeExtractBindingTest :: (String, String, String) -> Test
+makeExtractBindingTest :: (String, String, String) -> TestTree
 makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod
 
-makeWrongExtractBindingTest :: (String, String, String) -> Test
+makeWrongExtractBindingTest :: (String, String, String) -> TestTree
 makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod
   
-makeInlineBindingTest :: (String, String) -> Test
+makeInlineBindingTest :: (String, String) -> TestTree
 makeInlineBindingTest (mod, rng) = createTest "InlineBinding" [rng] mod
   
-makeWrongInlineBindingTest :: (String, String) -> Test
+makeWrongInlineBindingTest :: (String, String) -> TestTree
 makeWrongInlineBindingTest (mod, rng) = createFailTest "InlineBinding" [rng] mod
 
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
@@ -417,9 +417,9 @@ checkCorrectlyTransformed command workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
                                                                     (mapRight standardizeLineEndings res)
-makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> Test
+makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> TestTree
 makeMiscRefactorTest (moduleName, refact)
-  = TestLabel moduleName $ TestCase $
+  = testCase moduleName $
       do expected <- loadExpected True rootDir moduleName
          res <- testRefactor refact moduleName
          assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
@@ -448,14 +448,14 @@ loadExpected resSuffix workingDir moduleName =
 
 standardizeLineEndings = filter (/= '\r')
        
-makeReprintTest :: String -> Test       
-makeReprintTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted rootDir mod)
+makeReprintTest :: String -> TestTree       
+makeReprintTest mod = testCase mod (checkCorrectlyPrinted rootDir mod)
 
-makeCpphsTest :: String -> Test       
-makeCpphsTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir </> "CppHs") mod)
+makeCpphsTest :: String -> TestTree       
+makeCpphsTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "CppHs") mod)
 
-makeInstanceControlTest :: String -> Test       
-makeInstanceControlTest mod = TestLabel mod $ TestCase (checkCorrectlyPrinted (rootDir </> "InstanceControl") mod)
+makeInstanceControlTest :: String -> TestTree       
+makeInstanceControlTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "InstanceControl") mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
 checkCorrectlyPrinted workingDir moduleName 
@@ -472,23 +472,6 @@ checkCorrectlyPrinted workingDir moduleName
        assertEqual "The original and the transformed source differ" expected actual'
        assertEqual "The original and the transformed source differ" expected actual''
 
--- TODO: find out why the commented-out code doesn't work for the two Template Haskell tests. These work for CLI. 
--- performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
--- performRefactors command workingDir flags target = runGhc (Just libdir) $ flip evalStateT (initSession :: RefactorSessionState) $ do 
---   lift initGhcFlagsForTest
---   mods <- loadPackagesFrom (const $ return ()) [workingDir]
---   (selectedMod, otherMods) <- getMods (Just $ SourceFileKey NormalHs target)
---   case selectedMod of 
---     Just (_, selMod) -> do 
---       res <- lift $ performCommand (readCommand command) (SourceFileKey NormalHs target, selMod) otherMods
---       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n ^. sfkModuleName, Just $ prettyPrint m)
---                                                      ModuleCreated n m _ -> (n, Just $ prettyPrint m)
---                                                      ModuleRemoved m -> (m, Nothing)
---                                               )) r
---                       Left l -> Left l) 
---              $ res
---     Nothing -> error "The selected module is not found"
-    
 performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 performRefactors command workingDir flags target = do 
     mods <- getAllModules [workingDir]
