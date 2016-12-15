@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -O2
   build-depends:       base                      >=4.9 && <5.0
                      , aeson                     >=0.11 && <1.0
                      , bytestring                >=0.10 && <1.0
@@ -33,6 +34,7 @@ library
 
 
 executable ht-daemon
+  ghc-options:         -O2
   build-depends:       base                      >=4.9 && <5.0
                      , haskell-tools-daemon      >=0.3 && <0.4
   hs-source-dirs:      exe
@@ -41,7 +43,7 @@ executable ht-daemon
 
 test-suite haskell-tools-daemon-tests
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g
+  ghc-options:         -with-rtsopts=-M2g -O2
   hs-source-dirs:      test
   main-is:             Main.hs  
   build-depends:       base                      >= 4.9 && < 4.10

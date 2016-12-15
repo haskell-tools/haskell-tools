@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.AST.Rewrite
                      , Language.Haskell.Tools.AST.ElementTypes
                      , Language.Haskell.Tools.AST.Gen
