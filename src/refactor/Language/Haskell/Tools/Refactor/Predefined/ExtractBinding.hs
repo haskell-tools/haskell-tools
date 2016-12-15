@@ -79,10 +79,10 @@ addLocalBinding declRange exprRange local bind
                            return $ indentBody $ doAddBinding declRange exprRange local bind
                    else return bind 
   where
-    doAddBinding declRng _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind declRng local $ sb
+    doAddBinding declRng _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind local $ sb
     doAddBinding declRng (RealSrcSpan rng) local fb@(FunctionBind {}) 
       = funBindMatches & annList & filtered (isInside rng) & matchBinds 
-          .- insertLocalBind declRng local $ fb
+          .- insertLocalBind local $ fb
 
     indentBody = (valBindRhs .- updIndent) . (funBindMatches & annList & matchLhs .- updIndent) . (funBindMatches & annList & matchRhs .- updIndent)
 
@@ -90,11 +90,9 @@ addLocalBinding declRange exprRange local bind
     updIndent = setMinimalIndent 4
 
 -- | Puts a value definition into a list of local binds
-insertLocalBind :: SrcSpan -> ValueBind dom -> MaybeLocalBinds dom -> MaybeLocalBinds dom
-insertLocalBind declRng toInsert locals 
-  | isAnnNothing locals
-  , RealSrcSpan rng <- declRng = -- creates the new where clause indented 2 spaces from the declaration
-                                 mkLocalBinds (srcLocCol (realSrcSpanStart rng) + 2) [mkLocalValBind toInsert]
+insertLocalBind :: ValueBind dom -> MaybeLocalBinds dom -> MaybeLocalBinds dom
+insertLocalBind toInsert locals 
+  | isAnnNothing locals = mkLocalBinds [mkLocalValBind toInsert]
   | otherwise = annJust & localBinds .- insertWhere (mkLocalValBind toInsert) (const True) isNothing $ locals
 
 -- | All expressions that are bound stronger than function application.

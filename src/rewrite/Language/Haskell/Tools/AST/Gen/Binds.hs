@@ -49,9 +49,9 @@ mkInfixLhs :: Pattern dom -> Operator dom -> Pattern dom -> [Pattern dom] -> Mat
 mkInfixLhs lhs op rhs pats = mkAnn (child <> child <> child <> child) $ UInfixLhs lhs op rhs (mkAnnList (listSepBefore " " " ") pats)
 
 -- | Local bindings attached to a declaration (@ where x = 42 @)
-mkLocalBinds :: Int -> [LocalBind dom] -> MaybeLocalBinds dom
+mkLocalBinds :: [LocalBind dom] -> MaybeLocalBinds dom
 -- TODO: make the indentation automatic
-mkLocalBinds col = mkAnnMaybe (optBefore ("\n" ++ replicate (col - 1) ' ' ++ "where ")) 
+mkLocalBinds = mkAnnMaybe (indentRelative 2 $ optBefore ("\nwhere "))
                      . Just . mkAnn child . ULocalBinds . mkAnnList indentedList
 
 mkLocalBinds' :: [LocalBind dom] -> LocalBinds dom
