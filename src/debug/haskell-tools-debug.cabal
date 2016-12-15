@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.Debug
   other-modules:       Language.Haskell.Tools.DebugGhcAST
                      , Language.Haskell.Tools.RangeDebug

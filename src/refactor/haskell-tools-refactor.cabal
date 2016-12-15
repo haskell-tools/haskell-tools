@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.Refactor
                      , Language.Haskell.Tools.Refactor.BindingElem
                      , Language.Haskell.Tools.Refactor.GetModules
@@ -52,7 +53,7 @@ library
   
 test-suite haskell-tools-test
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g
+  ghc-options:         -with-rtsopts=-M2g -O2
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.9  && < 4.10

@@ -138,10 +138,10 @@ type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 
 -- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
-parseTyped modSum = do
+parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   let compExts = extensionFlags $ ms_hspp_opts modSum
       hasStaticFlags = fromEnum StaticPointers `member` compExts
-      ms = if hasStaticFlags then forceAsmGen modSum else modSum
+      ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
   p <- parseModule ms
   tc <- typecheckModule p
   GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
@@ -155,15 +155,34 @@ parseTyped modSum = do
                          (fromJust $ tm_renamed_source tc) 
                          (pm_parsed_source p)))
 
+-- | Modifies the dynamic flags for performing a ghc task
+withAlteredDynFlags :: GhcMonad m => (DynFlags -> m DynFlags) -> m a -> m a
+withAlteredDynFlags modDFs action = do
+  dfs <- getSessionDynFlags
+  setSessionDynFlags =<< modDFs dfs
+  res <- action
+  setSessionDynFlags dfs
+  return res
+
+-- | Forces the code generation for a given module
 forceCodeGen :: ModSummary -> ModSummary
 forceCodeGen ms = ms { ms_hspp_opts = modOpts' }
   where modOpts = (ms_hspp_opts ms) { hscTarget = HscInterpreted }
         modOpts' = modOpts { ghcLink = LinkInMemory }
 
+-- | Forces ASM code generation for a given module
 forceAsmGen :: ModSummary -> ModSummary
 forceAsmGen ms = ms { ms_hspp_opts = modOpts' }
   where modOpts = (ms_hspp_opts ms) { hscTarget = HscAsm }
         modOpts' = modOpts { ghcLink = LinkInMemory }
+
+-- | Normalizes the flags for a module summary
+modSumNormalizeFlags :: ModSummary -> ModSummary
+modSumNormalizeFlags ms = ms { ms_hspp_opts = normalizeFlags (ms_hspp_opts ms) }
+
+-- | Removes all flags that are unintelligable for refactoring
+normalizeFlags :: DynFlags -> DynFlags
+normalizeFlags = updOptLevel 0
 
 readSrcSpan :: String -> RealSrcSpan
 readSrcSpan s = case splitOn "-" s of

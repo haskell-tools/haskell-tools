@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -O2
   build-depends:       base                      >= 4.9 && < 4.10
                      , containers                >= 0.5 && < 0.6
                      , mtl                       >= 2.2 && < 2.3
@@ -29,6 +30,7 @@ library
 
 
 executable ht-refact
+  ghc-options:         -O2
   build-depends:       base                      >= 4.9 && < 4.10
                      , haskell-tools-cli         >= 0.3 && < 0.4
   hs-source-dirs:      exe
@@ -37,7 +39,7 @@ executable ht-refact
   
 test-suite haskell-tools-cli-tests
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g
+  ghc-options:         -with-rtsopts=-M2g -O2
   hs-source-dirs:      test
   main-is:             Main.hs  
   build-depends:       base                      >= 4.9 && < 4.10
@@ -52,7 +54,7 @@ test-suite haskell-tools-cli-tests
 
 benchmark cli-benchmark
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g
+  ghc-options:         -with-rtsopts=-M2g -O2
   build-depends:       base                      >= 4.9 && < 4.10
                      , haskell-tools-cli         >= 0.3 && < 0.4
                      , criterion                 >= 1.1 && < 1.2
