@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-partial-type-signatures #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 module Type.Wildcard where
 
