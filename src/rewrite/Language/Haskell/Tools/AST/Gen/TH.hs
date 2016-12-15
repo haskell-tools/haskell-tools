@@ -42,5 +42,5 @@ mkTypeBracket = mkAnn ("[t|" <> child <> "|]") . UTypeBracket
 
 -- | Declaration bracket (@ [d| f :: Int -> Int; f x = x*x |] @)
 mkDeclsBracket :: [Decl dom] -> Bracket dom
-mkDeclsBracket = mkAnn ("[d|" <> child <> "|]") . UDeclsBracket . mkAnnList indentedList
+mkDeclsBracket = mkAnn ("[d|" <> child <> "|]") . UDeclsBracket . mkAnnList (indented list)
 

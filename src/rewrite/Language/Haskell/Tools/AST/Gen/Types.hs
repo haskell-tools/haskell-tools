@@ -22,7 +22,7 @@ import Language.Haskell.Tools.Transform
 
 -- | Forall types (@ forall x y . type @)
 mkForallType :: [TyVar dom] -> Type dom -> Type dom
-mkForallType vars t = mkAnn ("forall " <> child <> " . " <> child) (UTyForall (mkAnnList (listSep " ") vars) t)
+mkForallType vars t = mkAnn ("forall " <> child <> " . " <> child) (UTyForall (mkAnnList (separatedBy " " list) vars) t)
 
 -- | Simplified creation of type variables
 mkTypeVar' :: GHC.Name -> TyVar dom
@@ -38,11 +38,11 @@ mkFunctionType at rt = mkAnn (child <> " -> " <> child) (UTyFun at rt)
 
 -- | Tuple types (@ (a,b) @)
 mkTupleType :: [Type dom] -> Type dom
-mkTupleType args = mkAnn ("(" <> child <> ")") (UTyTuple (mkAnnList (listSep ", ") args))
+mkTupleType args = mkAnn ("(" <> child <> ")") (UTyTuple (mkAnnList (separatedBy ", " list) args))
 
 -- | Unboxed tuple types (@ (\#a,b\#) @)
 mkUnboxedTupleType :: [Type dom] -> Type dom
-mkUnboxedTupleType args = mkAnn ("(#" <> child <> "#)") (UTyUnbTuple (mkAnnList (listSep ", ") args))
+mkUnboxedTupleType args = mkAnn ("(#" <> child <> "#)") (UTyUnbTuple (mkAnnList (separatedBy ", " list) args))
 
 -- | List type with special syntax (@ [a] @)
 mkListType :: Type dom -> Type dom
@@ -127,11 +127,13 @@ mkPromotedConType = mkAnn child . UTyPromoted . mkAnn child . UPromotedCon
 
 -- | A list of elements as a kind.
 mkPromotedListType :: [Type dom] -> Type dom
-mkPromotedListType = mkAnn child . UTyPromoted . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (listSep ", ")
+mkPromotedListType 
+  = mkAnn child . UTyPromoted . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (separatedBy ", " list)
 
 -- | A tuple of elements as a kind.
 mkPromotedTupleType :: [Type dom] -> Type dom
-mkPromotedTupleType = mkAnn child . UTyPromoted . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (listSep ", ")
+mkPromotedTupleType 
+  = mkAnn child . UTyPromoted . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (separatedBy ", " list)
 
 -- | Kind of the unit value @()@. 
 mkPromotedUnitType :: Type dom
@@ -145,14 +147,14 @@ mkContextOne = mkAnn (child <> " =>") . UContextOne
 
 -- | Creates a context of a set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
 mkContextMulti :: [Assertion dom] -> Context dom
-mkContextMulti = mkAnn ("(" <> child <> ") =>") . UContextMulti . mkAnnList (listSep ", ")
+mkContextMulti = mkAnn ("(" <> child <> ") =>") . UContextMulti . mkAnnList (separatedBy ", " list)
 
 -- * Generation of assertions
 
 -- | Class assertion (@Cls x@)
 mkClassAssert :: Name dom -> [Type dom] -> Assertion dom
 -- fixme: class assertion without parameters should not have the last space
-mkClassAssert n args = mkAnn (child <> " " <> child) $ UClassAssert n (mkAnnList (listSep " ") args)
+mkClassAssert n args = mkAnn (child <> " " <> child) $ UClassAssert n (mkAnnList (separatedBy " " list) args)
 
 -- | Infix class assertion, also contains type equations (@ a ~ X y @)
 mkInfixAssert :: Type dom -> Operator dom -> Type dom -> Assertion dom

@@ -19,48 +19,67 @@ type ASTMulti node dom = AnnListG node dom SrcTemplateStage
 
 instance IsString (SpanInfo SrcTemplateStage) where
   fromString s = SourceTemplateNode noSrcSpan [TextElem s] 0 Nothing
-    
+
+-- * Basic elements
 child :: SpanInfo SrcTemplateStage
 child = SourceTemplateNode noSrcSpan [ChildElem] 0 Nothing
 
 opt :: OptionalInfo SrcTemplateStage
 opt = SourceTemplateOpt noSrcSpan "" "" 0 Nothing
 
-optBefore :: String -> OptionalInfo SrcTemplateStage
-optBefore s = SourceTemplateOpt noSrcSpan s "" 0 Nothing
-
-optAfter :: String -> OptionalInfo SrcTemplateStage
-optAfter s = SourceTemplateOpt noSrcSpan "" s 0 Nothing
-
-optBeforeAfter :: String -> String -> OptionalInfo SrcTemplateStage
-optBeforeAfter bef aft = SourceTemplateOpt noSrcSpan bef aft 0 Nothing
-
-indentRelative :: Int -> OptionalInfo SrcTemplateStage -> OptionalInfo SrcTemplateStage
-indentRelative i = srcTmpOptRelPos .= Just i
-
 list :: ListInfo SrcTemplateStage
 list = SourceTemplateList noSrcSpan "" "" "" False [] 0 Nothing
 
-indentedList :: ListInfo SrcTemplateStage
-indentedList = SourceTemplateList noSrcSpan "" "" "\n" True [] 0 Nothing
+-- * Modifiers
 
-indentedListBefore :: String -> ListInfo SrcTemplateStage
-indentedListBefore bef = SourceTemplateList noSrcSpan bef "" "\n" True [] 0 Nothing
+class AfterBefore i where
+  -- | Put the given string before the element if it is not empty
+  after :: String -> i -> i
+  -- | The given string should follow the element if it is not empty
+  followedBy :: String -> i -> i
 
-indentedListAfter :: String -> ListInfo SrcTemplateStage
-indentedListAfter aft = SourceTemplateList noSrcSpan "" aft "\n" True [] 0 Nothing
+instance AfterBefore (ListInfo SrcTemplateStage) where
+  after str = srcTmpListBefore .= str
+  followedBy str = srcTmpListAfter .= str
 
-listSep :: String -> ListInfo SrcTemplateStage
-listSep s = SourceTemplateList noSrcSpan "" "" s False [] 0 Nothing
+instance AfterBefore (OptionalInfo SrcTemplateStage) where
+  after str = srcTmpOptBefore .= str
+  followedBy str = srcTmpOptAfter .= str
 
-listSepBefore :: String -> String -> ListInfo SrcTemplateStage
-listSepBefore s bef = SourceTemplateList noSrcSpan bef "" s False [] 0 Nothing
+class RelativeIndent i where
+  -- | The element should be indented relatively to its parent
+  relativeIndented :: Int -> i -> i
 
-listSepAfter :: String -> String -> ListInfo SrcTemplateStage
-listSepAfter s aft = SourceTemplateList noSrcSpan "" aft s False [] 0 Nothing
+instance RelativeIndent (SpanInfo SrcTemplateStage) where
+  relativeIndented i = srcTmpRelPos .= Just i
 
-listSepBeforeAfter :: String -> String -> String -> ListInfo SrcTemplateStage
-listSepBeforeAfter s bef aft = SourceTemplateList noSrcSpan bef aft s False [] 0 Nothing
+instance RelativeIndent (ListInfo SrcTemplateStage) where
+  relativeIndented i = srcTmpListRelPos .= Just i
+
+instance RelativeIndent (OptionalInfo SrcTemplateStage) where
+  relativeIndented i = srcTmpOptRelPos .= Just i
+
+
+class MinimumIndent i where
+  -- | The elements should be indented at least to the given number of spaces
+  minimumIndented :: Int -> i -> i
+
+instance MinimumIndent (SpanInfo SrcTemplateStage) where
+  minimumIndented i = sourceTemplateMinimalIndent .= i
+
+instance MinimumIndent (ListInfo SrcTemplateStage) where
+  minimumIndented i = srcTmpListMinimalIndent .= i
+
+instance MinimumIndent (OptionalInfo SrcTemplateStage) where
+  minimumIndented i = srcTmpOptMinimalIndent .= i
+
+-- | The elements of the list should be separated by the given string by default (might be overridden)
+separatedBy :: String -> ListInfo SrcTemplateStage -> ListInfo SrcTemplateStage
+separatedBy sep = srcTmpDefaultSeparator .= sep
+
+-- | The elements of the list should be indented on the same column
+indented :: ListInfo SrcTemplateStage -> ListInfo SrcTemplateStage
+indented = (srcTmpIndented .= True) . (srcTmpDefaultSeparator .= "\n")
 
 -- | Concatenates two source templates to produce a new template with all child elements.
 (<>) :: SpanInfo SrcTemplateStage -> SpanInfo SrcTemplateStage -> SpanInfo SrcTemplateStage

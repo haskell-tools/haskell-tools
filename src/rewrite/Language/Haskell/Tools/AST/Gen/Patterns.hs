@@ -31,23 +31,23 @@ mkInfixAppPat lhs op rhs = mkAnn (child <> " " <> child <> " " <> child) $ UInfi
 
 -- | Constructor application pattern (@ Point x y @)
 mkAppPat :: Name dom -> [Pattern dom] -> Pattern dom
-mkAppPat n pat = mkAnn (child <> child) $ UAppPat n (mkAnnList (listSepBefore " " " ") pat)
+mkAppPat n pat = mkAnn (child <> child) $ UAppPat n (mkAnnList (after " " $ separatedBy " " list) pat)
 
 -- | Tuple pattern (@ (x,y) @)
 mkTuplePat :: [Pattern dom] -> Pattern dom
-mkTuplePat pats = mkAnn ("(" <> child <> ")") $ UTuplePat (mkAnnList (listSep ", ") pats)
+mkTuplePat pats = mkAnn ("(" <> child <> ")") $ UTuplePat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Unboxed tuple pattern (@ (\# x, y \#) @)
 mkUnboxTuplePat :: [Pattern dom] -> Pattern dom
-mkUnboxTuplePat pats = mkAnn ("(# " <> child <> " #)") $ UUnboxTuplePat (mkAnnList (listSep ", ") pats)
+mkUnboxTuplePat pats = mkAnn ("(# " <> child <> " #)") $ UUnboxTuplePat (mkAnnList (separatedBy ", " list) pats)
 
 -- | List pattern (@ [1,2,a,x] @)
 mkListPat :: [Pattern dom] -> Pattern dom
-mkListPat pats = mkAnn ("[" <> child <> "]") $ UListPat (mkAnnList (listSep ", ") pats)
+mkListPat pats = mkAnn ("[" <> child <> "]") $ UListPat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Parallel array pattern (@ [:1,2,a,x:] @)
 mkParArrayPat :: [Pattern dom] -> Pattern dom
-mkParArrayPat pats = mkAnn ("[:" <> child <> ":]") $ UParArrPat (mkAnnList (listSep ", ") pats)
+mkParArrayPat pats = mkAnn ("[:" <> child <> ":]") $ UParArrPat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Parenthesised patterns
 mkParenPat :: Pattern dom -> Pattern dom
@@ -55,7 +55,7 @@ mkParenPat = mkAnn ("(" <> child <> ")") . UParenPat
 
 -- | Record pattern (@ Point { x = 3, y } @)
 mkRecPat :: Name dom -> [PatternField dom] -> Pattern dom
-mkRecPat name flds = mkAnn (child <> "{ " <> child <> " }") $ URecPat name (mkAnnList (listSep ", ") flds)
+mkRecPat name flds = mkAnn (child <> "{ " <> child <> " }") $ URecPat name (mkAnnList (separatedBy ", " list) flds)
 
 -- | As-pattern (explicit name binding) (@ ls\@(hd:_) @)
 mkAsPat :: Name dom -> Pattern dom -> Pattern dom

@@ -62,11 +62,11 @@ mkConKind = mkAnn child . UPromotedKind . mkAnn child . UPromotedCon
 
 -- | A list of elements as a kind.
 mkListKind :: [Kind dom] -> Kind dom
-mkListKind = mkAnn child . UPromotedKind . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (listSep ", ")
+mkListKind = mkAnn child . UPromotedKind . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (separatedBy ", " list)
 
 -- | A tuple of elements as a kind.
 mkTupleKind :: [Kind dom] -> Kind dom
-mkTupleKind = mkAnn child . UPromotedKind . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (listSep ", ")
+mkTupleKind = mkAnn child . UPromotedKind . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (separatedBy ", " list)
 
 -- | Kind of the unit value @()@. 
 mkUnitKind :: Kind dom

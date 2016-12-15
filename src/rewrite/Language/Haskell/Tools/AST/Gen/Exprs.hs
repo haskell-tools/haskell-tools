@@ -41,11 +41,11 @@ mkApp f e = mkAnn (child <> " " <> child) (UApp f e)
 
 -- | Create a lambda expression (@ \\a b -> a + b @)
 mkLambda :: [Pattern dom] -> Expr dom -> Expr dom
-mkLambda pats rhs = mkAnn ("\\" <> child <> " -> " <> child) $ ULambda (mkAnnList (listSep " ") pats) rhs
+mkLambda pats rhs = mkAnn ("\\" <> child <> " -> " <> child) $ ULambda (mkAnnList (separatedBy " " list) pats) rhs
 
 -- | Create a local binding (@ let x = 2; y = 3 in e x y @)
 mkLet :: [LocalBind dom] -> Expr dom -> Expr dom
-mkLet pats expr = mkAnn ("let " <> child <> " in " <> child) $ ULet (mkAnnList indentedList pats) expr
+mkLet pats expr = mkAnn ("let " <> child <> " in " <> child) $ ULet (mkAnnList (indented list) pats) expr
 
 -- | Create a if expression (@ if a then b else c @)
 mkIf :: Expr dom -> Expr dom -> Expr dom -> Expr dom
@@ -53,43 +53,43 @@ mkIf cond then_ else_ = mkAnn ("if " <> child <> " then " <> child <> " else " <
 
 -- | Create a multi way if expressions with @MultiWayIf@ extension (@ if | guard1 -> expr1; guard2 -> expr2 @)
 mkMultiIf :: [GuardedCaseRhs dom] -> Expr dom
-mkMultiIf cases = mkAnn ("if" <> child) $ UMultiIf (mkAnnList indentedList cases)
+mkMultiIf cases = mkAnn ("if" <> child) $ UMultiIf (mkAnnList (indented list) cases)
 
 -- | Create a pattern matching expression (@ case expr of pat1 -> expr1; pat2 -> expr2 @)
 mkCase :: Expr dom -> [Alt dom] -> Expr dom
-mkCase expr cases = mkAnn ("case " <> child <> " of " <> child) $ UCase expr (mkAnnList indentedList cases)
+mkCase expr cases = mkAnn ("case " <> child <> " of " <> child) $ UCase expr (mkAnnList (indented list) cases)
 
 -- | Create a do-notation expressions (@ do x <- act1; act2 @)
 mkDoBlock :: [Stmt dom] -> Expr dom
-mkDoBlock stmts = mkAnn (child <> " " <> child) $ UDo (mkAnn "do" UDoKeyword) (mkAnnList indentedList stmts)
+mkDoBlock stmts = mkAnn (child <> " " <> child) $ UDo (mkAnn "do" UDoKeyword) (mkAnnList (indented list) stmts)
 
 -- | Create a tuple expression (@ (e1, e2, e3) @)
 mkTuple :: [Expr dom] -> Expr dom
-mkTuple exprs = mkAnn ("(" <> child <> ")") $ UTuple (mkAnnList (listSep ", ") exprs)
+mkTuple exprs = mkAnn ("(" <> child <> ")") $ UTuple (mkAnnList (separatedBy ", " list) exprs)
 
 -- | Create a unboxed tuple expression (@ (\# e1, e2, e3 \#) @)
 mkUnboxedTuple :: [Expr dom] -> Expr dom
-mkUnboxedTuple exprs = mkAnn ("(# " <> child <> " #)") $ UTuple (mkAnnList (listSep ", ") exprs)
+mkUnboxedTuple exprs = mkAnn ("(# " <> child <> " #)") $ UTuple (mkAnnList (separatedBy ", " list) exprs)
 
 -- | Create a tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
 mkTupleSection :: [Maybe (Expr dom)] -> Expr dom
 mkTupleSection elems 
   = let tupSecs = map (maybe (mkAnn "" Missing) (mkAnn child . Present)) elems
-     in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (listSep ", ") tupSecs)
+     in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (separatedBy ", " list) tupSecs)
 
 -- | Create a unboxed tuple section, enabled with @TupleSections@ (@ (\#a,,b\#) @). One of the elements must be missing.
 mkTupleUnboxedSection :: [Maybe (Expr dom)] -> Expr dom
 mkTupleUnboxedSection elems 
   = let tupSecs = map (maybe (mkAnn "" Missing) (mkAnn child . Present)) elems
-     in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (listSep ", ") tupSecs)
+     in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (separatedBy ", " list) tupSecs)
 
 -- | Create a list expression: @[1,2,3]@
 mkList :: [Expr dom] -> Expr dom
-mkList exprs = mkAnn ("[" <> child <> "]") $ UList (mkAnnList (listSep ", ") exprs)
+mkList exprs = mkAnn ("[" <> child <> "]") $ UList (mkAnnList (separatedBy ", " list) exprs)
 
 -- | Create a parallel array expression: @[: 1,2,3 :]@
 mkParArray :: [Expr dom] -> Expr dom
-mkParArray exprs = mkAnn ("[: " <> child <> " :]") $ UParArray (mkAnnList (listSep ", ") exprs)
+mkParArray exprs = mkAnn ("[: " <> child <> " :]") $ UParArray (mkAnnList (separatedBy ", " list) exprs)
 
 -- | Create a parenthesized expression: @( a + b )@
 mkParen :: Expr dom -> Expr dom
@@ -105,33 +105,33 @@ mkRightSection op rhs = mkAnn ("(" <> child <> child <> ")") $ URightSection op 
 
 -- | Create a record value construction: @Point { x = 3, y = -2 }@
 mkRecCon :: Name dom -> [FieldUpdate dom] -> Expr dom
-mkRecCon name flds = mkAnn (child <> " { " <> child <> " }") $ URecCon name (mkAnnList (listSep ", ") flds)
+mkRecCon name flds = mkAnn (child <> " { " <> child <> " }") $ URecCon name (mkAnnList (separatedBy ", " list) flds)
 
 -- | Create a record value  update: @p1 { x = 3, y = -2 }@
 mkRecUpdate :: Expr dom -> [FieldUpdate dom] -> Expr dom
-mkRecUpdate expr flds = mkAnn (child <> " { " <> child <> " }") $ URecUpdate expr (mkAnnList (listSep ", ") flds)
+mkRecUpdate expr flds = mkAnn (child <> " { " <> child <> " }") $ URecUpdate expr (mkAnnList (separatedBy ", " list) flds)
 
 -- | Create a enumeration expression (@ [1,3..10] @)
 mkEnum :: Expr dom -> Maybe (Expr dom) -> Maybe (Expr dom) -> Expr dom
-mkEnum from step to = mkAnn ("[" <> child <> child <> ".." <> child <> "]") $ UEnum from (mkAnnMaybe (optBefore ",") step) (mkAnnMaybe (optBefore ",") to)
+mkEnum from step to = mkAnn ("[" <> child <> child <> ".." <> child <> "]") $ UEnum from (mkAnnMaybe (after "," opt) step) (mkAnnMaybe (after "," opt) to)
 
 -- | Create a parallel array enumeration (@ [: 1,3 .. 10 :] @)
 mkParArrayEnum :: Expr dom -> Maybe (Expr dom) -> Expr dom -> Expr dom
 mkParArrayEnum from step to
   = mkAnn ("[: " <> child <> child <> ".." <> child <> " :]") 
-      $ UParArrayEnum from (mkAnnMaybe (optBefore ",") step) to
+      $ UParArrayEnum from (mkAnnMaybe (after "," opt) step) to
 
 -- | Create a list comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
 mkListComp :: Expr dom -> [ListCompBody dom] -> Expr dom
 mkListComp expr stmts 
   = mkAnn ("[ " <> child <> " | " <> child <> " ]") 
-      $ UListComp expr $ mkAnnList (listSep " | ") stmts
+      $ UListComp expr $ mkAnnList (separatedBy " | " list) stmts
 
 -- | Create a parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
 mkParArrayComp :: Expr dom -> [ListCompBody dom] -> Expr dom
 mkParArrayComp expr stmts 
   = mkAnn ("[: " <> child <> " | " <> child <> " :]") 
-      $ UParArrayComp expr $ mkAnnList (listSep " | ") stmts
+      $ UParArrayComp expr $ mkAnnList (separatedBy " | " list) stmts
 
 -- | Create a explicit type signature (@ x :: Int @)
 mkExprTypeSig :: Expr dom -> Type dom -> Expr dom
@@ -175,7 +175,7 @@ mkArrowApp lhs arrow rhs = mkAnn (child <> " " <> child <> " " <> child) $ UArro
 
 -- | Create a lambda case ( @\case 0 -> 1; 1 -> 2@ )
 mkLambdaCase :: [Alt dom] -> Expr dom
-mkLambdaCase = mkAnn ("\\case" <> child) . ULamCase . mkAnnList indentedList
+mkLambdaCase = mkAnn ("\\case" <> child) . ULamCase . mkAnnList (indented list)
 
 -- | Create a static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
 mkStaticPointer :: Expr dom -> Expr dom
@@ -202,7 +202,7 @@ mkFieldWildcard = mkAnn child $ UFieldWildcard $ mkAnn ".." FldWildcard
 
 -- | Create a clause of case expression (@ Just x -> x + 1 @)
 mkAlt :: Pattern dom -> CaseRhs dom -> Maybe (LocalBinds dom) -> Alt dom
-mkAlt pat rhs locals = mkAnn (child <> child <> child) $ UAlt pat rhs (mkAnnMaybe (optBefore " where ") locals)
+mkAlt pat rhs locals = mkAnn (child <> child <> child) $ UAlt pat rhs (mkAnnMaybe (after " where " opt) locals)
 
 -- | Create a unguarded right-hand side a pattern match (@ -> 3 @)
 mkCaseRhs :: Expr dom -> CaseRhs dom
@@ -210,11 +210,11 @@ mkCaseRhs = mkAnn (" -> " <> child) . UUnguardedCaseRhs
 
 -- | Create a guarded right-hand sides of a pattern match (@ | x == 1 -> 3; | otherwise -> 4 @)
 mkGuardedCaseRhss :: [GuardedCaseRhs dom] -> CaseRhs dom
-mkGuardedCaseRhss = mkAnn child . UGuardedCaseRhss . mkAnnList indentedList
+mkGuardedCaseRhss = mkAnn child . UGuardedCaseRhss . mkAnnList (indented list)
 
 -- | Creates a guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
 mkGuardedCaseRhs :: [RhsGuard dom] -> Expr dom -> GuardedCaseRhs dom
-mkGuardedCaseRhs guards expr = mkAnn (" | " <> child <> " -> " <> child) $ UGuardedCaseRhs (mkAnnList (listSep ", ") guards) expr
+mkGuardedCaseRhs guards expr = mkAnn (" | " <> child <> " -> " <> child) $ UGuardedCaseRhs (mkAnnList (separatedBy ", " list) guards) expr
 
 -- * Pragmas that can be applied to expressions
 
@@ -252,7 +252,7 @@ mkArrowAppCmd lhs arrow rhs
 mkArrowFromCmd :: Expr dom -> [Cmd dom] -> Cmd dom
 mkArrowFromCmd expr cmds 
   = mkAnn ("(| " <> child <> child <> " |)")
-      $ UArrowFormCmd expr $ mkAnnList (listSepBefore " " " ") cmds
+      $ UArrowFormCmd expr $ mkAnnList (after " " $ separatedBy " " list) cmds
 
 -- | A function application command
 mkAppCmd :: Cmd dom -> Expr dom -> Cmd dom
@@ -267,7 +267,7 @@ mkInfixCmd lhs op rhs = mkAnn (child <> " " <> child <> " " <> child)
 -- | A lambda command 
 mkLambdaCmd :: [Pattern dom] -> Cmd dom -> Cmd dom
 mkLambdaCmd args cmd = mkAnn ("\\" <> child <> " -> " <> child)
-                         $ ULambdaCmd (mkAnnList (listSep " ") args) cmd
+                         $ ULambdaCmd (mkAnnList (separatedBy " " list) args) cmd
 
 -- | A parenthesized command
 mkParenCmd :: Cmd dom -> Cmd dom
@@ -277,7 +277,7 @@ mkParenCmd cmd = mkAnn ("(" <> child <> ")") $ UParenCmd cmd
 mkCaseCmd :: Expr dom -> [CmdAlt dom] -> Cmd dom
 mkCaseCmd expr alts 
   = mkAnn ("case " <> child <> " of " <> child) 
-      $ UCaseCmd expr $ mkAnnList indentedList alts
+      $ UCaseCmd expr $ mkAnnList (indented list) alts
 
 -- | An if command (@ if f x y then g -< x+1 else h -< y+2 @)
 mkIfCmd :: Expr dom -> Cmd dom -> Cmd dom -> Cmd dom
@@ -289,11 +289,11 @@ mkIfCmd pred then_ else_
 mkLetCmd :: [LocalBind dom] -> Cmd dom -> Cmd dom
 mkLetCmd binds cmd
   = mkAnn ("let " <> child <> " in " <> child) 
-      $ ULetCmd (mkAnnList indentedList binds) cmd
+      $ ULetCmd (mkAnnList (indented list) binds) cmd
 
 -- | A do-notation in a command
 mkDoCmd :: [CmdStmt dom] -> Cmd dom
-mkDoCmd stmts = mkAnn ("do " <> child) $ UDoCmd (mkAnnList indentedList stmts)
+mkDoCmd stmts = mkAnn ("do " <> child) $ UDoCmd (mkAnnList (indented list) stmts)
 
 -- | Left arrow application: @-<@
 mkLeftAppl :: ArrowApp dom

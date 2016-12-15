@@ -4,8 +4,7 @@ module Language.Haskell.Tools.Transform
   -- comment handling
   , placeComments, getNormalComments, getPragmaComments
   -- generating source templates
-  , child, opt, optBefore, optAfter, optBeforeAfter, list, indentedList, indentedListBefore, indentedListAfter, listSep
-  , listSepBefore, listSepAfter, listSepBeforeAfter, indentRelative, (<>)
+  , child, opt, list, after, followedBy, relativeIndented, minimumIndented, separatedBy, indented, (<>)
   -- references on source templates
   , sourceTemplateNodeRange, sourceTemplateNodeElems
   , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators

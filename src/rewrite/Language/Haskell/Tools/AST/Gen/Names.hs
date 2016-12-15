@@ -68,7 +68,7 @@ mkQualifiedName :: [String] -> String -> QualifiedName dom
 mkQualifiedName [] n = mkSimpleName n
 mkQualifiedName quals name
   = mkAnn (child <> "." <> child)
-          (UQualifiedName (mkAnnList (listSep ".") $ map mkNamePart quals) (mkNamePart name))
+          (UQualifiedName (mkAnnList (separatedBy "." list) $ map mkNamePart quals) (mkNamePart name))
 
 -- | Creates a part of a qualified name.         
 mkNamePart :: String -> NamePart dom

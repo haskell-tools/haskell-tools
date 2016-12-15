@@ -22,16 +22,17 @@ import Language.Haskell.Tools.Transform
 mkModule :: [FilePragma dom] -> Maybe (ModuleHead dom) -> [ImportDecl dom] -> [Decl dom] -> Module dom
 mkModule filePrags head imps decls 
   = mkAnn (child <> child <> child <> child) 
-      $ UModule (mkAnnList (listSepAfter "\n" "\n") filePrags) (mkAnnMaybe opt head)
-                (mkAnnList (indentedListBefore "\n") imps) (mkAnnList (indentedListBefore "\n") decls)
+      $ UModule (mkAnnList (followedBy "\n" $ separatedBy "\n" list) filePrags) (mkAnnMaybe opt head)
+                (mkAnnList (after "\n" $ indented list) imps) (mkAnnList (after "\n" $ indented list) decls)
                
 -- | Module declaration with name and (optional) exports
 mkModuleHead :: ModuleName dom -> Maybe (ExportSpecs dom) -> Maybe (ModulePragma dom) -> ModuleHead dom
-mkModuleHead n es pr = mkAnn ("module " <> child <> child <> child <> " where") $ UModuleHead n (mkAnnMaybe opt es) (mkAnnMaybe (optBefore "\n") pr)
+mkModuleHead n es pr = mkAnn ("module " <> child <> child <> child <> " where") 
+                         $ UModuleHead n (mkAnnMaybe opt es) (mkAnnMaybe (after "\n" opt) pr)
 
 -- | A list of export specifications surrounded by parentheses
 mkExportSpecs :: [ExportSpec dom] -> ExportSpecs dom
-mkExportSpecs = mkAnn ("(" <> child <> ")") . UExportSpecs . mkAnnList (listSep ", ")
+mkExportSpecs = mkAnn ("(" <> child <> ")") . UExportSpecs . mkAnnList (separatedBy ", " list)
 
 -- | Export a name and related names
 mkExportSpec :: IESpec dom -> ExportSpec dom
@@ -43,11 +44,11 @@ mkModuleExport = mkAnn ("module " <> child) . UModuleExport
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
 mkIESpec :: Name dom -> Maybe (SubSpec dom) -> IESpec dom
-mkIESpec name ss = mkAnn (child <> child) (UIESpec name (mkAnnMaybe (optBeforeAfter "(" ")") ss))
+mkIESpec name ss = mkAnn (child <> child) (UIESpec name (mkAnnMaybe (after "(" $ followedBy ")" opt) ss))
 
 -- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
 mkSubList :: [Name dom] -> SubSpec dom
-mkSubList = mkAnn child . USubSpecList . mkAnnList (listSep ", ")
+mkSubList = mkAnn child . USubSpecList . mkAnnList (separatedBy ", " list)
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
 mkSubAll :: SubSpec dom
@@ -66,11 +67,11 @@ mkImportDecl source qualified safe pkg name rename spec
 
 -- | Restrict the import definition to ONLY import the listed names
 mkImportSpecList :: [IESpec dom] -> ImportSpec dom
-mkImportSpecList = mkAnn ("(" <> child <> ")") . UImportSpecList . mkAnnList (listSep ", ")
+mkImportSpecList = mkAnn ("(" <> child <> ")") . UImportSpecList . mkAnnList (separatedBy ", " list)
 
 -- | Restrict the import definition to DONT import the listed names
 mkImportHidingList :: [IESpec dom] -> ImportSpec dom
-mkImportHidingList = mkAnn (" hiding (" <> child <> ")") . UImportSpecHiding . mkAnnList (listSep ", ")
+mkImportHidingList = mkAnn (" hiding (" <> child <> ")") . UImportSpecHiding . mkAnnList (separatedBy ", " list)
 
 -- | The name of a module
 mkModuleName :: String -> ModuleName dom
@@ -82,7 +83,7 @@ mkModuleName s = mkAnn (fromString s) (UModuleName s)
 mkLanguagePragma :: [String] -> FilePragma dom
 mkLanguagePragma extensions 
   = mkAnn ("{-# LANGUAGE " <> child <> " #-}") $ ULanguagePragma 
-      $ mkAnnList (listSep ", ") (map (\ext -> mkAnn (fromString ext) (ULanguageExtension ext)) extensions)
+      $ mkAnnList (separatedBy ", " list) (map (\ext -> mkAnn (fromString ext) (ULanguageExtension ext)) extensions)
 
 -- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
 mkOptionsGHC :: String -> FilePragma dom
@@ -94,10 +95,10 @@ mkOptionsGHC opts
 mkModuleWarningPragma :: [String] -> ModulePragma dom
 mkModuleWarningPragma msg 
   = mkAnn ("{-# WARNING " <> child <> " #-}") $ UModuleWarningPragma 
-      $ mkAnnList (listSep " ") $ map mkStringNode msg
+      $ mkAnnList (separatedBy " " list) $ map mkStringNode msg
 
 -- | A deprecated pragma attached to the module
 mkModuleDeprecatedPragma :: [String] -> ModulePragma dom
 mkModuleDeprecatedPragma msg 
   = mkAnn ("{-# DEPRECATED " <> child <> " #-}") $ UModuleDeprecatedPragma 
-      $ mkAnnList (listSep " ") $ map mkStringNode msg
+      $ mkAnnList (separatedBy " " list) $ map mkStringNode msg
