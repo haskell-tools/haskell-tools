@@ -1,6 +1,8 @@
 module Main where
 
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.HUnit
+
 import System.Exit
 import System.Directory
 import System.FilePath
@@ -15,21 +17,15 @@ import Language.Haskell.Tools.Refactor.CLI
 
 main :: IO ()
 main = do nightlyTests <- benchTests
-          run (allTests ++ nightlyTests)
+          defaultMain $ testGroup "cli tests" (allTests ++ nightlyTests)
 
-run :: [Test] -> IO ()
-run tests = do results <- runTestTT $ TestList tests
-               if errors results + failures results > 0 
-                  then exitFailure
-                  else exitSuccess
-
-allTests :: [Test]
+allTests :: [TestTree]
 allTests = map makeCliTest cliTests
 
-makeCliTest :: ([FilePath], [String], String, String) -> Test
+makeCliTest :: ([FilePath], [String], String, String) -> TestTree
 makeCliTest (dirs, args, input, output) = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
                                               testdirs = map (((dir ++ "_test") </>) . makeRelative dir) dirs
-  in TestLabel dir $ TestCase $ do   
+  in testCase dir $ do   
     exists <- doesDirectoryExist (dir ++ "_test")
     when exists $ removeDirectoryRecursive (dir ++ "_test")
     copyDir dir (dir ++ "_test")
@@ -84,7 +80,7 @@ cliTests
       )
     ]
 
-benchTests :: IO [Test]
+benchTests :: IO [TestTree]
 benchTests 
   = forM ["full-1", "full-2", "full-3"] $ \id -> do
       commands <- readFile ("bench-tests" </> id <.> "txt")
