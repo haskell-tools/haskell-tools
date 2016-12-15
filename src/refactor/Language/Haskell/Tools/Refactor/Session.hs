@@ -91,14 +91,6 @@ getFileMods fname
        case sfs of sf:_ -> getMods (Just sf)
                    [] -> getMods Nothing
 
-withAlteredDynFlags :: GhcMonad m => (DynFlags -> m DynFlags) -> m a -> m a
-withAlteredDynFlags modDFs action = do
-  dfs <- getSessionDynFlags
-  setSessionDynFlags =<< modDFs dfs
-  res <- action
-  setSessionDynFlags dfs
-  return res
-
 reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc [a]
 reloadChangedModules report isChanged = do
   reachable <- getReachableModules isChanged
