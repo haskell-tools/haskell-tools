@@ -1,5 +1,5 @@
 name:                haskell-tools-refactor
-version:             0.3.0.1
+version:             0.4.0.0
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -45,10 +45,10 @@ library
                      , template-haskell          >= 2.11 && < 2.12
                      , ghc                       >= 8.0  && < 8.1
                      , Cabal                     >= 1.24 && < 1.25
-                     , haskell-tools-ast         >= 0.3  && < 0.4
-                     , haskell-tools-backend-ghc >= 0.3  && < 0.4
-                     , haskell-tools-rewrite     >= 0.3  && < 0.4
-                     , haskell-tools-prettyprint >= 0.3  && < 0.4
+                     , haskell-tools-ast         >= 0.4  && < 0.5
+                     , haskell-tools-backend-ghc >= 0.4  && < 0.5
+                     , haskell-tools-rewrite     >= 0.4  && < 0.5
+                     , haskell-tools-prettyprint >= 0.4  && < 0.5
   default-language:    Haskell2010
   
 test-suite haskell-tools-test
@@ -75,9 +75,9 @@ test-suite haskell-tools-test
                      , ghc                       >= 8.0  && < 8.1
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 1.24 && < 1.25
-                     , haskell-tools-ast         >= 0.3  && < 0.4
-                     , haskell-tools-backend-ghc >= 0.3  && < 0.4
-                     , haskell-tools-rewrite     >= 0.3  && < 0.4
-                     , haskell-tools-prettyprint >= 0.3  && < 0.4
-                     , haskell-tools-refactor    >= 0.3  && < 0.4
+                     , haskell-tools-ast         >= 0.4  && < 0.5
+                     , haskell-tools-backend-ghc >= 0.4  && < 0.5
+                     , haskell-tools-rewrite     >= 0.4  && < 0.5
+                     , haskell-tools-prettyprint >= 0.4  && < 0.5
+                     , haskell-tools-refactor    >= 0.4  && < 0.5
   default-language:    Haskell2010
