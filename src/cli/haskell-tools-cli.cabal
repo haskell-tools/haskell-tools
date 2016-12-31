@@ -1,5 +1,5 @@
 name:                haskell-tools-cli
-version:             0.4.0.0
+version:             0.4.1.0
 synopsis:            Command-line frontend for Haskell-tools Refact
 description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -59,7 +59,7 @@ benchmark cli-benchmark
                      , haskell-tools-cli         >= 0.4 && < 0.5
                      , criterion                 >= 1.1 && < 1.2
                      , time                      >= 1.6 && < 1.7
-                     , aeson                     >= 0.11 && < 0.12
+                     , aeson                     >= 1.0 && < 1.1
                      , directory                 >= 1.2 && < 1.3
                      , filepath                  >= 1.4 && < 2.0
                      , knob                      >= 0.1 && < 0.2

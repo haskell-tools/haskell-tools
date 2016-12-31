@@ -1,4 +1,4 @@
-resolver: lts-7.7
+resolver: nightly-2016-12-31
 
 packages:
   - src/ast
