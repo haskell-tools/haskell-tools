@@ -43,7 +43,7 @@ executable ht-daemon
 
 test-suite haskell-tools-daemon-tests
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g -O2
+  ghc-options:         -with-rtsopts=-M2.5g -O2
   hs-source-dirs:      test
   main-is:             Main.hs  
   build-depends:       base                      >= 4.9  && < 4.10
