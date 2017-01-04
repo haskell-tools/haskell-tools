@@ -81,7 +81,7 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
                     do performSessionCommand output (LoadModule modName)
                        command <- readSessionCommand output (takeWhile (/='"') $ dropWhile (=='"') $ refactoring)
                        performSessionCommand output command
-                  _ -> liftIO $ hPutStrLn output usageMessage
+                  _ -> liftIO $ hPutStrLn output "-module-name or -refactoring flag not specified correctly. Not doing any refactoring."
         runSession input output _ = runSessionLoop input output
 
         runSessionLoop :: Handle -> Handle -> CLIRefactorSession ()
