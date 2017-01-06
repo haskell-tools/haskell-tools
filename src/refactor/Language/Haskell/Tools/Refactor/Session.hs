@@ -14,6 +14,8 @@ import System.FilePath
 import Debug.Trace
 
 import GHC
+import Outputable
+import ErrUtils
 import GhcMonad as GHC
 import HscTypes as GHC
 import Digraph as GHC
@@ -42,7 +44,7 @@ instance IsRefactSessionState RefactorSessionState where
   initSession = RefactorSessionState []
 
 
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath] -> StateT st Ghc ([a], [String])
+loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath] -> StateT st Ghc (Either String ([a], [String]))
 loadPackagesFrom report packages = 
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
@@ -51,13 +53,14 @@ loadPackagesFrom report packages =
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
-     withAlteredDynFlags (return . enableAllPackages allModColls) $ do
-       modsForColls <- lift $ depanal [] True
-       let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-           actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
-       checkEvaluatedMods report modsToParse
-       mods <- mapM (loadModule report) actuallyCompiled
-       return (mods, ignored)
+     handleSourceError (return . Left . concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages) $
+       withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+         modsForColls <- lift $ depanal [] True
+         let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
+             actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
+         checkEvaluatedMods report modsToParse
+         mods <- mapM (loadModule report) actuallyCompiled
+         return $ Right (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
         extractDuplicates (a:rest) 

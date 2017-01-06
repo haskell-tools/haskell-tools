@@ -53,24 +53,29 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
      workingDirsAndHtFlags <- lift $ useFlags args
      let (htFlags, workingDirs) = partition (\f -> head f == '-') workingDirsAndHtFlags
      if null workingDirs then liftIO $ hPutStrLn output usageMessage
-                         else do initializeSession output workingDirs htFlags
-                                 runSession input output htFlags
+                         else do doRun <- initializeSession output workingDirs htFlags
+                                 when doRun $ runSession input output htFlags
      
   where printSrcErrors err = do dfs <- getSessionDynFlags 
                                 liftIO $ printBagOfErrors dfs (srcErrorMessages err)
 
-        initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession ()
+        initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession Bool
         initializeSession output workingDirs flags = do
           liftIO $ hSetBuffering output NoBuffering
           liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."
-          (_, ignoredMods) <- loadPackagesFrom (\ms -> liftIO $ hPutStrLn output ("Loaded module: " ++ modSumName ms)) workingDirs
-          when (not $ null ignoredMods) 
-            $ liftIO $ hPutStrLn output 
-            $ "The following modules are ignored: " 
-                ++ concat (intersperse ", " $ ignoredMods)
-                ++ ". Multiple modules with the same qualified name are not supported."
-          liftIO $ hPutStrLn output "All modules loaded. Use 'SelectModule module-name' to select a module"
-          when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
+          res <- loadPackagesFrom (\ms -> liftIO $ hPutStrLn output ("Loaded module: " ++ modSumName ms)) workingDirs
+          case res of 
+            Right (_, ignoredMods) -> do
+              when (not $ null ignoredMods) 
+                $ liftIO $ hPutStrLn output 
+                $ "The following modules are ignored: " 
+                    ++ concat (intersperse ", " $ ignoredMods)
+                    ++ ". Multiple modules with the same qualified name are not supported."
+              liftIO $ hPutStrLn output "All modules loaded. Use 'SelectModule module-name' to select a module"
+              when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
+              return True
+            Left err -> liftIO $ do hPutStrLn output err
+                                    return False
 
         runSession :: Handle -> Handle -> [String] -> CLIRefactorSession ()
         runSession _ output flags | "-one-shot" `elem` flags
