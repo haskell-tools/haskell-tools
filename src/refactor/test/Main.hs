@@ -83,7 +83,7 @@ functionalTests
                           ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
                           ++ map (\(mod,_) -> mod) inlineBindingTests
 
-rootDir = ".." </> ".." </> "examples"
+rootDir = "examples"
         
 languageTests =
   [ "Decl.AmbiguousFields"

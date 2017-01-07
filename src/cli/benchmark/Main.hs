@@ -28,7 +28,7 @@ import Data.Time.Calendar
 
 import Language.Haskell.Tools.Refactor.CLI
 
-rootDir = ".." </> ".." </> "examples"
+rootDir = "examples"
 
 main :: IO ()
 main = do

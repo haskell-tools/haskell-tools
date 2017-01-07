@@ -84,7 +84,7 @@ benchTests :: IO [TestTree]
 benchTests 
   = forM ["full-1", "full-2", "full-3"] $ \id -> do
       commands <- readFile ("bench-tests" </> id <.> "txt")
-      return $ makeCliTest ([".." </> ".." </> "examples" </> "CppHs"], [], filter (/='\r') commands, expectedOut id)
+      return $ makeCliTest (["examples" </> "CppHs"], [], filter (/='\r') commands, expectedOut id)
 
 expectedOut "full-1" 
   = prefixText cppHsMods ++ "no-module-selected> Language.Preprocessor.Cpphs.CppIfdef> "
@@ -121,7 +121,7 @@ cppHsMods = [ "Language.Preprocessor.Cpphs.Options"
             , "Language.Preprocessor.Cpphs.RunCpphs"
             , "Language.Preprocessor.Cpphs" ]
 
-testRoot = ".." </> ".." </> "examples"
+testRoot = "examples"
 
 prefixText :: [String] -> String
 prefixText mods 

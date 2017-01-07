@@ -1,5 +1,5 @@
 name:                haskell-tools-cli
-version:             0.4.1.0
+version:             0.4.1.1
 synopsis:            Command-line frontend for Haskell-tools Refact
 description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -10,6 +10,31 @@ maintainer:          nboldi@elte.hu
 category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
+
+extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
+                  , bench-tests/*.txt
+                  , examples/Project/has-cabal/*.hs
+                  , examples/Project/has-cabal/*.cabal
+                  , examples/Project/multi-packages/package1/*.hs
+                  , examples/Project/multi-packages/package1/*.cabal
+                  , examples/Project/multi-packages/package2/*.hs
+                  , examples/Project/multi-packages/package2/*.cabal
+                  , examples/Project/multi-packages-flags/package1/*.hs
+                  , examples/Project/multi-packages-flags/package1/*.cabal
+                  , examples/Project/multi-packages-flags/package2/*.hs
+                  , examples/Project/multi-packages-flags/package2/*.cabal
+                  , examples/Project/multi-packages-same-module/package1/*.hs
+                  , examples/Project/multi-packages-same-module/package1/*.cabal
+                  , examples/Project/multi-packages-same-module/package2/*.hs
+                  , examples/Project/multi-packages-same-module/package2/*.cabal
+                  , examples/Project/no-cabal/*.hs
+                  , examples/Project/reloading/*.hs
+                  , examples/Project/selection/*.hs
+                  , examples/Project/source-dir/*.cabal
+                  , examples/Project/source-dir/src/*.hs
+                  , examples/Project/source-dir-outside/*.cabal
+                  , examples/Project/src/*.hs
 
 library
   ghc-options:         -O2

@@ -6,6 +6,7 @@ import Test.Tasty.HUnit
 import System.Exit
 import System.Directory
 import System.FilePath
+import System.Environment
 import Control.Monad
 import Control.Exception
 import Control.Concurrent
@@ -28,11 +29,12 @@ main = do -- create one daemon process for the whole testing session
           -- with separate processes it is not a problem
           forkIO $ runDaemon ["4123", "True"]
           tr <- canonicalizePath testRoot
-          defaultMain (allTests tr)
+          isStackRun <- isJust <$> lookupEnv "STACK_ROOT"
+          defaultMain (allTests isStackRun tr)
           stopDaemon
 
-allTests :: FilePath -> TestTree
-allTests testRoot
+allTests :: Bool -> FilePath -> TestTree
+allTests isSource testRoot
   = localOption (mkTimeout ({- 20s -} 1000 * 1000 * 20)) 
       $ testGroup "daemon-tests" 
           [ testGroup "simple-tests" 
@@ -43,7 +45,8 @@ allTests testRoot
               $ map (makeDaemonTest . (\(label, dir, input, output) -> (Just (testRoot </> dir), label, input, output))) (refactorTests testRoot)
           , testGroup "reload-tests" 
               $ map makeReloadTest reloadingTests
-          , selfLoadingTest
+          -- cannot execute this when the source is not present
+          , if isSource then selfLoadingTest else testCase "IGNORED self-load" (return ())
           ]
 
 testSuffix = "_test"
@@ -265,7 +268,7 @@ stopDaemon = withSocketsDo $ do
   sendAll sock $ encode Stop
   close sock
 
-testRoot = ".." </> ".." </> "examples" </> "Project"
+testRoot = "examples" </> "Project"
 
 deriving instance Eq ResponseMsg
 instance FromJSON ResponseMsg

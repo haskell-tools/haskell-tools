@@ -1,5 +1,5 @@
 name:                haskell-tools-refactor
-version:             0.4.1.0
+version:             0.4.1.1
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -10,6 +10,41 @@ maintainer:          nboldi@elte.hu
 category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
+
+extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
+                  , examples/Decl/*.hs
+                  , examples/Expr/*.hs
+                  , examples/InstanceControl/Control/Instances/*.hs
+                  , examples/Module/*.hs
+                  , examples/Pattern/*.hs
+                  , examples/Refactor/CommentHandling/*.hs
+                  , examples/Refactor/DataToNewtype/*.hs
+                  , examples/Refactor/DollarApp/*.hs
+                  , examples/Refactor/ExtractBinding/*.hs
+                  , examples/Refactor/GenerateExports/*.hs
+                  , examples/Refactor/GenerateTypeSignature/*.hs
+                  , examples/Refactor/GenerateTypeSignature/BringToScope/*.hs
+                  , examples/Refactor/IfToGuards/*.hs
+                  , examples/Refactor/InlineBinding/*.hs
+                  , examples/Refactor/InlineBinding/AppearsInAnother/*.hs
+                  , examples/Refactor/OrganizeImports/*.hs
+                  , examples/Refactor/RenameDefinition/*.hs
+                  , examples/Refactor/RenameDefinition/MultiModule/*.hs
+                  , examples/Refactor/RenameDefinition/MultiModule_res/*.hs
+                  , examples/Refactor/RenameDefinition/RenameModule/*.hs
+                  , examples/Refactor/RenameDefinition/RenameModule_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceDecls/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceDecls_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceExpr/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceExpr_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceType/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
+                  , examples/TH/*.hs
+                  , examples/TH/QuasiQuote/*.hs
+                  , examples/TH/Splice/*.hs
+                  , examples/Type/*.hs
 
 library
   ghc-options:         -O2
