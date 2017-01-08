@@ -27,7 +27,7 @@ matrix:
   # variable, such as using --stack-yaml to point to a different file.
   - env: BUILD=stack ARGS="" GHCVER=8.0.1 CABALVER=1.24
     compiler: ": #stack default"
-    addons: {apt: {packages: [ghc-8.0.1], sources: [hvr-ghc]}}
+    addons: {apt: {packages: [ghc-8.0.1,cabal-install-1.24], sources: [hvr-ghc]}}
 
 before_install:
   # Using compiler above sets CC to an invalid value, so unset it
@@ -55,7 +55,11 @@ script:
   - stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps 
 
   # Run tests. We record test coverage information.
-  - stack --no-terminal test --coverage
+  - stack --no-terminal test --coverage haskell-tools-rewrite
+  - stack --no-terminal test --coverage haskell-tools-refactor
+  - stack --no-terminal test --coverage haskell-tools-cli
+  - stack --no-terminal test --coverage haskell-tools-daemon
+  - stack --no-terminal test --coverage haskell-tools-demo
 
 after_script:
   

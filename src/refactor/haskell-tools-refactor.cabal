@@ -104,8 +104,6 @@ test-suite haskell-tools-test
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , time                      >= 1.6  && < 1.7
-                     , old-time                  >= 1.1  && < 1.2
-                     , polyparse                 >= 1.12 && < 1.13
                      , template-haskell          >= 2.11 && < 2.12
                      , ghc                       >= 8.0  && < 8.1
                      , ghc-paths                 >= 0.1  && < 0.2

@@ -181,7 +181,7 @@ modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> rea
                                                           (map (normalise . (root </>)) $ hsSourceDirs bi) 
                                                           (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
                                                           (flagsFromBuildInfo bi)
-                                                          (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
+                                                          (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi)) 
 
         moduleName = concat . intersperse "." . components
 

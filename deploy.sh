@@ -27,12 +27,12 @@ rm -rf out/$TRAVIS_BRANCH/coverage/**
 # Copy generated haddock documentation
 
 mkdir -p out/$TRAVIS_BRANCH/api
-cp -r .stack-work/install/x86_64-linux/lts-7.7/8.0.1/doc/* out/$TRAVIS_BRANCH/api
+cp -r .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
 
 # Copy the test coverage report
 
 mkdir -p out/$TRAVIS_BRANCH/coverage
-cp -r .stack-work/install/x86_64-linux/lts-7.7/8.0.1/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
+cp -r .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
 
 # Copy the benchmark report
 cp benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
