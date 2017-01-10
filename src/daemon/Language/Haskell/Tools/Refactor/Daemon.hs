@@ -109,7 +109,8 @@ respondTo ghcSess state next mess
 updateClient :: (ResponseMsg -> IO ()) -> ClientMessage -> StateT DaemonSessionState Ghc Bool
 updateClient resp KeepAlive = liftIO (resp KeepAliveResponse) >> return True
 updateClient resp Disconnect = liftIO (resp Disconnected) >> return False
-updateClient resp (AddPackages packagePathes packageDB) = do
+updateClient _ (SetPackageDB pkgDB) = modify (packageDB .= pkgDB) >> return True 
+updateClient resp (AddPackages packagePathes) = do
     existingMCs <- gets (^. refSessMCs)
     let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
     needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existing)) 
@@ -117,8 +118,7 @@ updateClient resp (AddPackages packagePathes packageDB) = do
     modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
     forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
     modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
-    pkgDbLocs <- liftIO $ packageDBLocs packageDB packagePathes
-    usePackageDB pkgDbLocs
+    initializePackageDBIfNeeded
     res <- loadPackagesFrom (return . getModSumOrig) packagePathes
     case res of 
       Right (modules, ignoredMods) -> do
@@ -133,6 +133,13 @@ updateClient resp (AddPackages packagePathes packageDB) = do
       Left err -> liftIO $ resp $ CompilationProblem err 
     return True
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
+        initializePackageDBIfNeeded = do
+          pkgDBAlreadySet <- gets (^. packageDBSet)
+          when (not pkgDBAlreadySet) $ do
+            pkgDB <- gets (^. packageDB)
+            pkgDBLocs <- liftIO $ packageDBLocs pkgDB packagePathes
+            usePackageDB pkgDBLocs
+            modify (packageDBSet .= True)
 
 updateClient _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
@@ -214,9 +221,8 @@ usePackageDB pkgDbLocs
 
 data ClientMessage
   = KeepAlive
-  | AddPackages { addedPathes :: [FilePath] 
-                , packageDB :: PackageDB 
-                }
+  | SetPackageDB { pkgDB :: PackageDB }
+  | AddPackages { addedPathes :: [FilePath] }
   | RemovePackages { removedPathes :: [FilePath] }
   | PerformRefactoring { refactoring :: String
                        , modulePath :: FilePath

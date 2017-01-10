@@ -67,38 +67,38 @@ simpleTests =
 loadingTests :: [(String, [ClientMessage], [ResponseMsg])]
 loadingTests =
   [ ( "load-package"
-    , [AddPackages [testRoot </> "has-cabal"] DefaultDB]
+    , [AddPackages [testRoot </> "has-cabal"]]
     , [LoadedModules [testRoot </> "has-cabal" </> "A.hs"]] )
   , ( "no-cabal"
-    , [AddPackages [testRoot </> "no-cabal"] DefaultDB]
+    , [AddPackages [testRoot </> "no-cabal"]]
     , [LoadedModules [testRoot </> "no-cabal" </> "A.hs"]] )
   , ( "source-dir"
-    , [AddPackages [testRoot </> "source-dir"] DefaultDB]
+    , [AddPackages [testRoot </> "source-dir"]]
     , [LoadedModules [testRoot </> "source-dir" </> "src" </> "A.hs"]] )
   , ( "source-dir-outside"
-    , [AddPackages [testRoot </> "source-dir-outside"] DefaultDB]
+    , [AddPackages [testRoot </> "source-dir-outside"]]
     , [LoadedModules [testRoot </> "source-dir-outside" </> ".." </> "src" </> "A.hs"]] )
   , ( "multi-packages"
     , [ AddPackages [ testRoot </> "multi-packages" </> "package1"
-                    , testRoot </> "multi-packages" </> "package2" ] DefaultDB]
+                    , testRoot </> "multi-packages" </> "package2" ]]
     , [ LoadedModules [ testRoot </> "multi-packages" </> "package2" </> "B.hs"
                       , testRoot </> "multi-packages" </> "package1" </> "A.hs"]] )
   , ( "multi-packages-flags"
     , [ AddPackages [ testRoot </> "multi-packages-flags" </> "package1"
-                    , testRoot </> "multi-packages-flags" </> "package2" ] DefaultDB]
+                    , testRoot </> "multi-packages-flags" </> "package2" ]]
     , [ LoadedModules [ testRoot </> "multi-packages-flags" </> "package2" </> "B.hs"
                       , testRoot </> "multi-packages-flags" </> "package1" </> "A.hs"]] )
   , ( "multi-packages-dependent"
     , [ AddPackages [ testRoot </> "multi-packages-dependent" </> "package1"
-                    , testRoot </> "multi-packages-dependent" </> "package2" ] DefaultDB]
+                    , testRoot </> "multi-packages-dependent" </> "package2" ]]
     , [ LoadedModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs"
                       , testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs"]] )
   , ( "has-th"
-    , [AddPackages [testRoot </> "has-th"] DefaultDB]
+    , [AddPackages [testRoot </> "has-th"]]
     , [LoadedModules [testRoot </> "has-th" </> "TH.hs", testRoot </> "has-th" </> "A.hs"]] )
   , ( "th-added-later"
-    , [ AddPackages [testRoot </> "th-added-later" </> "package1"] DefaultDB
-      , AddPackages [testRoot </> "th-added-later" </> "package2"] DefaultDB
+    , [ AddPackages [testRoot </> "th-added-later" </> "package1"]
+      , AddPackages [testRoot </> "th-added-later" </> "package2"]
       ]
     , [ LoadedModules [testRoot </> "th-added-later" </> "package1" </> "A.hs"] 
       , LoadedModules [testRoot </> "th-added-later" </> "package2" </> "B.hs"]] )
@@ -109,7 +109,7 @@ sourceRoot = ".." </> ".." </> "src"
 selfLoadingTest :: MVar Int -> TestTree
 selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do  
     actual <- communicateWithDaemon port
-                [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor", "daemon"]) StackDB ]
+                [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor", "daemon"]) ]
     assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual) 
                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
 
@@ -117,7 +117,7 @@ selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg])]
 refactorTests testRoot =
   [ ( "simple-refactor", "simple-refactor"
-    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ] DefaultDB
+    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"]
       ]
     , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
@@ -125,7 +125,7 @@ refactorTests testRoot =
       , LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
       ] )
   , ( "hs-boots", "hs-boots"
-    , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ] DefaultDB
+    , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"]
       ]
     , [ LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs-boot", testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot"
@@ -138,7 +138,7 @@ refactorTests testRoot =
       , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs" ]
       ] )
   , ( "remove-module", "simple-refactor"
-    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ] DefaultDB
+    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"]
       ]
     , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
@@ -149,7 +149,7 @@ refactorTests testRoot =
 
 reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg])]
 reloadingTests =
-  [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ] DefaultDB]
+  [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()" 
     , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] 
@@ -168,9 +168,9 @@ reloadingTests =
       ]
     )
   , ( "reloading-package", testRoot </> "changing-cabal"
-    , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ] DefaultDB]
+    , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
     , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B" 
-    , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix] DefaultDB
+    , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
       , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] 
       ]
     , [ LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs" ]
@@ -182,7 +182,7 @@ reloadingTests =
       , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
       ]
     )
-  , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ] DefaultDB]
+  , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , do removeFile (testRoot </> "reloading" ++ testSuffix </> "A.hs")
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
     , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] 
@@ -199,7 +199,7 @@ reloadingTests =
     )
   , ( "remove-package", testRoot </> "multi-packages-dependent"
     , [ AddPackages [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1"
-                    , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" ] DefaultDB]
+                    , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" ]]
     , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
     , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"] 
       , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs") 
@@ -217,23 +217,24 @@ pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
 pkgDbTests 
   = [ ( "stack"
        , withCurrentDirectory (testRoot </> "stack") initStack
-       , [AddPackages [testRoot </> "stack"] StackDB]
+       , [SetPackageDB StackDB, AddPackages [testRoot </> "stack"]]
        , [LoadedModules [testRoot </> "stack" </> "UseGroups.hs"]] )
     , ( "cabal-sandbox"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [AddPackages [testRoot </> "cabal-sandbox"] CabalSandboxDB]
+      , [SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"]]
       , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
     , ( "cabal-sandbox-auto"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [AddPackages [testRoot </> "cabal-sandbox"] AutoDB]
+      , [SetPackageDB AutoDB, AddPackages [testRoot </> "cabal-sandbox"]]
       , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
     , ( "stack-auto"
       , withCurrentDirectory (testRoot </> "stack") initStack
-      , [AddPackages [testRoot </> "stack"] AutoDB]
+      , [SetPackageDB AutoDB, AddPackages [testRoot </> "stack"]]
       , [LoadedModules [testRoot </> "stack" </> "UseGroups.hs"]] )
     , ( "pkg-db-reload"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [ AddPackages [testRoot </> "cabal-sandbox"] CabalSandboxDB
+      , [ SetPackageDB AutoDB
+        , AddPackages [testRoot </> "cabal-sandbox"]
         , ReLoad [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] []]
       , [ LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] ])
@@ -245,7 +246,6 @@ pkgDbTests
           withCurrentDirectory ("groups-0.4.0.0") $ do
             execute "cabal" ["sandbox", "init", "--sandbox", ".." </> ".cabal-sandbox"]
             execute "cabal" ["install"]
-          putStrLn "all commands executed"
         initStack = do
           execute "stack" ["clean"]
           execute "stack" ["build"]
@@ -269,14 +269,14 @@ tryToExecute cmd args
 
 makeDaemonTest :: MVar Int -> (Maybe FilePath, String, [ClientMessage], [ResponseMsg]) -> TestTree
 makeDaemonTest port (Nothing, label, input, expected) = testCase label $ do  
-    actual <- communicateWithDaemon port (map Right input)
+    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
 makeDaemonTest port (Just dir, label, input, expected) = testCase label $ do 
     exists <- doesDirectoryExist (dir ++ testSuffix)
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon port (map Right input)
+    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -286,7 +286,7 @@ makeReloadTest port (label, dir, input1, io, input2, expected) = testCase label 
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon port (map Right input1 ++ [Left io] ++ map Right input2)
+    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
     assertEqual "" expected actual
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
