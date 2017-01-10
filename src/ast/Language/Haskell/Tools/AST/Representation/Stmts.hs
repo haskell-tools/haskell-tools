@@ -2,7 +2,6 @@
 module Language.Haskell.Tools.AST.Representation.Stmts where
 
 import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Representation.Names
 import Language.Haskell.Tools.AST.Representation.Patterns
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UCmd)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Binds (ULocalBind)

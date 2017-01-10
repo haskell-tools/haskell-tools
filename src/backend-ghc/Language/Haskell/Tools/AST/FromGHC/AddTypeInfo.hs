@@ -8,7 +8,6 @@ import GHC
 import OccName as GHC hiding (varName)
 import TcEvidence as GHC
 import Bag as GHC
-import Unique as GHC
 import UniqFM as GHC
 import HscTypes as GHC
 import Module as GHC
@@ -28,7 +27,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.State
 import Control.Applicative
 import Data.Generics.Uniplate.Operations
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
@@ -53,7 +52,8 @@ addTypeInfos bnds mod = do
                             _ -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
                                     case rest of [] -> error $ "Ambiguous or implicit name missing, at: " ++ show loc
                                                  ((_,id):more) -> do put (none ++ more)
-                                                                     return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id)
+                                                                     return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
+                _ -> error "addTypeInfos: Cannot access a the semantics of a name.")
       pure (traverse (lift . getType)) (traverse (lift . getType)) pure
         pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
@@ -86,10 +86,11 @@ extractSigIds = concat . map (\case L l bs@(AbsBindsSig {} :: HsBind Id) -> map 
                                     _                                    -> []
                              ) . concatMap universeBi . bagToList
   where getImplVars (EvBinds evbnds) = catMaybes $ map getEvVar $ bagToList evbnds
+        getImplVars _                = []
         getEvVar (EvBind lhs _ False) = Just lhs
         getEvVar _                    = Nothing
 
 extractSigBindIds :: LHsBinds Id -> [(SrcSpan,Id)]
-extractSigBindIds = catMaybes . map (\case L l bs@(IPBind (Right id) _) -> Just (l,id)
-                                           _                            -> Nothing
+extractSigBindIds = catMaybes . map (\case L l (IPBind (Right id) _) -> Just (l,id)
+                                           _                         -> Nothing
                                     ) . concatMap universeBi . bagToList

@@ -13,7 +13,7 @@ module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.Transform
+
 import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
 import Exception (ExceptionMonad(..))
 import DynFlags (HasDynFlags(..))
@@ -22,6 +22,7 @@ import qualified Module as GHC
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
+
 import Control.Reference hiding (element)
 import Data.Function (on)
 import Data.List
@@ -67,7 +68,7 @@ instance Show (RefactorChange dom) where
   show (ModuleCreated n _ other) = "ModuleCreated " ++ n ++ " (" ++ show other ++ ")"
 
 -- | Performs the given refactoring, transforming it into a Ghc action
-runRefactor :: (HasModuleInfo dom) => ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
+runRefactor :: ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
 runRefactor mod mods trf = runExceptT $ trf mod mods
 
 -- | Wraps a refactoring that only affects one module. Performs the per-module finishing touches.
@@ -231,12 +232,13 @@ data NameClass = Variable         -- ^ Normal value definitions: functions, vari
 -- | Get which category does a given name belong to
 classifyName :: RefactorMonad m => GHC.Name -> m NameClass
 classifyName n = liftGhc (lookupName n) >>= return . \case 
-    Just (AnId id) | isop     -> ValueOperator
-    Just (AnId id)            -> Variable
-    Just (AConLike id) | isop -> DataCtorOperator
-    Just (AConLike id)        -> Ctor
-    Just (ATyCon id) | isop   -> SynonymOperator
-    Just (ATyCon id)          -> Ctor
+    Just (AnId {}) | isop     -> ValueOperator
+    Just (AnId {})            -> Variable
+    Just (AConLike {}) | isop -> DataCtorOperator
+    Just (AConLike {})        -> Ctor
+    Just (ATyCon {}) | isop   -> SynonymOperator
+    Just (ATyCon {})          -> Ctor
+    Just (ACoAxiom {})        -> error "classifyName: ACoAxiom"
     Nothing | isop            -> ValueOperator
     Nothing                   -> Variable
   where isop = GHC.isSymOcc (GHC.getOccName n) 
@@ -247,8 +249,8 @@ validModuleName s = all (nameValid Ctor) (splitOn "." s)
 
 -- | Check if a given name is valid for a given kind of definition
 nameValid :: NameClass -> String -> Bool
-nameValid n "" = False
-nameValid n str | str `elem` reservedNames = False
+nameValid _ "" = False
+nameValid _ str | str `elem` reservedNames = False
   where -- TODO: names reserved by extensions
         reservedNames = [ "case", "class", "data", "default", "deriving", "do", "else", "if", "import", "in", "infix"
                         , "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type", "where", "_"
@@ -271,7 +273,10 @@ nameValid Variable (c : nameRest)
   = isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
 nameValid _ _ = False
 
+isIdStartChar :: Char -> Bool
 isIdStartChar c = (isLetter c && isAscii c) || c == '\'' || c == '_'
+
+isOperatorChar :: Char -> Bool
 isOperatorChar c = (isPunctuation c || isSymbol c) && isAscii c
 
 makeReferences ''SourceFileKey

@@ -1,15 +1,15 @@
+-- | Defines operation on AST lists. 
+-- AST lists carry source information so simple list modification is not enough.
 module Language.Haskell.Tools.Refactor.ListOperations where
 
-import SrcLoc
-import Data.String
-import Data.List
 import Control.Reference
-import Debug.Trace
-import Data.Function (on)
+
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.Transform
 
+-- | Filters the elements of the list. By default it removes the separator before the element.
+-- Of course, if the first element is removed, the following separator is removed as well.
 filterList :: (Ann e dom SrcTemplateStage -> Bool) -> AnnListG e dom SrcTemplateStage -> AnnListG e dom SrcTemplateStage
 filterList pred (AnnListG (NodeInfo sema src) elems)
   = let (filteredElems, separators) = filterElems elems (src ^. srcTmpSeparators)
@@ -55,6 +55,9 @@ insertIndex before after list@(first:_)
           | otherwise = (+1) <$> insertIndex' before after rest
         insertIndex' before after (curr:[]) 
           | before (Just curr) && after Nothing = Just 0
+          | otherwise = Nothing
+        insertIndex' before after [] 
+          | before Nothing && after Nothing = Just 0
           | otherwise = Nothing
 
 replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom           

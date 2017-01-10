@@ -15,7 +15,6 @@ import SrcLoc
 import qualified Name as GHC
 
 import Control.Reference
-import Control.Monad
 import Data.List
 import Data.Maybe
 import Data.Function hiding ((&))
@@ -25,22 +24,18 @@ import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Representation.Modules
 import Language.Haskell.Tools.AST.Representation.Decls
 import Language.Haskell.Tools.AST.Representation.Patterns
-import Language.Haskell.Tools.AST.Representation.Exprs
 import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Types
 import Language.Haskell.Tools.AST.Representation.Names
 import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.SemaInfoTypes
-import Language.Haskell.Tools.AST.SemaInfoClasses
-
-import Debug.Trace
  
 -- | Does the import declaration import only the explicitly listed elements?
 importIsExact :: Ann UImportDecl dom stage -> Bool
 importIsExact = isJust . (^? importSpec&annJust&importSpecList)  
 
 -- | Accesses the name of a function or value binding
-bindingName :: (SemanticInfo dom UQualifiedName ~ ni) => Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
+bindingName :: Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
 bindingName = (valBindPat&patternName&simpleName 
                         &+& funBindMatches&annList&matchLhs
                               &(matchLhsName&simpleName &+& matchLhsOperator&operatorName))
@@ -67,7 +62,7 @@ semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
 semantics = annotation&semanticInfo
 
 -- | Get all nodes that contain a given source range
-nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage), SourceInfo stage) 
+nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) 
                 => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 nodesContaining rng = biplateRef & filtered (isInside rng) 
 
@@ -77,7 +72,7 @@ isInside rng nd = case getRange nd of RealSrcSpan sp -> sp `containsSpan` rng
                                       _              -> False
 
 -- | Get all nodes that are contained in a given source range
-nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage), SourceInfo stage) 
+nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) 
                     => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
 nodesContained rng = biplateRef & filtered (isContained rng) 
 

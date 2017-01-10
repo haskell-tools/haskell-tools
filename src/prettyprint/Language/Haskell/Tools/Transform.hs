@@ -13,8 +13,8 @@ module Language.Haskell.Tools.Transform
   , rangeToSource, fixRanges, cutUpRanges, getLocIndices, mapLocIndices
   ) where
 
-import Language.Haskell.Tools.Transform.RangeToRangeTemplate
 import Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate
+import Language.Haskell.Tools.Transform.RangeToRangeTemplate
 import Language.Haskell.Tools.Transform.RangeTemplate
 import Language.Haskell.Tools.Transform.SourceTemplate
 import Language.Haskell.Tools.Transform.SourceTemplateHelpers

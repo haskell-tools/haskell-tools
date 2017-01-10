@@ -6,15 +6,9 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Decls where
 
-import qualified Name as GHC
-import Data.List
-import Data.String
-import Data.Function (on)
-import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.Transform
 
 -- | Creates a type synonym ( @type String = [Char]@ )
@@ -241,7 +235,7 @@ mkInstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> M
                                  -> Maybe (Deriving dom) -> InstBodyDecl dom
 mkInstanceDataFamilyGADTDef keyw instRule kind cons derivs 
   = mkAnn (child <> " " <> child <> child <> child) 
-      $ UInstBodyGadtDataDecl mkDataKeyword instRule (mkAnnMaybe opt kind) (mkAnnList (after " = " $ separatedBy " | " list) cons) 
+      $ UInstBodyGadtDataDecl keyw instRule (mkAnnMaybe opt kind) (mkAnnList (after " = " $ separatedBy " | " list) cons) 
                              (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | Specialize instance pragma (no phase selection is allowed) in a type class instance

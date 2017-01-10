@@ -10,7 +10,6 @@
 module Language.Haskell.Tools.Transform.SourceTemplate where
 
 import Data.Data
-import Data.String
 import Control.Reference
 import SrcLoc
 import Language.Haskell.Tools.AST

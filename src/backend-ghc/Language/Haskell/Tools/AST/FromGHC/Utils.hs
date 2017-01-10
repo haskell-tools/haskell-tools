@@ -20,8 +20,6 @@ import BasicTypes
 import HsSyn
 import Module
 import Name
-import NameSet
-import Outputable
 import FastString
 
 import Control.Monad.Reader
@@ -36,7 +34,6 @@ import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
-import Debug.Trace
 
 -- | Creates a semantic information for a name
 createNameInfo :: n -> Trf (NameInfo n)
@@ -66,7 +63,7 @@ createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAnd
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
-createImportData (GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding) = 
+createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) = 
   do (mod,importedNames) <- getImportedNames (Module.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
      names <- liftGhc $ filterM (checkImportVisible declHiding) importedNames
      lookedUpNames <- liftGhc $ mapM (getFromNameUsing getTopLevelId) names
@@ -96,8 +93,9 @@ ieSpecMatches :: (HsHasName name, GhcMonad m) => IE name -> GHC.Name -> m Bool
 ieSpecMatches (hsGetNames . HsSyn.ieName -> [n]) name
   | n == name = return True
   | isTyConName n
-  = (\case Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)) 
-             <$> lookupName n
+  = do entity <- lookupName n
+       return $ case entity of Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)
+                               _                -> False
 ieSpecMatches _ _ = return False
 
 noSemaInfo :: src -> NodeInfo NoSemanticInfo src
@@ -296,7 +294,7 @@ tokensLoc keys = asks contRange >>= tokensLoc' keys
           = do spanFirst <- tokenLoc keyw
                spanRest <- tokensLoc' rest (mkSrcSpan (srcSpanEnd spanFirst) (srcSpanEnd r))
                return (combineSrcSpans spanFirst spanRest)                   
-        tokensLoc' [] r = pure noSrcSpan
+        tokensLoc' [] _ = pure noSrcSpan
         
 -- | Searches for a token and retrieves its location anywhere
 uniqueTokenAnywhere :: AnnKeywordId -> Trf SrcSpan
@@ -325,7 +323,7 @@ advanceStr _ l = l
 
 -- | Update column information in a source location
 updateCol :: (Int -> Int) -> SrcLoc -> SrcLoc
-updateCol f loc@(UnhelpfulLoc _) = loc
+updateCol _ loc@(UnhelpfulLoc _) = loc
 updateCol f (RealSrcLoc loc) = mkSrcLoc (srcLocFile loc) (srcLocLine loc) (f $ srcLocCol loc)
 
 -- | Update the start of the src span
@@ -352,7 +350,7 @@ orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)
 -- | Transform a list of definitions where the defined names are in scope for subsequent definitions
 trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]
 trfScopedSequence f (def:rest) = (:) <$> f def <*> addToScope def (trfScopedSequence f rest)
-trfScopedSequence f [] = pure []
+trfScopedSequence _ [] = pure []
 
 -- | Splits a given string at whitespaces while calculating the source location of the fragments
 splitLocated :: Located String -> [Located String]
@@ -364,5 +362,5 @@ splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) No
         splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))
         splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))
         splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
-        splitLocated' [] currLoc Nothing = []
-                
+        splitLocated' [] _ Nothing = []
+splitLocated _ = error "splitLocated: unhelpful span given"

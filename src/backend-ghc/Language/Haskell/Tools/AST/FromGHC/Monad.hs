@@ -6,7 +6,6 @@ import SrcLoc
 import GHC
 import Name
 import ApiAnnotation
-import Outputable (ppr, showSDocUnsafe)
 import Control.Monad.Reader
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
@@ -14,8 +13,6 @@ import Data.Map as Map
 import Data.Function (on)
 import Data.Maybe
 import Language.Haskell.Tools.AST
-
-import Debug.Trace
 
 -- | The transformation monad type
 type Trf = ReaderT TrfInput Ghc

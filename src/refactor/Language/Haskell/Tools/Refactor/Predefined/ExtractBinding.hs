@@ -7,25 +7,22 @@
            , ConstraintKinds
            , TypeFamilies
            #-}
-module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain) where
+module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
 import qualified GHC
-import qualified Var as GHC
 import qualified OccName as GHC hiding (varName)
 import SrcLoc
-import Unique
 
-import Data.Char
 import Data.Maybe
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 import Control.Reference
 import Control.Monad.State
-import Control.Monad.Identity
 
 import Language.Haskell.Tools.Refactor
 
 type ExtractBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom )
 
+tryItOut :: String -> String -> String -> IO ()
 tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name) mod sp
 
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
@@ -43,11 +40,10 @@ extractBinding selectDecl selectExpr name mod
   = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [QualifiedName dom])
         exprRange = getRange $ head (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
-        declRange = getRange $ last (mod ^? selectDecl)
      in if conflicting
            then refactError "The given name causes name conflict."
            else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
-                   case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding declRange exprRange def $ res) False
+                   case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
                               Nothing -> refactError "There is no applicable expression to extract."
 
 -- | Decides if a new name defined to be the given string will conflict with the given AST element
@@ -67,22 +63,23 @@ extractThatBind name cont e
                      | otherwise    -> doExtract name cont (fromJust $ e ^? exprInner)
             Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
-            el -> doExtract name cont e
+               | otherwise -> doExtract name cont e
   where hasParameter = not (null (getExternalBinds cont e))
 
--- | Adds a local binding to the 
-addLocalBinding :: SrcSpan -> SrcSpan -> ValueBind dom -> ValueBind dom -> State Bool (ValueBind dom)
+-- | Adds a local binding to the where clause of the enclosing binding
+addLocalBinding :: SrcSpan -> ValueBind dom -> ValueBind dom -> State Bool (ValueBind dom)
 -- this uses the state monad to only add the local binding to the first selected element
-addLocalBinding declRange exprRange local bind 
+addLocalBinding exprRange local bind 
   = do done <- get
        if not done then do put True
-                           return $ indentBody $ doAddBinding declRange exprRange local bind
+                           return $ indentBody $ doAddBinding exprRange local bind
                    else return bind 
   where
-    doAddBinding declRng _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind local $ sb
-    doAddBinding declRng (RealSrcSpan rng) local fb@(FunctionBind {}) 
+    doAddBinding _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind local $ sb
+    doAddBinding (RealSrcSpan rng) local fb@(FunctionBind {}) 
       = funBindMatches & annList & filtered (isInside rng) & matchBinds 
           .- insertLocalBind local $ fb
+    doAddBinding _ _ _ = error "doAddBinding: invalid expression range"
 
     indentBody = (valBindRhs .- updIndent) . (funBindMatches & annList & matchLhs .- updIndent) . (funBindMatches & annList & matchRhs .- updIndent)
 
@@ -129,7 +126,7 @@ doExtract name cont e
 -- | Gets the values that have to be passed to the extracted definition
 getExternalBinds :: ExtractBindingDomain dom => Expr dom -> Expr dom -> [Name dom]
 getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableName (expr ^? uniplateRef)
-  where isApplicableName name@(getExprNameInfo -> Just nm) = inScopeForOriginal nm && notInScopeForExtracted nm
+  where isApplicableName (getExprNameInfo -> Just nm) = inScopeForOriginal nm && notInScopeForExtracted nm
         isApplicableName _ = False
 
         getExprNameInfo :: ExtractBindingDomain dom => Expr dom -> Maybe GHC.Name
@@ -139,6 +136,7 @@ getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableNa
         exprToName :: Expr dom -> Name dom
         exprToName e | Just n <- e ^? exprName                     = n
                      | Just op <- e ^? exprOperator & operatorName = mkParenName op
+                     | otherwise                                   = error "exprToName: name not found" 
         
         notInScopeForExtracted :: GHC.Name -> Bool
         notInScopeForExtracted n = not $ n `inScope` semanticsScope cont
@@ -155,6 +153,7 @@ actualContainingExpr (RealSrcSpan rng) = accessRhs & accessExpr
         accessRhs = valBindRhs &+& funBindMatches & annList & filtered (isInside rng) & matchRhs
         accessExpr :: Simple Traversal (Rhs dom) (Expr dom)
         accessExpr = rhsExpr &+& rhsGuards & annList & filtered (isInside rng) & guardExpr
+actualContainingExpr _ = error "actualContainingExpr: not a real range"
 
 -- | Generates the expression that calls the local binding
 generateCall :: String -> [Name dom] -> Expr dom

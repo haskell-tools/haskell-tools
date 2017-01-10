@@ -8,15 +8,11 @@ module Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate where
 import SrcLoc
 import StringBuffer
 import Data.Map
-import Data.Monoid
 import Control.Reference
 import Control.Monad.State
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.Transform.RangeToRangeTemplate
 import Language.Haskell.Tools.Transform.RangeTemplate
 import Language.Haskell.Tools.Transform.SourceTemplate
-
-import Debug.Trace
 
 rangeToSource :: SourceInfoTraversal node => StringBuffer -> Ann node dom RngTemplateStage
                                                           -> Ann node dom SrcTemplateStage
@@ -43,6 +39,7 @@ mapLocIndices inp = fst . foldlWithKey (\(new, str) sp k -> let (rem, val) = tak
                                                              in (insert k (reverse val) new, rem)) (empty, inp)
   where takeSpan :: StringBuffer -> OrdSrcSpan -> (StringBuffer, String)
         takeSpan str (OrdSrcSpan sp) = takeSpan' (realSrcSpanStart sp) (realSrcSpanEnd sp) (str,"")
+        takeSpan _ (NoOrdSrcSpan {}) = error "takeSpan: missing source span"
 
         takeSpan' :: RealSrcLoc -> RealSrcLoc -> (StringBuffer, String) -> (StringBuffer, String)
         takeSpan' start end (sb, taken) | start < end && not (atEnd sb)
@@ -63,6 +60,6 @@ applyFragments srcs = flip evalState srcs
      (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft 0 Nothing))) 
      (return ()) (return ())
   where getTextFor RangeChildElem = return ChildElem
-        getTextFor (RangeElem sp) = do (src:rest) <- get
-                                       put rest
-                                       return (TextElem src)
+        getTextFor (RangeElem _) = do (src:rest) <- get
+                                      put rest
+                                      return (TextElem src)

@@ -16,16 +16,11 @@
 module Language.Haskell.Tools.AST.Ann where
 
 import Data.Data
-import Control.Monad.Identity
 import Control.Reference
 import SrcLoc as GHC
 import Id as GHC
 import qualified Name as GHC
-import RdrName
-import Module
-import Id
-import Outputable
-import Language.Haskell.Tools.AST.Utils.GHCInstances
+import Language.Haskell.Tools.AST.Utils.GHCInstances ()
 import Language.Haskell.Tools.AST.SemaInfoTypes
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST

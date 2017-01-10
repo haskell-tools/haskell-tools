@@ -5,15 +5,9 @@ import Data.Aeson hiding ((.=))
 import System.FilePath
 import System.Directory
 import System.Process
-import System.IO
 import GHC.Generics
-import Control.Applicative
-import Control.Monad.IO.Class
 import Data.List
 import Data.Char (isSpace)
-import Data.Maybe
-import Data.List.Split
-import Data.Function (on)
 
 data PackageDB = AutoDB
                | DefaultDB

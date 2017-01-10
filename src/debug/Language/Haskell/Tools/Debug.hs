@@ -9,17 +9,14 @@ import Data.Maybe
 
 import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
-import Module as GHC
-import SrcLoc
-import HscTypes
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.DebugGhcAST
+import Language.Haskell.Tools.DebugGhcAST ()
 import Language.Haskell.Tools.RangeDebug
-import Language.Haskell.Tools.RangeDebug.Instances
+import Language.Haskell.Tools.RangeDebug.Instances ()
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.RefactorBase
@@ -29,13 +26,12 @@ demoRefactor :: String -> String -> [String] -> String -> IO ()
 demoRefactor command workingDir args moduleName = 
   runGhc (Just libdir) $ do
     initGhcFlags
-    useFlags args
+    _ <- useFlags args
     useDirs [workingDir]
     modSum <- loadModule workingDir moduleName
     p <- parseModule modSum
     t <- typecheckModule p
         
-    let r = tm_renamed_source t
     let annots = pm_annotations $ tm_parsed_module t
 
     liftIO $ putStrLn $ show annots
@@ -75,10 +71,12 @@ demoRefactor command workingDir args moduleName =
         let prettyPrinted = prettyPrint correctlyTransformed
         liftIO $ putStrLn prettyPrinted
         liftIO $ putStrLn "==========="
+      -- TODO: implement
+      Right _ -> error "The output shoud be one module changed"
       Left transformProblem -> do
         liftIO $ putStrLn "==========="
         liftIO $ putStrLn transformProblem
         liftIO $ putStrLn "==========="
   
 deriving instance Generic SrcSpan
-deriving instance (Generic sema, Generic src) => Generic (NodeInfo sema src)
+deriving instance Generic (NodeInfo sema src)

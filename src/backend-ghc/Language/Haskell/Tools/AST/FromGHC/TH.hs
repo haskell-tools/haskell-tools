@@ -5,12 +5,10 @@ import Control.Monad.Reader
 
 import SrcLoc as GHC
 import RdrName as GHC
-import HsTypes as GHC
 import HsExpr as GHC
 import ApiAnnotation as GHC
 import FastString as GHC
 import OccName as GHC
-import SrcLoc as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
@@ -32,6 +30,7 @@ trfQuasiQuotation' (HsQuasiQuote id _ l str)
   where quoterLoc = mkSrcSpan (updateCol (subtract (1 + length (occNameString $ rdrNameOcc $ rdrName id))) (srcSpanStart l)) 
                               (updateCol (subtract 1) (srcSpanStart l))
         strLoc = mkSrcSpan (srcSpanStart l) (updateCol (subtract 2) (srcSpanEnd l))
+trfQuasiQuotation' _ = error "trfQuasiQuotation': splice received"
 
 trfSplice :: TransformName n r => Located (HsSplice n) -> Trf (Ann AST.USplice (Dom r) RangeStage)
 trfSplice = trfLocNoSema trfSplice'
@@ -39,6 +38,7 @@ trfSplice = trfLocNoSema trfSplice'
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.USplice (Dom r) RangeStage)
 trfSplice' (HsTypedSplice _ expr) = AST.UParenSplice <$> trfCorrectDollar expr
 trfSplice' (HsUntypedSplice _ expr) = AST.UParenSplice <$> trfCorrectDollar expr
+trfSplice' (HsQuasiQuote {}) = error "trfSplice': quasi quotation received"
 
 trfCorrectDollar :: TransformName n r => Located (HsExpr n) -> Trf (Ann AST.UExpr (Dom r) RangeStage)
 trfCorrectDollar expr = 

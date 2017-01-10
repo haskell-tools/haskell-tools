@@ -32,6 +32,7 @@ createInstance tyConName typArgs dataCons
         createClause (RecC conName conArgs) = createClause' conName (map (\(_,_,t) -> t) conArgs)
         createClause (NormalC conName conArgs) = createClause' conName (map snd conArgs)
         createClause (InfixC conArg1 conName conArg2) = createClause' conName [snd conArg1, snd conArg2]
+        createClause _ = error "createClause: forall and GADT constructors are not supported"
         
         createClause' :: Name -> [Type] -> Q Clause
         createClause' conName args

@@ -18,7 +18,6 @@ module Language.Haskell.Tools.ASTDebug where
 
 import GHC.Generics
 import Control.Reference
-import Control.Applicative
 import Data.Sequence as Seq
 import Data.Foldable
 import Data.Maybe
@@ -34,9 +33,6 @@ import Unique as GHC
 import Type as GHC
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.Transform
---import Language.Haskell.Tools.Refactor.RangeDebug
 import Language.Haskell.Tools.AST.SemaInfoTypes
 
 
@@ -97,6 +93,7 @@ astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
                            []         -> Seq.empty
           debugTreeNode (TreeNode "" s) = astDebugElemJson s
           debugTreeNode (TreeNode (dropWhile (=='_') -> l) s) = astDebugElemJson (nodeName .- (("<span class='astlab'>" ++ l ++ "</span>: ") ++) $ s)
+          debugTreeNode (SimpleNode {}) = error "debugTreeNode: simple SimpleNode not allowed"
 
 astDebugElemJson :: AssocSema dom => TreeDebugNode dom -> Seq Char
 astDebugElemJson (TreeDebugNode name info children) 
@@ -119,14 +116,14 @@ class AssocData a where
   toAssoc :: a -> [(String, String)]
 
 instance AssocSema dom => AssocData (SemanticInfoType dom) where
-  assocName s@(DefaultInfoType {}) = "NoSemanticInfo"
+  assocName (DefaultInfoType {}) = "NoSemanticInfo"
   assocName s@(NameInfoType {}) = assocName (semaInfoTypeName s)
   assocName s@(ExprInfoType {}) = assocName (semaInfoTypeExpr s)
   assocName s@(ImportInfoType {}) = assocName (semaInfoTypeImport s)
   assocName s@(ModuleInfoType {}) = assocName (semaInfoTypeModule s)
   assocName s@(ImplicitFieldInfoType {}) = assocName (semaInfoTypeImplicitFld s)
 
-  toAssoc s@(DefaultInfoType {}) = []
+  toAssoc (DefaultInfoType {}) = []
   toAssoc s@(NameInfoType {}) = toAssoc (semaInfoTypeName s)
   toAssoc s@(ExprInfoType {}) = toAssoc (semaInfoTypeExpr s)
   toAssoc s@(ImportInfoType {}) = toAssoc (semaInfoTypeImport s)
@@ -135,11 +132,11 @@ instance AssocSema dom => AssocData (SemanticInfoType dom) where
 
 
 instance AssocData ScopeInfo where
-  assocName si = "ScopeInfo"
+  assocName _ = "ScopeInfo"
   toAssoc si = [ ("namesInScope", inspectScope (semanticsScope si)) ]
 
 instance HasNameInfo' (NameInfo n) => AssocData (NameInfo n) where
-  assocName si = "NameInfo"
+  assocName _ = "NameInfo"
 
   toAssoc ni = [ ("name", maybe "<ambiguous>" inspect (semanticsName ni))
                , ("isDefined", show (semanticsDefining ni))
@@ -154,14 +151,14 @@ instance AssocData CNameInfo where
                , ("namesInScope", inspectScope (semanticsScope ni)) 
                ]
 
-instance (HasModuleInfo' (ModuleInfo n), InspectableName n) => AssocData (ModuleInfo n) where
+instance (HasModuleInfo' (ModuleInfo n)) => AssocData (ModuleInfo n) where
   assocName _ = "ModuleInfo"
   toAssoc mi = [ ("moduleName", showSDocUnsafe (ppr (semanticsModule mi)))
                , ("isBoot", show (isBootModule mi))
                , ("implicitImports", concat (intersperse ", " (map inspect (semanticsImplicitImports mi))))
                ]
   
-instance (HasImportInfo' (ImportInfo n), InspectableName n) => AssocData (ImportInfo n) where
+instance (HasImportInfo' (ImportInfo n)) => AssocData (ImportInfo n) where
   assocName _ = "ImportInfo"
   toAssoc ii = [ ("moduleName", showSDocUnsafe (ppr (semanticsImportedModule ii))) 
                , ("availableNames", concat (intersperse ", " (map inspect (semanticsAvailable ii)))) 

@@ -5,23 +5,15 @@
 -- | A module for showing GHC's syntax tree representation.
 module Language.Haskell.Tools.DebugGhcAST where
 
-import Language.Haskell.Tools.RangeDebug
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST (shortShowSpan)
 
 import GHC
-import HsSyn
-import HsDecls
 import Module
 import Coercion
-import SrcLoc
 import RdrName
 import BasicTypes
 import Outputable
-import TyCon
-import PlaceHolder
 import ForeignCall
-import Var
 import ConLike
 import PatSyn
 import TcEvidence

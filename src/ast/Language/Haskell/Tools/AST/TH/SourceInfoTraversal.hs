@@ -34,7 +34,8 @@ createInstance tyConName typArgs dataCons
         createClause funName updown (RecC conName conArgs) = createClause' funName updown conName (map (\(_,_,t) -> t) conArgs)
         createClause funName updown (NormalC conName conArgs) = createClause' funName updown conName (map snd conArgs)
         createClause funName updown (InfixC conArg1 conName conArg2) = createClause' funName updown conName [snd conArg1, snd conArg2]
-        
+        createClause _ _ _ = error "createClause: forall and GADT constructors are not supported"
+
         createClause' :: Name -> Bool -> Name -> [Type] -> Q Clause
         createClause' funName updown conName args
           = do bindedNames <- replicateM (length args) (newName "p")
@@ -66,7 +67,7 @@ createInstance tyConName typArgs dataCons
        
         -- | Creates the expression and the predicate for a parameter
         processParam :: Name -> Bool -> Name -> Type -> Exp
-        processParam funName updown arg (AppT (AppT t (VarT dom)) (VarT stage)) | dom == tdom && stage == tstage
+        processParam funName updown arg (AppT (AppT _ (VarT dom)) (VarT stage)) | dom == tdom && stage == tstage
           = AppE (wrapUpdown $ AppE (VarE funName) (VarE trf)) (VarE arg)
           where wrapUpdown | updown    = flip AppE (VarE asc) . flip AppE (VarE desc)
                            | otherwise = id

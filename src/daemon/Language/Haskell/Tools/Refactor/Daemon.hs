@@ -12,41 +12,28 @@ import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import GHC.Generics
-
 import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import Network.Socket.ByteString.Lazy
 import Control.Exception
-import Data.Map (Map, (!), member, insert)
 import qualified Data.Map as Map
-
 import System.IO
-import System.IO.Error
-import System.FilePath
 import System.Directory
 import Data.IORef
 import Data.List hiding (insert)
 import Data.Tuple
 import Data.Maybe
-import Data.Function (on)
 import Control.Applicative ((<|>))
 import Control.Monad
 import Control.Monad.State
 import Control.Concurrent.MVar
-import Control.Monad.IO.Class
 import System.Environment
-import Debug.Trace
 
 import GHC hiding (loadModule)
-import Bag (bagToList)
-import SrcLoc (realSrcSpanStart)
-import ErrUtils (errMsgSpan)
 import DynFlags
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc, modifySession)
-import HscTypes (SourceError, srcErrorMessages, hsc_mod_graph)
-import FastString (unpackFS)
+import HscTypes (hsc_mod_graph)
 import Packages
-import Module (unitIdString)
 
 import Control.Reference
 
@@ -79,6 +66,7 @@ runDaemon args = withSocketsDo $
        listen sock 1
        clientLoop isSilent sock
 
+defaultArgs :: [String]
 defaultArgs = ["4123", "True"]
 
 clientLoop :: Bool -> Socket -> IO ()
@@ -101,8 +89,8 @@ serverLoop isSilent ghcSess state sock =
          sessionData <- readMVar state
          when (not (sessionData ^. exiting) && all (== True) continue)
            $ serverLoop isSilent ghcSess state sock
-  `catch` interrupted sock
-  where interrupted = \s ex -> do
+  `catch` interrupted
+  where interrupted = \ex -> do
                         let err = show (ex :: IOException)
                         when (not isSilent) $ do
                           putStrLn "Closing down socket"
@@ -146,14 +134,13 @@ updateClient resp (AddPackages packagePathes packageDB) = do
     return True
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
 
-updateClient resp (RemovePackages packagePathes) = do
+updateClient _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
     let existing = map ms_mod (mcs ^? traversal & filtered isRemoved & mcModules & traversal & modRecMS)
     lift $ forM_ existing (\modName -> removeTarget (TargetModule (GHC.moduleName modName)))
     lift $ deregisterDirs (mcs ^? traversal & filtered isRemoved & mcSourceDirs & traversal)
     modify $ refSessMCs .- filter (not . isRemoved)
     modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
-    mods <- lift getModuleGraph
     return True
   where isRemoved mc = (mc ^. mcRoot) `elem` packagePathes
 
@@ -163,8 +150,8 @@ updateClient resp (ReLoad changed removed) =
      modify $ refSessMCs & traversal & mcModules 
                 .- Map.filter (\m -> maybe True (not . (`elem` removed) . getModSumOrig) (m ^? modRecMS))
      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` removedMods) . ms_mod) (hsc_mod_graph s) })
-     reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms]))
-                          (\ms -> getModSumOrig ms `elem` changed)
+     void $ reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms]))
+                                 (\ms -> getModSumOrig ms `elem` changed)
      return True
 
 updateClient _ Stop = modify (exiting .= True) >> return False

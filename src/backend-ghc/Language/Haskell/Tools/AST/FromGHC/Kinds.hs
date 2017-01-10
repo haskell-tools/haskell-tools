@@ -17,15 +17,12 @@ import Control.Monad.Reader
 import Data.Data (toConstr)
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Literals
 import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
-
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), Dom, RangeStage, HasNoSemanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
 
-import Debug.Trace
 
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
 trfKindSig = trfMaybe "" "" trfKindSig'
@@ -58,9 +55,9 @@ trfKind' = trfKind'' . cleanHsType where
 
 trfPromoted' :: (TransformName n r, HasNoSemanticInfo (Dom r) a) 
                   => (HsType n -> Trf (a (Dom r) RangeStage)) -> HsType n -> Trf (AST.UPromoted a (Dom r) RangeStage)
-trfPromoted' f (HsTyLit (HsNumTy _ int)) = pure $ AST.UPromotedInt int
-trfPromoted' f (HsTyLit (HsStrTy _ str)) = pure $ AST.UPromotedString (unpackFS str)
-trfPromoted' f (HsTyVar name) = AST.UPromotedCon <$> trfName name
+trfPromoted' _ (HsTyLit (HsNumTy _ int)) = pure $ AST.UPromotedInt int
+trfPromoted' _ (HsTyLit (HsStrTy _ str)) = pure $ AST.UPromotedString (unpackFS str)
+trfPromoted' _ (HsTyVar name) = AST.UPromotedCon <$> trfName name
 trfPromoted' f (HsExplicitListTy _ elems) = AST.UPromotedList <$> between AnnOpenS AnnCloseS (trfAnnList ", " f elems)
 trfPromoted' f (HsExplicitTupleTy _ elems) = AST.UPromotedTuple <$> between AnnOpenP AnnCloseP (trfAnnList ", " f elems)
 trfPromoted' _ t = asks contRange >>= \r -> error $ "Unknown promoted type/kind: " ++ (showSDocUnsafe (ppr t) ++ " at: " ++ show r)

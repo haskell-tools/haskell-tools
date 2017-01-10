@@ -3,17 +3,11 @@ module Language.Haskell.Tools.AST.FromGHC.Literals where
 
 import qualified Data.ByteString.Char8 as BS
 
-import SrcLoc as GHC
-import ApiAnnotation as GHC
 import FastString as GHC
 import BasicTypes as GHC
 import HsLit as GHC
-import HsTypes as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
-
 import Language.Haskell.Tools.AST (Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 

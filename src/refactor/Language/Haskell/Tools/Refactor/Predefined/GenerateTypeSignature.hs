@@ -7,7 +7,8 @@
            , ConstraintKinds
            , TupleSections
            #-}
-module Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature (generateTypeSignature, generateTypeSignature', GenerateSignatureDomain) where
+module Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature 
+  (generateTypeSignature, generateTypeSignature', GenerateSignatureDomain, tryItOut) where
 
 import GHC hiding (Module)
 import Type as GHC
@@ -16,11 +17,9 @@ import OccName as GHC
 import Outputable as GHC
 import TysWiredIn as GHC
 import Id as GHC
-import Unique as GHC
 
 import Data.List
 import Data.Maybe
-import Data.Data
 import Data.Generics.Uniplate.Data
 import Control.Monad
 import Control.Monad.State
@@ -30,6 +29,7 @@ import Language.Haskell.Tools.Refactor as AST
 
 type GenerateSignatureDomain dom = ( HasModuleInfo dom, HasIdInfo dom, HasImportInfo dom, HasScopeInfo dom ) 
 
+tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . generateTypeSignature')
 
 generateTypeSignature' :: GenerateSignatureDomain dom => RealSrcSpan -> LocalRefactoring dom
@@ -74,7 +74,7 @@ genTypeSig scopedSigs sigBinds vbAccess ls
                else do put True
                        -- checking for possible situations when we cannot generate signature because of
                        -- an implicitly passed value
-                       let dangerousTypeVars = dangerousTVs vb scopedSigs sigBinds
+                       let dangerousTypeVars = dangerousTVs scopedSigs sigBinds
                            myTvs = concatMap @[] (getExternalTVs . idType . semanticsId) (vb ^? bindingName)
                        if not $ null @[] $ myTvs `intersect` dangerousTypeVars
                          then refactError $ "Could not generate type signature: the type variable(s) " 
@@ -88,7 +88,7 @@ genTypeSig scopedSigs sigBinds vbAccess ls
   where isSimpleBinding vb = case vb of SimpleBind (AST.VarPat {}) _ _ -> True
                                         SimpleBind _ _ _ -> False
                                         _ -> True
-        dangerousTVs vb scopedSigs sigBinds
+        dangerousTVs scopedSigs sigBinds
           = let dangerousDecls = if scopedSigs then filter (\(_,ts,_) -> not $ isForalledTS ts) sigBinds else sigBinds
                 dangerousNames = map (\(_,_,bn) -> bn ^? (valBindPats & biplateRef &+& bindingName)) dangerousDecls
              in concatMap (concatMap @[] (getExternalTVs . idType .  semanticsId @(QualifiedName dom))) dangerousNames
@@ -150,6 +150,7 @@ generateTypeFor prec t
         generateAssertionFor t 
           | Just (tc, types) <- splitTyConApp_maybe t
           = mkClassAssert <$> referenceName (idName $ getTCId tc) <*> mapM (generateTypeFor 0) types
+          | otherwise = error "generateAssertionFor: type not supported yet."
         -- TODO: infix things
     
 -- | Check whether the definition already has a type signature

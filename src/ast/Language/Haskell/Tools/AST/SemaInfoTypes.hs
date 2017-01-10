@@ -26,7 +26,6 @@ import SrcLoc as GHC
 import RdrName as GHC
 import Outputable as GHC
 
-import Data.Maybe
 import Data.List
 import Data.Data
 
@@ -175,8 +174,8 @@ instance Foldable ImportInfo where
 
 instance Traversable NameInfo where
   traverse f (NameInfo locals defined nameInfo) = NameInfo locals defined <$> f nameInfo
-  traverse f (AmbiguousNameInfo locals defined nameInfo span) = pure $ AmbiguousNameInfo locals defined nameInfo span
-  traverse f (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
+  traverse _ (AmbiguousNameInfo locals defined nameInfo span) = pure $ AmbiguousNameInfo locals defined nameInfo span
+  traverse _ (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
 
 instance Traversable ModuleInfo where
   traverse f (ModuleInfo mod isboot imp) = ModuleInfo mod isboot <$> traverse f imp 

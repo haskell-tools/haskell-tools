@@ -8,17 +8,15 @@ module Language.Haskell.Tools.Transform.RangeToRangeTemplate (cutUpRanges, fixRa
 
 import Language.Haskell.Tools.AST
 
-import Data.Data
 import Data.List
 import Data.Maybe
 import Control.Reference hiding (element)
 import Control.Monad.State
-import SrcLoc
-import Language.Haskell.Tools.Transform.RangeTemplate
 
+import SrcLoc
 import FastString as GHC
 
-import Debug.Trace
+import Language.Haskell.Tools.Transform.RangeTemplate
 
 -- | Creates a source template from the ranges and the input file.
 -- All source ranges must be good ranges.
@@ -26,8 +24,7 @@ cutUpRanges :: forall node dom . SourceInfoTraversal node
                  => Ann node dom NormRangeStage
                  -> Ann node dom RngTemplateStage
 cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
-  where cutUpRanges' :: SourceInfoTraversal node => Ann node dom NormRangeStage
-                                                 -> State [[SrcSpan]] (Ann node dom RngTemplateStage)
+  where cutUpRanges' :: Ann node dom NormRangeStage -> State [[SrcSpan]] (Ann node dom RngTemplateStage)
         cutUpRanges' = sourceInfoTraverseUp (SourceInfoTrf (trf cutOutElemSpan) (trf cutOutElemList) (trf cutOutElemOpt)) desc asc
         
         -- keep the stack to contain the children elements on the place of the parent element
@@ -35,7 +32,7 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         asc  = modify tail
         
         -- combine the current node with its children, and add it to the list of current nodes
-        trf :: (Show (x NormRangeStage), Show (x RngTemplateStage), HasRange (x NormRangeStage), HasRange (x RngTemplateStage)) 
+        trf :: HasRange (x RngTemplateStage)
             => ([SrcSpan] -> x NormRangeStage -> x RngTemplateStage) -> x NormRangeStage -> State [[SrcSpan]] (x RngTemplateStage)
         trf f ni = do (below : top : xs) <- get
                       let res = f below ni
@@ -51,7 +48,7 @@ fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToCon
         desc = modify ([]:)
         asc  = modify tail
         
-        trf :: (HasRange (x RangeStage), HasRange (x NormRangeStage)) 
+        trf :: HasRange (x NormRangeStage)
             => ([SrcSpan] -> x RangeStage -> x NormRangeStage) -> x RangeStage -> State [[SrcSpan]] (x NormRangeStage)
         trf f ni = do (below : top : xs) <- get
                       let res = f below ni
@@ -84,28 +81,31 @@ cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))
               Just pieces -> pieces ++ rest
               Nothing -> elem : breakFirstHit rest sp
         breakFirstHit [] sp = error ("breakFirstHit: " ++ maybe "" unpackFS (srcSpanFileName_maybe sp) ++ " didn't find correct place for " ++ shortShowSpan sp ++ " in " ++ shortShowSpan sp ++ " with [" ++ concat (intersperse "," (map shortShowSpan sps)) ++ "]")
+cutOutElemSpan _ (NormNodeInfo (UnhelpfulSpan {})) = error "cutOutElemSpan: no real span"
 
 cutOutElemList :: [SrcSpan] -> ListInfo NormRangeStage -> ListInfo RngTemplateStage
-cutOutElemList sps lp@(NormListInfo bef aft sep indented sp)
+cutOutElemList sps (NormListInfo bef aft sep indented sp)
   = let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps
      in RangeTemplateList wholeRange bef aft sep indented (getSeparators wholeRange sps)
 
 cutOutElemOpt :: [SrcSpan] -> OptionalInfo NormRangeStage -> OptionalInfo RngTemplateStage
-cutOutElemOpt sps op@(NormOptInfo bef aft sp) 
+cutOutElemOpt sps (NormOptInfo bef aft sp) 
   = let RealSrcSpan wholeRange = foldl1 combineSrcSpans $ sp : sps
      in RangeTemplateOpt wholeRange bef aft
 
 collectSpanRanges :: SrcLoc -> [SrcSpan] -> RealSrcSpan
 collectSpanRanges (RealSrcLoc loc) [] = realSrcLocSpan loc
 collectSpanRanges _ [] = error "collectSpanRanges: No real src loc for empty element"
-collectSpanRanges _ ls = case foldl1 combineSrcSpans ls of RealSrcSpan sp -> sp
+collectSpanRanges _ ls = case foldl1 combineSrcSpans ls of 
+                           RealSrcSpan sp -> sp
+                           UnhelpfulSpan {} -> error "collectSpanRanges: combineSrcSpans resulted no real span"
                      
 -- | Cuts out all elements from a list, the rest is the list of separators
 getSeparators :: RealSrcSpan -> [SrcSpan] -> [RealSrcSpan]
 getSeparators sp infos@(_:_:_)
   = mapMaybe getRangeElemSpan (cutOutElemSpan infos (NormNodeInfo (RealSrcSpan sp)) ^. rngTemplateNodeElems)
 -- at least two elements needed or there can be no separators
-getSeparators sp _ = []
+getSeparators _ _ = []
                      
 -- | Breaks the given template element into possibly 2 or 3 parts by cutting out the given part
 -- if it is inside the range of the template element. Returns Nothing if the second argument is not inside.
@@ -119,6 +119,6 @@ breakUpRangeElem (RangeElem outer) (RealSrcSpan inner)
            (if (realSrcSpanEnd inner) < (realSrcSpanEnd outer) 
               then [ RangeElem (mkRealSrcSpan (realSrcSpanEnd inner) (realSrcSpanEnd outer)) ]
               else [])
-breakUpRangeElem outer inner = Nothing
+breakUpRangeElem _ _ = Nothing
 
 

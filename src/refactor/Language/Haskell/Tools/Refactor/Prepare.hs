@@ -15,27 +15,18 @@ module Language.Haskell.Tools.Refactor.Prepare where
 
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
-import Panic (handleGhcException)
-import Outputable
-import BasicTypes
-import Bag
-import Var
 import SrcLoc
-import Module as GHC
 import FastString
-import HscTypes
 import GHC.Paths ( libdir )
 import CmdLineParser
 import DynFlags
-import StringBuffer
 
 import Control.Monad
 import Control.Monad.IO.Class
 import System.FilePath
 import Data.Maybe
-import Data.List (isInfixOf, (\\))
+import Data.List ((\\))
 import Data.List.Split
-import System.Info (os)
 import System.Directory
 import Data.IntSet (member)
 import Language.Haskell.TH.LanguageExtensions
@@ -62,6 +53,7 @@ correctRefactorSpan :: UnnamedModule dom -> RealSrcSpan -> RealSrcSpan
 correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp) 
                                            (updateSrcFile fileName $ realSrcSpanEnd sp)
   where fileName = case srcSpanStart $ getRange mod of RealSrcLoc loc -> srcLocFile loc 
+                                                       _ -> error "correctRefactorSpan: no real span"
         updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc) 
 
 -- | Set the given flags for the GHC session
@@ -69,8 +61,9 @@ useFlags :: [String] -> Ghc [String]
 useFlags args = do 
   let lArgs = map (L noSrcSpan) args
   dynflags <- getSessionDynFlags
-  let ((leftovers, errors, warnings), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
-  setSessionDynFlags newDynFlags
+  -- TODO: print errors and warnings?
+  let ((leftovers, _, _), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
+  void $ setSessionDynFlags newDynFlags
   return $ map unLoc leftovers
 
 -- | Initialize GHC flags to default values that support refactoring
@@ -130,7 +123,7 @@ loadModule workingDir moduleName
        useDirs [workingDir]
        target <- guessTarget moduleName Nothing
        setTargets [target]
-       load (LoadUpTo $ mkModuleName moduleName)
+       void $ load (LoadUpTo $ mkModuleName moduleName)
        getModSummary $ mkModuleName moduleName
     
 -- | The final version of our AST, with type infromation added
@@ -144,7 +137,7 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
       ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
   p <- parseModule ms
   tc <- typecheckModule p
-  GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
+  void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
   let annots = pm_annotations p
       srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
   prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
@@ -159,9 +152,9 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
 withAlteredDynFlags :: GhcMonad m => (DynFlags -> m DynFlags) -> m a -> m a
 withAlteredDynFlags modDFs action = do
   dfs <- getSessionDynFlags
-  setSessionDynFlags =<< modDFs dfs
+  void $ setSessionDynFlags =<< modDFs dfs
   res <- action
-  setSessionDynFlags dfs
+  void $ setSessionDynFlags dfs
   return res
 
 -- | Forces the code generation for a given module
@@ -192,3 +185,4 @@ readSrcSpan s = case splitOn "-" s of
 readSrcLoc :: String -> RealSrcLoc
 readSrcLoc s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString "file-name-should-be-fixed") (read line) (read col)
+  _ -> error "readSrcLoc: panic: splitOn gives empty list"

@@ -3,12 +3,9 @@
 -- function @makeReferences@.
 module Language.Haskell.Tools.AST.MakeASTReferences where
 
-import Control.Monad
 import Control.Reference ((&))
 import Language.Haskell.Tools.AST.Ann (Ann, element)
 import Language.Haskell.TH
-
-import Debug.Trace
 
 -- | Change the generated references to have the context of an annotated element.
 -- Modifies the types according to the changes. This trasformation makes all

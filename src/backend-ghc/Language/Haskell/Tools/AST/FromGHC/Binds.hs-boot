@@ -1,7 +1,5 @@
 module Language.Haskell.Tools.AST.FromGHC.Binds where
 
-import Outputable as GHC
-import RdrName as GHC
 import SrcLoc as GHC
 import HsBinds as GHC
 import HsExpr as GHC

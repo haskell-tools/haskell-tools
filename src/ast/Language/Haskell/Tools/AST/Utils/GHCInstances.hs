@@ -11,9 +11,13 @@ instance Data RealSrcLoc where
 
     gunfold k z c = case constrIndex c of
                         1 -> k (k (k (z mkRealSrcLoc)))
+                        _ -> error "gunfold: has only 1 constructor"
 
     toConstr _ = con_RSL
     dataTypeOf _ = ty_RSL
 
+con_RSL :: Constr
 con_RSL = mkConstr ty_RSL "RSL" [] Prefix
+
+ty_RSL :: DataType
 ty_RSL   = mkDataType "SrcLoc.RealSrcLoc" [con_RSL]

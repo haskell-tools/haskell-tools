@@ -9,18 +9,13 @@ module Language.Haskell.Tools.Transform.PlaceComments where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
-import Data.List
 import Data.Char (isSpace, isAlphaNum)
-import Data.Data
-import Data.Generics.Uniplate.Data
 import Control.Reference hiding (element)
 import Control.Monad.Writer
 import Control.Monad.State
 
 import SrcLoc
 import ApiAnnotation
-import Outputable
-import Debug.Trace
 
 import Language.Haskell.Tools.AST
 

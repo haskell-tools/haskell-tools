@@ -9,7 +9,6 @@ import Data.List as List
 import Safe
 
 import SrcLoc as GHC
-import FastString as GHC
 
 -- We store tokens in the source map so it is not a problem that they cannot overlap
 type SourceMap = (Map AnnKeywordId (Map SrcLoc SrcLoc), Map SrcLoc (SrcSpan, AnnKeywordId))

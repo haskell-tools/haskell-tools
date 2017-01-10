@@ -14,29 +14,16 @@
 module Language.Haskell.Tools.AST.FromGHC.Names where
 
 import Control.Monad.Reader
-import Data.List.Split
 import Data.Char
-import qualified Data.ByteString.Char8 as BS
-
-import Control.Reference hiding (element)
 
 import HsSyn as GHC
-import Module as GHC
 import RdrName as GHC
-import Id as GHC
 import Name as GHC hiding (Name, occName)
 import qualified Name as GHC (Name)
-import Outputable as GHC
 import SrcLoc as GHC
-import BasicTypes as GHC
 import FastString as GHC
-import ApiAnnotation as GHC
-import ForeignCall as GHC
-import CoAxiom as GHC
-import Bag as GHC
-import Data.Data (Data)
 
-import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), AnnMaybeG(..), SemanticInfo(..), RangeStage, Dom, annotation, semanticInfo)
+import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), RangeStage, Dom)
 import qualified Language.Haskell.Tools.AST as AST
 
 import Language.Haskell.Tools.AST.FromGHC.Monad
@@ -62,17 +49,15 @@ trfName' n
      where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
 
 trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.UName (Dom r) RangeStage)
-trfAmbiguousFieldName all@(L l af) = trfAmbiguousFieldName' l af
+trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af
 
 trfAmbiguousFieldName' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' (unpackPostRn @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
 trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _) 
-  = do locals <- asks localsInScope
-       isDefining <- asks defining
-       annLocNoSema (pure l) 
-         $ AST.UNormalName 
-         <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
+  = annLocNoSema (pure l) 
+      $ AST.UNormalName 
+          <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
 
 class (DataId n, Eq n, GHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
@@ -110,7 +95,7 @@ trfImplicitName (HsIPName fs)
            annContNoSema (AST.UImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
 
 trfQualifiedName :: TransformName n r => Located n -> Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
-trfQualifiedName name@(L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfQualifiedName' n)
+trfQualifiedName (L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfQualifiedName' n)
 
 trfQualifiedName' :: TransformName n r => n -> Trf (AST.UQualifiedName (Dom r) RangeStage)
 trfQualifiedName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)

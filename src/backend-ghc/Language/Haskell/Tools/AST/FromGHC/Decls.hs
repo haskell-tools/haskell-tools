@@ -7,31 +7,24 @@ module Language.Haskell.Tools.AST.FromGHC.Decls where
 
 import qualified GHC
 import RdrName as GHC
-import Var as GHC
 import Class as GHC
 import HsSyn as GHC
 import SrcLoc as GHC
-import HsDecls as GHC
 import Name as GHC
-import OccName as GHC
 import ApiAnnotation as GHC
-import FastString as GHC
 import BasicTypes as GHC
 import Bag as GHC
 import ForeignCall as GHC
 import Outputable as GHC
-import Unique as GHC
 import TyCon as GHC
 import BooleanFormula as GHC
 
 import Control.Monad.Reader
 import Control.Reference
-import Data.Function (on)
 import Data.List
 import Data.Maybe
-import qualified Data.Map as Map
 import Data.Data (toConstr)
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Names
@@ -48,15 +41,12 @@ import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), getRang
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 
-import Data.Dynamic
-import Debug.Trace
-
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 -- TODO: filter documentation comments
 trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
-trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects docs) 
+trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects _) 
   = do spls <- getDeclSplices
        let (sigs, bagToList -> binds) = getBindsAndSigs vals
            alldecls :: [Located (HsDecl n)]
@@ -82,6 +72,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     mergeSplice :: [Located (HsDecl n)] -> Located (HsSplice n) -> [Located (HsDecl n)]
     mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
       = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
+    mergeSplice _ (L (UnhelpfulSpan {}) _) = error "mergeSplice: no real span"
     
     getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
@@ -110,7 +101,7 @@ trfDecl = trfLocNoSema $ \case
           whereLoc <- tokenLoc AnnWhere
           if isGoodSrcSpan whereLoc then trfGADT nd name vars ctx kind cons derivs ctxTok consLoc
                                     else trfDataDef nd name vars ctx cons derivs ctxTok consLoc
-  TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs docs _) 
+  TyClD (ClassDecl ctx name vars funDeps sigs defs typeFuns typeFunDefs _ _) 
     -> AST.UClassDecl <$> trfCtx (after AnnClass) ctx 
                      <*> betweenIfPresent AnnClass AnnWhere (createDeclHead name vars)
                      <*> trfFunDeps funDeps 
@@ -124,7 +115,7 @@ trfDecl = trfLocNoSema $ \case
                         <*> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats)
                         <*> makeList " | " (after AnnEqual) (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
-  InstD (TyFamInstD (TyFamInstDecl (L l (TyFamEqn con pats rhs)) _))
+  InstD (TyFamInstD (TyFamInstDecl (L _ (TyFamEqn con pats rhs)) _))
     -> AST.UTypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> trfVal bind
   SigD sig -> trfSig sig
@@ -177,6 +168,7 @@ trfSig (InlineSig name (InlinePragma _ Inlinable _ phase _))
 trfSig (InlineSig name (InlinePragma src inl _ phase cl)) 
   = do rng <- asks contRange
        let parts = map getLoc $ splitLocated (L rng src)
+       -- TODO: Inlinable, EmptyInlineSpec
        AST.UPragmaDecl <$> annContNoSema ((case inl of Inline -> AST.UInlinePragma; NoInline -> AST.UNoInlinePragma) 
                                      <$> trfConlike parts cl 
                                      <*> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
@@ -201,6 +193,7 @@ trfConDecl' (ConDeclH98 { con_name = name, con_details = RecCon (unLoc -> flds) 
   = AST.URecordDecl <$> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDeclH98 { con_name = name, con_details = InfixCon t1 t2 })
   = AST.UInfixConDecl <$> trfType t1 <*> define (trfOperator name) <*> trfType t2
+trfConDecl' (ConDeclGADT {}) = error "trfConDecl': GADT con received"
 
 trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.UGadtConDecl (Dom r) RangeStage)
 trfGADTConDecl = trfLocNoSema $ \(ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
@@ -222,7 +215,7 @@ trfFieldDecl' (ConDeclField names typ _) = AST.UFieldDecl <$> (define $ nonempty
 
 trfDerivings :: TransformName n r => Located [LHsSigType n] -> Trf (Ann AST.UDeriving (Dom r) RangeStage)
 trfDerivings = trfLocNoSema $ \case
-  [hsib_body -> typ@(unLoc -> HsTyVar cls)] -> AST.UDerivingOne <$> trfInstanceHead typ
+  [hsib_body -> typ@(unLoc -> HsTyVar {})] -> AST.UDerivingOne <$> trfInstanceHead typ
   derivs -> AST.UDerivings <$> trfAnnList ", " trfInstanceHead' (map hsib_body derivs)
   
 trfInstanceRule :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UInstanceRule (Dom r) RangeStage)
@@ -275,7 +268,7 @@ trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.UType
 trfTypeEq = trfLocNoSema $ \(TyFamEqn name pats rhs) 
   -> AST.UTypeEqn <$> defineTypeVars (focusBefore AnnEqual (combineTypes name (hsib_body pats))) <*> trfType rhs
   where combineTypes :: TransformName n r => Located n -> [LHsType n] -> Trf (Ann AST.UType (Dom r) RangeStage)
-        combineTypes name (lhs : rhs : rest) | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
+        combineTypes name [lhs, rhs] | srcSpanStart (getLoc name) > srcSpanEnd (getLoc lhs)
           = annContNoSema $ AST.UTyInfix <$> trfType lhs <*> trfOperator name <*> trfType rhs
         combineTypes name pats = wrapTypes (annLocNoSema (pure $ getLoc name) (AST.UTyVar <$> trfName name)) pats
 
@@ -354,6 +347,7 @@ trfTypeFam' (FamilyDecl DataFamily name tyVars kindSig _)
 trfTypeFam' (FamilyDecl OpenTypeFamily name tyVars kindSig injectivity)
   = AST.UTypeFamily <$> (case unLoc kindSig of KindSig _ -> between AnnType AnnDcolon; _ -> id) (createDeclHead name tyVars) 
                    <*> trfFamilyResultSig kindSig injectivity
+trfTypeFam' (FamilyDecl (ClosedTypeFamily {}) _ _ _ _) = error "trfTypeFam': closed type family received"
 
 trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.UClassElement (Dom r) RangeStage)
 trfTypeFamDef = trfLocNoSema $ \(TyFamEqn con pats rhs) 
@@ -413,7 +407,7 @@ trfPatternSynonym (PSB id _ lhs def dir)
      in AST.UPatternSynonym <$> trfPatSynLhs id lhs
                             <*> annLocNoSema rhsLoc (trfPatSynRhs dir changedRhs)
 
-  where trfPatSynLhs :: TransformName n r => Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
+  where trfPatSynLhs :: Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
         trfPatSynLhs id (PrefixPatSyn args)
           = annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn <$> trfName id <*> trfAnnList " " trfName' args
         trfPatSynLhs op (InfixPatSyn lhs rhs)
@@ -422,22 +416,25 @@ trfPatternSynonym (PSB id _ lhs def dir)
           = annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) <$> before AnnEqual) 
               $ AST.URecordPatSyn <$> trfName id <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
 
-        trfPatSynRhs :: TransformName n r => HsPatSynDir n -> Located (Pat n) -> Trf (AST.UPatSynRhs (Dom r) RangeStage)
+        trfPatSynRhs :: HsPatSynDir n -> Located (Pat n) -> Trf (AST.UPatSynRhs (Dom r) RangeStage)
         trfPatSynRhs ImplicitBidirectional pat = AST.UBidirectionalPatSyn <$> trfPattern pat <*> nothing " where " "" atTheEnd
         trfPatSynRhs (ExplicitBidirectional mg) pat = AST.UBidirectionalPatSyn <$> trfPattern pat <*> (makeJust <$> trfPatSynWhere mg)
         trfPatSynRhs Unidirectional pat = AST.UOneDirectionalPatSyn <$> trfPattern pat
-        trfPatSynWhere :: TransformName n r => MatchGroup n (LHsExpr n) -> Trf (Ann AST.UPatSynWhere (Dom r) RangeStage)
+        
+        trfPatSynWhere :: MatchGroup n (LHsExpr n) -> Trf (Ann AST.UPatSynWhere (Dom r) RangeStage)
         trfPatSynWhere (MG { mg_alts = alts }) = annLocNoSema (pure $ getLoc alts) (AST.UPatSynWhere <$> makeIndentedList (after AnnWhere) (mapM (trfMatch (unLoc id)) (unLoc alts)))
 
 trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)
 trfFamilyKind (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
+  TyVarSig {} -> error "trfFamilyKind: TyVarSig not supported yet"
 
 trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybeG AST.UTypeFamilySpec (Dom r) RangeStage)
 trfFamilyResultSig (L l fr) Nothing = case fr of 
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyKind <$> trfKindSig' k)
+  TyVarSig {} -> error "trfFamilyResultSig: TyVarSig not supported yet"
 trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps))) 
   = makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity <$> (annContNoSema $ AST.UInjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))
 
@@ -460,8 +457,8 @@ trfCallConv' :: CCallConv -> Trf (AST.UCallConv (Dom r) RangeStage)
 trfCallConv' CCallConv = pure AST.UCCall
 trfCallConv' CApiConv = pure AST.UCApi
 trfCallConv' StdCallConv = pure AST.UStdCall
--- trfCallConv' PrimCallConv = 
 trfCallConv' JavaScriptCallConv = pure AST.UJavaScript
+trfCallConv' PrimCallConv = error "trfCallConv: PrimCallConv not supported"
 
 trfSafety :: SrcSpan -> Located Safety -> Trf (AnnMaybeG AST.USafety (Dom r) RangeStage)
 trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l 
@@ -483,6 +480,7 @@ trfRole :: Located (Maybe Role) -> Trf (Ann AST.URole (Dom r) RangeStage)
 trfRole = trfLocNoSema $ \case Just Nominal -> pure AST.UNominal
                                Just Representational -> pure AST.URepresentational
                                Just GHC.Phantom -> pure AST.UPhantom
+                               Nothing -> error "trfRole: no role"
          
 trfPhase :: Trf SrcLoc -> Activation -> Trf (AnnMaybeG AST.UPhaseControl (Dom r) RangeStage)
 trfPhase l AlwaysActive = nothing "" " " l
@@ -490,6 +488,8 @@ trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> t
                                                           (AST.UPhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
 trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
                                                            (AST.UPhaseControl <$> (makeJust <$> annLocNoSema (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+-- TODO
+trfPhase _ NeverActive = error "NeverActive pragmas not yet supported"
 
 trfPhaseNum ::  PhaseNum -> Trf (Ann AST.PhaseNumber (Dom r) RangeStage)
 trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 

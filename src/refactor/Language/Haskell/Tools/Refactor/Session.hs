@@ -6,25 +6,20 @@ module Language.Haskell.Tools.Refactor.Session where
 import qualified Data.Map as Map
 import qualified Data.List as List
 import Data.Maybe
-import Data.Function (on)
 import Control.Monad.State
 import Control.Reference
-import System.IO
 import System.FilePath
-import Debug.Trace
 
 import GHC
 import Outputable
 import ErrUtils
-import GhcMonad as GHC
 import HscTypes as GHC
 import Digraph as GHC
-import DynFlags as GHC
 import FastString as GHC
 import Data.IntSet (member)
 import Language.Haskell.TH.LanguageExtensions
 
-import Language.Haskell.Tools.AST (IdDom, semanticsModule)
+import Language.Haskell.Tools.AST (IdDom)
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.RefactorBase
@@ -52,13 +47,13 @@ loadPackagesFrom report packages =
      lift $ useDirs (modColls ^? traversal & mcSourceDirs & traversal)
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
-     lift $ mapM addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
+     lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
      handleSourceError (return . Left . concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages) $
        withAlteredDynFlags (return . enableAllPackages allModColls) $ do
          modsForColls <- lift $ depanal [] True
          let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
              actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
-         checkEvaluatedMods report modsToParse
+         void $ checkEvaluatedMods report modsToParse
          mods <- mapM (loadModule report) actuallyCompiled
          return $ Right (mods, ignored)
 
@@ -97,7 +92,7 @@ getFileMods fname
 reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc [a]
 reloadChangedModules report isChanged = do
   reachable <- getReachableModules isChanged
-  checkEvaluatedMods report reachable
+  void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
 getReachableModules :: IsRefactSessionState st => (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
@@ -147,10 +142,9 @@ codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection] -> ModSummary -> 
 codeGenForModule report mcs ms 
   = let modName = modSumName ms
         Just mc = lookupModuleColl modName mcs
-        Just rec = lookupModInSCs (keyFromMS ms) mcs
      in -- TODO: don't recompile, only load?
         do withAlteredDynFlags (liftIO . compileInContext mc mcs)
-             $ parseTyped (forceCodeGen ms)
+             $ void $ parseTyped (forceCodeGen ms)
            liftIO $ report ms 
 
 -- | Check which modules can be reached from the module, if it uses template haskell.

@@ -9,22 +9,18 @@
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
 import Data.List
-import qualified Data.Map as Map
-import Data.Generics.Uniplate.Operations
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 
 import GHC
 import Bag
 import RdrName
 import OccName
-import Name
 import Outputable
 import SrcLoc
 import ConLike
 import Id
 import PatSyn
 import Type
-import TysWiredIn
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName
@@ -39,6 +35,7 @@ instance GHCName RdrName where
   rdrName = id
   getFromNameUsing _ n = return $ pure (nameRdrName n)
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
+  getBindsAndSigs _ = error "ValBindsOut: ValBindsOut in parsed source"
   nameFromId = nameRdrName . getName
   unpackPostRn rdr _ = rdr
 
@@ -51,6 +48,7 @@ instance GHCName GHC.Name where
   rdrName = nameRdrName
   getFromNameUsing f n = fmap nameFromId <$> f n
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
+  getBindsAndSigs _ = error "getBindsAndSigs: ValBindsIn in renamed source"
   nameFromId = getName
   unpackPostRn _ a = a
 
@@ -72,7 +70,7 @@ getTopLevelId name =
       Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
       Just (AConLike (PatSynCon ps)) -> return $ Just $ mkVanillaGlobal name (createPatSynType ps)
       Just (ATyCon tc) -> return $ Just $ mkVanillaGlobal name (tyConKind tc)
-      Nothing -> return Nothing
+      _ -> return Nothing
   where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
 -- | Get names from the GHC AST
@@ -117,7 +115,8 @@ instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
   hsGetNames (HsDataDefn {dd_cons = ctors}) = hsGetNames ctors
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
-  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L l (HsRecTy flds)))}) = hsGetNames names ++ hsGetNames flds
+  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))}) 
+    = hsGetNames names ++ hsGetNames flds
   hsGetNames (ConDeclGADT {con_names = names}) = hsGetNames names
   hsGetNames (ConDeclH98 {con_name = name, con_details = details}) = hsGetNames name ++ hsGetNames details
 
@@ -131,7 +130,7 @@ instance (GHCName n, HsHasName n) => HsHasName (ConDeclField n) where
 instance (GHCName n, HsHasName n) => HsHasName (FieldOcc n) where 
   hsGetNames (FieldOcc _ pr) = gunpackPostRn [] (hsGetNames :: n -> [Name]) pr
 
-instance (GHCName n, HsHasName n) => HsHasName (Sig n) where
+instance (HsHasName n) => HsHasName (Sig n) where
   hsGetNames (TypeSig n _) = hsGetNames n
   hsGetNames (PatSynSig n _) = hsGetNames n
   hsGetNames _ = []
@@ -152,6 +151,7 @@ instance HsHasName n => HsHasName (HsBind n) where
   hsGetNames (PatBind {pat_lhs = pat}) = hsGetNames pat
   hsGetNames (VarBind {var_id = id}) = hsGetNames id
   hsGetNames (PatSynBind (PSB {psb_id = id})) = hsGetNames id
+  hsGetNames _ = error "hsGetNames: called on compiler-generated binding"
 
 instance HsHasName n => HsHasName (ParStmtBlock l n) where
   hsGetNames (ParStmtBlock _ binds _) = hsGetNames binds

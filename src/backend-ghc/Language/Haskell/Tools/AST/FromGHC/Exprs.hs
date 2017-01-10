@@ -11,22 +11,12 @@ import Data.Maybe
 import Data.List (partition, find)
 import Data.Data (toConstr)
 import Control.Monad.Reader
-import Control.Reference
 
 import GHC
 import SrcLoc as GHC
-import RdrName as GHC
-import HsTypes as GHC
-import HsPat as GHC
-import HsExpr as GHC
-import HsBinds as GHC
-import HsLit as GHC
 import BasicTypes as GHC
-import ApiAnnotation as GHC
-import FastString as GHC
 import Outputable as GHC
 import PrelNames as GHC
-import DataCon as GHC
 
 import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Types
@@ -43,8 +33,6 @@ import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
-import Debug.Trace
-
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.UExpr (Dom r) RangeStage)
 -- correction for empty cases
 trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> []))) 
@@ -53,6 +41,7 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
        let actualSpan = case take 3 tokensAfter of 
                           [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
                           ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
+                          _ -> error "trfExpr: case without 'of' '{' or '}' token"
        annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
 trfExpr e = do exprSpls <- asks exprSplices
                let RealSrcSpan loce = getLoc e
@@ -182,8 +171,9 @@ trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.UAlt (Dom r) Ran
 trfAlt' = gTrfAlt' trfExpr
 
 gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Match n (Located (ge n)) -> Trf (AST.UAlt' ae (Dom r) RangeStage)
-gTrfAlt' te (Match _ [pat] typ (GRHSs rhss (unLoc -> locBinds)))
+gTrfAlt' te (Match _ [pat] _ (GRHSs rhss (unLoc -> locBinds)))
   = AST.UAlt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds locBinds
+gTrfAlt' _ _ = error "gTrfAlt': not exactly one alternative when transforming a case alternative"
   
 trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.UCaseRhs (Dom r) RangeStage)
 trfCaseRhss = gTrfCaseRhss trfExpr
@@ -227,3 +217,6 @@ trfCmd' (HsCmdCase expr (MG (unLoc -> alts) _ _ _))
 trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.UIfCmd <$> trfExpr pred <*> trfCmd thenExpr <*> trfCmd elseExpr
 trfCmd' (HsCmdLet (unLoc -> binds) cmd) = addToScope binds (AST.ULetCmd <$> trfLocalBinds binds <*> trfCmd cmd)
 trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.UDoCmd <$> makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfDoStmt' trfCmd)) stmts)
+-- | TODO: implement
+trfCmd' (HsCmdLam {}) = error "trfCmd': cmd lambda not supported yet"
+trfCmd' (HsCmdWrap {}) = error "trfCmd': cmd wrap not supported yet"

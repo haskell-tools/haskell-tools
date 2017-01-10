@@ -6,15 +6,9 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Exprs where
 
-import qualified Name as GHC
-import Data.List
-import Data.String
-import Data.Function (on)
-import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.Transform
 
 -- * Expressions

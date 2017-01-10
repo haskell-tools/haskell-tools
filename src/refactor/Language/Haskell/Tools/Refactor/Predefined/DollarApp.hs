@@ -1,5 +1,5 @@
 {-# LANGUAGE ViewPatterns, FlexibleContexts, ConstraintKinds #-}
-module Language.Haskell.Tools.Refactor.Predefined.DollarApp (dollarApp, DollarDomain) where
+module Language.Haskell.Tools.Refactor.Predefined.DollarApp (dollarApp, DollarDomain, tryItOut) where
 
 import Language.Haskell.Tools.Refactor
 
@@ -9,12 +9,13 @@ import Id (idName)
 import PrelNames (dollarIdKey)
 import PrelInfo (wiredInIds)
 import BasicTypes (Fixity(..))
+import qualified Name as GHC (Name)
 
 import Control.Monad.State
 import Control.Reference
-import Data.Generics.Uniplate.Data
-import Debug.Trace
+import Data.Generics.Uniplate.Data ()
 
+tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . dollarApp)
 
 type DollarMonad dom = StateT [SrcSpan] (LocalRefactor dom)
@@ -25,7 +26,7 @@ dollarApp sp = flip evalStateT [] . ((nodesContained sp !~ (\e -> get >>= replac
                                         >=> (biplateRef !~ parenExpr))
 
 replaceExpr :: DollarDomain dom => Expr dom -> [SrcSpan] -> DollarMonad dom (Expr dom)
-replaceExpr expr@(App fun (Paren (InfixApp _ op arg))) replacedRanges
+replaceExpr expr@(App _ (Paren (InfixApp _ op arg))) replacedRanges
   | not (getRange arg `elem` replacedRanges)
   , semanticsName (op ^. operatorName) /= Just dollarName 
   , case semanticsFixity (op ^. operatorName) of Just (Fixity _ p _) | p > 0 -> False; _ -> True
@@ -45,4 +46,5 @@ parenDollar lhs expr@(InfixApp _ _ arg)
          else return expr
 parenDollar _ e = return e
 
+dollarName :: GHC.Name
 [dollarName] = map idName $ filter ((dollarIdKey==) . getUnique) wiredInIds

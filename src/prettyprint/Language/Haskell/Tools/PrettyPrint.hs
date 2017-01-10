@@ -15,15 +15,10 @@ import Language.Haskell.Tools.PrettyPrint.RoseTree
 import Language.Haskell.Tools.Transform.SourceTemplate
 
 import Control.Monad.State
-import Control.Reference
-import Data.Maybe
 import Data.List as List
 import Data.List.Split
 import Data.Foldable
 import Data.Sequence hiding (null, replicate)
-import Language.Haskell.Tools.AST
-
-import Debug.Trace
 
 -- | Pretty prints an AST by using source templates stored as node info
 prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String
@@ -41,7 +36,6 @@ printRose' :: RealSrcLoc -> RoseTree SrcTemplateStage -> PPState (Seq Char)
 -- warning: the length of the file should not exceed maxbound::Int
 printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relInd)) children) 
   = do slide <- calculateSlide rng
-       actRng <- get
        let printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
            printTemplateElems (TextElem txt : rest) children = putString slide min txt >+< printTemplateElems rest children
            printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child >+< printTemplateElems rest children
@@ -129,4 +123,4 @@ printListWithSeps' _ _ _ _ _ [] = return empty
 printListWithSeps' _ parent _ _ _ [child] = printRose' parent child
 printListWithSeps' putCorrectSep parent slide minInd (sep:seps) (child:children) 
   = printRose' parent child >+< putCorrectSep slide minInd sep >+< printListWithSeps' putCorrectSep parent slide minInd seps children
-    
+printListWithSeps' _ _ _ _ [] _ = error "printListWithSeps': the number of elements and separators does not match"

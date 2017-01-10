@@ -18,12 +18,10 @@ import Network.Wai
 import Network.HTTP.Types
 import Control.Exception
 import Data.Aeson hiding ((.=))
-import Data.Map (Map, (!), member, insert)
 import qualified Data.Map as Map
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import GHC.Generics
-
 import System.IO
 import System.IO.Error
 import System.FilePath
@@ -35,14 +33,12 @@ import Data.Maybe
 import Control.Monad
 import Control.Monad.State
 import Control.Concurrent.MVar
-import Control.Monad.IO.Class
 import System.Environment
 
 import GHC hiding (loadModule)
 import Bag (bagToList)
 import SrcLoc (realSrcSpanStart)
 import ErrUtils (errMsgSpan)
-import DynFlags (gopt_set)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc)
 import HscTypes (SourceError, srcErrorMessages)
@@ -55,7 +51,7 @@ import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.ASTDebug
-import Language.Haskell.Tools.ASTDebug.Instances
+import Language.Haskell.Tools.ASTDebug.Instances ()
 import Language.Haskell.Tools.PrettyPrint
 
 type ClientId = Int
@@ -76,7 +72,7 @@ runFromCLI = getArgs >>= runDemo
 
 runDemo :: [String] -> IO ()
 runDemo args = do
-  wd <- case args of [dir] -> return dir
+  wd <- case args of dir:_ -> return dir
                      [] -> return "."
   counter <- newMVar []
   let settings = setPort 8206 $ setTimeout 20 $ defaultSettings 
@@ -103,12 +99,12 @@ app sessions wd = websocketsOr defaultConnectionOptions wsApp backupApp
            if currState ^. isDisconnecting 
              then sendClose conn ("" :: ByteString)
              else serverLoop sessId ghcSess state conn
-      `catch` \(e :: ConnectionException) -> do 
+      `catch` \(_ :: ConnectionException) -> do 
                  modifyMVar_ sessions (return . delete sessId)
                  liftIO $ removeDirectoryIfPresent (userDir wd sessId)
 
     backupApp :: Application
-    backupApp req respond = respond $ responseLBS status400 [] "Not a WebSocket request"
+    backupApp _ respond = respond $ responseLBS status400 [] "Not a WebSocket request"
 
 respondTo :: FilePath -> Int -> Session -> MVar RefactorSessionState -> (ByteString -> IO ()) -> ByteString -> IO ()
 respondTo wd id ghcSess state next mess = case decode mess of
@@ -120,15 +116,15 @@ respondTo wd id ghcSess state next mess = case decode mess of
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
 updateClient :: FilePath -> ClientMessage -> StateT RefactorSessionState Ghc (Maybe ResponseMsg)
-updateClient dir KeepAlive = return Nothing
-updateClient dir Disconnect = do modify $ isDisconnecting .= True
-                                 return $ Just Disconnected
+updateClient _ KeepAlive = return Nothing
+updateClient _ Disconnect = do modify $ isDisconnecting .= True
+                               return $ Just Disconnected
 updateClient dir (ModuleChanged name newContent) = do
     liftIO $ createFileForModule dir name newContent
     targets <- lift getTargets
     when (isNothing . find ((\case (TargetModule n) -> GHC.moduleNameString n == name; _ -> False) . targetId) $ targets)
       $ lift $ addTarget (Target (TargetModule (GHC.mkModuleName name)) True Nothing)
-    lift $ load LoadAllTargets
+    void $ lift $ load LoadAllTargets
     mod <- lift $ getModSummary (GHC.mkModuleName name) >>= parseTyped
     modify $ refSessMods .- Map.insert (dir, name, NormalHs) mod
     return Nothing
@@ -140,11 +136,11 @@ updateClient dir (InitialProject modules) = do
     -- clean the workspace to remove source files from earlier sessions
     liftIO $ removeDirectoryIfPresent dir
     liftIO $ createDirectoryIfMissing True dir
-    liftIO $ forM modules $ \(mod, cont) -> do
+    liftIO $ forM_ modules $ \(mod, cont) -> do
       withBinaryFile (toFileName dir mod) WriteMode (`hPutStr` cont)
     lift $ setTargets (map ((\modName -> Target (TargetModule (GHC.mkModuleName modName)) True Nothing) . fst) modules)
-    lift $ load LoadAllTargets
-    forM (map fst modules) $ \modName -> do
+    void $ lift $ load LoadAllTargets
+    forM_ (map fst modules) $ \modName -> do
       mod <- lift $ getModSummary (GHC.mkModuleName modName) >>= parseTyped
       modify $ refSessMods .- Map.insert (dir, modName, NormalHs) mod
     return Nothing
@@ -177,7 +173,7 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
 
         writeModule n m = do
           liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
-          w <- gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
+          void $ gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
           newm <- lift $ (parseTyped =<< loadModule dir n)
           modify $ refSessMods .- Map.insert (dir, n, NormalHs) newm
 

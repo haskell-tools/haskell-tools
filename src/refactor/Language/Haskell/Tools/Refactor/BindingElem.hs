@@ -6,7 +6,6 @@ module Language.Haskell.Tools.Refactor.BindingElem where
 
 import Control.Reference
 import Language.Haskell.Tools.AST.Rewrite
-import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST
 import SrcLoc
 

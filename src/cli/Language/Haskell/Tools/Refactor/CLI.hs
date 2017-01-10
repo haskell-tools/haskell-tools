@@ -4,11 +4,10 @@
            , TemplateHaskell
            , TypeFamilies
            #-}
-module Language.Haskell.Tools.Refactor.CLI (refactorSession) where
+module Language.Haskell.Tools.Refactor.CLI (refactorSession, tryOut) where
 
 import System.Directory
 import System.IO
-import qualified Data.Map as Map
 import Data.Maybe
 import Data.List
 import Data.List.Split
@@ -18,9 +17,7 @@ import Control.Reference
 
 import GHC
 import ErrUtils
-import Digraph
 import HscTypes as GHC
-import Module as GHC
 import GHC.Paths ( libdir )
 
 import Language.Haskell.Tools.PrettyPrint
@@ -28,8 +25,6 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Session
-
-import Debug.Trace
 
 type CLIRefactorSession = StateT CLISessionState Ghc
 
@@ -42,6 +37,7 @@ data CLISessionState =
 
 makeReferences ''CLISessionState
 
+tryOut :: IO ()
 tryOut = refactorSession stdin stdout 
            [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
            , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
@@ -165,7 +161,9 @@ performSessionCommand output (RefactorCommand cmd)
           ContentChanged (n,m) -> do
             hPutStrLn output $ "### Module changed: " ++ (n ^. sfkModuleName) ++ "\n### new content:\n" ++ prettyPrint m
           ModuleRemoved mod ->
-            hPutStrLn output $ "### Module removed: " ++ mod)
+            hPutStrLn output $ "### Module removed: " ++ mod
+          ModuleCreated n m _ ->
+            hPutStrLn output $ "### Module created: " ++ n ++ "\n### new content:\n" ++ prettyPrint m)
 
         getModSummary name boot
           = do allMods <- lift getModuleGraph

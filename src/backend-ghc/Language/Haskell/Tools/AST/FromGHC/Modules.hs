@@ -11,72 +11,35 @@ module Language.Haskell.Tools.AST.FromGHC.Modules where
 
 import Control.Reference hiding (element)
 import Data.Maybe
-import Data.Function (on)
 import Data.List as List
-import Data.Char
 import Data.Map as Map hiding (map, filter)
-import Data.IORef
-import Data.Data
-import Data.Generics.Uniplate.Operations
-import Data.Generics.Uniplate.Data
-import Control.Applicative
-import Control.Monad
+import Data.Generics.Uniplate.Data ()
 import Control.Monad.Reader
-import Control.Monad.Writer
-import Control.Monad.State
 
-import Avail as GHC
 import GHC
-import GhcMonad as GHC
-import ApiAnnotation as GHC
 import RdrName as GHC
 import Name as GHC hiding (varName)
-import Id as GHC
-import TysWiredIn as GHC
 import SrcLoc as GHC
 import FastString as GHC
-import Module as GHC
 import BasicTypes as GHC
-import HsSyn as GHC
 import HscTypes as GHC
 import Outputable as GHC
-import TyCon as GHC
-import ConLike as GHC
-import DataCon as GHC
-import Bag as GHC
-import Var as GHC
-import PatSyn as GHC
-import Type as GHC
-import Unique as GHC
-import CoAxiom as GHC
 import DynFlags as GHC
-import TcEvidence as GHC
 import TcRnMonad as GHC
 import RnEnv as GHC
 import RnExpr as GHC
 import ErrUtils as GHC
-import PrelNames as GHC
-import NameEnv as GHC
-import TcRnDriver as GHC
-import TcExpr as GHC
-import TcType as GHC
-import UniqSupply as GHC
-import UniqFM as GHC
-import HeaderInfo as GHC
 import Language.Haskell.TH.LanguageExtensions
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, IdDom, RangeStage
-                                  , semanticInfo, sourceInfo, semantics, annotation, nodeSpan, semaTraverse)
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, RangeStage
+                                  , sourceInfo, semantics, annotation, nodeSpan)
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
-
 import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Decls
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-
-import Debug.Trace
 
 createModuleInfo :: ModSummary -> Trf (AST.ModuleInfo GHC.Name)
 createModuleInfo mod = do let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
@@ -103,22 +66,21 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         getSourceAndInfo :: Ann AST.UQualifiedName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
         
-        trfModuleRename' preludeImports hsMod@(HsModule name exports _ decls deprec _) = do
+        trfModuleRename' preludeImports hsMod@(HsModule name exports _ _ deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
            
           addToScope (concat @[] (transformedImports ^? AST.annList&semantics&importedNames) ++ preludeImports)
-            $ loadSplices mod hsMod gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
+            $ loadSplices hsMod gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
               $ AST.UModule <$> trfFilePragmas
                             <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
                                                                             _                       -> Nothing) deprec
                             <*> return transformedImports
                             <*> trfDeclsGroup gr
 
-loadSplices :: ModSummary -> HsModule RdrName -> HsGroup Name -> Trf a -> Trf a
-loadSplices mod hsMod group trf = do 
+loadSplices :: HsModule RdrName -> HsGroup Name -> Trf a -> Trf a
+loadSplices hsMod group trf = do 
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        declLocs = map getLoc declSpls
-    let exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
+        exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
         typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
     -- initialize reader environment
     env <- liftGhc getSession
@@ -157,6 +119,7 @@ trfModuleHead (Just mn) exports modPrag
 trfModuleHead _ Nothing _ = nothing "" "" moduleHeadPos
   where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
                                                  _ -> atTheStart
+trfModuleHead Nothing (Just _) _ = error "trfModuleHead: no head but has exports"
 
 trfFilePragmas :: Trf (AnnListG AST.UFilePragma (Dom r) RangeStage)
 trfFilePragmas = do pragmas <- asks pragmaComms
@@ -165,8 +128,8 @@ trfFilePragmas = do pragmas <- asks pragmaComms
                     makeList "" atTheStart $ pure $ orderDefs $ languagePragmas ++ optionsPragmas
 
 trfLanguagePragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
-trfLanguagePragma lstr@(L l str) = annLocNoSema (pure l) (AST.ULanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems) 
-                                                                                                (mapM (trfLocNoSema (pure . AST.ULanguageExtension)) extensions))
+trfLanguagePragma lstr@(L l _) = annLocNoSema (pure l) (AST.ULanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems) 
+                                                                                              (mapM (trfLocNoSema (pure . AST.ULanguageExtension)) extensions))
   where pragmaElems = splitLocated lstr
         extensions = init $ drop 2 pragmaElems
 
@@ -202,7 +165,7 @@ trfImports (filter (not . ideclImplicit . unLoc) -> imps)
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange) 
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
-trfImport (L l impDecl@(GHC.ImportDecl src name pkg isSrc isSafe isQual isImpl declAs declHiding)) =
+trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc isSafe isQual _ declAs declHiding)) =
   let -- default positions of optional parts of an import declaration
       annBeforeQual = if isSrc then AnnClose else AnnImport
       annBeforeSafe = if isQual then AnnQualified else annBeforeQual

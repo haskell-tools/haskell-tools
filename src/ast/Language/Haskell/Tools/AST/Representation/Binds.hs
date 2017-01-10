@@ -6,8 +6,6 @@ import Language.Haskell.Tools.AST.Representation.Names
 import Language.Haskell.Tools.AST.Representation.Patterns
 import Language.Haskell.Tools.AST.Representation.Exprs
 import Language.Haskell.Tools.AST.Representation.Types
-import Language.Haskell.Tools.AST.Representation.Literals
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH
 
 -- | Value binding for top-level and local bindings
 data UValueBind dom stage

@@ -8,7 +8,6 @@ module Language.Haskell.Tools.AST.SemaInfoClasses where
 
 import GHC
 import Id as GHC
-import BasicTypes as GHC
 
 import Control.Reference
 

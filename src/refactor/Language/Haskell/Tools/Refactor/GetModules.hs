@@ -25,7 +25,6 @@ import Language.Haskell.Extension
 import DynFlags (DynFlags, xopt_set, xopt_unset)
 import GHC hiding (ModuleName)
 import qualified DynFlags as GHC
-import SrcLoc as GHC
 import RdrName as GHC (RdrName)
 import Name as GHC (Name)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
@@ -81,7 +80,7 @@ moduleCollectionIdString (TestSuiteMC _ id) = id
 moduleCollectionIdString (BenchmarkMC _ id) = id
 
 moduleCollectionPkgId :: ModuleCollectionId -> Maybe String
-moduleCollectionPkgId (DirectoryMC fp) = Nothing
+moduleCollectionPkgId (DirectoryMC _) = Nothing
 moduleCollectionPkgId (LibraryMC id) = Just id
 moduleCollectionPkgId (ExecutableMC id _) = Just id
 moduleCollectionPkgId (TestSuiteMC id _) = Just id
@@ -102,7 +101,7 @@ lookupModInSCs :: SourceFileKey -> [ModuleCollection] -> Maybe (SourceFileKey, M
 lookupModInSCs moduleName = find ((moduleName ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
-removeModule moduleName = map (mcModules .- Map.filterWithKey (\k v -> moduleName /= (k ^. sfkModuleName)))
+removeModule moduleName = map (mcModules .- Map.filterWithKey (\k _ -> moduleName /= (k ^. sfkModuleName)))
 
 hasGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
 hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False) 

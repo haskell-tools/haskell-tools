@@ -8,13 +8,12 @@ import Language.Haskell.Tools.AST.Representation.Patterns
 import Language.Haskell.Tools.AST.Representation.Kinds
 import Language.Haskell.Tools.AST.Representation.Exprs
 import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Representation.Literals
 import Language.Haskell.Tools.AST.Ann
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH
 
 -- * Declarations
 
--- | Haskell declaration
+-- | Haskell declarationw
 data UDecl dom stage
   = UTypeDecl             { _declHead :: Ann UDeclHead dom stage
                           , _declType :: Ann UType dom stage

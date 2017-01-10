@@ -2,7 +2,6 @@
 module Language.Haskell.Tools.AST.Representation.Types where
 
 import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Representation.Literals
 import Language.Haskell.Tools.AST.Representation.Names
 import Language.Haskell.Tools.AST.Representation.Kinds
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH

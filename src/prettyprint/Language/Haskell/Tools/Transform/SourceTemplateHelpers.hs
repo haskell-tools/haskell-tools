@@ -7,9 +7,7 @@ module Language.Haskell.Tools.Transform.SourceTemplateHelpers where
 
 import SrcLoc
 import Data.String
-import Data.List
 import Control.Reference
-import Data.Function (on)
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Transform.SourceTemplate
 

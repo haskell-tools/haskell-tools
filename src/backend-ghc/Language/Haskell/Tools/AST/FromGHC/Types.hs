@@ -6,11 +6,8 @@
 module Language.Haskell.Tools.AST.FromGHC.Types where
  
 import SrcLoc as GHC
-import RdrName as GHC
 import HsTypes as GHC
 import ApiAnnotation as GHC
-import FastString as GHC
-import Type as GHC
 import TyCon as GHC
 import Outputable as GHC
 import TysWiredIn (heqTyCon)
@@ -29,11 +26,7 @@ import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.FromGHC.Literals
-
 import Language.Haskell.Tools.AST as AST
-
-import Debug.Trace
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UType (Dom r) RangeStage)
 trfType typ = do othSplices <- asks typeSplices
@@ -87,7 +80,7 @@ trfTyVar' (KindedTyVar name kind) = AST.UTyVarDecl <$> typeVarTransform (trfName
                                                   <*> trfKindSig (Just kind)
   
 trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybeG AST.UContext (Dom r) RangeStage)
-trfCtx sp (L l []) = nothing " " "" sp
+trfCtx sp (L _ []) = nothing " " "" sp
 trfCtx _ (L l [L _ (HsParTy t)]) 
   = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow) 
                               (AST.UContextMulti <$> trfAnnList ", " trfAssertion' [t])
@@ -111,7 +104,8 @@ trfAssertion' (cleanHsType -> t) = case cleanHsType base of
    HsIParamTy name t -> do loc <- tokenLoc AnnVal
                            AST.UImplicitAssert <$> define (focusOn loc (trfImplicitName name)) <*> trfType t
    t -> error ("Illegal trf assertion: " ++ showSDocUnsafe (ppr t) ++ " (ctor: " ++ show (toConstr t) ++ ")")
-  where (args, sp, base) = getArgs t
+  where (args, _, base) = getArgs t
+        
         getArgs :: HsType n -> ([LHsType n], Maybe SrcSpan, HsType n)
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)
         getArgs t = ([], Nothing, t)

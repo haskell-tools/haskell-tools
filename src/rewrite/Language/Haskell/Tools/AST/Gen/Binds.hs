@@ -6,16 +6,11 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Binds where
 
-import qualified Name as GHC
-import Data.List
 import Data.String
-import Data.Function (on)
-import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Patterns
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.Transform
 
 -- | A simplified function to generate simple value bindings without local definitions, guards or complex lhs.

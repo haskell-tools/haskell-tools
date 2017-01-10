@@ -9,25 +9,22 @@
            #-}
 -- | Defines the inline binding refactoring that removes a value binding and replaces all occurences
 -- with an expression equivalent to the body of the binding.
-module Language.Haskell.Tools.Refactor.Predefined.InlineBinding (inlineBinding, InlineBindingDomain) where
+module Language.Haskell.Tools.Refactor.Predefined.InlineBinding (inlineBinding, InlineBindingDomain, tryItOut) where
 
 import Control.Reference
 import Control.Monad.Writer hiding (Alt)
 import Control.Monad.State
 import Data.Maybe
 import Data.List (nub)
-import Data.Either (isLeft)
 import Data.Generics.Uniplate.Operations
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 
 import SrcLoc as GHC
 import Name as GHC
 
 import Language.Haskell.Tools.Refactor as AST
-import Language.Haskell.Tools.AST as AST
 
-import Debug.Trace
-
+tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor inlineBinding
 
 type InlineBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom, HasModuleInfo dom )
@@ -141,7 +138,7 @@ createReplacement (FunctionBind matches)
                           in parenIfNeeded $ createLambda (map mkVarPat newArgs) 
                                            $ mkCase (mkTuple $ map mkVar newArgs ++ args) 
                                            $ map replaceMatch (matches ^? annList)
-  where getArgNum (MatchLhs n (AnnList args)) = length args
+  where getArgNum (MatchLhs _ (AnnList args)) = length args
         getArgNum (InfixLhs _ _ _ (AnnList more)) = length more + 2
 
 -- | Replaces names with expressions according to a mapping.
@@ -179,7 +176,7 @@ staticPatternMatch (TuplePat (AnnList pats)) (Tuple (AnnList args))
   | length pats == length args
   , Just subs <- sequence $ zipWith staticPatternMatch pats args
   = Just $ concat subs
-staticPatternMatch p e = Nothing
+staticPatternMatch _ _ = Nothing
 
 replaceMatch :: Match dom -> Alt dom
 replaceMatch (Match lhs rhs locals) = mkAlt (toPattern lhs) (toAltRhs rhs) (locals ^? annJust)

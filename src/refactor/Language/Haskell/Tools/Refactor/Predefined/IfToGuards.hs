@@ -1,11 +1,12 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts, ViewPatterns #-}
-module Language.Haskell.Tools.Refactor.Predefined.IfToGuards (ifToGuards) where
+module Language.Haskell.Tools.Refactor.Predefined.IfToGuards (ifToGuards, tryItOut) where
 
 import Language.Haskell.Tools.Refactor
 import Control.Reference
 import SrcLoc
-import Data.Generics.Uniplate.Data
+import Data.Generics.Uniplate.Data ()
 
+tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . ifToGuards)
 
 ifToGuards :: Domain dom => RealSrcSpan -> LocalRefactoring dom
@@ -19,6 +20,7 @@ changeBindings fbs@(FunctionBind {})
   where trfRhs :: Rhs dom -> Rhs dom
         trfRhs (UnguardedRhs (If pred thenE elseE)) = createSimpleIfRhss pred thenE elseE
         trfRhs e = e -- don't transform already guarded right-hand sides to avoid multiple evaluation of the same condition
+changeBindings b = b
 
 createSimpleIfRhss :: Expr dom -> Expr dom -> Expr dom -> Rhs dom
 createSimpleIfRhss pred thenE elseE = mkGuardedRhss [ mkGuardedRhs [mkGuardCheck pred] thenE

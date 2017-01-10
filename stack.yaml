@@ -15,8 +15,3 @@ packages:
 extra-deps: 
   - references-0.3.2.0
   - instance-control-0.1.1.1
-
-# These options will not affect the build when installed from hackage, only the developer version
-ghc-options:
-  # All packages
-  "*": -Wall

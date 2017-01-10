@@ -13,28 +13,9 @@
 -- | Defines common utilities for using refactorings. Provides an interface for both demo, command line and integrated tools.
 module Language.Haskell.Tools.Refactor.Perform where
 
-import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.Transform
-import Language.Haskell.Tools.PrettyPrint
- 
-import Data.List
 import Data.List.Split
-import GHC.Generics hiding (moduleName)
-import qualified Data.Map as Map
-import Data.Maybe
-import Data.Typeable
-import Data.IORef
-import Control.Monad
-import Control.Monad.State
-import Control.Monad.IO.Class
-import Control.Reference
-import Control.Exception
-import System.Directory
-import System.IO
-import System.FilePath
-import Data.Generics.Uniplate.Operations
 
+import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
 import Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.Predefined.GenerateExports
@@ -42,16 +23,9 @@ import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Predefined.ExtractBinding
 import Language.Haskell.Tools.Refactor.Predefined.InlineBinding
 import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Prepare
 
-import Language.Haskell.TH.LanguageExtensions
 import GHC
-import SrcLoc
-          
-
-import Debug.Trace
-
 
 -- | Executes a given command on the selected module and given other modules
 performCommand :: (HasModuleInfo dom, DomGenerateExports dom, OrganizeImportsDomain dom, DomainRenameDefinition dom, ExtractBindingDomain dom, GenerateSignatureDomain dom) 
@@ -79,6 +53,7 @@ data RefactorCommand = NoRefactor
 
 readCommand :: String -> RefactorCommand
 readCommand (splitOn " " -> refact:args) = analyzeCommand refact args
+readCommand _ = error "panic: splitOn resulted empty"
 
 analyzeCommand :: String -> [String] -> RefactorCommand
 analyzeCommand "" _ = NoRefactor

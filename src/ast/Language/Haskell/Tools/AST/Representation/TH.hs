@@ -2,7 +2,6 @@
 module Language.Haskell.Tools.AST.Representation.TH where
               
 import Language.Haskell.Tools.AST.Representation.Decls
-import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Exprs
 import Language.Haskell.Tools.AST.Representation.Patterns
 import Language.Haskell.Tools.AST.Representation.Types

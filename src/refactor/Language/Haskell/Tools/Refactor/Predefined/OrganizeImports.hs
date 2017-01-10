@@ -6,22 +6,16 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.OrganizeImports (organizeImports, OrganizeImportsDomain) where
 
-import SrcLoc
 import Name hiding (Name)
-import GHC (Ghc, GhcMonad, lookupGlobalName, TyThing(..), moduleNameString, moduleName)
+import GHC (TyThing(..))
 import qualified GHC
 import TyCon
-import ConLike
 import DataCon
-import Outputable (Outputable(..), ppr, showSDocUnsafe)
 
 import Control.Reference hiding (element)
 import Control.Monad
-import Control.Monad.IO.Class
 import Data.Function hiding ((&))
-import Data.String
 import Data.Maybe
-import Data.Data
 import Data.List
 import Data.Generics.Uniplate.Data
 

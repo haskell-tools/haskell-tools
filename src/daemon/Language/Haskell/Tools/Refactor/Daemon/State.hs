@@ -3,7 +3,6 @@ module Language.Haskell.Tools.Refactor.Daemon.State where
 
 import Control.Reference
 
-import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Session
 
 data DaemonSessionState 

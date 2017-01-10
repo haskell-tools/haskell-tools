@@ -4,7 +4,6 @@ module Language.Haskell.Tools.AST.Match.Decls where
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Match.Names
 
 -- WORKAROUND: nested pattern synonyms don't work in GHC 8.0, so I replaced them with longer but working pattern
 
