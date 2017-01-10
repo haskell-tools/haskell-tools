@@ -157,8 +157,10 @@ updateClient resp (ReLoad changed removed) =
      modify $ refSessMCs & traversal & mcModules 
                 .- Map.filter (\m -> maybe True (not . (`elem` removed) . getModSumOrig) (m ^? modRecMS))
      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` removedMods) . ms_mod) (hsc_mod_graph s) })
-     void $ reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms]))
-                                 (\ms -> getModSumOrig ms `elem` changed)
+     reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms]))
+                                       (\ms -> getModSumOrig ms `elem` changed)
+     liftIO $ case reloadRes of Left errs -> resp (CompilationProblem errs)
+                                Right _ -> return ()
      return True
 
 updateClient _ Stop = modify (exiting .= True) >> return False
@@ -204,7 +206,10 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
               return Nothing
           
         reloadChanges changedMods 
-          = reloadChangedModules (\ms -> resp $ LoadedModules [getModSumOrig ms]) (\ms -> modSumName ms `elem` changedMods)
+          = do reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms])) 
+                                                 (\ms -> modSumName ms `elem` changedMods)
+               liftIO $ case reloadRes of Left errs -> resp (ErrorMessage $ "The result of the refactoring contains errors: " ++ errs)
+                                          Right _ -> return ()
 
 initGhcSession :: IO Session
 initGhcSession = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))

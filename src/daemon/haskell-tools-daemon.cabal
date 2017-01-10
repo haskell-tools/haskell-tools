@@ -47,6 +47,9 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/th-added-later/package1/*.cabal
                   , examples/Project/th-added-later/package2/*.hs
                   , examples/Project/th-added-later/package2/*.cabal
+                  , examples/Project/load-error/*.hs
+                  , examples/Project/source-error/*.hs
+                  , examples/Project/empty/*.hs
 
 library
   ghc-options:         -O2

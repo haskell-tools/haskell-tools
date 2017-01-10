@@ -48,6 +48,8 @@ allTests isSource testRoot portCounter
               $ map (makeDaemonTest portCounter . (\(label, dir, input, output) -> (Just (testRoot </> dir), label, input, output))) (refactorTests testRoot)
           , testGroup "reload-tests" 
               $ map (makeReloadTest portCounter) reloadingTests
+          , testGroup "compilation-problem-tests" 
+              $ map (makeCompProblemTest portCounter) compProblemTests
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
              then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
@@ -102,6 +104,28 @@ loadingTests =
       ]
     , [ LoadedModules [testRoot </> "th-added-later" </> "package1" </> "A.hs"] 
       , LoadedModules [testRoot </> "th-added-later" </> "package2" </> "B.hs"]] )
+  ]
+
+compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+compProblemTests = 
+  [ ( "load-error"
+    , [ Right $ AddPackages [testRoot </> "load-error"] ] 
+    , \case [CompilationProblem {}] -> True; _ -> False)
+  , ( "source-error"
+    , [ Right $ AddPackages [testRoot </> "source-error"] ] 
+    , \case [CompilationProblem {}] -> True; _ -> False)
+  , ( "reload-error"
+    , [ Right $ AddPackages [testRoot </> "empty"] 
+      , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\nimport No.Such.Module"
+      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] [] 
+      , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
+    , \case [LoadedModules {}, CompilationProblem {}] -> True; _ -> False)
+  , ( "reload-source-error"
+    , [ Right $ AddPackages [testRoot </> "empty"] 
+      , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\naa = 3 + ()"
+      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] [] 
+      , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
+    , \case [LoadedModules {}, CompilationProblem {}] -> True; _ -> False)
   ]
 
 sourceRoot = ".." </> ".." </> "src"
@@ -296,6 +320,11 @@ makePkgDbTest port (label, prepare, inputs, expected)
       $ testCase label $ do  
           actual <- communicateWithDaemon port ([Left prepare] ++ map Right inputs)
           assertEqual "" expected actual
+
+makeCompProblemTest :: MVar Int -> (String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeCompProblemTest port (label, actions, validator) = testCase label $ do
+  actual <- communicateWithDaemon port actions
+  assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
 
 communicateWithDaemon :: MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
 communicateWithDaemon port msgs = withSocketsDo $ do

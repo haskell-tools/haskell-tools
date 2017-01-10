@@ -11,6 +11,7 @@ import Control.Reference
 import System.FilePath
 
 import GHC
+import Exception (ExceptionMonad)
 import Outputable
 import ErrUtils
 import HscTypes as GHC
@@ -48,14 +49,13 @@ loadPackagesFrom report packages =
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
-     handleSourceError (return . Left . concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages) $
-       withAlteredDynFlags (return . enableAllPackages allModColls) $ do
-         modsForColls <- lift $ depanal [] True
-         let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-             actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
-         void $ checkEvaluatedMods report modsToParse
-         mods <- mapM (loadModule report) actuallyCompiled
-         return $ Right (mods, ignored)
+     handleErrors $ withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+       modsForColls <- lift $ depanal [] True
+       let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
+           actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
+       void $ checkEvaluatedMods report modsToParse
+       mods <- mapM (loadModule report) actuallyCompiled
+       return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
         extractDuplicates (a:rest) 
@@ -66,6 +66,10 @@ loadPackagesFrom report packages =
         loadModule report ms = do
           needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
           reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
+
+handleErrors :: ExceptionMonad m => m a -> m (Either String a)
+handleErrors action = handleSourceError (return . Left . errorsText) (Right <$> action)
+  where errorsText = concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages
 
 keyFromMS :: ModSummary -> SourceFileKey
 keyFromMS ms = SourceFileKey (case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot) (modSumName ms)
@@ -89,8 +93,8 @@ getFileMods fname
        case sfs of sf:_ -> getMods (Just sf)
                    [] -> getMods Nothing
 
-reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc [a]
-reloadChangedModules report isChanged = do
+reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc (Either String [a])
+reloadChangedModules report isChanged = handleErrors $ do
   reachable <- getReachableModules isChanged
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
