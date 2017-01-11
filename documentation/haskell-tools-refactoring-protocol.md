@@ -41,7 +41,7 @@ A response for the KeepAlive message, notifying the client that the server is st
 
 A message that tells the client of some error that happened. The client should display the error to the user. The error could be caused by an illegal refactoring, or might be an internal problem. The errors in the source code are sent as CompilationProblem response instead.
 
-### CompilationProblem: `{"tag":"ErrorMessage","errorMsg":<message-text>}`
+### CompilationProblem: `{"tag":"CompilationProblem","errorMsg":<message-text>}`
 
 A message that is caused when the haskell source code sent by the client is not correct. The client should display these messages as markers.
 
