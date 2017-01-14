@@ -1,5 +1,5 @@
 name:                haskell-tools-daemon
-version:             0.4.1.1
+version:             0.4.1.2
 synopsis:            Background process for Haskell-tools refactor that editors can connect to.
 description:         Background process for Haskell-tools refactor that editors can connect to.
 homepage:            https://github.com/haskell-tools/haskell-tools
