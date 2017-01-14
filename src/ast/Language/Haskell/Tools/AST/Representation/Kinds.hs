@@ -1,8 +1,8 @@
 -- | Representation of Haskell Kinds
 module Language.Haskell.Tools.AST.Representation.Kinds where
 
-import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Representation.Names
+import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..))
+import Language.Haskell.Tools.AST.Representation.Names (UName(..))
 
 -- | Kind constraint (@ :: * -> * @)
 data UKindConstraint dom stage

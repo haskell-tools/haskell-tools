@@ -4,10 +4,10 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.TH where
 
-import Data.String
+import Data.String (IsString(..), String(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList)
 import Language.Haskell.Tools.Transform
 
 -- | A simple name splice: @$generateX@

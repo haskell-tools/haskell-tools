@@ -1,13 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Language.Haskell.Tools.Refactor.Daemon.PackageDB where
 
-import Data.Aeson hiding ((.=))
-import System.FilePath
-import System.Directory
-import System.Process
-import GHC.Generics
-import Data.List
+import Data.Aeson (FromJSON(..))
 import Data.Char (isSpace)
+import Data.List
+import GHC.Generics (Generic(..))
+import System.Directory (withCurrentDirectory, doesFileExist, doesDirectoryExist)
+import System.FilePath (FilePath(..), (</>))
+import System.Process (readProcessWithExitCode)
 
 data PackageDB = AutoDB
                | DefaultDB

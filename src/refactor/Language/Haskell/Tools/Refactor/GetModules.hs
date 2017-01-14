@@ -11,26 +11,26 @@ import Data.Function (on)
 import Data.List (intersperse, find, sortBy)
 import qualified Data.Map as Map
 import Data.Maybe
-import Distribution.Package (Dependency(..), PackageName(..), pkgName)
-import Distribution.Verbosity (silent)
 import Distribution.ModuleName (components)
 import Distribution.ModuleName
+import Distribution.Package (Dependency(..), PackageName(..), pkgName)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
-import System.FilePath.Posix
-import System.Directory
+import Distribution.Verbosity (silent)
 import Language.Haskell.Extension
+import System.Directory
+import System.FilePath.Posix
 
 import DynFlags (DynFlags, xopt_set, xopt_unset)
-import GHC hiding (ModuleName)
 import qualified DynFlags as GHC
-import RdrName as GHC (RdrName)
-import Name as GHC (Name)
+import GHC hiding (ModuleName)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
+import Name as GHC (Name)
+import RdrName as GHC (RdrName)
 
-import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AST (Dom, IdDom)
+import Language.Haskell.Tools.Refactor.RefactorBase
 
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
 data ModuleCollection

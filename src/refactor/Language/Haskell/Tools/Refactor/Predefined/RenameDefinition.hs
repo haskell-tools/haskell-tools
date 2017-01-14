@@ -9,16 +9,16 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
-import Name hiding (Name)
-import qualified GHC
-import SrcLoc
+import qualified GHC (RealSrcSpan(..), NamedThing(..), Name(..))
+import Name (OccName(..), NamedThing(..), occNameString)
+import SrcLoc (RealSrcSpan(..))
 
-import Control.Reference as Ref
 import Control.Monad.State
-import Data.List.Split
-import Data.List
-import Data.Maybe
+import Control.Reference as Ref
 import Data.Generics.Uniplate.Data ()
+import Data.List
+import Data.List.Split (splitOn)
+import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 

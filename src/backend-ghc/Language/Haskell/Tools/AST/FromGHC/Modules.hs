@@ -9,37 +9,37 @@
 -- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
 module Language.Haskell.Tools.AST.FromGHC.Modules where
 
-import Control.Reference hiding (element)
-import Data.Maybe
-import Data.List as List
-import Data.Map as Map hiding (map, filter)
-import Data.Generics.Uniplate.Data ()
 import Control.Monad.Reader
+import Control.Reference hiding (element)
+import Data.Generics.Uniplate.Data ()
+import Data.List as List
+import Data.Map as Map (fromList, lookup)
+import Data.Maybe
 
+import BasicTypes as GHC (WarningTxt(..), StringLiteral(..))
+import DynFlags as GHC (xopt_set)
+import ErrUtils as GHC (pprErrMsgBagWithLoc)
+import FastString as GHC (unpackFS)
 import GHC
-import RdrName as GHC
+import HscTypes as GHC (WarningTxt(..), ModSummary(..), HscEnv(..))
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Name as GHC hiding (varName)
+import Outputable as GHC (vcat, showSDocUnsafe, (<+>))
+import RdrName as GHC
+import RnEnv as GHC (mkUnboundNameRdr)
+import RnExpr as GHC (rnLExpr)
 import SrcLoc as GHC
-import FastString as GHC
-import BasicTypes as GHC
-import HscTypes as GHC
-import Outputable as GHC
-import DynFlags as GHC
 import TcRnMonad as GHC
-import RnEnv as GHC
-import RnExpr as GHC
-import ErrUtils as GHC
-import Language.Haskell.TH.LanguageExtensions
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, RangeStage
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(), AnnListG(..), Dom, RangeStage
                                   , sourceInfo, semantics, annotation, nodeSpan)
 import qualified Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as AST
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.Decls
+import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (HsHasName(..))
 import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..), trfName)
 import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, implicitNames, importedNames)
 
 trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
 trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 

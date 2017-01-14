@@ -8,7 +8,7 @@ module Language.Haskell.Tools.AST.Gen.Exprs where
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList, mkAnnMaybe)
 import Language.Haskell.Tools.Transform
 
 -- * Expressions

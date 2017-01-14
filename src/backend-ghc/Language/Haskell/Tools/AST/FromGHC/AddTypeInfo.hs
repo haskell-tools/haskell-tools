@@ -4,34 +4,34 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.AddTypeInfo (addTypeInfos) where
 
+import Bag as GHC (bagToList)
 import GHC
-import OccName as GHC hiding (varName)
-import TcEvidence as GHC
-import Bag as GHC
-import UniqFM as GHC
 import HscTypes as GHC
-import Module as GHC
-import TysWiredIn as GHC
-import Type as GHC
-import UniqSupply as GHC
+import Id as GHC (Id(..), mkVanillaGlobal)
+import Module as GHC (Module(..), moduleEnvElts)
 import Name as GHC hiding (varName)
-import Var as GHC
-import Id as GHC
+import OccName as GHC (OccName(..), mkDataOcc)
 import SrcLoc as GHC
+import TcEvidence as GHC (EvBind(..), TcEvBinds(..))
+import Type as GHC (Type(..), mkTyVarTy, mkTyConTy)
+import TysWiredIn as GHC (starKindTyCon)
+import UniqFM as GHC (eltsUFM)
+import UniqSupply as GHC (uniqFromSupply, mkSplitUniqSupply)
+import Var as GHC (Var(..), Id(..))
 
-import Data.Maybe
-import Data.List as List
-import qualified Data.Map as Map
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
+import Control.Applicative (Applicative(..), (<$>), Alternative(..))
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.State
-import Control.Applicative
-import Data.Generics.Uniplate.Operations
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Generics.Uniplate.Data ()
+import Data.Generics.Uniplate.Operations (universeBi)
+import Data.List as List
+import qualified Data.Map as Map (fromList, lookup)
+import Data.Maybe (Maybe(..), fromMaybe, catMaybes)
 
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as AST
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (getTopLevelId)
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST (mkCNameInfo)
 
 addTypeInfos :: LHsBinds Id -> Ann AST.UModule (Dom GHC.Name) RangeStage -> Ghc (Ann AST.UModule IdDom RangeStage)
 addTypeInfos bnds mod = do

@@ -10,8 +10,8 @@ module Language.Haskell.Tools.ASTDebug.Instances where
 
 import Language.Haskell.Tools.ASTDebug
 
-import GHC.Generics
 import Control.Reference
+import GHC.Generics (Generic(..))
 
 import Language.Haskell.Tools.AST
 

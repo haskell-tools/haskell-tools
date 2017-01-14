@@ -5,28 +5,28 @@
 -- | Functions that convert the type-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Types where
  
-import SrcLoc as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
 import HsTypes as GHC
-import ApiAnnotation as GHC
-import TyCon as GHC
-import Outputable as GHC
-import TysWiredIn (heqTyCon)
 import Id (mkVanillaGlobal)
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
+import SrcLoc as GHC
+import TyCon as GHC (TyCon(..))
+import TysWiredIn (heqTyCon)
 
-import Control.Monad.Reader.Class
-import Control.Applicative
-import Control.Reference
-import Data.Maybe
-import Data.List (find)
+import Control.Applicative (Applicative(..), (<$>), Alternative(..))
+import Control.Monad.Reader.Class (asks)
+import Control.Reference ((^.))
 import Data.Data (Data(..), toConstr)
+import Data.List (find)
+import Data.Maybe (Maybe(..), fromJust)
 
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Names
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
-import Language.Haskell.Tools.AST.FromGHC.Kinds
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), cleanHsType)
+import Language.Haskell.Tools.AST.FromGHC.Kinds (trfKindSig, trfKind, trfPromoted')
+import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Names
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH (trfSplice')
+import Language.Haskell.Tools.AST.FromGHC.Utils
 
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UType (Dom r) RangeStage)
 trfType typ = do othSplices <- asks typeSplices

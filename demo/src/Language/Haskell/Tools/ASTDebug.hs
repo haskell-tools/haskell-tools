@@ -16,21 +16,21 @@
 -- | A module for displaying the AST in a tree view.
 module Language.Haskell.Tools.ASTDebug where
 
-import GHC.Generics
 import Control.Reference
-import Data.Sequence as Seq
 import Data.Foldable
-import Data.Maybe
 import Data.List as List
-import SrcLoc
+import Data.Maybe
+import Data.Sequence as Seq
+import GHC.Generics
 import Outputable
+import SrcLoc
 
 import DynFlags as GHC
-import Name as GHC
 import Id as GHC
+import Name as GHC
 import RdrName as GHC
-import Unique as GHC
 import Type as GHC
+import Unique as GHC
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.SemaInfoTypes

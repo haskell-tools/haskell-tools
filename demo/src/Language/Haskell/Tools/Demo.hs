@@ -11,48 +11,48 @@
 
 module Language.Haskell.Tools.Demo where
 
-import Network.WebSockets
-import Network.Wai.Handler.WebSockets
-import Network.Wai.Handler.Warp
-import Network.Wai
-import Network.HTTP.Types
+import Control.Concurrent.MVar
 import Control.Exception
-import Data.Aeson hiding ((.=))
-import qualified Data.Map as Map
-import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import GHC.Generics
-import System.IO
-import System.IO.Error
-import System.FilePath
-import System.Directory
-import Data.IORef
-import Data.List hiding (insert)
-import Data.Tuple
-import Data.Maybe
 import Control.Monad
 import Control.Monad.State
-import Control.Concurrent.MVar
+import Data.Aeson hiding ((.=))
+import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.IORef
+import Data.List hiding (insert)
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.Tuple
+import GHC.Generics
+import Network.HTTP.Types
+import Network.Wai
+import Network.Wai.Handler.Warp
+import Network.Wai.Handler.WebSockets
+import Network.WebSockets
+import System.Directory
 import System.Environment
+import System.FilePath
+import System.IO
+import System.IO.Error
 
-import GHC hiding (loadModule)
 import Bag (bagToList)
-import SrcLoc (realSrcSpanStart)
 import ErrUtils (errMsgSpan)
+import FastString (unpackFS)
+import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc)
 import HscTypes (SourceError, srcErrorMessages)
-import FastString (unpackFS)
+import SrcLoc (realSrcSpanStart)
 
 import Control.Reference
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.Refactor.Prepare
-import Language.Haskell.Tools.Refactor.Perform
-import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.ASTDebug
 import Language.Haskell.Tools.ASTDebug.Instances ()
 import Language.Haskell.Tools.PrettyPrint
+import Language.Haskell.Tools.Refactor.Perform
+import Language.Haskell.Tools.Refactor.Prepare
+import Language.Haskell.Tools.Refactor.RefactorBase
 
 type ClientId = Int
 

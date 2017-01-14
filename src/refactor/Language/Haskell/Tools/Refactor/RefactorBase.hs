@@ -14,25 +14,25 @@ module Language.Haskell.Tools.Refactor.RefactorBase where
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite
 
-import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
-import Exception (ExceptionMonad(..))
 import DynFlags (HasDynFlags(..))
-import qualified Name as GHC
+import Exception (ExceptionMonad(..))
+import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
 import qualified Module as GHC
+import qualified Name as GHC
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
 
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Trans.Except
+import Control.Monad.Writer
 import Control.Reference hiding (element)
+import Data.Char
 import Data.Function (on)
 import Data.List
 import Data.List.Split
 import Data.Maybe
-import Data.Char
-import Control.Monad.Reader
-import Control.Monad.Trans.Except
-import Control.Monad.Writer
-import Control.Monad.State
 
 type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
 

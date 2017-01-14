@@ -8,13 +8,13 @@ module Language.Haskell.Tools.Transform.RangeToRangeTemplate (cutUpRanges, fixRa
 
 import Language.Haskell.Tools.AST
 
-import Data.List
-import Data.Maybe
-import Control.Reference hiding (element)
 import Control.Monad.State
+import Control.Reference ((^.))
+import Data.List
+import Data.Maybe (Maybe(..), maybe, mapMaybe)
 
+import FastString as GHC (unpackFS)
 import SrcLoc
-import FastString as GHC
 
 import Language.Haskell.Tools.Transform.RangeTemplate
 

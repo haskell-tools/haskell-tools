@@ -2,14 +2,14 @@
 -- The definition of value bindings are in the Binds module.
 module Language.Haskell.Tools.AST.Representation.Decls where
 
+import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
 import Language.Haskell.Tools.AST.Representation.Binds
-import Language.Haskell.Tools.AST.Representation.Types
-import Language.Haskell.Tools.AST.Representation.Patterns
-import Language.Haskell.Tools.AST.Representation.Kinds
-import Language.Haskell.Tools.AST.Representation.Exprs
+import Language.Haskell.Tools.AST.Representation.Exprs (UExpr(..))
+import Language.Haskell.Tools.AST.Representation.Kinds (UKindConstraint(..))
 import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Ann
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (USplice(..))
+import Language.Haskell.Tools.AST.Representation.Types (UContext(..), UType(..), UTyVar(..))
 
 -- * Declarations
 
@@ -130,7 +130,7 @@ data UClassElement dom stage
   | UClsMinimal { _pragmaFormula :: Ann UMinimalFormula dom stage
                 } -- ^ Minimal pragma: @ {-# MINIMAL (==) | (/=) #-} @
   -- not supported yet (GHC 8.0.1)
-  -- | UClsPatSig  { _cePatSig :: Ann UPatternTypeSignature dom stage
+-- | UClsPatSig  { _cePatSig :: Ann UPatternTypeSignature dom stage
   --               } -- ^ Pattern signature in a class declaration (by using @PatternSynonyms@)
 
 -- * Type class instances
@@ -182,7 +182,7 @@ data UInstBodyDecl dom stage
   | USpecializeInstance   { _specializeInstanceType :: Ann UType dom stage
                           } -- ^ Specialize instance pragma (no phase selection is allowed)
   -- not supported yet
-  -- | UInstBodyPatSyn       { _instBodyPatSyn :: Ann UPatternSynonym dom stage
+-- | UInstBodyPatSyn       { _instBodyPatSyn :: Ann UPatternSynonym dom stage
   --                         } -- ^ A pattern synonym in a class instance
 
 -- | Overlap pragmas. Can be applied to class declarations and class instance declarations.    

@@ -1,10 +1,10 @@
 {-# LANGUAGE RankNTypes, FlexibleContexts, ViewPatterns #-}
 module Language.Haskell.Tools.Refactor.Predefined.IfToGuards (ifToGuards, tryItOut) where
 
-import Language.Haskell.Tools.Refactor
-import Control.Reference
-import SrcLoc
+import Control.Reference ((^.), (.-), (&))
 import Data.Generics.Uniplate.Data ()
+import Language.Haskell.Tools.Refactor
+import SrcLoc (RealSrcSpan(..))
 
 tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . ifToGuards)

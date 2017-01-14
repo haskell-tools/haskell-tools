@@ -1,12 +1,12 @@
 -- | Representation of Template Haskell AST elements
 module Language.Haskell.Tools.AST.Representation.TH where
               
-import Language.Haskell.Tools.AST.Representation.Decls
-import Language.Haskell.Tools.AST.Representation.Exprs
-import Language.Haskell.Tools.AST.Representation.Patterns
-import Language.Haskell.Tools.AST.Representation.Types
-import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..))
+import Language.Haskell.Tools.AST.Representation.Decls (UDecl(..))
+import Language.Haskell.Tools.AST.Representation.Exprs (UExpr(..))
+import Language.Haskell.Tools.AST.Representation.Names (UName(..))
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
+import Language.Haskell.Tools.AST.Representation.Types (UType(..))
               
 -- | A template haskell splice          
 data USplice dom stage

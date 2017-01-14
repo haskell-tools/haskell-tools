@@ -7,17 +7,17 @@
 -- | Pretty printing the AST
 module Language.Haskell.Tools.PrettyPrint (prettyPrint) where
 
+import FastString (fsLit)
 import SrcLoc
-import FastString
 
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.PrettyPrint.RoseTree
+import Language.Haskell.Tools.AST (SrcTemplateStage(..), SourceInfoTraversal(..))
+import Language.Haskell.Tools.PrettyPrint.RoseTree (RoseSourceInfo(..), RoseTree(..), toRoseTree)
 import Language.Haskell.Tools.Transform.SourceTemplate
 
 import Control.Monad.State
+import Data.Foldable (Foldable(..), concat)
 import Data.List as List
-import Data.List.Split
-import Data.Foldable
+import Data.List.Split (splitOn)
 import Data.Sequence hiding (null, replicate)
 
 -- | Pretty prints an AST by using source templates stored as node info

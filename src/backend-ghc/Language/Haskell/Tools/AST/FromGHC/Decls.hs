@@ -5,41 +5,41 @@
 -- | Functions that convert the declarations of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Decls where
 
-import qualified GHC
-import RdrName as GHC
-import Class as GHC
-import HsSyn as GHC
-import SrcLoc as GHC
-import Name as GHC
-import ApiAnnotation as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
+import Bag as GHC (bagToList)
 import BasicTypes as GHC
-import Bag as GHC
-import ForeignCall as GHC
-import Outputable as GHC
-import TyCon as GHC
-import BooleanFormula as GHC
+import BooleanFormula as GHC (BooleanFormula(..))
+import Class as GHC (FunDep(..))
+import ForeignCall as GHC (Safety(..), CExportSpec(..), CCallConv(..))
+import qualified GHC
+import HsSyn as GHC
+import Name as GHC (Name(..), occNameString, nameOccName)
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
+import RdrName as GHC (RdrName(..), rdrNameOcc)
+import SrcLoc as GHC
+import TyCon as GHC (Role(..))
 
 import Control.Monad.Reader
-import Control.Reference
-import Data.List
-import Data.Maybe
+import Control.Reference ((.-), (!~), biplateRef)
 import Data.Data (toConstr)
 import Data.Generics.Uniplate.Data ()
+import Data.List
+import Data.Maybe (Maybe(..), fromMaybe)
 
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.Kinds
-import Language.Haskell.Tools.AST.FromGHC.Types
-import Language.Haskell.Tools.AST.FromGHC.Exprs
-import Language.Haskell.Tools.AST.FromGHC.Patterns
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
 import Language.Haskell.Tools.AST.FromGHC.Binds
+import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST.FromGHC.Kinds (trfKindSig, trfKindSig')
 import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Names
+import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH (trfSplice')
+import Language.Haskell.Tools.AST.FromGHC.Types
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), getRange, Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), AnnListG(), getRange, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as AST
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo)
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 -- TODO: filter documentation comments

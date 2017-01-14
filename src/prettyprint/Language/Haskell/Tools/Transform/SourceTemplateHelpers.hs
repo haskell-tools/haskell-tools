@@ -5,11 +5,11 @@
 -- | Helper functions for working with source templates
 module Language.Haskell.Tools.Transform.SourceTemplateHelpers where
 
-import SrcLoc
-import Data.String
-import Control.Reference
+import Control.Reference ((.=))
+import Data.String (IsString(..), String(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Transform.SourceTemplate
+import SrcLoc (noSrcSpan, combineSrcSpans)
 
 type ASTElement node dom = Ann node dom SrcTemplateStage
 type ASTOptional node dom = AnnMaybeG node dom SrcTemplateStage

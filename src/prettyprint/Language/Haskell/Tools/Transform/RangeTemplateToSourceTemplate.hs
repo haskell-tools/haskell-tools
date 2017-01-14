@@ -5,14 +5,14 @@
 -- Basically it reads the source file and attaches parts of the source file to the AST elements that have the range of the given source code fragment.
 module Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate where
 
-import SrcLoc
-import StringBuffer
-import Data.Map
-import Control.Reference
 import Control.Monad.State
+import Control.Reference ((^.))
+import Data.Map
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Transform.RangeTemplate
 import Language.Haskell.Tools.Transform.SourceTemplate
+import SrcLoc
+import StringBuffer (StringBuffer(..), nextChar, atEnd)
 
 rangeToSource :: SourceInfoTraversal node => StringBuffer -> Ann node dom RngTemplateStage
                                                           -> Ann node dom SrcTemplateStage

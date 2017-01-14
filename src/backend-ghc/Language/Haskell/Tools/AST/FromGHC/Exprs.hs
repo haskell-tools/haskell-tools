@@ -7,30 +7,30 @@
 -- | Functions that convert the expression-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
-import Data.Maybe
-import Data.List (partition, find)
-import Data.Data (toConstr)
 import Control.Monad.Reader
+import Data.Data (toConstr)
+import Data.List (partition, find)
+import Data.Maybe (Maybe(..), isJust, fromMaybe)
 
+import BasicTypes as GHC (Boxity(..))
 import GHC
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
+import PrelNames as GHC (negateName)
 import SrcLoc as GHC
-import BasicTypes as GHC
-import Outputable as GHC
-import PrelNames as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.Types
-import Language.Haskell.Tools.AST.FromGHC.Literals
-import Language.Haskell.Tools.AST.FromGHC.Patterns
-import Language.Haskell.Tools.AST.FromGHC.Stmts
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), getFieldOccName)
+import Language.Haskell.Tools.AST.FromGHC.Literals (trfLiteral', trfOverloadedLit)
 import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Names
+import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern, trfPattern')
+import Language.Haskell.Tools.AST.FromGHC.Stmts
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH (trfBracket', trfSplice', trfQuasiQuotation')
+import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.SemaInfoTypes
+import Language.Haskell.Tools.AST.SemaInfoTypes (ScopeInfo(..), mkScopeInfo)
 
-import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(), AnnListG(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.UExpr (Dom r) RangeStage)

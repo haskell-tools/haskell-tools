@@ -6,11 +6,11 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Modules where
 
-import Data.String
+import Data.String (IsString(..), String(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
+import Language.Haskell.Tools.AST.Gen.Names (mkStringNode)
 import Language.Haskell.Tools.AST.Gen.Utils
-import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.Transform
 
 -- | The representation of a haskell module, that is a separate compilation unit.

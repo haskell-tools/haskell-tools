@@ -19,18 +19,18 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
   ) where
 
-import Name as GHC
 import BasicTypes as GHC
-import Id as GHC
-import Module as GHC
-import SrcLoc as GHC
-import RdrName as GHC
-import Outputable as GHC
-import InstEnv as GHC
 import FamInstEnv as GHC
+import Id as GHC
+import InstEnv as GHC
+import Module as GHC
+import Name as GHC
+import Outputable as GHC
+import RdrName as GHC
+import SrcLoc as GHC
 
-import Data.List
 import Data.Data
+import Data.List
 
 import Control.Reference
 

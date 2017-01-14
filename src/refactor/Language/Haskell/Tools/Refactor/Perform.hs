@@ -16,14 +16,14 @@ module Language.Haskell.Tools.Refactor.Perform where
 import Data.List.Split
 
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
-import Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
-import Language.Haskell.Tools.Refactor.Predefined.GenerateExports
-import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Predefined.ExtractBinding
+import Language.Haskell.Tools.Refactor.Predefined.GenerateExports
+import Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.Predefined.InlineBinding
-import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
+import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
 import Language.Haskell.Tools.Refactor.Prepare
+import Language.Haskell.Tools.Refactor.RefactorBase
 
 import GHC
 

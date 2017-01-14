@@ -5,10 +5,10 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Kinds where
 
-import Data.String
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Data.String (IsString(..), String(..))
+import Language.Haskell.Tools.AST (UPromoted(..), UKind(..), UKindConstraint(..))
+import Language.Haskell.Tools.AST.ElementTypes (Name(..), Kind(..), KindConstraint(..))
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList)
 import Language.Haskell.Tools.Transform
 
 -- | Kind constraint (@ :: * -> * @)

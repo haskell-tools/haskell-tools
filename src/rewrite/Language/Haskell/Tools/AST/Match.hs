@@ -13,14 +13,14 @@ module Language.Haskell.Tools.AST.Match
   , module Language.Haskell.Tools.AST.Match.TH
   ) where
 
-import Language.Haskell.Tools.AST.Match.Modules
-import Language.Haskell.Tools.AST.Match.Decls
 import Language.Haskell.Tools.AST.Match.Binds
-import Language.Haskell.Tools.AST.Match.Types
-import Language.Haskell.Tools.AST.Match.Kinds
+import Language.Haskell.Tools.AST.Match.Decls
 import Language.Haskell.Tools.AST.Match.Exprs
-import Language.Haskell.Tools.AST.Match.Stmts
+import Language.Haskell.Tools.AST.Match.Kinds
 import Language.Haskell.Tools.AST.Match.Literals
-import Language.Haskell.Tools.AST.Match.Patterns
+import Language.Haskell.Tools.AST.Match.Modules
 import Language.Haskell.Tools.AST.Match.Names
+import Language.Haskell.Tools.AST.Match.Patterns
+import Language.Haskell.Tools.AST.Match.Stmts
 import Language.Haskell.Tools.AST.Match.TH
+import Language.Haskell.Tools.AST.Match.Types

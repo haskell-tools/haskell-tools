@@ -7,32 +7,29 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.OrganizeImports (organizeImports, OrganizeImportsDomain, projectOrganizeImports) where
 
-import Name hiding (Name)
+import ConLike (ConLike(..))
+import DataCon (FieldLbl(..), dataConTyCon)
+import DynFlags (xopt)
+import FamInstEnv (FamInst(..))
 import GHC (TyThing(..), lookupName)
 import qualified GHC
-import DynFlags
 import Id
-import TyCon
-import IdInfo
-import DataCon
-import InstEnv
-import FamInstEnv
-import ConLike
-import Language.Haskell.TH.LanguageExtensions
+import IdInfo (RecSelParent(..))
+import InstEnv (ClsInst(..))
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
+import Name (NamedThing(..))
+import TyCon (tyConFieldLabels, tyConDataCons, isClassTyCon)
 
-import Control.Applicative
-import Control.Reference hiding (element)
+import Control.Applicative ((<$>), Alternative(..))
 import Control.Monad
-import Control.Monad.Trans
+import Control.Monad.Trans (MonadTrans(..))
+import Control.Reference hiding (element)
 import Data.Function hiding ((&))
-import Data.Maybe
+import Data.Generics.Uniplate.Data (universeBi)
 import Data.List
-import Data.Generics.Uniplate.Data
+import Data.Maybe (Maybe(..), maybe, catMaybes)
 
 import Language.Haskell.Tools.Refactor as AST
-
-import Outputable
-import Debug.Trace
 
 type OrganizeImportsDomain dom = ( HasNameInfo dom, HasImportInfo dom, HasModuleInfo dom )
 

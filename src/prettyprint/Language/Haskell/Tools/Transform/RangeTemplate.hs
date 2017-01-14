@@ -8,10 +8,10 @@
 -- had been cut from the parent nodes, but the annotations still contain ranges instead of text.
 module Language.Haskell.Tools.Transform.RangeTemplate where
 
-import Data.Data
 import Control.Reference
-import SrcLoc
+import Data.Data
 import Language.Haskell.Tools.AST
+import SrcLoc
 
 instance SourceInfo RngTemplateStage where
   data SpanInfo RngTemplateStage = RangeTemplateNode { _rngTemplateNodeRange :: RealSrcSpan

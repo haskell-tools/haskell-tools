@@ -6,16 +6,16 @@
 -- normalizing transformation should be performed that expands parents to contain their children.
 module Language.Haskell.Tools.Transform.PlaceComments where
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Maybe
-import Data.Char (isSpace, isAlphaNum)
-import Control.Reference hiding (element)
-import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Writer
+import Control.Reference hiding (element)
+import Data.Char (isSpace, isAlphaNum)
+import qualified Data.Map as Map
+import Data.Maybe
+import qualified Data.Set as Set (lookupLE, lookupGE, fromList)
 
+import ApiAnnotation (AnnotationComment(..))
 import SrcLoc
-import ApiAnnotation
 
 import Language.Haskell.Tools.AST
 

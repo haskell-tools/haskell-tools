@@ -5,20 +5,20 @@
 -- | Functions that convert the statement-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Stmts where
  
-import Control.Monad.Reader
+import Control.Monad.Reader (MonadReader(..))
 
-import SrcLoc as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
 import HsExpr as GHC
-import ApiAnnotation as GHC
+import SrcLoc as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Names
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs
-import Language.Haskell.Tools.AST.FromGHC.Patterns
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(), AnnListG(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds (trfLocalBinds)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..), addToScope)
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..))
+import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
+import Language.Haskell.Tools.AST.FromGHC.Utils
  
 trfDoStmt :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.UStmt (Dom r) RangeStage)
 trfDoStmt = trfLocNoSema trfDoStmt'

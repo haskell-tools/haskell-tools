@@ -13,22 +13,22 @@
 -- | Functions that convert the basic elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Names where
 
-import Control.Monad.Reader
-import Data.Char
+import Control.Monad.Reader ((=<<), asks)
+import Data.Char (isDigit, isLetter)
 
+import FastString as GHC (FastString(..), unpackFS)
 import HsSyn as GHC
-import RdrName as GHC
-import Name as GHC hiding (Name, occName)
+import Name as GHC (isSymOcc)
 import qualified Name as GHC (Name)
+import RdrName as GHC (RdrName(..))
 import SrcLoc as GHC
-import FastString as GHC
 
-import Language.Haskell.Tools.AST (Ann(..), AnnListG(..), RangeStage, Dom)
+import Language.Haskell.Tools.AST (Ann(..), AnnListG(), RangeStage, Dom)
 import qualified Language.Haskell.Tools.AST as AST
 
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..), getOriginalName)
+import Language.Haskell.Tools.AST.FromGHC.Utils
 
 trfOperator :: TransformName n r => Located n -> Trf (Ann AST.UOperator (Dom r) RangeStage)
 trfOperator = trfLocNoSema trfOperator'

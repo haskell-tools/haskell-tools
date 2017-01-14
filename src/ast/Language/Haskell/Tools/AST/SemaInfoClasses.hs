@@ -7,15 +7,15 @@
 module Language.Haskell.Tools.AST.SemaInfoClasses where
 
 import GHC
-import Id as GHC
+import Id as GHC (Id(..), idName)
 
-import Control.Reference
+import Control.Reference ((^?), (^.), (&))
 
 import Language.Haskell.Tools.AST.Ann as AST
+import Language.Haskell.Tools.AST.Representation.Exprs as AST (UFieldWildcard(..), UExpr(..))
+import Language.Haskell.Tools.AST.Representation.Modules as AST (UImportDecl(..), UModule(..))
+import Language.Haskell.Tools.AST.Representation.Names as AST (UQualifiedName(..))
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
-import Language.Haskell.Tools.AST.Representation.Modules as AST
-import Language.Haskell.Tools.AST.Representation.Names as AST
-import Language.Haskell.Tools.AST.Representation.Exprs as AST
 
 -- * Information about names
 

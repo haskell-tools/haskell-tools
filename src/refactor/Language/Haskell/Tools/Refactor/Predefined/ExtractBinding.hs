@@ -10,13 +10,13 @@
 module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
 import qualified GHC
-import qualified OccName as GHC hiding (varName)
-import SrcLoc
+import qualified OccName as GHC (occNameString)
+import SrcLoc (SrcSpan(..), RealSrcSpan(..))
 
-import Data.Maybe
-import Data.Generics.Uniplate.Data ()
-import Control.Reference
 import Control.Monad.State
+import Control.Reference
+import Data.Generics.Uniplate.Data ()
+import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 

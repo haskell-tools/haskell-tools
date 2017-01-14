@@ -9,10 +9,10 @@
 -- the children specified by placeholders.
 module Language.Haskell.Tools.Transform.SourceTemplate where
 
-import Data.Data
 import Control.Reference
-import SrcLoc
+import Data.Data
 import Language.Haskell.Tools.AST
+import SrcLoc
 
 instance SourceInfo SrcTemplateStage where
   data SpanInfo SrcTemplateStage 

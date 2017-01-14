@@ -1,15 +1,15 @@
 -- | Functions that convert the literals of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Literals where
 
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Char8 as BS (foldr)
 
-import FastString as GHC
-import BasicTypes as GHC
-import HsLit as GHC
+import BasicTypes as GHC (FractionalLit(..))
+import FastString as GHC (unpackFS)
+import HsLit as GHC (OverLitVal(..), HsLit(..))
 
-import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST (Dom, RangeStage)
-import qualified Language.Haskell.Tools.AST as AST
+import qualified Language.Haskell.Tools.AST as AST (ULiteral(..), Dom(..), RangeStage(..))
+import Language.Haskell.Tools.AST.FromGHC.Monad (Trf(..))
 
 trfLiteral' :: HsLit -> Trf (AST.ULiteral (Dom r) RangeStage)
 trfLiteral' (HsChar _ ch) = pure $ AST.UCharLit ch

@@ -5,18 +5,18 @@ module Language.Haskell.Tools.AST.References where
 import Control.Reference hiding (element)
 import Language.Haskell.Tools.AST.MakeASTReferences
 
-import Language.Haskell.Tools.AST.Representation.Modules
-import Language.Haskell.Tools.AST.Representation.TH
-import Language.Haskell.Tools.AST.Representation.Decls
+import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Representation.Binds
+import Language.Haskell.Tools.AST.Representation.Decls
 import Language.Haskell.Tools.AST.Representation.Exprs
-import Language.Haskell.Tools.AST.Representation.Stmts
-import Language.Haskell.Tools.AST.Representation.Patterns
-import Language.Haskell.Tools.AST.Representation.Types
 import Language.Haskell.Tools.AST.Representation.Kinds
 import Language.Haskell.Tools.AST.Representation.Literals
+import Language.Haskell.Tools.AST.Representation.Modules
 import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Representation.Patterns
+import Language.Haskell.Tools.AST.Representation.Stmts
+import Language.Haskell.Tools.AST.Representation.TH
+import Language.Haskell.Tools.AST.Representation.Types
 
 -- * Modules
 $(toASTReferences (makeReferences ''UModule))
