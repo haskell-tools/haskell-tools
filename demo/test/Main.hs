@@ -75,6 +75,17 @@ refactorTests =
     , [ InitialProject [("A", "module A where\n\na = ()"), ("B", "module B where\n\nimport A\n\nb = a")]
       , PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["x"] ]
     , [ RefactorChanges [("A", Just "module A where\n\nx = ()"), ("B", Just "module B where\n\nimport A\n\nb = x")] ] )
+  , ( "multi-module-refactor-user-added-later"
+    , [ InitialProject [("A", "module A where\n\na = ()")]
+      , ModuleChanged "B" "module B where\n\nimport A\n\nb = a"
+      , PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["x"] ]
+    , [ RefactorChanges [("A", Just "module A where\n\nx = ()"), ("B", Just "module B where\n\nimport A\n\nb = x")] ] )
+  , ( "multi-module-refactor-both-added-later"
+    , [ InitialProject [("B", "module B where")]
+      , ModuleChanged "A" "module A where\n\na = ()"
+      , ModuleChanged "B" "module B where\n\nimport A\n\nb = a"
+      , PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["x"] ]
+    , [ RefactorChanges [("A", Just "module A where\n\nx = ()"), ("B", Just "module B where\n\nimport A\n\nb = x")] ] )
   , ( "rename-module"
     , [ InitialProject [("A", "module A where\n\na = ()")]
       , PerformRefactoring "RenameDefinition" "A" "1:8-1:9" ["AA"] ]

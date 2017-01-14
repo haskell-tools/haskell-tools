@@ -125,8 +125,7 @@ updateClient dir (ModuleChanged name newContent) = do
     when (isNothing . find ((\case (TargetModule n) -> GHC.moduleNameString n == name; _ -> False) . targetId) $ targets)
       $ lift $ addTarget (Target (TargetModule (GHC.mkModuleName name)) True Nothing)
     void $ lift $ load LoadAllTargets
-    mod <- lift $ getModSummary (GHC.mkModuleName name) >>= parseTyped
-    modify $ refSessMods .- Map.insert (dir, name, NormalHs) mod
+    reloadAllMods dir
     return Nothing
 updateClient dir (ModuleDeleted name) = do
     lift $ removeTarget (TargetModule (GHC.mkModuleName name))
@@ -139,10 +138,7 @@ updateClient dir (InitialProject modules) = do
     liftIO $ forM_ modules $ \(mod, cont) -> do
       withBinaryFile (toFileName dir mod) WriteMode (`hPutStr` cont)
     lift $ setTargets (map ((\modName -> Target (TargetModule (GHC.mkModuleName modName)) True Nothing) . fst) modules)
-    void $ lift $ load LoadAllTargets
-    forM_ (map fst modules) $ \modName -> do
-      mod <- lift $ getModSummary (GHC.mkModuleName modName) >>= parseTyped
-      modify $ refSessMods .- Map.insert (dir, modName, NormalHs) mod
+    reloadAllMods dir
     return Nothing
 updateClient _ (PerformRefactoring "UpdateAST" modName _ _) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
@@ -163,19 +159,25 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
         trfDiff (ModuleCreated name mod _) = (name, Just (prettyPrint mod))
         trfDiff (ModuleRemoved name) = (name, Nothing)
 
-        applyChanges 
-          = mapM_ $ \case 
-              ModuleCreated n m _ -> writeModule n m
-              ContentChanged (n,m) -> writeModule (n ^. sfkModuleName) m
-              ModuleRemoved mod -> do
-                liftIO $ removeFile (toFileName dir mod)
-                modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
+        applyChanges diff
+          = do forM_ diff $ \case 
+                 ModuleCreated n m _ -> writeModule n m
+                 ContentChanged (n,m) -> writeModule (n ^. sfkModuleName) m
+                 ModuleRemoved mod -> do
+                   liftIO $ removeFile (toFileName dir mod)
+                   modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
+                   lift $ removeTarget (TargetModule (GHC.mkModuleName mod))
+               reloadAllMods dir
 
-        writeModule n m = do
-          liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
-          void $ gets (find ((n ==) . (\(_,m,_) -> m)) . Map.keys . (^. refSessMods))
-          newm <- lift $ (parseTyped =<< loadModule dir n)
-          modify $ refSessMods .- Map.insert (dir, n, NormalHs) newm
+        writeModule n m = liftIO $ withBinaryFile (toFileName dir n) WriteMode (`hPutStr` prettyPrint m)
+
+reloadAllMods :: FilePath -> StateT RefactorSessionState Ghc ()
+reloadAllMods dir = do
+  void $ lift $ load LoadAllTargets
+  targets <- lift getTargets
+  forM_ (map ((\case (TargetModule n) -> n) . targetId) targets) $ \modName -> do
+      mod <- lift $ getModSummary modName >>= parseTyped
+      modify $ refSessMods .- Map.insert (dir, GHC.moduleNameString modName, NormalHs) mod
 
 createFileForModule :: FilePath -> String -> String -> IO ()
 createFileForModule dir name newContent = do
