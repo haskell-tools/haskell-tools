@@ -6,14 +6,14 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Types where
 
-import qualified Name as GHC
-import Data.String
+import Data.String (IsString(..), String(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Names
-import Language.Haskell.Tools.AST.Gen.Kinds
+import Language.Haskell.Tools.AST.Gen.Kinds (mkKindConstraint)
+import Language.Haskell.Tools.AST.Gen.Names (mkUnqualName')
 import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.Transform
+import qualified Name as GHC (Name(..))
 
 -- * Generation of types
 

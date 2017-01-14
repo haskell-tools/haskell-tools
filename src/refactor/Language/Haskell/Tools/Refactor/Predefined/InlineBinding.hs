@@ -11,16 +11,16 @@
 -- with an expression equivalent to the body of the binding.
 module Language.Haskell.Tools.Refactor.Predefined.InlineBinding (inlineBinding, InlineBindingDomain, tryItOut) where
 
-import Control.Reference
-import Control.Monad.Writer hiding (Alt)
 import Control.Monad.State
-import Data.Maybe
-import Data.List (nub)
-import Data.Generics.Uniplate.Operations
+import Control.Monad.Writer hiding (Alt)
+import Control.Reference
 import Data.Generics.Uniplate.Data ()
+import Data.Generics.Uniplate.Operations (Uniplate(..), Biplate(..))
+import Data.List (nub)
+import Data.Maybe (Maybe(..), catMaybes)
 
-import SrcLoc as GHC
-import Name as GHC
+import Name as GHC (NamedThing(..), Name(..), occNameString)
+import SrcLoc as GHC (SrcSpan(..), RealSrcSpan(..), containsSpan)
 
 import Language.Haskell.Tools.Refactor as AST
 

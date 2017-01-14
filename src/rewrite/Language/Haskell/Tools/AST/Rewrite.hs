@@ -7,6 +7,6 @@ module Language.Haskell.Tools.AST.Rewrite
   , module Language.Haskell.Tools.AST.ElementTypes
   ) where
 
+import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen
 import Language.Haskell.Tools.AST.Match
-import Language.Haskell.Tools.AST.ElementTypes

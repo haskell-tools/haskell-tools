@@ -13,29 +13,29 @@
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
 
-import GHC hiding (loadModule)
-import qualified GHC (loadModule)
-import SrcLoc
-import FastString
-import GHC.Paths ( libdir )
 import CmdLineParser
 import DynFlags
+import FastString
+import GHC hiding (loadModule)
+import qualified GHC (loadModule)
+import GHC.Paths ( libdir )
+import SrcLoc
 
 import Control.Monad
 import Control.Monad.IO.Class
-import System.FilePath
-import Data.Maybe
+import Data.IntSet (member)
 import Data.List ((\\))
 import Data.List.Split
-import System.Directory
-import Data.IntSet (member)
+import Data.Maybe
 import Language.Haskell.TH.LanguageExtensions
+import System.Directory
+import System.FilePath
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Transform
 
 tryRefactor :: (RealSrcSpan -> Refactoring IdDom) -> String -> String -> IO ()
 tryRefactor refact moduleName span

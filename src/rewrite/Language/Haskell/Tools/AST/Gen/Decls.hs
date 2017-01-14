@@ -8,7 +8,7 @@ module Language.Haskell.Tools.AST.Gen.Decls where
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList, mkAnnMaybe)
 import Language.Haskell.Tools.Transform
 
 -- | Creates a type synonym ( @type String = [Char]@ )

@@ -6,24 +6,24 @@
 -- | Functions that convert the pattern-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Patterns where
 
-import SrcLoc as GHC
-import HsTypes as GHC
-import HsPat as GHC
-import HsLit as GHC
-import ApiAnnotation as GHC
-import BasicTypes as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
+import BasicTypes as GHC (Boxity(..))
 import Data.List
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import HsLit as GHC (HsOverLit(..))
+import HsPat as GHC
+import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..), HsConDetails(..))
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (getFieldOccName)
+import SrcLoc as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Names
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH
-import Language.Haskell.Tools.AST.FromGHC.Literals
-import Language.Haskell.Tools.AST.FromGHC.Types
-import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs
-import Language.Haskell.Tools.AST.FromGHC.Monad
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
+import Language.Haskell.Tools.AST.FromGHC.Literals (trfLiteral', trfOverloadedLit)
+import Language.Haskell.Tools.AST.FromGHC.Monad (Trf(..), define)
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..), trfOperator, trfName)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH (trfSplice')
+import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(..), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.UPattern (Dom r) RangeStage)

@@ -5,8 +5,8 @@
 module Language.Haskell.Tools.AST.TH.SourceInfoTraversal where
 
 import Control.Monad
-import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Ppr
+import Language.Haskell.TH.Syntax
 import Language.Haskell.Tools.AST.Ann
 
 -- | Generate the instances for semantic information

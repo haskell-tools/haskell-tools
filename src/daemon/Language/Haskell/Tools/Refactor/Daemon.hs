@@ -7,29 +7,29 @@
            #-}
 module Language.Haskell.Tools.Refactor.Daemon where
 
+import Control.Applicative ((<|>))
+import Control.Concurrent.MVar
+import Control.Exception
+import Control.Monad
+import Control.Monad.State
 import Data.Aeson hiding ((.=))
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
 import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.IORef
+import Data.List hiding (insert)
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.Tuple
 import GHC.Generics
 import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import Network.Socket.ByteString.Lazy
-import Control.Exception
-import qualified Data.Map as Map
-import System.IO
 import System.Directory
-import Data.IORef
-import Data.List hiding (insert)
-import Data.Tuple
-import Data.Maybe
-import Control.Applicative ((<|>))
-import Control.Monad
-import Control.Monad.State
-import Control.Concurrent.MVar
 import System.Environment
+import System.IO
 
-import GHC hiding (loadModule)
 import DynFlags
+import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc, modifySession)
 import HscTypes (hsc_mod_graph)
@@ -38,14 +38,14 @@ import Packages
 import Control.Reference
 
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.PrettyPrint
+import Language.Haskell.Tools.Refactor.Daemon.PackageDB
+import Language.Haskell.Tools.Refactor.Daemon.State
 import Language.Haskell.Tools.Refactor.GetModules
-import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.Perform
+import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Session
-import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Refactor.Daemon.State
-import Language.Haskell.Tools.Refactor.Daemon.PackageDB
 
 -- TODO: handle boot files
 

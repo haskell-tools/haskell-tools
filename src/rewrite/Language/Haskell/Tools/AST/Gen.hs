@@ -13,15 +13,14 @@ module Language.Haskell.Tools.AST.Gen
   , module Language.Haskell.Tools.AST.Gen.TH
   ) where
 
-import Language.Haskell.Tools.AST.Gen.Modules
-import Language.Haskell.Tools.AST.Gen.Decls
 import Language.Haskell.Tools.AST.Gen.Binds
-import Language.Haskell.Tools.AST.Gen.Types
-import Language.Haskell.Tools.AST.Gen.Kinds
+import Language.Haskell.Tools.AST.Gen.Decls
 import Language.Haskell.Tools.AST.Gen.Exprs
-import Language.Haskell.Tools.AST.Gen.Stmts
+import Language.Haskell.Tools.AST.Gen.Kinds
 import Language.Haskell.Tools.AST.Gen.Literals
-import Language.Haskell.Tools.AST.Gen.Patterns
+import Language.Haskell.Tools.AST.Gen.Modules
 import Language.Haskell.Tools.AST.Gen.Names
+import Language.Haskell.Tools.AST.Gen.Patterns
+import Language.Haskell.Tools.AST.Gen.Stmts
 import Language.Haskell.Tools.AST.Gen.TH
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Types

@@ -1,23 +1,23 @@
 -- | Functions that convert the Template-Haskell-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.TH where
 
-import Control.Monad.Reader
+import Control.Monad.Reader (asks)
 
+import ApiAnnotation as GHC (AnnKeywordId(..))
+import FastString as GHC (unpackFS)
+import HsExpr as GHC (HsSplice(..), HsExpr(..), HsBracket(..))
+import OccName as GHC (occNameString)
+import RdrName as GHC (rdrNameOcc)
 import SrcLoc as GHC
-import RdrName as GHC
-import HsExpr as GHC
-import ApiAnnotation as GHC
-import FastString as GHC
-import OccName as GHC
 
-import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
+import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr, createScopeInfo)
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..))
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..))
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..), trfName')
+import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
+import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.FromGHC.Decls
-import Language.Haskell.Tools.AST.FromGHC.Exprs
-import Language.Haskell.Tools.AST.FromGHC.Types
-import Language.Haskell.Tools.AST.FromGHC.Patterns
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
 import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST

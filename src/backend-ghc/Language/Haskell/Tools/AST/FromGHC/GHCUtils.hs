@@ -8,19 +8,19 @@
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 
-import Data.List
 import Data.Generics.Uniplate.Data ()
+import Data.List
 
+import Bag (Bag(..), bagToList, unionManyBags)
+import ConLike (ConLike(..))
 import GHC
-import Bag
-import RdrName
-import OccName
-import Outputable
+import Id (Id(..), mkVanillaGlobal)
+import OccName (OccName(..))
+import Outputable (Outputable(..), OutputableBndr(..), showSDocUnsafe)
+import PatSyn (patSynSig)
+import RdrName (RdrName(..), rdrNameOcc, nameRdrName)
 import SrcLoc
-import ConLike
-import Id
-import PatSyn
-import Type
+import Type (TyThing(..), mkFunTys)
 
 class OutputableBndr name => GHCName name where 
   rdrName :: name -> RdrName

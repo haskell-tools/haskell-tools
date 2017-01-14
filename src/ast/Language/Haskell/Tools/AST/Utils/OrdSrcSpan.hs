@@ -1,8 +1,8 @@
 -- | A wrapper for SrcSpans that is ordered.
 module Language.Haskell.Tools.AST.Utils.OrdSrcSpan where
 
+import FastString (FastString(..))
 import SrcLoc
-import FastString
 
 -- | Wraps the SrcSpan into an ordered source span
 ordSrcSpan :: SrcSpan -> OrdSrcSpan

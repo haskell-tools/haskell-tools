@@ -3,26 +3,26 @@
            #-}
 module Language.Haskell.Tools.Refactor.Session where
 
-import qualified Data.Map as Map
-import qualified Data.List as List
-import Data.Maybe
 import Control.Monad.State
 import Control.Reference
+import qualified Data.List as List
+import qualified Data.Map as Map
+import Data.Maybe
 import System.FilePath
 
-import GHC
-import Exception (ExceptionMonad)
-import Outputable
-import ErrUtils
-import HscTypes as GHC
-import Digraph as GHC
-import FastString as GHC
 import Data.IntSet (member)
+import Digraph as GHC
+import ErrUtils
+import Exception (ExceptionMonad)
+import FastString as GHC
+import GHC
+import HscTypes as GHC
 import Language.Haskell.TH.LanguageExtensions
+import Outputable
 
 import Language.Haskell.Tools.AST (IdDom)
-import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.GetModules
+import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 
 data RefactorSessionState

@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 module Language.Haskell.Tools.AST.Match.Patterns where
 
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST (Ann(..), UPatternField(..), UPattern(..))
 import Language.Haskell.Tools.AST.ElementTypes
 
 -- | Pattern name binding

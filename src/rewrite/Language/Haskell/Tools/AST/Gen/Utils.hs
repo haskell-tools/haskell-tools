@@ -5,8 +5,8 @@
 module Language.Haskell.Tools.AST.Gen.Utils where
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.Transform
+import Language.Haskell.Tools.AST.ElementTypes (AnnMaybe(..), AnnList(..))
+import Language.Haskell.Tools.Transform (child, opt, list)
 
 fromTemplate :: src -> NodeInfo sema src
 fromTemplate = NodeInfo (error "The newly generated AST fragments have no semantic info")

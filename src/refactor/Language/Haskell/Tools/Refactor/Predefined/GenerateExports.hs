@@ -5,13 +5,13 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.GenerateExports (generateExports, DomGenerateExports) where
 
+import Control.Reference ((^?), (.=), (&))
 import Language.Haskell.Tools.Refactor
-import Control.Reference
 
-import qualified GHC
+import qualified GHC (NamedThing(..), Name(..))
 
-import Data.Maybe
 import Control.Applicative ((<|>))
+import Data.Maybe (Maybe(..), catMaybes)
 
 type DomGenerateExports dom = (Domain dom, HasNameInfo dom)
 

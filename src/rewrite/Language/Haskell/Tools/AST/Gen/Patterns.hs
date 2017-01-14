@@ -6,9 +6,9 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Patterns where
 
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST (UFieldWildcard(..), UPatternField(..), UPattern(..))
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList)
 import Language.Haskell.Tools.Transform
 
 -- | Pattern name binding

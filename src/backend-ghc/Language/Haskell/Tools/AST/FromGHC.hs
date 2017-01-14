@@ -4,6 +4,6 @@
 module Language.Haskell.Tools.AST.FromGHC 
   ( trfModule, trfModuleRename, addTypeInfos, runTrf ) where
 
-import Language.Haskell.Tools.AST.FromGHC.Modules
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.AddTypeInfo
+import Language.Haskell.Tools.AST.FromGHC.AddTypeInfo (addTypeInfos)
+import Language.Haskell.Tools.AST.FromGHC.Modules (trfModule, trfModuleRename)
+import Language.Haskell.Tools.AST.FromGHC.Monad (runTrf)

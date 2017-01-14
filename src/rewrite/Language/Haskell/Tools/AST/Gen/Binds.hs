@@ -6,11 +6,11 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Binds where
 
-import Data.String
+import Data.String (IsString(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Patterns
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Patterns (mkVarPat)
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList, mkAnnMaybe)
 import Language.Haskell.Tools.Transform
 
 -- | A simplified function to generate simple value bindings without local definitions, guards or complex lhs.

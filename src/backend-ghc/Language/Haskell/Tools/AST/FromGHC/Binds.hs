@@ -4,25 +4,25 @@
 -- | Functions that convert the value and function definitions of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Binds where
 
-import SrcLoc as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
+import Bag as GHC (bagToList)
+import BasicTypes as GHC (FixityDirection(..), Fixity(..))
 import HsBinds as GHC
 import HsExpr as GHC
-import BasicTypes as GHC
-import ApiAnnotation as GHC
-import Bag as GHC
-import HsPat as GHC
-import HsTypes as GHC
+import HsPat as GHC (LPat(..))
+import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
+import SrcLoc as GHC
 
 import Data.List
 
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.Exprs
-import Language.Haskell.Tools.AST.FromGHC.Patterns
-import Language.Haskell.Tools.AST.FromGHC.Types
+import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.Monad
+import Language.Haskell.Tools.AST.FromGHC.Names
+import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
+import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), AnnListG(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfBind :: TransformName n r => Located (HsBind n) -> Trf (Ann AST.UValueBind (Dom r) RangeStage)

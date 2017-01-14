@@ -5,9 +5,9 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Stmts where
 
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST (UCompStmt(..), UListCompBody(..), UStmt'(..))
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList, mkAnnMaybe)
 import Language.Haskell.Tools.Transform
 
 -- | Creates a binding statement (@ x <- action @)

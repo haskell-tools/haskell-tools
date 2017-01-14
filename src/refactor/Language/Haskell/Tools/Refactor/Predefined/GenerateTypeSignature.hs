@@ -11,19 +11,19 @@ module Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
   (generateTypeSignature, generateTypeSignature', GenerateSignatureDomain, tryItOut) where
 
 import GHC hiding (Module)
-import Type as GHC
-import TyCon as GHC
-import OccName as GHC
-import Outputable as GHC
-import TysWiredIn as GHC
 import Id as GHC
+import OccName as GHC (isSymOcc)
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
+import TyCon as GHC (TyCon(..), isTupleTyCon)
+import Type as GHC
+import TysWiredIn as GHC (listTyCon, charTyCon)
 
-import Data.List
-import Data.Maybe
-import Data.Generics.Uniplate.Data
 import Control.Monad
 import Control.Monad.State
 import Control.Reference
+import Data.Generics.Uniplate.Data (universeBi)
+import Data.List
+import Data.Maybe (Maybe(..), catMaybes)
 
 import Language.Haskell.Tools.Refactor as AST
 

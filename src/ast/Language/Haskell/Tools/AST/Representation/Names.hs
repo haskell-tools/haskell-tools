@@ -7,7 +7,7 @@
 -- | Simple AST elements of Haskell
 module Language.Haskell.Tools.AST.Representation.Names where
   
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..))
 
 data UOperator dom stage
   = UBacktickOp { _operatorName :: Ann UQualifiedName dom stage 

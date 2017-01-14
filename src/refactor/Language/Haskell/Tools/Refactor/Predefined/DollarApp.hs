@@ -3,17 +3,16 @@ module Language.Haskell.Tools.Refactor.Predefined.DollarApp (dollarApp, DollarDo
 
 import Language.Haskell.Tools.Refactor
 
+import BasicTypes (Fixity(..))
+import Id (idName)
+import qualified Name as GHC (Name)
+import PrelInfo (wiredInIds)
+import PrelNames (dollarIdKey)
 import SrcLoc (RealSrcSpan, SrcSpan)
 import Unique (getUnique)
-import Id (idName)
-import PrelNames (dollarIdKey)
-import PrelInfo (wiredInIds)
-import BasicTypes (Fixity(..))
-import qualified Name as GHC (Name)
 
 import Control.Monad.State
-import Control.Reference
-import Data.Generics.Uniplate.Data ()
+import Control.Reference ((^.), (!~), biplateRef)
 
 tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . dollarApp)

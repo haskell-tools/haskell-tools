@@ -6,24 +6,24 @@
            #-}
 module Language.Haskell.Tools.Refactor.CLI (refactorSession, tryOut) where
 
-import System.Directory
-import System.IO
-import Data.Maybe
+import Control.Applicative ((<|>))
+import Control.Monad.State
+import Control.Reference
 import Data.List
 import Data.List.Split
-import Control.Monad.State
-import Control.Applicative ((<|>))
-import Control.Reference
+import Data.Maybe
+import System.Directory
+import System.IO
 
-import GHC
 import ErrUtils
-import HscTypes as GHC
+import GHC
 import GHC.Paths ( libdir )
+import HscTypes as GHC
 
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.GetModules
+import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Session
 
 type CLIRefactorSession = StateT CLISessionState Ghc

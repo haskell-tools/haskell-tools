@@ -1,11 +1,11 @@
 module Language.Haskell.Tools.AST.FromGHC.TH where
 
-import SrcLoc as GHC
-import HsExpr as GHC
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST (Ann(..), Dom, RangeStage)
+import HsExpr as GHC (HsSplice(..), HsBracket(..))
+import Language.Haskell.Tools.AST (Ann(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.FromGHC.Monad (Trf(..))
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..))
+import SrcLoc as GHC (Located(..))
 
 trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.UQuasiQuote (Dom r) RangeStage)
 trfSplice :: TransformName n r => Located (HsSplice n) -> Trf (Ann AST.USplice (Dom r) RangeStage)

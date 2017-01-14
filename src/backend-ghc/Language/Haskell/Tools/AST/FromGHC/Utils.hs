@@ -11,38 +11,38 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
-import ApiAnnotation
-import SrcLoc
+import ApiAnnotation (AnnKeywordId(..))
+import Avail (availNamesWithSelectors, availNames)
+import BasicTypes (StringLiteral(..))
+import CoAxiom as GHC (CoAxiom(..))
+import CoreSyn as GHC (isOrphan)
+import DynFlags (xopt)
+import FamInstEnv as GHC (FamInst(..), famInstEnvElts)
+import FastString (unpackFS, mkFastString)
+import FieldLabel as GHC (FieldLbl(..))
 import GHC
-import DynFlags
-import Avail
-import HscTypes
-import BasicTypes
 import HsSyn
+import HscTypes
+import Id (idName)
+import InstEnv as GHC (ClsInst(..), instanceDFunId, instEnvElts)
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
-import Id
-import FastString
-import InstEnv as GHC
-import FamInstEnv as GHC
-import CoAxiom as GHC
-import CoreSyn as GHC
-import FieldLabel as GHC
-import Language.Haskell.TH.LanguageExtensions
+import SrcLoc
 
 import Control.Monad.Reader
-import Control.Reference hiding (element)
-import Data.Maybe
-import Data.Either
-import Data.IORef
+import Control.Reference ((^.), (&))
+import Data.Char (isSpace)
+import Data.Either (Either(..), rights, lefts)
 import Data.Function hiding ((&))
+import Data.IORef (readIORef)
 import Data.List
-import Data.Char
+import Data.Maybe
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
-import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
+import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
+import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
 
 createModuleInfo :: ModSummary -> Trf (Sema.ModuleInfo GHC.Name)
 createModuleInfo mod = do 

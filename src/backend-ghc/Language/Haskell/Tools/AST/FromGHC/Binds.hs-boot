@@ -1,13 +1,12 @@
 module Language.Haskell.Tools.AST.FromGHC.Binds where
 
-import SrcLoc as GHC
-import HsBinds as GHC
-import HsExpr as GHC
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), AnnListG(..), Dom, RangeStage)
+import HsBinds as GHC (HsLocalBinds(..))
+import HsExpr as GHC (Stmt(..), LHsExpr(..))
+import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), AnnListG(), Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.FromGHC.Monad (Trf(..))
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..))
+import SrcLoc as GHC (Located(..))
 
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnListG AST.ULocalBind (Dom r) RangeStage)
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)

@@ -4,24 +4,24 @@
 -- | Functions that convert the kind-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.AST.FromGHC.Kinds where
 
-import SrcLoc as GHC
-import RdrName as GHC
+import ApiAnnotation as GHC (AnnKeywordId(..))
+import FastString as GHC (unpackFS)
 import HsTypes as GHC
-import OccName as GHC
-import Name as GHC
-import ApiAnnotation as GHC
-import Outputable as GHC
-import FastString as GHC
+import Name as GHC (occNameString, nameOccName, isWiredInName)
+import OccName as GHC (occNameString)
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
+import RdrName as GHC (RdrName(..))
+import SrcLoc as GHC
 
-import Control.Monad.Reader
+import Control.Monad.Reader (Monad(..), asks)
 import Data.Data (toConstr)
 
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Names
-import Language.Haskell.Tools.AST.FromGHC.Monad
-import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(..), Dom, RangeStage, HasNoSemanticInfo)
+import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), Dom, RangeStage, HasNoSemanticInfo)
 import qualified Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), cleanHsType)
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..), transformingPossibleVar)
+import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..), trfName)
+import Language.Haskell.Tools.AST.FromGHC.Utils
 
 
 trfKindSig :: TransformName n r => Maybe (LHsKind n) -> Trf (AnnMaybeG AST.UKindConstraint (Dom r) RangeStage)

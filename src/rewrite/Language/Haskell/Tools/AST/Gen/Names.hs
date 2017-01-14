@@ -5,12 +5,12 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Names where
 
-import qualified Name as GHC
-import Data.String
+import Data.String (IsString(..), String(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils
+import Language.Haskell.Tools.AST.Gen.Utils (emptyList, mkAnn, mkAnnList)
 import Language.Haskell.Tools.Transform
+import qualified Name as GHC
 
 -- | Creates a simple, unqualified name
 mkName :: String -> Name dom

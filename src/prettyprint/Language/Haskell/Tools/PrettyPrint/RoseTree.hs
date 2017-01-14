@@ -6,7 +6,7 @@
 -- | A simpler representation of the original AST.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
 
-import Control.Monad.State
+import Control.Monad.State (Monad(..), execState, modify)
 import Language.Haskell.Tools.AST
 
 -- | A rose tree containing additional node information         
