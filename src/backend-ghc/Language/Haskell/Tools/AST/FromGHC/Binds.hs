@@ -84,7 +84,7 @@ trfRhsGuard' _ = error "trfRhsGuard': not a valid guard stmt"
 trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
 trfWhereLocalBinds EmptyLocalBinds = nothing "" "" atTheEnd
 trfWhereLocalBinds binds
-  = makeJust <$> annLocNoSema (combineSrcSpans (getBindLocs binds) <$> tokenLoc AnnWhere) (AST.ULocalBinds <$> addToScope binds (trfLocalBinds binds))
+  = makeJust <$> annLocNoSema (combineSrcSpans (getBindLocs binds) <$> tokenLocBack AnnWhere) (AST.ULocalBinds <$> addToScope binds (trfLocalBinds binds))
 
 getBindLocs :: HsLocalBinds n -> SrcSpan
 getBindLocs (HsValBinds (ValBindsIn binds sigs)) = foldLocs $ map getLoc (bagToList binds) ++ map getLoc sigs

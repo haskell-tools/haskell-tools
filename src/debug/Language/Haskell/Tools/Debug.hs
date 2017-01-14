@@ -35,11 +35,11 @@ demoRefactor command workingDir args moduleName =
     let annots = pm_annotations $ tm_parsed_module t
 
     liftIO $ putStrLn $ show annots
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== parsed source:"
     liftIO $ putStrLn $ show (pm_parsed_source p)
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== renamed source:"
     liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
-    liftIO $ putStrLn "==========="
+    liftIO $ putStrLn "=========== typechecked source:"
     liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)

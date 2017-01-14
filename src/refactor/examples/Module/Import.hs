@@ -8,3 +8,4 @@ import qualified Data.List
 import Data.List as List
 import Data.List(map,(++))
 import Data.Function hiding ((&))
+import Control.Monad.Writer hiding (Alt)

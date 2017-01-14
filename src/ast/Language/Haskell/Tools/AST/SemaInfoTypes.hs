@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable
+           , StandaloneDeriving 
            , TemplateHaskell 
            , UndecidableInstances
            , FlexibleContexts
@@ -12,7 +13,7 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
   , defModuleName, defIsBootModule, implicitNames, importedModule, availableNames, importedNames
-  , implicitFieldBindings
+  , implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts, prelFamInsts
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
@@ -25,6 +26,8 @@ import Module as GHC
 import SrcLoc as GHC
 import RdrName as GHC
 import Outputable as GHC
+import InstEnv as GHC
+import FamInstEnv as GHC
 
 import Data.List
 import Data.Data
@@ -96,22 +99,29 @@ mkCNameInfo = CNameInfo
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module 
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
                                , _implicitNames :: [n] -- ^ Implicitely imported names
+                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed from Prelude.
+                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitely passed from Prelude.
                                } 
-  deriving (Eq, Data)
+  deriving Data
 
 -- | Creates semantic information for the module element
-mkModuleInfo :: GHC.Module -> Bool -> [n] -> ModuleInfo n
+mkModuleInfo :: GHC.Module -> Bool -> [n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
 mkModuleInfo = ModuleInfo
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
                                , _importedNames :: [n] -- ^ Names actually imported from the module.
-                               } 
-  deriving (Eq, Data)
+                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed.
+                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitely passed.
+                               }
+  deriving Data
+
+deriving instance Data FamInst
+deriving instance Data FamFlavor
 
 -- | Creates semantic information for an import declaration
-mkImportInfo :: GHC.Module -> [n] -> [n] -> ImportInfo n
+mkImportInfo :: GHC.Module -> [n] -> [n] -> [ClsInst] -> [FamInst] -> ImportInfo n
 mkImportInfo = ImportInfo
 
 -- | Info corresponding to an record-wildcard
@@ -135,10 +145,14 @@ instance Show CNameInfo where
   show (CNameInfo locals defined nameInfo fixity) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
 
 instance Outputable n => Show (ModuleInfo n) where
-  show (ModuleInfo mod isboot imp) = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ ")"
+  show (ModuleInfo mod isboot imp clsInsts famInsts) 
+    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ " " 
+          ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Outputable n => Show (ImportInfo n) where
-  show (ImportInfo mod avail imported) = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ ")"
+  show (ImportInfo mod avail imported clsInsts famInsts) 
+    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ " " 
+          ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Show ImplicitFieldInfo where
   show (ImplicitFieldInfo bnds) = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map (\(from,to) -> showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)) bnds)) ++ "])"
@@ -161,7 +175,7 @@ instance Functor ModuleInfo where
   fmap f = implicitNames .- map f
 
 instance Functor ImportInfo where
-  fmap f (ImportInfo mod avail imps) = ImportInfo mod (map f avail) (map f imps)
+  fmap f (ImportInfo mod avail imps clsInsts famInsts) = ImportInfo mod (map f avail) (map f imps) clsInsts famInsts
 
 instance Foldable NameInfo where
   foldMap f si = maybe mempty f (si ^? nameInfo)
@@ -178,8 +192,10 @@ instance Traversable NameInfo where
   traverse _ (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
 
 instance Traversable ModuleInfo where
-  traverse f (ModuleInfo mod isboot imp) = ModuleInfo mod isboot <$> traverse f imp 
+  traverse f (ModuleInfo mod isboot imp clsInsts famInsts) 
+    = ModuleInfo mod isboot <$> traverse f imp <*> pure clsInsts <*> pure famInsts
 
 instance Traversable ImportInfo where
-  traverse f (ImportInfo mod avail imps) = ImportInfo mod <$> traverse f avail <*> traverse f imps
+  traverse f (ImportInfo mod avail imps clsInsts famInsts) 
+    = ImportInfo mod <$> traverse f avail <*> traverse f imps <*> pure clsInsts <*> pure famInsts
 

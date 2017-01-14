@@ -30,7 +30,7 @@ pattern ModuleExport name <- Ann _ (UModuleExport name)
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
 pattern IESpec :: Name dom -> MaybeSubSpec dom -> IESpec dom
-pattern IESpec name ss <- Ann _ (UIESpec name ss)
+pattern IESpec name ss <- Ann _ (UIESpec _ name ss)
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
 pattern SubAll :: SubSpec dom

@@ -31,6 +31,7 @@ deriveSemanticTraversal ''UModulePragma
 deriveSemanticTraversal ''UFilePragma
 deriveSemanticTraversal ''UImportDecl
 deriveSemanticTraversal ''UImportSpec
+deriveSemanticTraversal ''UImportModifier
 deriveSemanticTraversal ''UImportQualified
 deriveSemanticTraversal ''UImportSource
 deriveSemanticTraversal ''UImportSafe

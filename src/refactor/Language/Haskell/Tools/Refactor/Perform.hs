@@ -35,6 +35,7 @@ performCommand :: (HasModuleInfo dom, DomGenerateExports dom, OrganizeImportsDom
 performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
   where selectCommand NoRefactor = localRefactoring return
         selectCommand OrganizeImports = localRefactoring organizeImports
+        selectCommand ProjectOrganizeImports = projectOrganizeImports 
         selectCommand GenerateExports = localRefactoring generateExports 
         selectCommand (GenerateSignature sp) = localRefactoring $ generateTypeSignature' (correctRefactorSpan (snd mod) sp)
         selectCommand (RenameDefinition sp str) = renameDefinition' (correctRefactorSpan (snd mod) sp) str
@@ -44,6 +45,7 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
 -- | A refactoring command
 data RefactorCommand = NoRefactor 
                      | OrganizeImports
+                     | ProjectOrganizeImports
                      | GenerateExports
                      | GenerateSignature RealSrcSpan
                      | RenameDefinition RealSrcSpan String
@@ -59,6 +61,7 @@ analyzeCommand :: String -> [String] -> RefactorCommand
 analyzeCommand "" _ = NoRefactor
 analyzeCommand "CheckSource" _ = NoRefactor
 analyzeCommand "OrganizeImports" _ = OrganizeImports
+analyzeCommand "ProjectOrganizeImports" _ = ProjectOrganizeImports
 analyzeCommand "GenerateExports" _ = GenerateExports
 analyzeCommand "GenerateSignature" [sp] = GenerateSignature (readSrcSpan sp)
 analyzeCommand "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan sp) newName

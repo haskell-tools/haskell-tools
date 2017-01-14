@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase
-           , CPP 
            , TemplateHaskell
            #-}
 -- | Generating instances for traversal on semantic information

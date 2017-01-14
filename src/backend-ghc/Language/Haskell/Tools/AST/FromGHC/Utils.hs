@@ -14,26 +14,43 @@ module Language.Haskell.Tools.AST.FromGHC.Utils where
 import ApiAnnotation
 import SrcLoc
 import GHC
+import DynFlags
 import Avail
 import HscTypes
 import BasicTypes
 import HsSyn
-import Module
+import Module as GHC
 import Name
+import Id
 import FastString
+import InstEnv as GHC
+import FamInstEnv as GHC
+import CoAxiom as GHC
+import CoreSyn as GHC
+import FieldLabel as GHC
+import Language.Haskell.TH.LanguageExtensions
 
 import Control.Monad.Reader
 import Control.Reference hiding (element)
 import Data.Maybe
+import Data.Either
 import Data.IORef
 import Data.Function hiding ((&))
 import Data.List
 import Data.Char
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes
+import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
+
+createModuleInfo :: ModSummary -> Trf (Sema.ModuleInfo GHC.Name)
+createModuleInfo mod = do 
+  let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
+  (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
+  (insts, famInsts) <- if prelude then lift $ getOrphanAndFamInstances (Module baseUnitId (GHC.mkModuleName "Prelude")) 
+                                  else return ([], [])
+  return $ mkModuleInfo (ms_mod mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True) preludeImports insts famInsts
 
 -- | Creates a semantic information for a name
 createNameInfo :: n -> Trf (NameInfo n)
@@ -64,28 +81,52 @@ createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAnd
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
 createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) = 
-  do (mod,importedNames) <- getImportedNames (Module.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
+  do (mod,importedNames) <- getImportedNames (GHC.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
      names <- liftGhc $ filterM (checkImportVisible declHiding) importedNames
      lookedUpNames <- liftGhc $ mapM (getFromNameUsing getTopLevelId) names
      lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId) importedNames
-     return $ mkImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames)
+     (insts,famInsts) <- lift $ getOrphanAndFamInstances mod
+     return $ mkImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames) insts famInsts
+
+getOrphanAndFamInstances :: Module -> Ghc ([ClsInst], [FamInst])
+getOrphanAndFamInstances mod = do      
+  env <- getSession
+  eps <- liftIO (readIORef (hsc_EPS env))
+  let ifc = lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod
+      hp = lookupHptByModule (hsc_HPT env) mod
+      uses = catMaybes $ map getModule $ maybe [] (\ifc -> dep_orphs (mi_deps ifc) `union` dep_finsts (mi_deps ifc)) ifc
+      getModule mod = if moduleUnitId mod == mainUnitId 
+                        then fmap Right $ lookupHptByModule (hsc_HPT env) mod
+                        else fmap Left $ lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod
+      usedMods = lefts uses
+      usedDetails = map hm_details (maybeToList hp ++ rights uses)
+      hptInstances = filter (isOrphan . is_orphan) $ concatMap md_insts usedDetails
+      hptFamilyInstances = concatMap md_fam_insts usedDetails
+      allInstances = instEnvElts (eps_inst_env eps)
+      relevantInstances = hptInstances ++ filter ((\n -> nameModule n `elem` (mod : map mi_module usedMods)) . idName . instanceDFunId) (filter (isOrphan . is_orphan) allInstances)
+      allFamilyInstances = famInstEnvElts (eps_fam_inst_env eps)
+      relevantFamilyInstances = hptFamilyInstances ++ filter ((\n -> nameModule n `elem` (mod : map mi_module usedMods)) . co_ax_name . fi_axiom) allFamilyInstances
+  return (relevantInstances, relevantFamilyInstances)
+
 
 -- | Get names that are imported from a given import
 getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [GHC.Name])
 getImportedNames name pkg = liftGhc $ do
+  hpt <- hsc_HPT <$> getSession
   eps <- getSession >>= liftIO . readIORef . hsc_EPS
   mod <- findModule (mkModuleName name) (fmap mkFastString pkg)
   -- load exported names from interface file
   let ifaceNames = concatMap availNames $ maybe [] mi_exports 
                                         $ flip lookupModuleEnv mod 
                                         $ eps_PIT eps
-  loadedNames <- maybe [] modInfoExports <$> getModuleInfo mod
-  return (mod, ifaceNames ++ loadedNames)
+  let homeExports = maybe [] (md_exports . hm_details) (lookupHptByModule hpt mod)
+  mi <- getModuleInfo mod
+  return (mod, ifaceNames ++ concatMap availNamesWithSelectors homeExports)
 
 -- | Check is a given name is imported from an import with given import specification.
 checkImportVisible :: (HsHasName name, GhcMonad m) => Maybe (Bool, Located [LIE name]) -> GHC.Name -> m Bool
 checkImportVisible (Just (isHiding, specs)) name
-  | isHiding  = not . or  @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
+  | isHiding  = not . or @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
   | otherwise = or @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
 checkImportVisible _ _ = return True
 
@@ -94,13 +135,17 @@ ieSpecMatches (hsGetNames . HsSyn.ieName -> [n]) name
   | n == name = return True
   | isTyConName n
   = do entity <- lookupName n
-       return $ case entity of Just (ATyCon tc) -> name `elem` map getName (tyConDataCons tc)
-                               _                -> False
+       return $ case entity of Just (ATyCon tc) 
+                                 | Just cls <- tyConClass_maybe tc 
+                                     -> name `elem` map getName (classMethods cls)
+                                 | otherwise -> name `elem` concatMap (\dc -> getName dc : map flSelector (dataConFieldLabels dc)) 
+                                                                      (tyConDataCons tc)
+                               _             -> False
 ieSpecMatches _ _ = return False
 
 noSemaInfo :: src -> NodeInfo NoSemanticInfo src
 noSemaInfo = NodeInfo mkNoSemanticInfo
-
+ 
 -- | Creates a place for a missing node with a default location
 nothing :: String -> String -> Trf SrcLoc -> Trf (AnnMaybeG e (Dom n) RangeStage)
 nothing bef aft pos = annNothing . noSemaInfo . OptionalPos bef aft <$> pos 
@@ -346,6 +391,10 @@ orderDefs = sortBy (compare `on` AST.ordSrcSpan . (^. AST.annotation & AST.sourc
 orderAnnList :: AnnListG e (Dom n) RangeStage -> AnnListG e (Dom n) RangeStage
 orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)
 
+-- | Only keeps one of the elements that are on the same source location
+removeDuplicates :: [Located e] -> [Located e]
+removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)
+removeDuplicates [] = []
 
 -- | Transform a list of definitions where the defined names are in scope for subsequent definitions
 trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]

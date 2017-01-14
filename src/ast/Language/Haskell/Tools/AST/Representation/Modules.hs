@@ -34,9 +34,14 @@ data UExportSpec dom stage
   
 -- | Marks a name to be imported or exported with related names (subspecifier)
 data UIESpec dom stage
-  = UIESpec { _ieName :: Ann UName dom stage
+  = UIESpec { _ieModifier :: AnnMaybeG UImportModifier dom stage
+            , _ieName :: Ann UName dom stage
             , _ieSubspec :: AnnMaybeG USubSpec dom stage
             }
+
+-- | Specifies the imported element
+data UImportModifier dom stage
+  = UImportPattern -- ^ @pattern@: modifier for importing pattern synonyms
   
 -- | Marks how related names will be imported or exported with a given name
 data USubSpec dom stage

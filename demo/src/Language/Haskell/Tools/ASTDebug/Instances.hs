@@ -55,6 +55,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug UModulePragma dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UFilePragma dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UImportDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UImportSpec dom st
+instance (Domain dom, SourceInfo st) => ASTDebug UImportModifier dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UImportQualified dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UImportSource dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UImportSafe dom st

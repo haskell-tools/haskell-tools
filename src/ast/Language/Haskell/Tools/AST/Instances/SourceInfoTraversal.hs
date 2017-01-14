@@ -31,6 +31,7 @@ deriveSourceInfoTraversal ''UModulePragma
 deriveSourceInfoTraversal ''UFilePragma
 deriveSourceInfoTraversal ''UImportDecl
 deriveSourceInfoTraversal ''UImportSpec
+deriveSourceInfoTraversal ''UImportModifier
 deriveSourceInfoTraversal ''UImportQualified
 deriveSourceInfoTraversal ''UImportSource
 deriveSourceInfoTraversal ''UImportSafe

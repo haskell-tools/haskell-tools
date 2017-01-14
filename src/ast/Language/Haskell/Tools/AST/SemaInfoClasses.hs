@@ -119,21 +119,29 @@ class HasModuleInfo' si where
   semanticsModule :: si -> GHC.Module
   isBootModule :: si -> Bool
   semanticsImplicitImports :: si -> [GHC.Name]
+  semanticsPrelOrphanInsts :: si -> [ClsInst]
+  semanticsPrelFamInsts :: si -> [FamInst]
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
   semanticsModule = (^. defModuleName)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = (^. implicitNames)
+  semanticsPrelOrphanInsts = (^. prelOrphanInsts)
+  semanticsPrelFamInsts = (^. prelFamInsts)
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
   semanticsModule = (^. defModuleName)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = map idName . (^. implicitNames)
+  semanticsPrelOrphanInsts = (^. prelOrphanInsts)
+  semanticsPrelFamInsts = (^. prelFamInsts)
 
 instance HasModuleInfo dom => HasModuleInfo' (Ann UModule dom st) where
   semanticsModule = semanticsModule . (^. annotation&semanticInfo) 
   isBootModule = isBootModule . (^. annotation&semanticInfo) 
   semanticsImplicitImports = semanticsImplicitImports . (^. annotation&semanticInfo) 
+  semanticsPrelOrphanInsts = semanticsPrelOrphanInsts . (^. annotation&semanticInfo) 
+  semanticsPrelFamInsts = semanticsPrelFamInsts . (^. annotation&semanticInfo) 
 
 -- * Information about imports
 
@@ -143,21 +151,29 @@ class HasImportInfo' si where
   semanticsImportedModule :: si -> GHC.Module
   semanticsAvailable :: si -> [GHC.Name]
   semanticsImported :: si -> [GHC.Name]
+  semanticsOrphanInsts :: si -> [ClsInst]
+  semanticsFamInsts :: si -> [FamInst]
 
 instance HasImportInfo' (AST.ImportInfo GHC.Name) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = (^. availableNames)
   semanticsImported = (^. importedNames)
+  semanticsOrphanInsts = (^. importedOrphanInsts)
+  semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo' (AST.ImportInfo GHC.Id) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = map idName . (^. availableNames)
   semanticsImported = map idName . (^. importedNames)
+  semanticsOrphanInsts = (^. importedOrphanInsts)
+  semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo dom => HasImportInfo' (Ann UImportDecl dom st) where
   semanticsImportedModule = semanticsImportedModule . (^. annotation&semanticInfo) 
   semanticsAvailable = semanticsAvailable . (^. annotation&semanticInfo) 
   semanticsImported = semanticsImported . (^. annotation&semanticInfo) 
+  semanticsOrphanInsts = semanticsOrphanInsts . (^. annotation&semanticInfo) 
+  semanticsFamInsts = semanticsFamInsts . (^. annotation&semanticInfo) 
 
 -- * Information about implicitely bounded fields
 

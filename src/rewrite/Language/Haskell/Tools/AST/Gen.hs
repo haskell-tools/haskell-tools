@@ -24,3 +24,4 @@ import Language.Haskell.Tools.AST.Gen.Literals
 import Language.Haskell.Tools.AST.Gen.Patterns
 import Language.Haskell.Tools.AST.Gen.Names
 import Language.Haskell.Tools.AST.Gen.TH
+import Language.Haskell.Tools.AST.Gen.Utils

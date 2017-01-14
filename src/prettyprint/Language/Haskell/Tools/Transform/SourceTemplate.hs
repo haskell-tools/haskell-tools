@@ -123,11 +123,11 @@ instance HasRange (OptionalInfo SrcTemplateStage) where
 instance Show (SpanInfo SrcTemplateStage) where
   show (SourceTemplateNode _ sp _ _) = concatMap show sp
 instance Show (ListInfo SrcTemplateStage) where
-  show SourceTemplateList{..} = "«*" ++ show _srcTmpListBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpListAfter ++ "*»"
+  show SourceTemplateList{..} = "<*" ++ show _srcTmpListBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpListAfter ++ "*>"
 instance Show (OptionalInfo SrcTemplateStage) where
-  show SourceTemplateOpt{..} = "«?" ++ show _srcTmpOptBefore ++ " " ++ show _srcTmpOptAfter ++ "?»"
+  show SourceTemplateOpt{..} = "<?" ++ show _srcTmpOptBefore ++ " " ++ show _srcTmpOptAfter ++ "?>"
 
 instance Show SourceTemplateElem where
   show (TextElem s) = s
-  show ChildElem = "«.»"
+  show ChildElem = "<.>"
 

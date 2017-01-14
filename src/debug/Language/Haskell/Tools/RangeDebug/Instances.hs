@@ -38,6 +38,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug UModulePragma dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UFilePragma dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UImportDecl dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UImportSpec dom st
+instance (SourceInfo st, Domain dom) => TreeDebug UImportModifier dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UImportQualified dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UImportSource dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UImportSafe dom st

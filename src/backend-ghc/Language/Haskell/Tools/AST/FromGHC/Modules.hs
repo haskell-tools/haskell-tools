@@ -41,11 +41,6 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 
-createModuleInfo :: ModSummary -> Trf (AST.ModuleInfo GHC.Name)
-createModuleInfo mod = do let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
-                          (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
-                          return $ mkModuleInfo (ms_mod mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True) preludeImports
-
 trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
 trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $ 
                   \(HsModule name exports imports decls deprec _) -> 
@@ -189,24 +184,30 @@ trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc isSafe isQual _ declAs d
   
 trfImportSpecs :: TransformName n r => Maybe (Bool, Located [LIE n]) -> Trf (AnnMaybeG AST.UImportSpec (Dom r) RangeStage)
 trfImportSpecs (Just (True, l)) 
-  = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecHiding <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
+  = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecHiding <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec (removeDuplicates specs)))) l
 trfImportSpecs (Just (False, l)) 
-  = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecList <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec specs))) l
+  = makeJust <$> trfLocNoSema (\specs -> AST.UImportSpecList <$> (makeList ", " (after AnnOpenP) (catMaybes <$> mapM trfIESpec (removeDuplicates specs)))) l
 trfImportSpecs Nothing = nothing " " "" atTheEnd
     
 trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UIESpec (Dom r) RangeStage)) 
 trfIESpec = trfMaybeLocNoSema trfIESpec'
   
 trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
-trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
-trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfName n <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n) 
-  = Just <$> (AST.UIESpec <$> trfName n <*> (makeJust <$> (annLocNoSema (tokenLoc AnnDotdot) (pure AST.USubSpecAll))))
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (makeJust <$> (annLocNoSema (tokenLoc AnnDotdot) (pure AST.USubSpecAll))))
 trfIESpec' (IEThingWith n _ ls _)
-  = Just <$> (AST.UIESpec <$> trfName n
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n
                           <*> (makeJust <$> between AnnOpenP AnnCloseP 
                                                    (annContNoSema $ AST.USubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfName ls))))
 trfIESpec' _ = pure Nothing
+
+trfImportModifier :: Trf (AnnMaybeG AST.UImportModifier (Dom r) RangeStage)
+trfImportModifier = do
+  patLoc <- tokenLoc AnnPattern
+  if isGoodSrcSpan patLoc then makeJust <$> annLocNoSema (return patLoc) (return AST.UImportPattern)
+                          else nothing " " "" atTheStart
   
 trfModuleName :: Located ModuleName -> Trf (Ann AST.UModuleName (Dom r) RangeStage)
 trfModuleName = trfLocNoSema trfModuleName'

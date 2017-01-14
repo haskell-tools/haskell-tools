@@ -272,7 +272,6 @@ data Ann elem dom stage
         
 makeReferences ''Ann
 
-
 -- | A list of AST elements
 data AnnListG elem dom stage = AnnListG { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage) 
                                         , _annListElems :: [Ann elem dom stage]
@@ -289,6 +288,22 @@ data AnnMaybeG elem dom stage = AnnMaybeG { _annMaybeAnnot :: NodeInfo (Semantic
                                           }
                              
 makeReferences ''AnnMaybeG
+
+class HasSourceInfo e where
+  type SourceInfoType e :: *
+  srcInfo :: Simple Lens e (SourceInfoType e)
+
+instance HasSourceInfo (Ann elem dom stage) where
+  type SourceInfoType (Ann elem dom stage) = SpanInfo stage
+  srcInfo = annotation & sourceInfo
+
+instance HasSourceInfo (AnnListG elem dom stage) where
+  type SourceInfoType (AnnListG elem dom stage) = ListInfo stage
+  srcInfo = annListAnnot & sourceInfo
+
+instance HasSourceInfo (AnnMaybeG elem dom stage) where
+  type SourceInfoType (AnnMaybeG elem dom stage) = OptionalInfo stage
+  srcInfo = annMaybeAnnot & sourceInfo
                           
 annJust :: Partial (AnnMaybeG e d s) (AnnMaybeG e d s) (Ann e d s) (Ann e d s)                          
 annJust = annMaybe & just

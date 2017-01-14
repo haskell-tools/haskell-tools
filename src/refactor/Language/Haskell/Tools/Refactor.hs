@@ -10,8 +10,12 @@ module Language.Haskell.Tools.Refactor
   , module Language.Haskell.Tools.Refactor.ListOperations
   , module Language.Haskell.Tools.Refactor.BindingElem
   , module Language.Haskell.Tools.IndentationUtils
-  , HasRange(..), annListElems, annList, annJust, annMaybe, isAnnNothing, Domain
+  , HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain
   , shortShowSpan, SrcTemplateStage, SourceInfoTraversal(..)
+  -- elements of source templates
+  , sourceTemplateNodeRange, sourceTemplateNodeElems
+  , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
+  , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
   ) where
 
 -- Important: Haddock doesn't support the rename all exported modules and export them at once hack
@@ -20,6 +24,7 @@ import Language.Haskell.Tools.AST.SemaInfoClasses
 import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.Helpers
+import Language.Haskell.Tools.Transform
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.Refactor.Prepare

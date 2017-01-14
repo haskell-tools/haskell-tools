@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 -- | Defines operation on AST lists. 
 -- AST lists carry source information so simple list modification is not enough.
 module Language.Haskell.Tools.Refactor.ListOperations where
@@ -10,27 +11,30 @@ import Language.Haskell.Tools.Transform
 
 -- | Filters the elements of the list. By default it removes the separator before the element.
 -- Of course, if the first element is removed, the following separator is removed as well.
-filterList :: (Ann e dom SrcTemplateStage -> Bool) -> AnnListG e dom SrcTemplateStage -> AnnListG e dom SrcTemplateStage
-filterList pred (AnnListG (NodeInfo sema src) elems)
-  = let (filteredElems, separators) = filterElems elems (src ^. srcTmpSeparators)
+filterList :: (Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> AnnList e dom
+filterList pred = filterListIndexed (const pred)
+
+filterListIndexed :: (Int -> Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> AnnList e dom
+filterListIndexed pred (AnnListG (NodeInfo sema src) elems)
+  = let (filteredElems, separators) = filterElems 0 elems (src ^. srcTmpSeparators)
      in AnnListG (NodeInfo sema (srcTmpSeparators .= separators $ src)) filteredElems
-  where filterElems (elem:ls) (sep:seps) 
-          | pred elem = let (elems',seps') = filterElems' ls (sep:seps) in (elem:elems', seps')
-          | otherwise = filterElems ls seps
-        filterElems elems [] = (filter pred elems, [])
-        filterElems [] seps = ([], seps)
+  where filterElems i (elem:ls) (sep:seps) 
+          | pred i elem = let (elems',seps') = filterElems' (i+1) ls (sep:seps) in (elem:elems', seps')
+          | otherwise = filterElems (i+1) ls seps
+        filterElems i elems [] = (filter (pred i) elems, [])
+        filterElems _ [] seps = ([], seps)
         
-        filterElems' (elem:ls) (sep:seps) 
-          | pred elem = let (elems',seps') = filterElems' ls seps in (elem:elems', sep:seps')
-          | otherwise = filterElems' ls seps
-        filterElems' elems [] = (filter pred elems, [])
-        filterElems' [] seps = ([], seps)
+        filterElems' i (elem:ls) (sep:seps) 
+          | pred i elem = let (elems',seps') = filterElems' (i+1) ls seps in (elem:elems', sep:seps')
+          | otherwise = filterElems' (i+1) ls seps
+        filterElems' i elems [] = (filter (pred i) elems, [])
+        filterElems' _ [] seps = ([], seps)
                             
 -- | Inserts the element in the places where the two positioning functions (one checks the element before, one the element after)
 -- allows the placement.         
 insertWhere :: Ann e dom SrcTemplateStage -> (Maybe (Ann e dom SrcTemplateStage) -> Bool) 
-                 -> (Maybe (Ann e dom SrcTemplateStage) -> Bool) -> AnnListG e dom SrcTemplateStage 
-                 -> AnnListG e dom SrcTemplateStage
+                 -> (Maybe (Ann e dom SrcTemplateStage) -> Bool) -> AnnList e dom 
+                 -> AnnList e dom
 insertWhere e before after al 
   = let index = insertIndex before after (al ^? annList)
      in case index of 
@@ -59,6 +63,14 @@ insertIndex before after list@(first:_)
         insertIndex' before after [] 
           | before Nothing && after Nothing = Just 0
           | otherwise = Nothing
+
+zipWithSeparators :: AnnList e dom -> [(String, Ann e dom SrcTemplateStage)]
+zipWithSeparators (AnnListG (NodeInfo _ src) elems) 
+  | [] <- src ^. srcTmpSeparators 
+  = map (src ^. srcTmpDefaultSeparator ,) elems
+  | otherwise 
+  = zip ("" : seps ++ repeat (last seps)) elems
+  where seps = src ^. srcTmpSeparators
 
 replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom           
 replaceWithJust e (AnnMaybeG temp _) = AnnMaybeG temp (Just e)

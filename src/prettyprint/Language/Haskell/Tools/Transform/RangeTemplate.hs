@@ -93,10 +93,10 @@ instance HasRange (OptionalInfo RngTemplateStage) where
 instance Show (SpanInfo RngTemplateStage) where
   show rngNode = concatMap show $ rngNode ^. rngTemplateNodeElems
 instance Show (ListInfo RngTemplateStage) where
-  show RangeTemplateList{..} = "«*" ++ shortShowSpan (RealSrcSpan _rngTemplateListRange) ++ " " ++ show _rngTmpListBefore ++ " " ++ show _rngTmpDefaultSeparator ++ " " ++ show _rngTmpListAfter ++ "*»"
+  show RangeTemplateList{..} = "<*" ++ shortShowSpan (RealSrcSpan _rngTemplateListRange) ++ " " ++ show _rngTmpListBefore ++ " " ++ show _rngTmpDefaultSeparator ++ " " ++ show _rngTmpListAfter ++ "*>"
 instance Show (OptionalInfo RngTemplateStage) where
-  show RangeTemplateOpt{..} = "«?" ++ shortShowSpan (RealSrcSpan _rngTemplateOptRange) ++ " " ++ show _rngTmpOptBefore ++ " " ++ show _rngTmpOptAfter ++ "?»"
+  show RangeTemplateOpt{..} = "<?" ++ shortShowSpan (RealSrcSpan _rngTemplateOptRange) ++ " " ++ show _rngTmpOptBefore ++ " " ++ show _rngTmpOptAfter ++ "?>"
                        
 instance Show RangeTemplateElem where
   show (RangeElem sp) = shortShowSpan (RealSrcSpan sp)
-  show RangeChildElem = "«.»"
+  show RangeChildElem = "<.>"

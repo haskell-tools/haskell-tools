@@ -33,6 +33,7 @@ deriving instance (Domain dom, SourceInfo stage) => Data (UModulePragma dom stag
 deriving instance (Domain dom, SourceInfo stage) => Data (UFilePragma dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UImportDecl dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UImportSpec dom stage)
+deriving instance (Domain dom, SourceInfo stage) => Data (UImportModifier dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UImportQualified dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UImportSource dom stage)
 deriving instance (Domain dom, SourceInfo stage) => Data (UImportSafe dom stage)
