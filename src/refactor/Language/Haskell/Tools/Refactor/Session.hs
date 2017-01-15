@@ -3,6 +3,7 @@
            #-}
 module Language.Haskell.Tools.Refactor.Session where
 
+import Control.Exception
 import Control.Monad.State
 import Control.Reference
 import qualified Data.List as List
@@ -68,7 +69,8 @@ loadPackagesFrom report packages =
           reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
 
 handleErrors :: ExceptionMonad m => m a -> m (Either String a)
-handleErrors action = handleSourceError (return . Left . errorsText) (Right <$> action)
+handleErrors action = handleSourceError (return . Left . errorsText) (Right <$> action) 
+                        `gcatch` (\e -> return $ Left $ displayException (e :: RefactorException))
   where errorsText = concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages
 
 keyFromMS :: ModSummary -> SourceFileKey

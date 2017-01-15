@@ -21,10 +21,11 @@ import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import SrcLoc
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.IntSet (member)
-import Data.List ((\\))
+import Data.List ((\\), intersperse)
 import Data.List.Split
 import Data.Maybe
 import Language.Haskell.TH.LanguageExtensions
@@ -132,9 +133,12 @@ type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 -- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
-  let compExts = extensionFlags $ ms_hspp_opts modSum
-      hasStaticFlags = fromEnum StaticPointers `member` compExts
+  let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
+      hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
+      hasUnicodeExtension = UnicodeSyntax `xopt` ms_hspp_opts modSum
       ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
+  when (hasCppExtension || hasUnicodeExtension) 
+    $ throw (IllegalExtensions (["CPP" | hasCppExtension] ++ ["UnicodeSyntax" | hasUnicodeExtension]))
   p <- parseModule ms
   tc <- typecheckModule p
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice

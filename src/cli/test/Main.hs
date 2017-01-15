@@ -78,6 +78,9 @@ cliTests
           ++ "All modules loaded.\n" 
           ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
       )
+    , ( [testRoot </> "Project" </> "illegal-extension"]
+      , ["-dry-run", "-one-shot"] 
+      , "", "Compiling modules. This may take some time. Please wait.\nThe following extensions are not allowed: CPP.\n")
     ]
 
 benchTests :: IO [TestTree]
