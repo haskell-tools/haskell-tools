@@ -23,6 +23,7 @@ import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
 
+import Control.Exception
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Except
@@ -33,6 +34,7 @@ import Data.Function (on)
 import Data.List
 import Data.List.Split
 import Data.Maybe
+import Data.Typeable
 
 type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
 
@@ -61,6 +63,15 @@ data RefactorChange dom = ContentChanged { fromContentChanged :: (ModuleDom dom)
                                         , createdModuleContent :: UnnamedModule dom
                                         , sameLocation :: SourceFileKey
                                         }
+
+data RefactorException = IllegalExtensions [String]
+                       | UnknownException String
+  deriving (Show, Typeable)
+
+instance Exception RefactorException where
+  displayException (IllegalExtensions exts) 
+    = "The following extensions are not allowed: " ++ (concat $ intersperse ", " exts) ++ "."
+  displayException (UnknownException ex) = "An unexpected problem appeared: " ++ ex ++ "."
 
 instance Show (RefactorChange dom) where
   show (ContentChanged (n, _)) = "ContentChanged (" ++ show n  ++ ")"

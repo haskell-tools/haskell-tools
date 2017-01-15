@@ -29,6 +29,7 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Project/multi-packages-same-module/package2/*.hs
                   , examples/Project/multi-packages-same-module/package2/*.cabal
                   , examples/Project/no-cabal/*.hs
+                  , examples/Project/illegal-extension/*.hs
                   , examples/Project/reloading/*.hs
                   , examples/Project/selection/*.hs
                   , examples/Project/source-dir/*.cabal

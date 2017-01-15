@@ -209,6 +209,7 @@ handleErrors wd req next io = io `catch` (next <=< handleException)
           = return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
           | Just (ae :: AsyncException) <- fromException e = throw ae
           | Just (ge :: GhcException) <- fromException e = return $ ErrorMessage $ show ge
+          | Just (re :: RefactorException) <- fromException e = return $ ErrorMessage $ displayException re
           | otherwise = do logToFile wd (show e) req
                            return $ ErrorMessage (showInternalError e)
         
@@ -219,7 +220,7 @@ handleErrors wd req next io = io `catch` (next <=< handleException)
         showFileName = joinPath . drop 2 . splitPath . makeRelative wd . unpackFS
 
         showInternalError :: SomeException -> String
-        showInternalError e = "An internal error happened. The report has been sent to the developers. " ++ show e
+        showInternalError e = "An internal error happened. The report has been sent to the developers. " ++ displayException e
 
 logToFile :: FilePath -> String -> ClientMessage -> IO ()
 logToFile wd err input = do
