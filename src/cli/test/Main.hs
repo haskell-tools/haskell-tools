@@ -42,16 +42,16 @@ cliTests :: [([FilePath], [String], String, String)]
 cliTests 
   = [ ( [testRoot </> "Project" </> "source-dir"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "", prefixText ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
     , ( [testRoot </> "Project" </> "source-dir-outside"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "", prefixText ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
     , ( [testRoot </> "Project" </> "no-cabal"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "", prefixText ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
     , ( [testRoot </> "Project" </> "has-cabal"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""] 
-      , "", prefixText ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
     , ( [testRoot </> "Project" </> "selection"], [] 
       , "SelectModule C\nSelectModule B\nRenameDefinition 5:1-5:2 bb\nSelectModule C\nRenameDefinition 3:1-3:2 cc\nExit"
       , prefixText ["C","B"] ++ "no-module-selected> C> B> " 
@@ -65,17 +65,17 @@ cliTests
           ++ reloads ["B", "A"] ++ "B> ")
     , ( map ((testRoot </> "Project" </> "multi-packages") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , prefixText ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n" 
+      , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n" 
       )
     , ( map ((testRoot </> "Project" </> "multi-packages-flags") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , prefixText ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
+      , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
       )
     , ( map ((testRoot </> "Project" </> "multi-packages-same-module") </>) ["package1", "package2"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
       , "Compiling modules. This may take some time. Please wait.\nLoaded module: A\n" 
           ++ "The following modules are ignored: A. Multiple modules with the same qualified name are not supported.\n"
-          ++ "All modules loaded. Use 'SelectModule module-name' to select a module\n" 
+          ++ "All modules loaded.\n" 
           ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
       )
     ]
@@ -127,7 +127,14 @@ prefixText :: [String] -> String
 prefixText mods 
   = "Compiling modules. This may take some time. Please wait.\n" 
       ++ concatMap (\m -> "Loaded module: " ++ m ++ "\n") mods 
-      ++ "All modules loaded. Use 'SelectModule module-name' to select a module\n"
+      ++ "All modules loaded. Use 'SelectModule module-name' to select a module.\n"
+
+oneShotPrefix :: [String] -> String
+oneShotPrefix mods 
+  = "Compiling modules. This may take some time. Please wait.\n" 
+      ++ concatMap (\m -> "Loaded module: " ++ m ++ "\n") mods 
+      ++ "All modules loaded.\n"
+
 
 reloads :: [String] -> String
 reloads mods = concatMap (\m -> "Re-loaded module: " ++ m ++ "\n") mods 

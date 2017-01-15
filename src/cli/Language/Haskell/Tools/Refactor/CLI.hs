@@ -67,7 +67,10 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
                 $ "The following modules are ignored: " 
                     ++ concat (intersperse ", " $ ignoredMods)
                     ++ ". Multiple modules with the same qualified name are not supported."
-              liftIO $ hPutStrLn output "All modules loaded. Use 'SelectModule module-name' to select a module"
+              
+              liftIO . hPutStrLn output $ if ("-one-shot" `elem` flags) 
+                then "All modules loaded."
+                else "All modules loaded. Use 'SelectModule module-name' to select a module."
               when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
               return True
             Left err -> liftIO $ do hPutStrLn output err
@@ -81,7 +84,7 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
                   ([modName],[refactoring]) ->
                     do performSessionCommand output (LoadModule modName)
                        command <- readSessionCommand output (takeWhile (/='"') $ dropWhile (=='"') $ refactoring)
-                       performSessionCommand output command
+                       void $ performSessionCommand output command
                   _ -> liftIO $ hPutStrLn output "-module-name or -refactoring flag not specified correctly. Not doing any refactoring."
         runSession input output _ = runSessionLoop input output
 
@@ -91,7 +94,9 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
           liftIO $ hPutStr output (maybe "no-module-selected> " (\sfk -> (sfk ^. sfkModuleName) ++ "> ") actualMod)
           cmd <- liftIO $ hGetLine input 
           sessionComm <- readSessionCommand output cmd
-          performSessionCommand output sessionComm
+          changedMods <- performSessionCommand output sessionComm
+          void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++) . modSumName) 
+                   (\ms -> keyFromMS ms `elem` changedMods)
           doExit <- gets (^. exiting)
           when (not doExit) (void (runSessionLoop input output))
 
@@ -114,23 +119,26 @@ readSessionCommand output cmd = case splitOn " " cmd of
                               Nothing -> do liftIO $ hPutStrLn output "Set the actual module first"
                                             return Skip
 
-performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession ()
+performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession [SourceFileKey]
 performSessionCommand output (LoadModule modName) = do 
   mod <- gets (lookupModInSCs (SourceFileKey NormalHs modName) . (^. refSessMCs))
   if isJust mod then modify $ actualMod .= fmap fst mod
                 else liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
-performSessionCommand _ Skip = return ()
-performSessionCommand _ Exit = modify $ exiting .= True
+  return []
+performSessionCommand _ Skip = return []
+performSessionCommand _ Exit = do modify $ exiting .= True
+                                  return []
 performSessionCommand output (RefactorCommand cmd) 
   = do actMod <- gets (^. actualMod)
        (Just actualMod, otherMods) <- getMods actMod
        res <- lift $ performCommand cmd actualMod otherMods
        inDryMode <- gets (^. dryMode)
-       case res of Left err -> liftIO $ hPutStrLn output err
+       case res of Left err -> do liftIO $ hPutStrLn output err
+                                  return []
                    Right resMods -> performChanges output inDryMode resMods
 
-  where performChanges output False resMods = do 
-          changedMods <- forM resMods $ \case 
+  where performChanges output False resMods =
+          forM resMods $ \case 
             ModuleCreated n m otherM -> do 
               Just (_, otherMR) <- gets (lookupModInSCs otherM . (^. refSessMCs))
               let Just otherMS = otherMR ^? modRecMS
@@ -155,15 +163,15 @@ performSessionCommand output (RefactorCommand cmd)
                   liftIO $ removeFile file
                 _ -> do liftIO $ hPutStrLn output ("Module " ++ mod ++ " could not be removed.")
               return (SourceFileKey NormalHs mod)
-          void $ reloadChangedModules (hPutStrLn output . ("Re-loaded module: " ++) . modSumName) 
-                   (\ms -> keyFromMS ms `elem` changedMods)
-        performChanges output True resMods = forM_ resMods (liftIO . \case 
-          ContentChanged (n,m) -> do
-            hPutStrLn output $ "### Module changed: " ++ (n ^. sfkModuleName) ++ "\n### new content:\n" ++ prettyPrint m
-          ModuleRemoved mod ->
-            hPutStrLn output $ "### Module removed: " ++ mod
-          ModuleCreated n m _ ->
-            hPutStrLn output $ "### Module created: " ++ n ++ "\n### new content:\n" ++ prettyPrint m)
+        performChanges output True resMods = do 
+          forM_ resMods (liftIO . \case 
+            ContentChanged (n,m) -> do
+              hPutStrLn output $ "### Module changed: " ++ (n ^. sfkModuleName) ++ "\n### new content:\n" ++ prettyPrint m
+            ModuleRemoved mod ->
+              hPutStrLn output $ "### Module removed: " ++ mod
+            ModuleCreated n m _ ->
+              hPutStrLn output $ "### Module created: " ++ n ++ "\n### new content:\n" ++ prettyPrint m)
+          return []
 
         getModSummary name boot
           = do allMods <- lift getModuleGraph
