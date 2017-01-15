@@ -35,6 +35,8 @@ inlineBinding span namedMod@(_,mod) mods
         topLevel = nodesContaining span
         local :: Simple Traversal (Module dom) (LocalBindList dom)
         local = nodesContaining span
+        exprs :: Simple Traversal (Module dom) (Expr dom)
+        exprs = nodesContaining span
         elemAccess :: (BindingElem d) => AnnList d dom -> Maybe (ValueBind dom)
         elemAccess = getValBindInList span
         removed = catMaybes $ map elemAccess (mod ^? topLevel) ++ map elemAccess (mod ^? local)
@@ -47,21 +49,22 @@ inlineBinding span namedMod@(_,mod) mods
                   | _:_ <- mod ^? modHead & annJust & mhExports & annJust & biplateRef 
                                           & filtered (\n -> semanticsName (n :: QualifiedName dom) == Just removedBindingName)
                     -> refactError "Cannot inline the definition, it is present in the export list."
-                  | otherwise -> localRefactoring (inlineBinding' topLevel local removedBinding removedBindingName) namedMod mods
+                  | otherwise -> localRefactoring (inlineBinding' topLevel local exprs removedBinding removedBindingName) namedMod mods
 
 -- | Performs the inline binding on a single module.
 inlineBinding' :: InlineBindingDomain dom 
                     => Simple Traversal (Module dom) (DeclList dom) 
                     -> Simple Traversal (Module dom) (LocalBindList dom) 
+                    -> Simple Traversal (Module dom) (Expr dom) 
                     -> ValueBind dom -> GHC.Name
                     -> LocalRefactoring dom
-inlineBinding' topLevelRef localRef removedBinding removedBindingName mod
+inlineBinding' topLevelRef localRef exprRef removedBinding removedBindingName mod
   = do replacement <- createReplacement removedBinding
        let RealSrcSpan bindingSpan = getRange removedBinding
        (mod', used) <- runStateT (descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod) False
        if not used 
          then refactError "The selected definition is not used, it can be safely deleted."
-         else return $ removeBindingAndSig topLevelRef localRef removedBindingName mod'
+         else return $ removeBindingAndSig topLevelRef localRef exprRef removedBindingName mod'
 
 -- | True if the given module contains the name of the inlined definition.
 containInlined :: forall dom . InlineBindingDomain dom => GHC.Name -> ModuleDom dom -> Bool
@@ -72,10 +75,12 @@ containInlined name (_,mod)
 removeBindingAndSig :: InlineBindingDomain dom 
                          => Simple Traversal (Module dom) (DeclList dom) 
                          -> Simple Traversal (Module dom) (LocalBindList dom) 
+                         -> Simple Traversal (Module dom) (Expr dom) 
                          -> GHC.Name -> AST.Module dom
                          -> AST.Module dom
-removeBindingAndSig topLevelRef localRef name
-  = (topLevelRef .- removeBindingAndSig' name) . (localRef .- removeBindingAndSig' name)
+removeBindingAndSig topLevelRef localRef exprRef name
+  = removeEmptyBnds (topLevelRef & annList & declValBind &+& localRef & annList & localVal) exprRef 
+      . (topLevelRef .- removeBindingAndSig' name) . (localRef .- removeBindingAndSig' name)
 
 removeBindingAndSig' :: (InlineBindingDomain dom, BindingElem d) => GHC.Name -> AnnList d dom -> AnnList d dom
 removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notThatBindOrSig
@@ -91,6 +96,27 @@ removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notT
           | Just fs <- d ^? fixitySig
           = createFixitySig $ fixityOperators .- filterList (\n -> semanticsName (n ^. operatorName) /= Just name) $ fs
           | otherwise = d
+
+-- | Remove the container (where or let) when the last binding is removed.
+removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom) 
+                     -> Simple Traversal (Module dom) (Expr dom)
+                     -> AST.Module dom -> AST.Module dom
+removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- removeEmptyLetsAndStmts)
+  where removeEmptyBindsAndGuards sb@(SimpleBind _ _ _) 
+          = (valBindLocals .- removeIfEmpty) . (valBindRhs .- removeEmptyGuards) $ sb
+        removeEmptyBindsAndGuards fb@(FunctionBind _) 
+          = (funBindMatches & annList & matchBinds .- removeIfEmpty) . (funBindMatches & annList & matchRhs .- removeEmptyGuards) $ fb
+
+        removeEmptyGuards rhs = rhsGuards & annList & guardStmts .- filterList (\case GuardLet (AnnList []) -> False; _ -> True) $ rhs
+
+        removeIfEmpty mb@(AnnJust (LocalBinds (AnnList []))) = annMaybe .= Nothing $ mb
+        removeIfEmpty mb = mb
+
+        removeEmptyLetsAndStmts (Let (AnnList []) e) = e
+        removeEmptyLetsAndStmts e = exprStmts .- removeEmptyStmts $ e
+
+        removeEmptyStmts ls = (annList & cmdStmtBinds .- removeEmptyStmts) 
+                                . filterList (\case LetStmt (AnnList []) -> False; _ -> True) $ ls
 
 -- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
 -- the captured arguments of the function call to generate simpler results.

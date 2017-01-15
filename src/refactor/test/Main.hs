@@ -336,6 +336,9 @@ inlineBindingTests =
   , ("Refactor.InlineBinding.MultiMatchGuarded", "4:1-4:2")
   , ("Refactor.InlineBinding.RemoveSignatures", "5:1-5:2")
   , ("Refactor.InlineBinding.FilterSignatures", "5:1-5:2")
+  , ("Refactor.InlineBinding.LetBind", "3:9-3:10")
+  , ("Refactor.InlineBinding.LetStmt", "3:12-3:13")
+  , ("Refactor.InlineBinding.LetGuard", "3:9-3:10")
   ]
 
 wrongInlineBindingTests = 
