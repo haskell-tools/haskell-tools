@@ -11,7 +11,7 @@ module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding
 
 import qualified GHC
 import qualified OccName as GHC (occNameString)
-import SrcLoc (SrcSpan(..), RealSrcSpan(..))
+import SrcLoc (SrcSpan(..), RealSrcSpan(..), containsSpan)
 
 import Control.Monad.State
 import Control.Reference
@@ -27,22 +27,22 @@ tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name
 
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod
-  = if isValidBindingName name then extractBinding (nodesContaining sp) (nodesContaining sp) name mod
+  = if isValidBindingName name then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
                                else refactError "The given name is not a valid for the extracted binding"
 
 -- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
 -- Checks if the introduction of the name causes a name conflict.
 extractBinding :: forall dom . ExtractBindingDomain dom 
-               => Simple Traversal (Module dom) (ValueBind dom)
+               => RealSrcSpan -> Simple Traversal (Module dom) (ValueBind dom)
                    -> Simple Traversal (ValueBind dom) (Expr dom)
                    -> String -> LocalRefactoring dom
-extractBinding selectDecl selectExpr name mod
+extractBinding sp selectDecl selectExpr name mod
   = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [QualifiedName dom])
         exprRange = getRange $ head (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
      in if conflicting
            then refactError "The given name causes name conflict."
-           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
+           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
                    case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
                               Nothing -> refactError "There is no applicable expression to extract."
 
@@ -54,14 +54,31 @@ isConflicting name used
 
 -- Replaces the selected expression with a call and generates the called binding.
 extractThatBind :: ExtractBindingDomain dom 
-                => String -> Expr dom -> Expr dom -> StateT (Maybe (ValueBind dom)) (LocalRefactor dom) (Expr dom)
-extractThatBind name cont e 
+                => RealSrcSpan -> String -> Expr dom -> Expr dom -> StateT (Maybe (ValueBind dom)) (LocalRefactor dom) (Expr dom)
+extractThatBind sp name cont e 
   = do ret <- get
        if (isJust ret) then return e 
           else case e of
+            -- only the expression inside the parameters should be extracted
             Paren {} | hasParameter -> exprInner !~ doExtract name cont $ e
                      | otherwise    -> doExtract name cont (fromJust $ e ^? exprInner)
+            -- a single variable cannot be extracted (would lead to precedence problems)
             Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
+            -- extract operator sections
+            InfixApp lhs@(getRange -> RealSrcSpan lhsSpan) op@(getRange -> RealSrcSpan opSpan) rhs@(getRange -> RealSrcSpan rhsSpan)
+               | not (sp `containsSpan` lhsSpan) && (sp `containsSpan` opSpan) && (sp `containsSpan` rhsSpan)
+               -> do let params = getExternalBinds cont rhs ++ opName
+                     put (Just (generateBind name (map mkVarPat params) (mkRightSection op (parenIfInfix rhs))))
+                     return (mkApp (generateCall name params) lhs)
+               | (sp `containsSpan` lhsSpan) && (sp `containsSpan` opSpan) && not (sp `containsSpan` rhsSpan)
+               -> do let params = getExternalBinds cont lhs ++ opName
+                     put (Just (generateBind name (map mkVarPat params) (mkLeftSection (parenIfInfix lhs) op)))
+                     return (mkApp (generateCall name params) rhs)
+              where parenIfInfix e@(InfixApp {}) = mkParen e
+                    parenIfInfix e = e
+                    opName = case semanticsName (op ^. operatorName) of 
+                               Nothing -> []
+                               Just n -> [mkUnqualName' n | not $ n `inScope` semanticsScope cont]
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
                | otherwise -> doExtract name cont e
   where hasParameter = not (null (getExternalBinds cont e))

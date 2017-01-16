@@ -314,6 +314,10 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.IndentationMultiLine", "3:12-3:18", "extracted")
   , ("Refactor.ExtractBinding.IndentationOperator", "3:13-3:20", "extracted")
   , ("Refactor.ExtractBinding.ExtractedFormatting", "4:5-5:7", "extracted")
+  , ("Refactor.ExtractBinding.LeftSection", "3:5-3:8", "f")
+  , ("Refactor.ExtractBinding.RightSection", "3:7-3:10", "f")
+  , ("Refactor.ExtractBinding.SectionWithLocals", "6:13-6:24", "f")
+  , ("Refactor.ExtractBinding.SectionInfix", "3:5-3:12", "f")
   ]
 
 wrongExtractBindingTests = 

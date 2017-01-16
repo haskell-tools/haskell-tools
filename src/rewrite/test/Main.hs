@@ -33,7 +33,7 @@ testBase
 
 testExprs 
   = [ ("infix", "a + 3", mkInfixApp (mkVar (mkName "a")) (mkUnqualOp "+") (mkLit $ mkIntLit 3)) 
-    , ("section", "(\"xx\"++)", mkLeftSection (mkLit (mkStringLit "xx")) (mkUnqualOp "++"))
+    , ("section", "(\"xx\" ++)", mkLeftSection (mkLit (mkStringLit "xx")) (mkUnqualOp "++"))
     , ("tuple", "(1, [2, 3])", mkTuple [ mkLit (mkIntLit 1), mkList [ mkLit (mkIntLit 2), mkLit (mkIntLit 3) ] ])
     , ("record constructor", "P { x = 1 }", mkRecCon (mkName "P") [ mkFieldUpdate (mkName "x") (mkLit $ mkIntLit 1) ])
     , ("if", "if f a then x else y"

@@ -91,11 +91,11 @@ mkParen = mkAnn ("(" <> child <> ")") . UParen
 
 -- | Create a left operator section: @(1+)@
 mkLeftSection :: Expr dom -> Operator dom -> Expr dom
-mkLeftSection lhs op = mkAnn ("(" <> child <> child <> ")") $ ULeftSection lhs op
+mkLeftSection lhs op = mkAnn ("(" <> child <> " " <> child <> ")") $ ULeftSection lhs op
 
 -- | Create a right operator section: @(+1)@
 mkRightSection :: Operator dom -> Expr dom -> Expr dom
-mkRightSection op rhs = mkAnn ("(" <> child <> child <> ")") $ URightSection op rhs
+mkRightSection op rhs = mkAnn ("(" <> child <> " " <> child <> ")") $ URightSection op rhs
 
 -- | Create a record value construction: @Point { x = 3, y = -2 }@
 mkRecCon :: Name dom -> [FieldUpdate dom] -> Expr dom
