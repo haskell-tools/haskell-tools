@@ -9,16 +9,23 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
+import Name (nameModule_maybe)
 import qualified GHC
 import qualified OccName as GHC (occNameString)
-import SrcLoc (SrcSpan(..), RealSrcSpan(..), containsSpan)
+import SrcLoc
+import OccName (HasOccName(..))
+import PrelNames
+import RdrName
 
 import Control.Monad.State
 import Control.Reference
 import Data.Generics.Uniplate.Data ()
+import Data.List (find)
 import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
+
+import Debug.Trace
 
 type ExtractBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom )
 
@@ -65,23 +72,47 @@ extractThatBind sp name cont e
             -- a single variable cannot be extracted (would lead to precedence problems)
             Var {} -> lift $ refactError "The selected expression is too simple to be extracted."
             -- extract operator sections
-            InfixApp lhs@(getRange -> RealSrcSpan lhsSpan) op@(getRange -> RealSrcSpan opSpan) rhs@(getRange -> RealSrcSpan rhsSpan)
-               | not (sp `containsSpan` lhsSpan) && (sp `containsSpan` opSpan) && (sp `containsSpan` rhsSpan)
-               -> do let params = getExternalBinds cont rhs ++ opName
+            InfixApp lhs op rhs
+               | (lhs `outside` sp) && (sp `encloses` op) && (sp `encloses` rhs)
+               -> do let params = getExternalBinds cont rhs ++ opName op
                      put (Just (generateBind name (map mkVarPat params) (mkRightSection op (parenIfInfix rhs))))
-                     return (mkApp (generateCall name params) lhs)
-               | (sp `containsSpan` lhsSpan) && (sp `containsSpan` opSpan) && not (sp `containsSpan` rhsSpan)
-               -> do let params = getExternalBinds cont lhs ++ opName
+                     return (mkApp (generateCall name params) (parenIfInfix lhs))
+               | (sp `encloses` lhs) && (sp `encloses` op) && (rhs `outside` sp)
+               -> do let params = getExternalBinds cont lhs ++ opName op
                      put (Just (generateBind name (map mkVarPat params) (mkLeftSection (parenIfInfix lhs) op)))
-                     return (mkApp (generateCall name params) rhs)
+                     return (mkApp (generateCall name params) (parenIfInfix rhs))
               where parenIfInfix e@(InfixApp {}) = mkParen e
                     parenIfInfix e = e
-                    opName = case semanticsName (op ^. operatorName) of 
-                               Nothing -> []
-                               Just n -> [mkUnqualName' n | not $ n `inScope` semanticsScope cont]
+            -- extract parts of known associative infix operators
+            InfixApp (InfixApp lhs lop mid) rop rhs
+              | (Just lName, Just rName) <- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))
+              , (lop `outside` sp) && (sp `encloses` mid) && (sp `encloses` rhs)
+                  && lName == rName && isKnownCommutativeOp lName
+              -> do let params = getExternalBinds cont mid ++ opName rop ++ getExternalBinds cont rhs
+                    put (Just (generateBind name (map mkVarPat params) (mkInfixApp mid rop rhs)))
+                    return (mkInfixApp lhs lop (generateCall name params)) 
+            InfixApp lhs lop (InfixApp mid rop rhs)
+              | (Just lName, Just rName) <- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))
+              , (sp `encloses` lhs) && (sp `encloses` mid) && (rop `outside` sp)
+                  && lName == rName && isKnownCommutativeOp lName
+              -> do let params = getExternalBinds cont lhs ++ opName lop ++ getExternalBinds cont mid
+                    put (Just (generateBind name (map mkVarPat params) (mkInfixApp lhs lop mid)))
+                    return (mkInfixApp (generateCall name params) rop rhs) 
+
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
                | otherwise -> doExtract name cont e
   where hasParameter = not (null (getExternalBinds cont e))
+        sp `encloses` elem = case getRange elem of RealSrcSpan enc -> sp `containsSpan` enc
+                                                   _               -> False
+        elem `outside` sp = case getRange elem of RealSrcSpan out -> realSrcSpanStart sp > realSrcSpanEnd out 
+                                                                       || realSrcSpanEnd sp < realSrcSpanStart out
+                                                  _ -> False
+        opName op = case semanticsName (op ^. operatorName) of 
+                      Nothing -> []
+                      Just n -> [mkUnqualName' n | not $ n `inScope` semanticsScope cont]
+        isKnownCommutativeOp :: GHC.Name -> Bool
+        isKnownCommutativeOp n = isJust $ find (maybe False (\(mn, occ) -> (nameModule_maybe n) == Just mn && occName n == occ) . isOrig_maybe) ops 
+          where ops = [plus_RDR, times_RDR, append_RDR, and_RDR, {- or_RDR, -} compose_RDR] -- somehow or is missing... WHY?
 
 -- | Adds a local binding to the where clause of the enclosing binding
 addLocalBinding :: SrcSpan -> ValueBind dom -> ValueBind dom -> State Bool (ValueBind dom)

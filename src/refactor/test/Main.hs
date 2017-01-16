@@ -318,6 +318,9 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.RightSection", "3:7-3:10", "f")
   , ("Refactor.ExtractBinding.SectionWithLocals", "6:13-6:24", "f")
   , ("Refactor.ExtractBinding.SectionInfix", "3:5-3:12", "f")
+  , ("Refactor.ExtractBinding.AssocOp", "3:9-3:14", "b")
+  , ("Refactor.ExtractBinding.AssocOpRightAssoc", "3:5-3:12", "g")
+  , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
   ]
 
 wrongExtractBindingTests = 
