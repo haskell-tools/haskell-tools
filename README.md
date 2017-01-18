@@ -3,6 +3,7 @@
 The goal of this project is to create developer tools for the functional programming language Haskell. Currently this repository contains the **ht-refact** tool, a refactoring tool for Haskell. There are 5 implemented refactorings: 
   - **Rename definition**: Can rename bindings, data types, constructors, fields, type variables, etc. Respects scoping.
   - **Extract binding**: Extracts the selected expression as a local binding.
+  - **Inline binding**: Removes the selected binding and replaces the uses with binding's implementation.
   - **Generate type signature**: Generates the type signature for a function. Useful for declaring the type if it is complex.
   - **Organize imports**: Sorts the imports into alphabetical order and narrows the set of imported definitions to the ones that are really used.
   - **Generate exports**: Generate an export list for the module that contains all definitions in it. Useful for narrowing the list of exported definitions to the ones that need to be public.
@@ -34,7 +35,8 @@ When the interactive session is started:
   - Select a module to refactor with `SelectModule modulename`
   - Use the refactorings:
     - `RenameDefinition src-range new-name`
-    - `ExtractDefinition src-range new-name`
+    - `ExtractBinding src-range new-name`
+    - `InlineBinding src-range`
     - `GenerateSignature src-range`
     - `OrganizeImports`
     - `GenerateExports`
@@ -68,14 +70,8 @@ When the interactive session is started:
 
 ## Known limitations
 
-  - Generate type signature does not generate `ScopedTypeVariables` extension and explicit `forall` in cases when it would be needed to create a compilable result. These have to be added manually.
   - Some semantic information is missing, for example, kinds of type variables, types of variables local to TH splices, fixity of locally defined operators.
   - The following extensions are not supported: `UnicodeSyntax`, `CPP`
-
-## Plans
-  
-  - 2016: Refinements in project handling, performance improvements for generics.
-  - Editor support in early 2017. Better layout handling. Refinement and wider variety of refactorings.
 
 ## Repository contents
 
@@ -85,3 +81,6 @@ This repository contains 5 packages that provide different functionality, so you
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-rewrite.svg)](http://hackage.haskell.org/package/haskell-tools-rewrite) **haskell-tools-rewrite** contains functions for changing parts of the syntax tree.
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-prettyprint.svg)](http://hackage.haskell.org/package/haskell-tools-prettyprint) **haskell-tools-prettyprint** enables us to pretty print the AST in its original form.
   - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg)](http://hackage.haskell.org/package/haskell-tools-refactor) **haskell-tools-refactor** defines the actual refactorings.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-daemon.svg)](http://hackage.haskell.org/package/haskell-tools-daemon) **haskell-tools-daemon** is a backend for editor integration.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-cli.svg)](http://hackage.haskell.org/package/haskell-tools-cli) **haskell-tools-cli** is a command-line application for refactoring.
+  - [![Hackage](https://img.shields.io/hackage/v/haskell-tools-demo.svg)](http://hackage.haskell.org/package/haskell-tools-demo) **haskell-tools-demo** is web application that demonstrate refactorings.
