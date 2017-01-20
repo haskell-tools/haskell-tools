@@ -12,6 +12,7 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Control.Monad.State
+import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
@@ -27,6 +28,7 @@ import Network.Socket.ByteString.Lazy
 import System.Directory
 import System.Environment
 import System.IO
+import Control.Reference
 
 import DynFlags
 import GHC hiding (loadModule)
@@ -34,8 +36,10 @@ import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc, modifySession)
 import HscTypes (hsc_mod_graph)
 import Packages
-
-import Control.Reference
+import ErrUtils
+import SrcLoc
+import Bag
+import FastString (unpackFS)
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint
@@ -46,6 +50,8 @@ import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Session
+
+import Debug.Trace
 
 -- TODO: handle boot files
 
@@ -130,7 +136,7 @@ updateClient resp (AddPackages packagePathes) = do
                          ++ concat (intersperse ", " ignoredMods)
                          ++ ". Multiple modules with the same qualified name are not supported."
               else LoadedModules modules
-      Left err -> liftIO $ resp $ CompilationProblem err 
+      Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err) 
     return True
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
         initializePackageDBIfNeeded = do
@@ -159,7 +165,7 @@ updateClient resp (ReLoad changed removed) =
      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` removedMods) . ms_mod) (hsc_mod_graph s) })
      reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms]))
                                        (\ms -> getModSumOrig ms `elem` changed)
-     liftIO $ case reloadRes of Left errs -> resp (CompilationProblem errs)
+     liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage CompilationProblem (getProblems errs))
                                 Right _ -> return ()
      return True
 
@@ -208,7 +214,7 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
         reloadChanges changedMods 
           = do reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [getModSumOrig ms])) 
                                                  (\ms -> modSumName ms `elem` changedMods)
-               liftIO $ case reloadRes of Left errs -> resp (ErrorMessage $ "The result of the refactoring contains errors: " ++ errs)
+               liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage (ErrorMessage . ("The result of the refactoring contains errors: " ++) . show) (getProblems errs))
                                           Right _ -> return ()
 
 initGhcSession :: IO Session
@@ -223,6 +229,10 @@ usePackageDB pkgDbLocs
                        , pkgDatabase = Nothing 
                        }
        void $ setSessionDynFlags dfs'
+
+getProblems :: RefactorException -> Either String [(SrcSpan, String)]
+getProblems (SourceCodeProblem errs) = Right $ map (\err -> (errMsgSpan err, show err)) $ bagToList errs
+getProblems other = Left $ displayException other
 
 data ClientMessage
   = KeepAlive
@@ -246,10 +256,19 @@ instance FromJSON ClientMessage
 data ResponseMsg
   = KeepAliveResponse
   | ErrorMessage { errorMsg :: String }
-  | CompilationProblem { errorMsg :: String }
+  | CompilationProblem { errorMarkers :: [(SrcSpan, String)] }
   | ModulesChanged { moduleChanges :: [FilePath] }
   | LoadedModules { loadedModules :: [FilePath] }
   | Disconnected
   deriving (Show, Generic)
 
 instance ToJSON ResponseMsg
+
+instance ToJSON SrcSpan where
+  toJSON (RealSrcSpan sp) = object [ "file" A..= unpackFS (srcSpanFile sp)
+                                   , "startRow" A..= srcLocLine (realSrcSpanStart sp) 
+                                   , "startCol" A..= srcLocCol (realSrcSpanStart sp) 
+                                   , "endRow" A..= srcLocLine (realSrcSpanEnd sp) 
+                                   , "endCol" A..= srcLocCol (realSrcSpanEnd sp)
+                                   ]
+  toJSON _ = Null

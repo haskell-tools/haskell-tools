@@ -7,6 +7,7 @@
 module Language.Haskell.Tools.Refactor.CLI (refactorSession, tryOut) where
 
 import Control.Applicative ((<|>))
+import Control.Exception (displayException)
 import Control.Monad.State
 import Control.Reference
 import Data.List
@@ -73,7 +74,7 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
                 else "All modules loaded. Use 'SelectModule module-name' to select a module."
               when ("-dry-run" `elem` flags) $ modify (dryMode .= True)
               return True
-            Left err -> liftIO $ do hPutStrLn output err
+            Left err -> liftIO $ do hPutStrLn output (displayException err)
                                     return False
 
         runSession :: Handle -> Handle -> [String] -> CLIRefactorSession ()
@@ -180,3 +181,4 @@ performSessionCommand output (RefactorCommand cmd)
 instance IsRefactSessionState CLISessionState where
   refSessMCs = refactState & _refSessMCs
   initSession = CLISessionState initSession Nothing False False
+  
