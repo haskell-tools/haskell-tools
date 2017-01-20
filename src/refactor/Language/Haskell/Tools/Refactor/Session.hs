@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell 
            , TupleSections
            #-}
+-- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
 module Language.Haskell.Tools.Refactor.Session where
 
 import Control.Exception
@@ -26,12 +27,16 @@ import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 
+import Debug.Trace
+
+-- | The state common for refactoring tools, carrying the state of modules.
 data RefactorSessionState
   = RefactorSessionState { __refSessMCs :: [ModuleCollection]
                          }
 
 makeReferences ''RefactorSessionState
 
+-- | A common class for the state of refactoring tools
 class IsRefactSessionState st where
   refSessMCs :: Simple Lens st [ModuleCollection]
   initSession :: st
@@ -40,9 +45,9 @@ instance IsRefactSessionState RefactorSessionState where
   refSessMCs = _refSessMCs
   initSession = RefactorSessionState []
 
-
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath] -> StateT st Ghc (Either String ([a], [String]))
-loadPackagesFrom report packages = 
+-- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
+loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath] -> StateT st Ghc (Either RefactorException ([a], [String]))
+loadPackagesFrom report packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
      allModColls <- gets (^. refSessMCs)
@@ -68,10 +73,10 @@ loadPackagesFrom report packages =
           needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
           reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
 
-handleErrors :: ExceptionMonad m => m a -> m (Either String a)
-handleErrors action = handleSourceError (return . Left . errorsText) (Right <$> action) 
-                        `gcatch` (\e -> return $ Left $ displayException (e :: RefactorException))
-  where errorsText = concat . List.intersperse "\n\n" . map showSDocUnsafe . pprErrMsgBagWithLoc . srcErrorMessages
+-- | Handle GHC exceptions and RefactorException.
+handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
+handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action) 
+                        `gcatch` (return . Left)
 
 keyFromMS :: ModSummary -> SourceFileKey
 keyFromMS ms = SourceFileKey (case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot) (modSumName ms)
@@ -95,7 +100,8 @@ getFileMods fname
        case sfs of sf:_ -> getMods (Just sf)
                    [] -> getMods Nothing
 
-reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc (Either String [a])
+-- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
+reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc (Either RefactorException [a])
 reloadChangedModules report isChanged = handleErrors $ do
   reachable <- getReachableModules isChanged
   void $ checkEvaluatedMods report reachable
@@ -113,6 +119,7 @@ getReachableModules selected = do
         sortedMods = reverse $ topologicalSortG allModsGraph
     return $ filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
 
+-- | Reload a given module. Perform a callback.
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
 reloadModule report ms = do 
   let modName = modSumName ms
@@ -144,6 +151,8 @@ checkEvaluatedMods report mods = do
                              else return Nothing
                    else return Nothing
 
+-- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
+-- but code generation were not enabled by then.
 codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection] -> ModSummary -> Ghc a
 codeGenForModule report mcs ms 
   = let modName = modSumName ms

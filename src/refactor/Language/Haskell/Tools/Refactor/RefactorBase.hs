@@ -9,6 +9,7 @@
            , MultiWayIf
            , TemplateHaskell
            #-}
+-- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST as AST
@@ -22,6 +23,8 @@ import qualified Name as GHC
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
+import ErrUtils as GHC
+import Bag as GHC
 
 import Control.Exception
 import Control.Monad.Reader
@@ -36,6 +39,7 @@ import Data.List.Split
 import Data.Maybe
 import Data.Typeable
 
+-- | A type for the input and result of refactoring a module
 type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
 
 -- | The name of the module and the AST
@@ -64,9 +68,14 @@ data RefactorChange dom = ContentChanged { fromContentChanged :: (ModuleDom dom)
                                         , sameLocation :: SourceFileKey
                                         }
 
+-- | Exceptions that can occur while loading modules or during internal operations (not during performing the refactor).
 data RefactorException = IllegalExtensions [String]
+                       | SourceCodeProblem ErrorMessages
                        | UnknownException String
   deriving (Show, Typeable)
+
+instance Show ErrorMessages where
+  show = show . bagToList
 
 instance Exception RefactorException where
   displayException (IllegalExtensions exts) 
@@ -108,6 +117,8 @@ addGeneratedImports names m = modImports&annListElems .- (++ addImports names) $
         createImport :: [GHC.Name] -> Ann UImportDecl dom SrcTemplateStage
         createImport names = mkImportDecl False False False Nothing (mkModuleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
                                           Nothing (Just $ mkImportSpecList (map (\n -> mkIESpec (mkUnqualName' n) Nothing) names))
+
+-- some instances missing from GHC
 
 instance (GhcMonad m, Monoid s) => GhcMonad (WriterT s m) where
   getSession = lift getSession

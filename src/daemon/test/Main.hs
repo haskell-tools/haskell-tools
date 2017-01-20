@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving, LambdaCase, ScopedTypeVariables, OverloadedStrings #-}
 module Main where
 
 import Test.Tasty
@@ -21,7 +21,8 @@ import Data.Aeson
 import Data.Maybe
 import System.IO
 
-import Debug.Trace
+import SrcLoc
+import FastString
 
 import Language.Haskell.Tools.Refactor.Daemon
 import Language.Haskell.Tools.Refactor.Daemon.PackageDB
@@ -397,3 +398,17 @@ commonPrefix (x:xs) (y:ys)
 
 longestCommonPrefix :: (Eq a) => [[a]] -> [a]
 longestCommonPrefix = foldl1 commonPrefix
+
+instance FromJSON SrcSpan where
+    parseJSON (Object v) = mkSrcSpanReal <$> v .: "file" 
+                                         <*> v .: "startRow" 
+                                         <*> v .: "startCol" 
+                                         <*> v .: "endRow"
+                                         <*> v .: "endCol"
+    parseJSON _          = fail "not an object"
+
+
+mkSrcSpanReal :: String -> Int -> Int -> Int -> Int -> SrcSpan
+mkSrcSpanReal file startRow startCol endRow endCol 
+  = mkSrcSpan (mkSrcLoc (mkFastString file) startRow startCol)
+              (mkSrcLoc (mkFastString file) endRow endCol)
