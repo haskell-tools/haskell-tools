@@ -1,22 +1,22 @@
 -- | Defines the API for refactorings
 module Language.Haskell.Tools.Refactor 
-  ( module Language.Haskell.Tools.AST.SemaInfoClasses
-  , module Language.Haskell.Tools.AST.Rewrite
-  , module Language.Haskell.Tools.AST.References
-  , module Language.Haskell.Tools.AST.Helpers
-  , module Language.Haskell.Tools.Refactor.RefactorBase
-  , module Language.Haskell.Tools.AST.ElementTypes
-  , module Language.Haskell.Tools.Refactor.Prepare
-  , module Language.Haskell.Tools.Refactor.ListOperations
-  , module Language.Haskell.Tools.Refactor.BindingElem
-  , module Language.Haskell.Tools.IndentationUtils
-  , HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain
-  , shortShowSpan, SrcTemplateStage, SourceInfoTraversal(..)
-  -- elements of source templates
-  , sourceTemplateNodeRange, sourceTemplateNodeElems
-  , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
-  , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
-  ) where
+    ( module Language.Haskell.Tools.AST.SemaInfoClasses
+    , module Language.Haskell.Tools.AST.Rewrite
+    , module Language.Haskell.Tools.AST.References
+    , module Language.Haskell.Tools.AST.Helpers
+    , module Language.Haskell.Tools.Refactor.RefactorBase
+    , module Language.Haskell.Tools.AST.ElementTypes
+    , module Language.Haskell.Tools.Refactor.Prepare
+    , module Language.Haskell.Tools.Refactor.ListOperations
+    , module Language.Haskell.Tools.Refactor.BindingElem
+    , module Language.Haskell.Tools.IndentationUtils
+    , HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain
+    , shortShowSpan, SrcTemplateStage, SourceInfoTraversal(..)
+    -- elements of source templates
+    , sourceTemplateNodeRange, sourceTemplateNodeElems
+    , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
+    , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
+    ) where
 
 -- Important: Haddock doesn't support the rename all exported modules and export them at once hack
 

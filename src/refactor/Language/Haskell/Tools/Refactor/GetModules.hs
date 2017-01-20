@@ -4,6 +4,7 @@
            , TemplateHaskell
            , FlexibleContexts
            #-}
+-- | Representation and operations for module collections (libraries, executables, ...) in the framework.
 module Language.Haskell.Tools.Refactor.GetModules where
 
 import Control.Reference
@@ -49,6 +50,7 @@ instance Show ModuleCollection where
   show (ModuleCollection id root srcDirs mods _ deps) 
     = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
 
+-- | The state of a module.
 data ModuleRecord 
        = ModuleNotLoaded { _recModuleWillNeedCode :: Bool }
        | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
@@ -64,7 +66,7 @@ data ModuleRecord
                              , _modRecMS :: ModSummary
                              }
 
--- | This data structure identifies a module collection
+-- | This data structure identifies a module collection.
 data ModuleCollectionId = DirectoryMC FilePath
                         | LibraryMC String
                         | ExecutableMC String String
@@ -93,7 +95,7 @@ instance Show ModuleRecord where
   show (ModuleNotLoaded code) = "ModuleNotLoaded " ++ show code
   show mr = GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS
 
-
+-- | Find the module collection where the given module is.
 lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
 
@@ -149,6 +151,7 @@ getModules root
           Nothing        -> do mods <- modulesFromDirectory root root
                                return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return []]
 
+-- | Load the module giving a directory. All modules loaded from the folder and subfolders.
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
 -- now recognizing only .hs files
 modulesFromDirectory root searchRoot = concat <$> (mapM goOn =<< listDirectory searchRoot)
@@ -165,6 +168,8 @@ srcDirFromRoot fileName "" = fileName
 srcDirFromRoot fileName moduleName 
   = srcDirFromRoot (takeDirectory fileName) (dropWhile (/= '.') $ dropWhile (== '.') moduleName)
 
+-- | Load the module using a cabal file. The modules described in the cabal file will be loaded.
+-- The flags and extensions set in the cabal file will be used by default.
 modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
 modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> readPackageDescription silent (root </> cabal)
@@ -237,7 +242,8 @@ flagsFromBuildInfo BuildInfo{ defaultExtensions, options } df
                                          _                   -> id                               
                                   ) defaultExtensions)
                           $ df
-  where translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances
+  where -- | Map the cabal extensions to the ones that GHC recognizes
+        translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances
         translateExtension UndecidableInstances = flip xopt_set GHC.UndecidableInstances
         translateExtension IncoherentInstances = flip xopt_set GHC.IncoherentInstances
         translateExtension DoRec = flip xopt_set GHC.RecursiveDo

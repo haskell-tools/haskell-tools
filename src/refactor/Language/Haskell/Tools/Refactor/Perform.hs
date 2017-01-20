@@ -53,10 +53,12 @@ data RefactorCommand = NoRefactor
                      | InlineBinding RealSrcSpan
     deriving Show
 
+-- | Recognize a command from its textual representation
 readCommand :: String -> RefactorCommand
 readCommand (splitOn " " -> refact:args) = analyzeCommand refact args
 readCommand _ = error "panic: splitOn resulted empty"
 
+-- | Check the parts and return the command
 analyzeCommand :: String -> [String] -> RefactorCommand
 analyzeCommand "" _ = NoRefactor
 analyzeCommand "CheckSource" _ = NoRefactor

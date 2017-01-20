@@ -38,6 +38,7 @@ import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Transform
 
+-- | A quick function to try the refactorings
 tryRefactor :: (RealSrcSpan -> Refactoring IdDom) -> String -> String -> IO ()
 tryRefactor refact moduleName span
   = runGhc (Just libdir) $ do
@@ -74,6 +75,7 @@ initGhcFlags = initGhcFlags' False
 initGhcFlagsForTest :: Ghc ()
 initGhcFlagsForTest = initGhcFlags' True
 
+-- | Sets up basic flags and settings for GHC
 initGhcFlags' :: Bool -> Ghc ()
 initGhcFlags' needsCodeGen = do
   dflags <- getSessionDynFlags
@@ -87,12 +89,13 @@ initGhcFlags' needsCodeGen = do
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
              }
 
--- | Use the given source directories
+-- | Use the given source directories when searching for imported modules
 useDirs :: [FilePath] -> Ghc ()
 useDirs workingDirs = do
   dynflags <- getSessionDynFlags
   void $ setSessionDynFlags dynflags { importPaths = importPaths dynflags ++ workingDirs }
 
+-- | Don't use the given source directories when searching for imported modules
 deregisterDirs :: [FilePath] -> Ghc ()
 deregisterDirs workingDirs = do
   dynflags <- getSessionDynFlags
@@ -106,6 +109,7 @@ toFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSep
 toBootFileName :: FilePath -> String -> FilePath
 toBootFileName workingDir mod = normalise $ workingDir </> map (\case '.' -> pathSeparator; c -> c) mod ++ ".hs-boot"
 
+-- | Get the source directory where the module is located.
 getSourceDir :: ModSummary -> IO FilePath
 getSourceDir ms 
   = do filePath <- canonicalizePath $ getModSumOrig ms
@@ -114,6 +118,7 @@ getSourceDir ms
        let srcDirParts = reverse $ drop (length modNameParts) $ reverse filePathParts
        return $ joinPath srcDirParts
 
+-- | Gets the path to the source file of the module.
 getModSumOrig :: ModSummary -> FilePath
 getModSumOrig = normalise . fromMaybe (error "getModSumOrig: The given module doesn't have haskell source file.") . ml_hs_file . ms_location
 
@@ -181,11 +186,13 @@ modSumNormalizeFlags ms = ms { ms_hspp_opts = normalizeFlags (ms_hspp_opts ms) }
 normalizeFlags :: DynFlags -> DynFlags
 normalizeFlags = updOptLevel 0
 
+-- | Read a source range from our textual format: @line:col-line:col@ or @line:col@
 readSrcSpan :: String -> RealSrcSpan
 readSrcSpan s = case splitOn "-" s of
   [one] -> mkRealSrcSpan (readSrcLoc one) (readSrcLoc one)
   [from,to] -> mkRealSrcSpan (readSrcLoc from) (readSrcLoc to)
   
+-- | Read a source location from our format: @line:col@
 readSrcLoc :: String -> RealSrcLoc
 readSrcLoc s = case splitOn ":" s of
   [line,col] -> mkRealSrcLoc (mkFastString "file-name-should-be-fixed") (read line) (read col)
