@@ -6,9 +6,9 @@ import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), AnnListG(), Dom, RangeSta
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Monad (Trf(..))
 import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..))
-import SrcLoc as GHC (Located(..))
+import SrcLoc as GHC (Located(..), SrcSpan)
 
 trfLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnListG AST.ULocalBind (Dom r) RangeStage)
-trfWhereLocalBinds :: TransformName n r => HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
+trfWhereLocalBinds :: TransformName n r => SrcSpan -> HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
 trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.URhsGuard (Dom r) RangeStage)
 trfRhsGuard' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.URhsGuard (Dom r) RangeStage)

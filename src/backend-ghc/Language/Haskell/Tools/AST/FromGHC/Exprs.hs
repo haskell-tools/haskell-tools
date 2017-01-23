@@ -172,7 +172,7 @@ trfAlt' = gTrfAlt' trfExpr
 
 gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Match n (Located (ge n)) -> Trf (AST.UAlt' ae (Dom r) RangeStage)
 gTrfAlt' te (Match _ [pat] _ (GRHSs rhss (unLoc -> locBinds)))
-  = AST.UAlt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds locBinds
+  = AST.UAlt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds (collectLocs rhss) locBinds
 gTrfAlt' _ _ = error "gTrfAlt': not exactly one alternative when transforming a case alternative"
   
 trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.UCaseRhs (Dom r) RangeStage)
