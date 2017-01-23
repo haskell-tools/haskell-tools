@@ -358,6 +358,8 @@ wrongInlineBindingTests =
 floatOutTests =
   [ ("Refactor.FloatOut.ToTopLevel", "4:10")
   , ("Refactor.FloatOut.FloatLocals", "5:18")
+  , ("Refactor.FloatOut.MoveSignature", "5:10")
+  , ("Refactor.FloatOut.MoveFixity", "5:11-5:14")
   ]
 
 multiModuleTests =

@@ -117,7 +117,9 @@ instance NamedElement UDecl where
                   &+& (declPatSyn & patLhs & (patName & simpleName &+& patSynOp & operatorName))
 
 instance NamedElement ULocalBind where
-  elementName = localVal&bindingName &+& localSig&tsName&annList&simpleName
+  elementName = localVal&bindingName 
+                  &+& localSig&tsName&annList&simpleName 
+                  &+& localFixity&fixityOperators&annList&operatorName
 
 inScope :: GHC.Name -> Scope -> Bool
 inScope n sc = any (n `elem`) sc

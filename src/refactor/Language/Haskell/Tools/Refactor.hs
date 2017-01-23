@@ -10,7 +10,7 @@ module Language.Haskell.Tools.Refactor
   , module Language.Haskell.Tools.Refactor.ListOperations
   , module Language.Haskell.Tools.Refactor.BindingElem
   , module Language.Haskell.Tools.IndentationUtils
-  , HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain
+  , Ann, HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain
   , shortShowSpan, SrcTemplateStage, SourceInfoTraversal(..)
   -- elements of source templates
   , sourceTemplateNodeRange, sourceTemplateNodeElems
