@@ -20,13 +20,15 @@ floatOut sp mod
   = let (mod', st) = runState (nodesContaining sp !~ extractAndInsert sp $ mod) NotEncountered
      in case st of NotEncountered -> refactError "No definition is selected."
                    Extracted bnds -> -- insert it to the global definition list
-                                     return $ modDecl & annListElems .- (++ map toTopLevel bnds) $ mod'
+                                     return $ modDecl & annListElems .- (++ map toTopLevel bnds) $ removeEmpties mod'
                    Inserted -> -- already inserted to a local scope
-                               return mod'
+                               return (removeEmpties mod')
   where toTopLevel :: LocalBind dom -> Decl dom
         toTopLevel (LocalValBind vb) = mkValueBinding vb
         toTopLevel (LocalTypeSig sg) = mkTypeSigDecl sg
         toTopLevel (LocalFixity fx) = mkFixityDecl fx
+
+        removeEmpties = removeEmptyBnds (nodesContaining sp) (nodesContaining sp)
 
 data FloatState dom = NotEncountered | Extracted [LocalBind dom] | Inserted
 
@@ -41,9 +43,4 @@ extractAndInsert sp locs = get >>= \case NotEncountered -> put (Extracted floate
 
         filteredLocs = filterList (\e -> not (getRange e `elem` floatedElemRanges)) locs
           where floatedElemRanges = map getRange floated
-
-
--- | Puts the elements in the orginal order and remove duplicates (elements with the same source range)
-normalizeElements :: [Ann e dom SrcTemplateStage] -> [Ann e dom SrcTemplateStage]
-normalizeElements elems = nubBy ((==) `on` getRange) $ sortBy (compare `on` srcSpanStart . getRange) elems
 

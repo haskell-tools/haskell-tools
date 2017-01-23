@@ -59,6 +59,7 @@ library
                      , Language.Haskell.Tools.Refactor.Perform
                      , Language.Haskell.Tools.Refactor.ListOperations
                      , Language.Haskell.Tools.Refactor.Session
+                     , Language.Haskell.Tools.Refactor.Helpers
 
                      , Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
                      , Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
