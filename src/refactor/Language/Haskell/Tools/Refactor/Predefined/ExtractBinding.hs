@@ -25,8 +25,8 @@ import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 
-import Debug.Trace
-
+-- | We need name information to identify bindings, and scope information to check which
+-- entities must be directly passed as parameters.
 type ExtractBindingDomain dom = ( HasNameInfo dom, HasDefiningInfo dom, HasScopeInfo dom )
 
 tryItOut :: String -> String -> String -> IO ()
@@ -63,7 +63,7 @@ isConflicting name used
 extractThatBind :: ExtractBindingDomain dom 
                 => RealSrcSpan -> String -> Expr dom -> Expr dom -> StateT (Maybe (ValueBind dom)) (LocalRefactor dom) (Expr dom)
 extractThatBind sp name cont e 
-  = do ret <- get
+  = do ret <- get -- being in a state monad to only apply the 
        if (isJust ret) then return e 
           else case e of
             -- only the expression inside the parameters should be extracted
@@ -84,26 +84,28 @@ extractThatBind sp name cont e
               where parenIfInfix e@(InfixApp {}) = mkParen e
                     parenIfInfix e = e
             -- extract parts of known associative infix operators
-            InfixApp (InfixApp lhs lop mid) rop rhs
+            InfixApp (InfixApp lhs lop mid) rop rhs -- correction for left-associative operators
               | (Just lName, Just rName) <- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))
               , (lop `outside` sp) && (sp `encloses` mid) && (sp `encloses` rhs)
                   && lName == rName && isKnownCommutativeOp lName
               -> do let params = getExternalBinds cont mid ++ opName rop ++ getExternalBinds cont rhs
                     put (Just (generateBind name (map mkVarPat params) (mkInfixApp mid rop rhs)))
                     return (mkInfixApp lhs lop (generateCall name params)) 
-            InfixApp lhs lop (InfixApp mid rop rhs)
+            InfixApp lhs lop (InfixApp mid rop rhs) -- correction for right-associative operators
               | (Just lName, Just rName) <- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))
               , (sp `encloses` lhs) && (sp `encloses` mid) && (rop `outside` sp)
                   && lName == rName && isKnownCommutativeOp lName
               -> do let params = getExternalBinds cont lhs ++ opName lop ++ getExternalBinds cont mid
                     put (Just (generateBind name (map mkVarPat params) (mkInfixApp lhs lop mid)))
                     return (mkInfixApp (generateCall name params) rop rhs) 
-
+            -- normal case
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
                | otherwise -> doExtract name cont e
   where hasParameter = not (null (getExternalBinds cont e))
+        -- True if the elem is completely inside the given source range
         sp `encloses` elem = case getRange elem of RealSrcSpan enc -> sp `containsSpan` enc
                                                    _               -> False
+        -- True if the elem is completely outside the given range (no overlapping)
         elem `outside` sp = case getRange elem of RealSrcSpan out -> realSrcSpanStart sp > realSrcSpanEnd out 
                                                                        || realSrcSpanEnd sp < realSrcSpanStart out
                                                   _ -> False

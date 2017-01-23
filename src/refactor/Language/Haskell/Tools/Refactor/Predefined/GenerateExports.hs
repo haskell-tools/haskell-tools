@@ -13,6 +13,7 @@ import qualified GHC (NamedThing(..), Name(..))
 import Control.Applicative ((<|>))
 import Data.Maybe (Maybe(..), catMaybes)
 
+-- | We need name information to generate exports
 type DomGenerateExports dom = (Domain dom, HasNameInfo dom)
 
 -- | Creates an export list that imports standalone top-level definitions with all of their contained definitions

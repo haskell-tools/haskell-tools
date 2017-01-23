@@ -193,7 +193,7 @@ $(function() {
 
     function showError(msg) {
         $('#error-message').text(msg);
-        $('#error-dialog').dialog({ modal: true, dialogClass: "opened-dialog", draggable: false });
+        $('#error-dialog').dialog({ dialogClass: "opened-dialog", draggable: false });
     }
 
 });

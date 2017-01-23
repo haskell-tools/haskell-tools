@@ -1,9 +1,13 @@
 sandbox
+dist
+.cabal-sandbox
+cabal.sandbox.config
 *.hi
 *.o
 *.hi-boot
 *.o-boot
 .stack-work
-demo/.stack-work
-demo/demoSources
-demo/error-log.txt
+demoSources
+error-log.txt
+*.sublime-project
+*.sublime-workspace

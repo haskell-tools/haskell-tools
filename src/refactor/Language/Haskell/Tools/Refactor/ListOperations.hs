@@ -64,10 +64,12 @@ insertIndex before after list@(first:_)
           | before Nothing && after Nothing = Just 0
           | otherwise = Nothing
 
+-- | Gets the elements and separators from a list. The first separator is zipped to the second element.
+-- To the first element, the "" string is zipped.
 zipWithSeparators :: AnnList e dom -> [(String, Ann e dom SrcTemplateStage)]
 zipWithSeparators (AnnListG (NodeInfo _ src) elems) 
   | [] <- src ^. srcTmpSeparators 
-  = map (src ^. srcTmpDefaultSeparator ,) elems
+  = zip ("" : repeat (src ^. srcTmpDefaultSeparator)) elems
   | otherwise 
   = zip ("" : seps ++ repeat (last seps)) elems
   where seps = src ^. srcTmpSeparators
