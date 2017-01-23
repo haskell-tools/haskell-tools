@@ -43,6 +43,7 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Refactor/RenameDefinition/SpliceExpr_res/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
+                  , examples/Refactor/FloatOut/*.hs
                   , examples/TH/*.hs
                   , examples/TH/QuasiQuote/*.hs
                   , examples/TH/Splice/*.hs
@@ -58,6 +59,7 @@ library
                      , Language.Haskell.Tools.Refactor.Perform
                      , Language.Haskell.Tools.Refactor.ListOperations
                      , Language.Haskell.Tools.Refactor.Session
+                     , Language.Haskell.Tools.Refactor.Helpers
 
                      , Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
                      , Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
@@ -68,6 +70,7 @@ library
                      , Language.Haskell.Tools.Refactor.Predefined.IfToGuards
                      , Language.Haskell.Tools.Refactor.Predefined.DollarApp
                      , Language.Haskell.Tools.Refactor.Predefined.InlineBinding
+                     , Language.Haskell.Tools.Refactor.Predefined.FloatOut
                      
   build-depends:       base                      >= 4.9  && < 4.10
                      , mtl                       >= 2.2  && < 2.3

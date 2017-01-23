@@ -97,27 +97,6 @@ removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notT
           = createFixitySig $ fixityOperators .- filterList (\n -> semanticsName (n ^. operatorName) /= Just name) $ fs
           | otherwise = d
 
--- | Remove the container (where or let) when the last binding is removed.
-removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom) 
-                     -> Simple Traversal (Module dom) (Expr dom)
-                     -> AST.Module dom -> AST.Module dom
-removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- removeEmptyLetsAndStmts)
-  where removeEmptyBindsAndGuards sb@(SimpleBind _ _ _) 
-          = (valBindLocals .- removeIfEmpty) . (valBindRhs .- removeEmptyGuards) $ sb
-        removeEmptyBindsAndGuards fb@(FunctionBind _) 
-          = (funBindMatches & annList & matchBinds .- removeIfEmpty) . (funBindMatches & annList & matchRhs .- removeEmptyGuards) $ fb
-
-        removeEmptyGuards rhs = rhsGuards & annList & guardStmts .- filterList (\case GuardLet (AnnList []) -> False; _ -> True) $ rhs
-
-        removeIfEmpty mb@(AnnJust (LocalBinds (AnnList []))) = annMaybe .= Nothing $ mb
-        removeIfEmpty mb = mb
-
-        removeEmptyLetsAndStmts (Let (AnnList []) e) = e
-        removeEmptyLetsAndStmts e = exprStmts .- removeEmptyStmts $ e
-
-        removeEmptyStmts ls = (annList & cmdStmtBinds .- removeEmptyStmts) 
-                                . filterList (\case LetStmt (AnnList []) -> False; _ -> True) $ ls
-
 -- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
 -- the captured arguments of the function call to generate simpler results.
 replaceInvocations :: InlineBindingDomain dom 

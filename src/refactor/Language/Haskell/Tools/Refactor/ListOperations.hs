@@ -73,7 +73,3 @@ zipWithSeparators (AnnListG (NodeInfo _ src) elems)
   | otherwise 
   = zip ("" : seps ++ repeat (last seps)) elems
   where seps = src ^. srcTmpSeparators
-
--- should be in its own module
-replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom           
-replaceWithJust e (AnnMaybeG temp _) = AnnMaybeG temp (Just e)

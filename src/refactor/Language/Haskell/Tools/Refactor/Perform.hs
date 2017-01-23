@@ -22,6 +22,7 @@ import Language.Haskell.Tools.Refactor.Predefined.GenerateTypeSignature
 import Language.Haskell.Tools.Refactor.Predefined.InlineBinding
 import Language.Haskell.Tools.Refactor.Predefined.OrganizeImports
 import Language.Haskell.Tools.Refactor.Predefined.RenameDefinition
+import Language.Haskell.Tools.Refactor.Predefined.FloatOut
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 
@@ -41,6 +42,7 @@ performCommand rf mod mods = runRefactor mod mods $ selectCommand rf
         selectCommand (RenameDefinition sp str) = renameDefinition' (correctRefactorSpan (snd mod) sp) str
         selectCommand (ExtractBinding sp str) = localRefactoring $ extractBinding' (correctRefactorSpan (snd mod) sp) str
         selectCommand (InlineBinding sp) = inlineBinding (correctRefactorSpan (snd mod) sp)
+        selectCommand (FloatOut sp) = localRefactoring $ floatOut (correctRefactorSpan (snd mod) sp)
 
 -- | A refactoring command
 data RefactorCommand = NoRefactor 
@@ -51,6 +53,7 @@ data RefactorCommand = NoRefactor
                      | RenameDefinition RealSrcSpan String
                      | ExtractBinding RealSrcSpan String
                      | InlineBinding RealSrcSpan
+                     | FloatOut RealSrcSpan
     deriving Show
 
 -- | Recognize a command from its textual representation
@@ -69,5 +72,6 @@ analyzeCommand "GenerateSignature" [sp] = GenerateSignature (readSrcSpan sp)
 analyzeCommand "RenameDefinition" [sp, newName] = RenameDefinition (readSrcSpan sp) newName
 analyzeCommand "ExtractBinding" [sp, newName] = ExtractBinding (readSrcSpan sp) newName
 analyzeCommand "InlineBinding" [sp] = InlineBinding (readSrcSpan sp)
+analyzeCommand "FloatOut" [sp] = FloatOut (readSrcSpan sp)
 analyzeCommand ref _ = error $ "Unknown command: " ++ ref
 

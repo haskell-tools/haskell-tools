@@ -69,6 +69,8 @@ functionalTests
             ++ map makeWrongExtractBindingTest wrongExtractBindingTests
             ++ map makeInlineBindingTest inlineBindingTests
             ++ map makeWrongInlineBindingTest wrongInlineBindingTests
+            ++ map makeFloatOutTest floatOutTests
+            ++ map makeWrongFloatOutTest wrongFloatOutTests
             ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
             ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
             ++ map makeMiscRefactorTest miscRefactorTests
@@ -354,6 +356,22 @@ wrongInlineBindingTests =
   , ("Refactor.InlineBinding.NotOccurring", "3:1")
   ]
 
+floatOutTests =
+  [ ("Refactor.FloatOut.ToTopLevel", "4:10")
+  , ("Refactor.FloatOut.FloatLocals", "5:18")
+  , ("Refactor.FloatOut.MoveSignature", "5:10")
+  , ("Refactor.FloatOut.MoveFixity", "5:11-5:14")
+  , ("Refactor.FloatOut.NoCollosion", "5:18")
+  ]
+
+wrongFloatOutTests =
+  [ ("Refactor.FloatOut.NameCollosion", "4:10")
+  , ("Refactor.FloatOut.NameCollosionWithImport", "4:11")
+  , ("Refactor.FloatOut.NameCollosionWithLocal", "5:18")
+  , ("Refactor.FloatOut.SharedSignature", "5:10")
+  , ("Refactor.FloatOut.ImplicitLocal", "4:10")
+  , ("Refactor.FloatOut.ImplicitParam", "4:10")
+  ]
 
 multiModuleTests =
   [ ("RenameDefinition 5:5-5:6 bb", "A", "Refactor" </> "RenameDefinition" </> "MultiModule", [])
@@ -438,7 +456,13 @@ makeInlineBindingTest (mod, rng) = createTest "InlineBinding" [rng] mod
   
 makeWrongInlineBindingTest :: (String, String) -> TestTree
 makeWrongInlineBindingTest (mod, rng) = createFailTest "InlineBinding" [rng] mod
-
+  
+makeFloatOutTest :: (String, String) -> TestTree
+makeFloatOutTest (mod, rng) = createTest "FloatOut" [rng] mod
+  
+makeWrongFloatOutTest :: (String, String) -> TestTree
+makeWrongFloatOutTest (mod, rng) = createFailTest "FloatOut" [rng] mod
+  
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
