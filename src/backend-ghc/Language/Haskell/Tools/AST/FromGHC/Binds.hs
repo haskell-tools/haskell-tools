@@ -33,7 +33,7 @@ trfBind' :: TransformName n r => HsBind n -> Trf (AST.UValueBind (Dom r) RangeSt
 trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = L _ [L _ (Match { m_pats = [], m_grhss = GRHSs [L _ (GRHS [] expr)] (L _ locals) })]} }) 
   = AST.USimpleBind <$> copyAnnot AST.UVarPat (define $ trfName id)
                     <*> addToScope locals (annLocNoSema (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UUnguardedRhs <$> trfExpr expr))
-                    <*> addToScope locals (trfWhereLocalBinds (getLoc expr) locals)
+                    <*> trfWhereLocalBinds (getLoc expr) locals
 trfBind' (FunBind id (MG (unLoc -> matches) _ _ _) _ _ _) 
   = AST.UFunBind <$> makeNonemptyIndentedList (mapM (trfMatch (unLoc id)) matches)
 trfBind' (PatBind pat (GRHSs rhs (unLoc -> locals)) _ _ _) 
@@ -48,9 +48,8 @@ trfMatch' :: TransformName n r => n -> Match n (LHsExpr n) -> Trf (AST.UMatch (D
 trfMatch' name (Match funid pats typ (GRHSs rhss (unLoc -> locBinds)))
   -- TODO: add the optional typ to pats
   = AST.UMatch <$> trfMatchLhs name funid pats
-               <*> addDefsToScope (trfRhss rhss)
-               <*> addDefsToScope (trfWhereLocalBinds (collectLocs rhss) locBinds)
-  where addDefsToScope = addToCurrentScope locBinds . addToScope pats
+               <*> addToCurrentScope locBinds (addToScope pats (trfRhss rhss))
+               <*> addToScope pats (trfWhereLocalBinds (collectLocs rhss) locBinds)
 
 trfMatchLhs :: TransformName n r => n -> MatchFixity n -> [LPat n] -> Trf (Ann AST.UMatchLhs (Dom r) RangeStage)
 trfMatchLhs name fb pats 
