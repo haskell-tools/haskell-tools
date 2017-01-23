@@ -70,6 +70,10 @@ transformingPossibleVar n = case hsGetNames n of
   _                                           -> id
 
 -- | Perform the transformation putting the given definition in a new local scope.
+addEmptyScope :: Trf a -> Trf a
+addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s }) 
+
+-- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
 addToScope e = local (\s -> s { localsInScope = hsGetNames e : localsInScope s }) 
 

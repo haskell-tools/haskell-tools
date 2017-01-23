@@ -3,6 +3,7 @@
            , FlexibleContexts
            , ViewPatterns
            , TypeApplications
+           , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.FloatOut where
 
@@ -14,9 +15,10 @@ import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 
-import Name
+import Name as GHC
 import OccName
 import SrcLoc
+import Outputable
 
 type FloatOutDefinition dom = (HasNameInfo dom, HasScopeInfo dom)
 
@@ -40,7 +42,10 @@ data FloatState dom = NotEncountered | Extracted [LocalBind dom] | Inserted
 extractAndInsert :: FloatOutDefinition dom => RealSrcSpan -> LocalBindList dom -> StateT (FloatState dom) (LocalRefactor dom) (LocalBindList dom)
 extractAndInsert sp locs 
   | hasSharedSig = refactError "Cannot float out a definition, since it has a signature shared with other bindings that stay in the scope."
-  | hasConflict = refactError "Cannot float out a definition, since it would cause a name conflict in the target scope."
+  | not (null nameConflicts) = refactError $ "Cannot float out a definition, since it would cause a name conflicts in the target scope: " 
+                                                ++ concat (intersperse ", " nameConflicts)
+  | not (null implicitConflicts) = refactError $ "Cannot float out a definition, since it uses the implicit parameters: "
+                                                   ++ concat (intersperse ", " implicitConflicts)
   | otherwise = get >>= \case NotEncountered -> put (Extracted floated) >> return filteredLocs
                               Extracted binds -> put Inserted >> (return $ annListElems .- (++ binds) $ locs)
                               Inserted -> return locs
@@ -52,10 +57,22 @@ extractAndInsert sp locs
         filteredLocs = filterList (\e -> not (getRange e `elem` floatedElemRanges)) locs
           where floatedElemRanges = map getRange floated
         hasSharedSig = any (\e -> not $ null ((filteredLocs ^? annList & elementName) `intersect` (e ^? elementName))) selected
-        hasConflict = any checkConflict selected
+        conflicts = map checkConflict selected
 
-checkConflict :: FloatOutDefinition dom => LocalBind dom -> Bool
-checkConflict ((^? elementName) -> bndNames) = any @[] hasConflict bndNames
-  where hasConflict bndName = isJust $ find ((== nameStr) . Just . occNameString . getOccName) outerScope
-          where outerScope = head $ tail $ semanticsScope bndName 
+        nameConflicts = concat $ map fst conflicts
+        implicitConflicts = concat $ map snd conflicts
+
+checkConflict :: forall dom . FloatOutDefinition dom => LocalBind dom -> ([String], [String])
+checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
+  where bndNames = bnd ^? elementName
+        getConflict bndName = filter ((== nameStr) . Just) $ map (occNameString . getOccName) outerScope
+          where outerScope = concat $ take 1 $ drop 2 $ semanticsScope bndName 
                 nameStr = fmap (occNameString . getOccName) $ semanticsName bndName
+        implicits = map (occNameString . getOccName) 
+                        (concatMap getPossibleImplicits bndNames `intersect` getQNames (bnd ^? biplateRef))
+        
+        getQNames :: [QualifiedName dom] -> [GHC.Name]
+        getQNames = catMaybes . map semanticsName
+
+        getPossibleImplicits :: QualifiedName dom -> [GHC.Name]
+        getPossibleImplicits qn = concat (take 2 $ semanticsScope qn) \\ catMaybes (map semanticsName bndNames)

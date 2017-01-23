@@ -369,6 +369,8 @@ wrongFloatOutTests =
   , ("Refactor.FloatOut.NameCollosionWithImport", "4:11")
   , ("Refactor.FloatOut.NameCollosionWithLocal", "5:18")
   , ("Refactor.FloatOut.SharedSignature", "5:10")
+  , ("Refactor.FloatOut.ImplicitLocal", "4:10")
+  , ("Refactor.FloatOut.ImplicitParam", "4:10")
   ]
 
 multiModuleTests =
