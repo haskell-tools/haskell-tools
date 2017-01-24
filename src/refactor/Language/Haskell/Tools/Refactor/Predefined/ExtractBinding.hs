@@ -9,13 +9,13 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
-import Name (nameModule_maybe)
 import qualified GHC
+import Name (nameModule_maybe)
 import qualified OccName as GHC (occNameString)
-import SrcLoc
 import OccName (HasOccName(..))
 import PrelNames
-import RdrName
+import RdrName (isOrig_maybe)
+import SrcLoc
 
 import Control.Monad.State
 import Control.Reference

@@ -6,7 +6,7 @@ import Data.Char (isSpace)
 import Data.List
 import GHC.Generics (Generic(..))
 import System.Directory (withCurrentDirectory, doesFileExist, doesDirectoryExist)
-import System.FilePath (FilePath(..), (</>))
+import System.FilePath (FilePath, (</>))
 import System.Process (readProcessWithExitCode)
 
 data PackageDB = AutoDB

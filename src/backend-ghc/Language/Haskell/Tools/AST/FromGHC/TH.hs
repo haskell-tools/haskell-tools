@@ -13,7 +13,7 @@ import SrcLoc as GHC
 import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr, createScopeInfo)
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..))
-import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..))
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf)
 import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..), trfName')
 import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
 import Language.Haskell.Tools.AST.FromGHC.Types (trfType)

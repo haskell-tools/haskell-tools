@@ -11,7 +11,7 @@
 -- | Helper functions for using the AST.
 module Language.Haskell.Tools.AST.Helpers where
 
-import qualified Name as GHC (Name(..))
+import qualified Name as GHC (Name)
 import SrcLoc
 
 import Control.Reference
@@ -22,13 +22,13 @@ import Data.Maybe (Maybe(..), isJust)
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.References
-import Language.Haskell.Tools.AST.Representation.Binds (ULocalBind(..), UValueBind(..))
-import Language.Haskell.Tools.AST.Representation.Decls (UDeclHead(..), UDecl(..))
-import Language.Haskell.Tools.AST.Representation.Modules (UImportDecl(..))
-import Language.Haskell.Tools.AST.Representation.Names (UQualifiedName(..))
-import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
+import Language.Haskell.Tools.AST.Representation.Binds (ULocalBind, UValueBind)
+import Language.Haskell.Tools.AST.Representation.Decls (UDeclHead, UDecl)
+import Language.Haskell.Tools.AST.Representation.Modules (UImportDecl)
+import Language.Haskell.Tools.AST.Representation.Names (UQualifiedName)
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
 import Language.Haskell.Tools.AST.Representation.Types (UType(..))
-import Language.Haskell.Tools.AST.SemaInfoTypes (Scope(..))
+import Language.Haskell.Tools.AST.SemaInfoTypes (Scope)
  
 -- | Does the import declaration import only the explicitly listed elements?
 importIsExact :: Ann UImportDecl dom stage -> Bool

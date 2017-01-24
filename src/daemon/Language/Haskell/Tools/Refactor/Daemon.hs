@@ -12,6 +12,7 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Control.Monad.State
+import Control.Reference
 import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -28,18 +29,17 @@ import Network.Socket.ByteString.Lazy
 import System.Directory
 import System.Environment
 import System.IO
-import Control.Reference
 
+import Bag
 import DynFlags
+import ErrUtils
+import FastString (unpackFS)
 import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), reflectGhc, modifySession)
 import HscTypes (hsc_mod_graph)
 import Packages
-import ErrUtils
 import SrcLoc
-import Bag
-import FastString (unpackFS)
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint

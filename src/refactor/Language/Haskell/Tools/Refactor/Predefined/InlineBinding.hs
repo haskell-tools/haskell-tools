@@ -19,8 +19,8 @@ import Data.Generics.Uniplate.Operations (Uniplate(..), Biplate(..))
 import Data.List (nub)
 import Data.Maybe (Maybe(..), catMaybes)
 
-import Name as GHC (NamedThing(..), Name(..), occNameString)
-import SrcLoc as GHC (SrcSpan(..), RealSrcSpan(..), containsSpan)
+import Name as GHC (NamedThing(..), Name, occNameString)
+import SrcLoc as GHC (SrcSpan(..), RealSrcSpan, containsSpan)
 
 import Language.Haskell.Tools.Refactor as AST
 

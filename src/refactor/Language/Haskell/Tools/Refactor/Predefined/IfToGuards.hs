@@ -4,7 +4,7 @@ module Language.Haskell.Tools.Refactor.Predefined.IfToGuards (ifToGuards, tryItO
 import Control.Reference ((^.), (.-), (&))
 import Data.Generics.Uniplate.Data ()
 import Language.Haskell.Tools.Refactor
-import SrcLoc (RealSrcSpan(..))
+import SrcLoc (RealSrcSpan)
 
 tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . ifToGuards)

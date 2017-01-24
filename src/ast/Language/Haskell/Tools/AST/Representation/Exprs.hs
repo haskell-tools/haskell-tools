@@ -1,14 +1,14 @@
 -- | Representation of Haskell expressions
 module Language.Haskell.Tools.AST.Representation.Exprs where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Binds (ULocalBind, ULocalBinds, URhsGuard)
-import Language.Haskell.Tools.AST.Representation.Literals (ULiteral(..))
-import Language.Haskell.Tools.AST.Representation.Names (UStringNode(..), UName(..), UOperator(..))
-import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
+import Language.Haskell.Tools.AST.Representation.Literals (ULiteral)
+import Language.Haskell.Tools.AST.Representation.Names (UStringNode, UName, UOperator)
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
 import Language.Haskell.Tools.AST.Representation.Stmts
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UBracket(..), UQuasiQuote(..), USplice(..))
-import Language.Haskell.Tools.AST.Representation.Types (UType(..))
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UBracket, UQuasiQuote, USplice)
+import Language.Haskell.Tools.AST.Representation.Types (UType)
 
 -- | Haskell expressions
 data UExpr dom stage

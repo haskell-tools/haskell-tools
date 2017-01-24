@@ -1,11 +1,11 @@
 -- | Representation of Haskell AST value and function bindings (both local and top-level)
 module Language.Haskell.Tools.AST.Representation.Binds where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
-import Language.Haskell.Tools.AST.Representation.Exprs (UExpr(..))
-import Language.Haskell.Tools.AST.Representation.Names (UName(..), UOperator(..))
-import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
-import Language.Haskell.Tools.AST.Representation.Types (UType(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
+import Language.Haskell.Tools.AST.Representation.Exprs (UExpr)
+import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
+import Language.Haskell.Tools.AST.Representation.Types (UType)
 
 -- | Value binding for top-level and local bindings
 data UValueBind dom stage

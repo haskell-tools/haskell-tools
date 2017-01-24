@@ -9,16 +9,14 @@ module Language.Haskell.Tools.Refactor.Predefined.FloatOut where
 
 import Control.Monad.State
 import Control.Reference
-import Data.Function (on)
 import Data.List
-import Data.Maybe
+import Data.Maybe (Maybe(..), catMaybes)
 
 import Language.Haskell.Tools.Refactor
 
-import Name as GHC
-import OccName
-import SrcLoc
-import Outputable
+import Name as GHC (Name, NamedThing(..), occNameString)
+import OccName (occNameString)
+import SrcLoc (RealSrcSpan)
 
 type FloatOutDefinition dom = (HasNameInfo dom, HasScopeInfo dom)
 

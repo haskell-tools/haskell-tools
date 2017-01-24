@@ -7,16 +7,19 @@ module Language.Haskell.Tools.Refactor.Helpers where
 
 import Control.Reference
 import Data.Function (on)
-import Data.List
+import Data.List (sortBy, nubBy)
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite as AST
-import Language.Haskell.Tools.Refactor.ListOperations
+import Language.Haskell.Tools.Refactor.ListOperations (filterList)
 
-import SrcLoc
+import SrcLoc (srcSpanStart)
 
 replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom           
-replaceWithJust e (AnnMaybeG temp _) = AnnMaybeG temp (Just e)
+replaceWithJust e = annMaybe .= Just e
+
+replaceWithNothing :: AnnMaybe e dom -> AnnMaybe e dom           
+replaceWithNothing = annMaybe .= Nothing
 
 -- | Remove the container (where or let) when the last binding is removed.
 removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom) 

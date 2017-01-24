@@ -7,10 +7,10 @@
            #-}
 module Language.Haskell.Tools.RangeDebug.Instances where
 
-import Language.Haskell.Tools.RangeDebug
+import Language.Haskell.Tools.RangeDebug (TreeDebug(..))
 
-import GHC.Generics
-import Control.Reference
+import Control.Reference ((^.))
+import GHC.Generics (Generic(..))
 
 import Language.Haskell.Tools.AST
 

@@ -12,7 +12,7 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Transform.RangeTemplate
 import Language.Haskell.Tools.Transform.SourceTemplate
 import SrcLoc
-import StringBuffer (StringBuffer(..), nextChar, atEnd)
+import StringBuffer (StringBuffer, nextChar, atEnd)
 
 rangeToSource :: SourceInfoTraversal node => StringBuffer -> Ann node dom RngTemplateStage
                                                           -> Ann node dom SrcTemplateStage

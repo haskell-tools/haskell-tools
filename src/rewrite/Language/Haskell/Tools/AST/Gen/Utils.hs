@@ -5,7 +5,7 @@
 module Language.Haskell.Tools.AST.Gen.Utils where
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.ElementTypes (AnnMaybe(..), AnnList(..))
+import Language.Haskell.Tools.AST.ElementTypes (AnnMaybe, AnnList)
 import Language.Haskell.Tools.Transform (child, opt, list)
 
 fromTemplate :: src -> NodeInfo sema src

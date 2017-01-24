@@ -5,9 +5,9 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Literals where
 
-import Data.String (IsString(..), String(..))
+import Data.String (IsString(..), String)
 import Language.Haskell.Tools.AST (ULiteral(..))
-import Language.Haskell.Tools.AST.ElementTypes (Literal(..))
+import Language.Haskell.Tools.AST.ElementTypes (Literal)
 import Language.Haskell.Tools.AST.Gen.Utils (mkAnn)
 
 -- | Character literal: @'c'@

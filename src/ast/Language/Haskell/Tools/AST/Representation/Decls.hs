@@ -2,14 +2,14 @@
 -- The definition of value bindings are in the Binds module.
 module Language.Haskell.Tools.AST.Representation.Decls where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
 import Language.Haskell.Tools.AST.Representation.Binds
-import Language.Haskell.Tools.AST.Representation.Exprs (UExpr(..))
-import Language.Haskell.Tools.AST.Representation.Kinds (UKindConstraint(..))
+import Language.Haskell.Tools.AST.Representation.Exprs (UExpr)
+import Language.Haskell.Tools.AST.Representation.Kinds (UKindConstraint)
 import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Representation.Patterns (UPattern(..))
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (USplice(..))
-import Language.Haskell.Tools.AST.Representation.Types (UContext(..), UType(..), UTyVar(..))
+import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (USplice)
+import Language.Haskell.Tools.AST.Representation.Types (UContext, UType, UTyVar)
 
 -- * Declarations
 

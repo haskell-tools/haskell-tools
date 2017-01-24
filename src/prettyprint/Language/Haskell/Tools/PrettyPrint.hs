@@ -10,7 +10,7 @@ module Language.Haskell.Tools.PrettyPrint (prettyPrint) where
 import FastString (fsLit)
 import SrcLoc
 
-import Language.Haskell.Tools.AST (SrcTemplateStage(..), SourceInfoTraversal(..))
+import Language.Haskell.Tools.AST (SrcTemplateStage, SourceInfoTraversal(..))
 import Language.Haskell.Tools.PrettyPrint.RoseTree (RoseSourceInfo(..), RoseTree(..), toRoseTree)
 import Language.Haskell.Tools.Transform.SourceTemplate
 

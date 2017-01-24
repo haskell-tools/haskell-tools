@@ -7,7 +7,7 @@ module Language.Haskell.Tools.Refactor.BindingElem where
 import Control.Reference
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.Rewrite
-import SrcLoc (RealSrcSpan(..))
+import SrcLoc (RealSrcSpan)
 
 -- | A type class for handling definitions that can appear as both top-level and local definitions
 class NamedElement d => BindingElem d where

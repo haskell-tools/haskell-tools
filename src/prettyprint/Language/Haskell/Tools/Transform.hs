@@ -21,7 +21,7 @@ import Language.Haskell.Tools.Transform.SourceTemplate
 import Language.Haskell.Tools.Transform.SourceTemplateHelpers
 
 import Language.Haskell.Tools.AST
-import StringBuffer (StringBuffer(..))
+import StringBuffer (StringBuffer)
 
 -- | Prepares the AST for pretty printing
 prepareAST :: SourceInfoTraversal node => StringBuffer -> Ann node dom RangeStage -> Ann node dom SrcTemplateStage

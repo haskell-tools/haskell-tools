@@ -15,7 +15,9 @@ module Language.Haskell.Tools.Refactor.RefactorBase where
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite
 
+import Bag as GHC
 import DynFlags (HasDynFlags(..))
+import ErrUtils as GHC
 import Exception (ExceptionMonad(..))
 import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
 import qualified Module as GHC
@@ -23,8 +25,6 @@ import qualified Name as GHC
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
-import ErrUtils as GHC
-import Bag as GHC
 
 import Control.Exception
 import Control.Monad.Reader

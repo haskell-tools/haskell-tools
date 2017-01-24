@@ -45,14 +45,13 @@ before_install:
     fi
 
 install:
-
   # Install all dependecies of Haskell-tools, including test requirements
-  - stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
+  - travis_wait stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
 
 script:
   
   # Build Haskell-tools with all library, executable, test and benchmark
-  - stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps 
+  - travis_wait stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps 
 
   # Run tests. We record test coverage information.
   - stack --no-terminal test --coverage haskell-tools-rewrite
@@ -64,7 +63,7 @@ script:
 after_script:
   
   # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
-  - stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
+  - travis_wait stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
 
   # Publish API, coverage and benchmark data to our site
   - bash ./deploy.sh

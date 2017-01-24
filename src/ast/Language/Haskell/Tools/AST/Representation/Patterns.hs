@@ -1,12 +1,12 @@
 -- | Representation of Haskell patterns
 module Language.Haskell.Tools.AST.Representation.Patterns where
           
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UFieldWildcard)  
-import Language.Haskell.Tools.AST.Representation.Literals (ULiteral(..))
-import Language.Haskell.Tools.AST.Representation.Names (UName(..), UOperator(..))
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote(..), USplice(..))
-import Language.Haskell.Tools.AST.Representation.Types (UType(..))
+import Language.Haskell.Tools.AST.Representation.Literals (ULiteral)
+import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote, USplice)
+import Language.Haskell.Tools.AST.Representation.Types (UType)
 
         
 -- | Representation of patterns for pattern bindings

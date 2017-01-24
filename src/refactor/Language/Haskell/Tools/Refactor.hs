@@ -28,10 +28,10 @@ import Language.Haskell.Tools.AST.Rewrite
 import Language.Haskell.Tools.AST.SemaInfoClasses
 import Language.Haskell.Tools.IndentationUtils
 import Language.Haskell.Tools.Refactor.BindingElem
+import Language.Haskell.Tools.Refactor.Helpers
 import Language.Haskell.Tools.Refactor.ListOperations
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Refactor.Helpers
 import Language.Haskell.Tools.Transform
 
 import Language.Haskell.Tools.AST.Ann

@@ -224,6 +224,10 @@ organizeImportTests =
   , "Refactor.OrganizeImports.InstanceCarry.ImportOrphan"
   , "Refactor.OrganizeImports.InstanceCarry.ImportNonOrphan"
   , "Refactor.OrganizeImports.NarrowQual"
+  , "Refactor.OrganizeImports.NarrowSpec"
+  , "Refactor.OrganizeImports.StandaloneDeriving"
+  , "Refactor.OrganizeImports.TemplateHaskell"
+  , "Refactor.OrganizeImports.NarrowType"
   ]
   
 generateSignatureTests = 

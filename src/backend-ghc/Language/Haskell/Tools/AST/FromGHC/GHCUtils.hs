@@ -11,14 +11,14 @@ module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
 import Data.Generics.Uniplate.Data ()
 import Data.List
 
-import Bag (Bag(..), bagToList, unionManyBags)
+import Bag (Bag, bagToList, unionManyBags)
 import ConLike (ConLike(..))
 import GHC
-import Id (Id(..), mkVanillaGlobal)
-import OccName (OccName(..))
+import Id (Id, mkVanillaGlobal)
+import OccName (OccName)
 import Outputable (Outputable(..), OutputableBndr(..), showSDocUnsafe)
 import PatSyn (patSynSig)
-import RdrName (RdrName(..), rdrNameOcc, nameRdrName)
+import RdrName (RdrName, rdrNameOcc, nameRdrName)
 import SrcLoc
 import Type (TyThing(..), mkFunTys)
 

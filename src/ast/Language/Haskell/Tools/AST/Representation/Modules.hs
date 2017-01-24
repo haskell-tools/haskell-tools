@@ -1,9 +1,9 @@
 -- | Representation of Haskell modules, imports and exports. Also contains file-level pragmas.
 module Language.Haskell.Tools.AST.Representation.Modules where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
-import Language.Haskell.Tools.AST.Representation.Decls (UDecl(..))
-import Language.Haskell.Tools.AST.Representation.Names (UStringNode(..), UName(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
+import Language.Haskell.Tools.AST.Representation.Decls (UDecl)
+import Language.Haskell.Tools.AST.Representation.Names (UStringNode, UName)
 
 -- | The representation of a haskell module, that is a separate compilation unit.
 -- It may or may not have a header.

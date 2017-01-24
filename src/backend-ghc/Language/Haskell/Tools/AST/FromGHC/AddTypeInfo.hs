@@ -7,17 +7,17 @@ module Language.Haskell.Tools.AST.FromGHC.AddTypeInfo (addTypeInfos) where
 import Bag as GHC (bagToList)
 import GHC
 import HscTypes as GHC
-import Id as GHC (Id(..), mkVanillaGlobal)
-import Module as GHC (Module(..), moduleEnvElts)
+import Id as GHC (Id, mkVanillaGlobal)
+import Module as GHC (Module, moduleEnvElts)
 import Name as GHC hiding (varName)
-import OccName as GHC (OccName(..), mkDataOcc)
+import OccName as GHC (OccName, mkDataOcc)
 import SrcLoc as GHC
 import TcEvidence as GHC (EvBind(..), TcEvBinds(..))
-import Type as GHC (Type(..), mkTyVarTy, mkTyConTy)
+import Type as GHC (Type, mkTyVarTy, mkTyConTy)
 import TysWiredIn as GHC (starKindTyCon)
 import UniqFM as GHC (eltsUFM)
 import UniqSupply as GHC (uniqFromSupply, mkSplitUniqSupply)
-import Var as GHC (Var(..), Id(..))
+import Var as GHC (Var(..), Id)
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Monad.IO.Class (MonadIO(..))

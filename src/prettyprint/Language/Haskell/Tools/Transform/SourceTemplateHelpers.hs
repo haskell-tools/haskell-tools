@@ -6,7 +6,7 @@
 module Language.Haskell.Tools.Transform.SourceTemplateHelpers where
 
 import Control.Reference ((.=))
-import Data.String (IsString(..), String(..))
+import Data.String (IsString(..), String)
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Transform.SourceTemplate
 import SrcLoc (noSrcSpan, combineSrcSpans)

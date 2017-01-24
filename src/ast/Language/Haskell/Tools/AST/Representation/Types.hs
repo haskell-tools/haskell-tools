@@ -1,10 +1,10 @@
 -- | Representation of Haskell types
 module Language.Haskell.Tools.AST.Representation.Types where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
-import Language.Haskell.Tools.AST.Representation.Kinds (UPromoted(..), UKind(..), UKindConstraint(..))
-import Language.Haskell.Tools.AST.Representation.Names (UName(..), UOperator(..))
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote(..), USplice(..))
+import Language.Haskell.Tools.AST.Ann (Ann, AnnListG, AnnMaybeG)
+import Language.Haskell.Tools.AST.Representation.Kinds (UPromoted, UKind, UKindConstraint)
+import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote, USplice)
 
 -- | Type variable declaration
 data UTyVar dom stage

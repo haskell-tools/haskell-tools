@@ -8,7 +8,7 @@ module Language.Haskell.Tools.Refactor.Predefined.GenerateExports (generateExpor
 import Control.Reference ((^?), (.=), (&))
 import Language.Haskell.Tools.Refactor
 
-import qualified GHC (NamedThing(..), Name(..))
+import qualified GHC (NamedThing(..), Name)
 
 import Control.Applicative ((<|>))
 import Data.Maybe (Maybe(..), catMaybes)

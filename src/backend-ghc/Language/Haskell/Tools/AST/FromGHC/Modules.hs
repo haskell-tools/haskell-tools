@@ -21,7 +21,7 @@ import DynFlags as GHC (xopt_set)
 import ErrUtils as GHC (pprErrMsgBagWithLoc)
 import FastString as GHC (unpackFS)
 import GHC
-import HscTypes as GHC (WarningTxt(..), ModSummary(..), HscEnv(..))
+import HscTypes as GHC (WarningTxt(..), ModSummary, HscEnv(..))
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Name as GHC hiding (varName)
 import Outputable as GHC (vcat, showSDocUnsafe, (<+>))
@@ -31,7 +31,7 @@ import RnExpr as GHC (rnLExpr)
 import SrcLoc as GHC
 import TcRnMonad as GHC
 
-import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG(), AnnListG(..), Dom, RangeStage
+import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeStage
                                   , sourceInfo, semantics, annotation, nodeSpan)
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
@@ -196,11 +196,12 @@ trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) Range
 trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n) 
-  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (makeJust <$> (annLocNoSema (tokenLoc AnnDotdot) (pure AST.USubSpecAll))))
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (makeJust <$> subspec))
+  where subspec = betweenIncluding AnnOpenP AnnCloseP $ annContNoSema (pure AST.USubSpecAll)
 trfIESpec' (IEThingWith n _ ls _)
-  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n
-                          <*> (makeJust <$> between AnnOpenP AnnCloseP 
-                                                   (annContNoSema $ AST.USubSpecList <$> makeList ", " (after AnnOpenP) (mapM trfName ls))))
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName n <*> (makeJust <$> subspec))
+  where subspec = betweenIncluding AnnOpenP AnnCloseP $ annContNoSema 
+                    $ AST.USubSpecList <$> between AnnOpenP AnnCloseP (makeList ", " atTheStart (mapM trfName ls))
 trfIESpec' _ = pure Nothing
 
 trfImportModifier :: Trf (AnnMaybeG AST.UImportModifier (Dom r) RangeStage)

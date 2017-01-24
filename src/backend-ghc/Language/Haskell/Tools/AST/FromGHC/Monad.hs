@@ -2,16 +2,16 @@
 -- during the conversion from GHC AST to our representation.
 module Language.Haskell.Tools.AST.FromGHC.Monad where
 
-import ApiAnnotation (ApiAnnKey(..))
+import ApiAnnotation (ApiAnnKey)
 import Control.Monad.Reader
 import Data.Function (on)
-import Data.Map as Map (Map(..), lookup, empty)
+import Data.Map as Map (Map, lookup, empty)
 import Data.Maybe (fromMaybe)
 import GHC
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (HsHasName(..), rdrNameStr)
-import Language.Haskell.Tools.AST.FromGHC.SourceMap (SourceMap(..), annotationsToSrcMap)
-import Name (Name(..), isVarName, isTyVarName)
+import Language.Haskell.Tools.AST.FromGHC.SourceMap (SourceMap, annotationsToSrcMap)
+import Name (Name, isVarName, isTyVarName)
 import SrcLoc
 
 -- | The transformation monad type

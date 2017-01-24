@@ -28,9 +28,9 @@ import Language.Haskell.Tools.AST.FromGHC.Stmts
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.TH (trfBracket', trfSplice', trfQuasiQuotation')
 import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
-import Language.Haskell.Tools.AST.SemaInfoTypes (ScopeInfo(..), mkScopeInfo)
+import Language.Haskell.Tools.AST.SemaInfoTypes (ScopeInfo, mkScopeInfo)
 
-import Language.Haskell.Tools.AST (Ann(), AnnListG(), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann, AnnListG, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (Ann AST.UExpr (Dom r) RangeStage)

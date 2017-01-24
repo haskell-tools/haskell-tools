@@ -3,7 +3,7 @@
 module Language.Haskell.Tools.AST.Match.Literals where
 
 import Language.Haskell.Tools.AST (ULiteral(..), Ann(..))
-import Language.Haskell.Tools.AST.ElementTypes (Literal(..))
+import Language.Haskell.Tools.AST.ElementTypes (Literal)
 
 -- | Character literal: @'c'@
 pattern CharLit :: Char -> Literal dom

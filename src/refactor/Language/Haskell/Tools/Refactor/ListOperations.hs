@@ -6,7 +6,7 @@ module Language.Haskell.Tools.Refactor.ListOperations where
 import Control.Reference
 
 import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.Rewrite (AnnMaybe(..), AnnList(..))
+import Language.Haskell.Tools.AST.Rewrite (AnnList)
 import Language.Haskell.Tools.Transform (srcTmpDefaultSeparator, srcTmpSeparators)
 
 -- | Filters the elements of the list. By default it removes the separator before the element.

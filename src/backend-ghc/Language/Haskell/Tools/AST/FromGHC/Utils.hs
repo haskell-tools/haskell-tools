@@ -11,7 +11,7 @@
            #-}
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
-import ApiAnnotation (AnnKeywordId(..))
+import ApiAnnotation (AnnKeywordId)
 import Avail (availNamesWithSelectors, availNames)
 import BasicTypes (StringLiteral(..))
 import CoAxiom as GHC (CoAxiom(..))
@@ -253,6 +253,16 @@ updateFocus f trf = do newSpan <- f =<< asks contRange
 -- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok = focusAfter firstTok . focusBefore lastTok
+
+betweenIncluding :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
+betweenIncluding firstTok lastTok trf
+  = do start <- tokenLoc firstTok
+       end <- tokenLocBack lastTok
+       if isGoodSrcSpan start && isGoodSrcSpan end
+          then local (\s -> s { contRange = mkSrcSpan (srcSpanStart start) (srcSpanEnd end)}) trf
+          else do rng <- asks contRange 
+                  error $ "betweenIncluding: tokens not found in " ++ show rng ++ ": " 
+                            ++ show firstTok ++ " or " ++ show lastTok
 
 -- | Focuses the transformation to go between tokens if they are present
 betweenIfPresent :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a

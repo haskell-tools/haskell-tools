@@ -9,7 +9,7 @@ import Bag as GHC (bagToList)
 import BasicTypes as GHC (FixityDirection(..), Fixity(..))
 import HsBinds as GHC
 import HsExpr as GHC
-import HsPat as GHC (LPat(..))
+import HsPat as GHC (LPat)
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
 import SrcLoc as GHC
 
@@ -22,7 +22,7 @@ import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
 import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
-import Language.Haskell.Tools.AST (Ann(), AnnMaybeG(), AnnListG(), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann, AnnMaybeG, AnnListG, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
 trfBind :: TransformName n r => Located (HsBind n) -> Trf (Ann AST.UValueBind (Dom r) RangeStage)

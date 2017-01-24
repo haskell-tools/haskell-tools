@@ -6,7 +6,7 @@
            #-}
 module Language.Haskell.Tools.AST.Gen.Modules where
 
-import Data.String (IsString(..), String(..))
+import Data.String (IsString(..), String)
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
 import Language.Haskell.Tools.AST.Gen.Names (mkStringNode)

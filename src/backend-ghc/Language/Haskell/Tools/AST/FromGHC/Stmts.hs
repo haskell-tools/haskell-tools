@@ -11,11 +11,11 @@ import ApiAnnotation as GHC (AnnKeywordId(..))
 import HsExpr as GHC
 import SrcLoc as GHC
 
-import Language.Haskell.Tools.AST (Ann(), AnnListG(), Dom, RangeStage)
+import Language.Haskell.Tools.AST (Ann, AnnListG, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds (trfLocalBinds)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
-import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf(..), addToScope)
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf, addToScope)
 import Language.Haskell.Tools.AST.FromGHC.Names (TransformName(..))
 import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
 import Language.Haskell.Tools.AST.FromGHC.Utils

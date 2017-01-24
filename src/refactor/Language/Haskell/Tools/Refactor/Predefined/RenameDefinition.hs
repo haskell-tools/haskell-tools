@@ -9,9 +9,9 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
-import qualified GHC (RealSrcSpan(..), NamedThing(..), Name(..))
+import qualified GHC (RealSrcSpan, NamedThing(..), Name)
 import Name (OccName(..), NamedThing(..), occNameString)
-import SrcLoc (RealSrcSpan(..))
+import SrcLoc (RealSrcSpan)
 
 import Control.Monad.State
 import Control.Reference as Ref

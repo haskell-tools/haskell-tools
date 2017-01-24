@@ -2,7 +2,7 @@
 -- | A representation of the tokens that build up the source file.
 module Language.Haskell.Tools.AST.FromGHC.SourceMap where
 
-import ApiAnnotation (AnnKeywordId(..), ApiAnnKey(..))
+import ApiAnnotation (AnnKeywordId, ApiAnnKey)
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
