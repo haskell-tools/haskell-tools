@@ -129,6 +129,8 @@ data UClassElement dom stage
                 } -- ^ Default signature (by using @DefaultSignatures@): @ default _enum :: (Generic a, GEnum (Rep a)) => [a] @
   | UClsMinimal { _pragmaFormula :: Ann UMinimalFormula dom stage
                 } -- ^ Minimal pragma: @ {-# MINIMAL (==) | (/=) #-} @
+  | UClsInline  { _clsInline :: Ann UInlinePragma dom stage
+                } -- ^ Inline-like pragma in class definition
   -- not supported yet (GHC 8.0.1)
 -- | UClsPatSig  { _cePatSig :: Ann UPatternTypeSignature dom stage
   --               } -- ^ Pattern signature in a class declaration (by using @PatternSynonyms@)
@@ -181,6 +183,8 @@ data UInstBodyDecl dom stage
                           } -- ^ An associated data type implemented using GADT style
   | USpecializeInstance   { _specializeInstanceType :: Ann UType dom stage
                           } -- ^ Specialize instance pragma (no phase selection is allowed)
+  | UInlineInstance       { _instanceInline :: Ann UInlinePragma dom stage
+                          } -- ^ Inline-like pragma in a class instance
   -- not supported yet
 -- | UInstBodyPatSyn       { _instBodyPatSyn :: Ann UPatternSynonym dom stage
   --                         } -- ^ A pattern synonym in a class instance
@@ -348,21 +352,6 @@ data URole dom stage
   | URepresentational
   | UPhantom
 
--- * Rewrite rules
-
--- | Controls the activation of a rewrite rule (@ [1] @)
-data UPhaseControl dom stage
-  = UPhaseControl { _phaseUntil :: AnnMaybeG PhaseInvert dom stage
-                  , _phaseNumber :: Ann PhaseNumber dom stage
-                  } 
-
--- | Phase number for rewrite rules
-data PhaseNumber dom stage
-  = PhaseNumber { _phaseNum :: Integer }
-
--- | A tilde that marks the inversion of the phase number
-data PhaseInvert dom stage = PhaseInvert
-
 -- * Pragmas
 
 -- | Top level pragmas
@@ -378,17 +367,8 @@ data UTopLevelPragma dom stage
   | UAnnPragma        { _annotationSubject :: Ann UAnnotationSubject dom stage
                       , _annotateExpr :: Ann UExpr dom stage
                       } -- ^ A pragma that annotates a definition with an arbitrary value (@ {-# ANN f 42 @)
-  | UInlinePragma     { _pragmaConlike :: AnnMaybeG UConlikeAnnot dom stage
-                      , _pragmaPhase :: AnnMaybeG UPhaseControl dom stage
-                      , _inlineDef :: Ann UName dom stage
-                      } -- ^ A pragma that marks a function for inlining to the compiler (@ {-# INLINE thenUs #-} @)
-  | UNoInlinePragma   { _pragmaConlike :: AnnMaybeG UConlikeAnnot dom stage
-                      , _pragmaPhase :: AnnMaybeG UPhaseControl dom stage
-                      , _noInlineDef :: Ann UName dom stage
-                      } -- ^ A pragma that forbids a function from being inlined by the compiler (@ {-# NOINLINE f #-} @)
-  | UInlinablePragma  { _pragmaPhase :: AnnMaybeG UPhaseControl dom stage
-                      , _inlinableDef :: Ann UName dom stage
-                      } -- ^ A pragma that marks a function that it may be inlined by the compiler (@ {-# INLINABLE thenUs #-} @)
+  -- TODO: extract pragmas that appear both in top-level and in instances (inline, inlinable, noinline)
+  | UInlinePragmaDecl { _pragmaInline :: Ann UInlinePragma dom stage }
   | ULinePragma       { _pragmaLineNum :: Ann LineNumber dom stage
                       , _pragmaFileName :: AnnMaybeG UStringNode dom stage
                       } -- ^ A pragma for maintaining line numbers in generated sources (@ {-# LINE 123 "somefile" #-} @)
@@ -424,9 +404,6 @@ data UMinimalFormula dom stage
                   } -- ^ One of the minimal formulas are needed (@ min1 | min2 @)
   | UMinimalAnd   { _minimalAnds :: AnnListG UMinimalFormula dom stage
                   } -- ^ Both of the minimal formulas are needed (@ min1 , min2 @)
-
--- | A @CONLIKE@ modifier for an @INLINE@ pragma.
-data UConlikeAnnot dom stage = UConlikeAnnot
 
 -- | A line number for a line pragma.
 data LineNumber dom stage

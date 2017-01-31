@@ -45,13 +45,16 @@ extractBinding :: forall dom . ExtractBindingDomain dom
                    -> String -> LocalRefactoring dom
 extractBinding sp selectDecl selectExpr name mod
   = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [QualifiedName dom])
-        exprRange = getRange $ head (mod ^? selectDecl & selectExpr)
+        exprRanges = map getRange (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
-     in if conflicting
-           then refactError "The given name causes name conflict."
-           else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
-                   case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
-                              Nothing -> refactError "There is no applicable expression to extract."
+     in case exprRanges of 
+          exprRange:_ -> 
+            if conflicting
+              then refactError "The given name causes name conflict."
+              else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
+                      case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
+                                 Nothing -> refactError "There is no applicable expression to extract."
+          [] -> refactError "There is no applicable expression to extract."
 
 -- | Decides if a new name defined to be the given string will conflict with the given AST element
 isConflicting :: ExtractBindingDomain dom => String -> QualifiedName dom -> Bool

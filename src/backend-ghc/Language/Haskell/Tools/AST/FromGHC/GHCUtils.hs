@@ -200,9 +200,9 @@ cleanHsType :: OutputableBndr n => HsType n -> HsType n
 cleanHsType (HsAppsTy [unLoc -> HsAppInfix t]) = HsTyVar t
 cleanHsType (HsAppsTy apps) = unLoc $ guessType (splitHsAppsTy apps)
   where guessType :: OutputableBndr n => ([[LHsType n]], [Located n]) -> LHsType n
-        guessType (term:terms, operator:operators)  
+        guessType (term@(hd:_):terms, operator:operators)  
           = let rhs = guessType (terms,operators)
-             in L (getLoc (head term) `combineSrcSpans` getLoc rhs) $ HsOpTy (doApps term) operator rhs
+             in L (getLoc hd `combineSrcSpans` getLoc rhs) $ HsOpTy (doApps term) operator rhs
         guessType ([term],[]) = doApps term
         guessType x = error ("guessType: " ++ showSDocUnsafe (ppr x))
         doApps term = foldl1 (\core t -> L (getLoc core `combineSrcSpans` getLoc t) $ HsAppTy core t) term

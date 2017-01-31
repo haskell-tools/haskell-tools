@@ -424,20 +424,19 @@ mkAnnPragma subj ann = mkAnn ("{-# ANN " <> child <> " " <> child <> " #-}") $ U
 -- | A pragma that marks a function for inlining to the compiler (@ {-\# INLINE thenUs \#-} @)
 mkInlinePragma :: Maybe (ConlikeAnnot dom) -> Maybe (PhaseControl dom) -> Name dom -> TopLevelPragma dom
 mkInlinePragma conlike phase name 
-  = mkAnn ("{-# INLINE " <> child <> child <> child <> " #-}") 
-      $ UInlinePragma (mkAnnMaybe (followedBy " " opt) conlike) (mkAnnMaybe (followedBy " " opt) phase) name
+  = mkAnn ("{-# INLINE " <> child <> child <> child <> " #-}") $ UInlinePragmaDecl
+      $ mkAnn child $ UInlinePragma (mkAnnMaybe (followedBy " " opt) conlike) (mkAnnMaybe (followedBy " " opt) phase) name
 
 -- | A pragma that forbids a function from being inlined by the compiler (@ {-\# NOINLINE f \#-} @)
-mkNoInlinePragma :: Maybe (ConlikeAnnot dom) -> Maybe (PhaseControl dom) -> Name dom -> TopLevelPragma dom
-mkNoInlinePragma conlike phase name 
-  = mkAnn ("{-# NOINLINE " <> child <> child <> child <> " #-}") 
-     $ UNoInlinePragma (mkAnnMaybe (followedBy " " opt) conlike) (mkAnnMaybe (followedBy " " opt) phase) name
+mkNoInlinePragma :: Name dom -> TopLevelPragma dom
+mkNoInlinePragma name = mkAnn ("{-# NOINLINE " <> child <> " #-}") $ UInlinePragmaDecl
+      $ mkAnn child $ UNoInlinePragma name
 
 -- | A pragma that marks a function that it may be inlined by the compiler (@ {-\# INLINABLE thenUs \#-} @)
 mkInlinablePragma :: Maybe (PhaseControl dom) -> Name dom -> TopLevelPragma dom
 mkInlinablePragma phase name
-  = mkAnn ("{-# INLINEABLE " <> child <> child <> " #-}") 
-     $ UInlinablePragma (mkAnnMaybe (followedBy " " opt) phase) name
+  = mkAnn ("{-# INLINEABLE " <> child <> child <> " #-}") $ UInlinePragmaDecl
+      $ mkAnn child $ UInlinablePragma (mkAnnMaybe (followedBy " " opt) phase) name
 
 -- | A pragma for maintaining line numbers in generated sources (@ {-\# LINE 123 "somefile" \#-} @)
 mkLinePragma :: Int -> Maybe (StringNode dom) -> TopLevelPragma dom

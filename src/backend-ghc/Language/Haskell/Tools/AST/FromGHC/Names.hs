@@ -87,6 +87,10 @@ instance {-# OVERLAPPABLE #-} (n ~ r, TransformableName n, HsHasName n) => Trans
 instance {-# OVERLAPS #-} (TransformableName res, GHCName res, HsHasName res) => TransformName GHC.Name res where
   transformName = fromGHCName
 
+trfNameText :: String -> Trf (Ann AST.UName (Dom r) RangeStage)
+trfNameText str
+  = annContNoSema (AST.UNormalName <$> annLoc (createImplicitNameInfo str) (asks contRange) (AST.nameFromList <$> trfNameStr str))
+
 trfImplicitName :: HsIPName -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfImplicitName (HsIPName fs) 
   = let nstr = unpackFS fs 

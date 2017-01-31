@@ -130,6 +130,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug URole dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UCmd dom st
 instance (Domain dom, SourceInfo st) => ASTDebug ULanguageExtension dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UMatchLhs dom st
+instance (Domain dom, SourceInfo st) => ASTDebug UInlinePragma dom st
 
 -- ULiteral
 instance (Domain dom, SourceInfo st) => ASTDebug ULiteral dom st

@@ -107,6 +107,7 @@ deriving instance Domain dom => Generic (URole dom stage)
 deriving instance Domain dom => Generic (UCmd dom stage)
 deriving instance Domain dom => Generic (ULanguageExtension dom stage)
 deriving instance Domain dom => Generic (UMatchLhs dom stage)
+deriving instance Domain dom => Generic (UInlinePragma dom stage)
 
 
 -- Literal

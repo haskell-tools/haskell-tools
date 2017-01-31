@@ -124,7 +124,7 @@ reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary ->
 reloadModule report ms = do 
   let modName = modSumName ms
   mcs <- gets (^. refSessMCs)
-  let Just mc = lookupModuleColl modName mcs
+  let mc = fromMaybe (error $ "reloadModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
       codeGen = hasGeneratedCode (keyFromMS ms) mcs
   let dfs = ms_hspp_opts ms 
   dfs' <- liftIO $ compileInContext mc mcs dfs
@@ -156,7 +156,7 @@ checkEvaluatedMods report mods = do
 codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection] -> ModSummary -> Ghc a
 codeGenForModule report mcs ms 
   = let modName = modSumName ms
-        Just mc = lookupModuleColl modName mcs
+        mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
      in -- TODO: don't recompile, only load?
         do withAlteredDynFlags (liftIO . compileInContext mc mcs)
              $ void $ parseTyped (forceCodeGen ms)

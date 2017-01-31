@@ -12,9 +12,8 @@ pattern Module :: FilePragmaList dom -> MaybeModuleHead dom
 pattern Module filePrags head imps decls  <- Ann _ (UModule filePrags head imps decls )
 
 -- | Module declaration with name and (optional) exports
-pattern ModuleHead :: ModuleName dom -> MaybeExportSpecs dom 
-                  -> MaybeModulePragma dom -> ModuleHead dom
-pattern ModuleHead n es pr <- Ann _ (UModuleHead n es pr)
+pattern ModuleHead :: ModuleName dom -> MaybeModulePragma dom -> MaybeExportSpecs dom -> ModuleHead dom
+pattern ModuleHead n pr es <- Ann _ (UModuleHead n pr es)
 
 -- | A list of export specifications surrounded by parentheses
 pattern ExportSpecs :: ExportSpecList dom -> ExportSpecs dom

@@ -25,6 +25,7 @@ import qualified Name as GHC
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
+import Outputable
 
 import Control.Exception
 import Control.Monad.Reader
@@ -78,6 +79,8 @@ instance Show ErrorMessages where
   show = show . bagToList
 
 instance Exception RefactorException where
+  displayException (SourceCodeProblem prob)
+    = "Source code problem: " ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc prob))
   displayException (IllegalExtensions exts) 
     = "The following extensions are not allowed: " ++ (concat $ intersperse ", " exts) ++ "."
   displayException (UnknownException ex) = "An unexpected problem appeared: " ++ ex ++ "."
@@ -115,6 +118,7 @@ addGeneratedImports names m = modImports&annListElems .- (++ addImports names) $
 
         -- TODO: group names like constructors into correct IESpecs
         createImport :: [GHC.Name] -> Ann UImportDecl dom SrcTemplateStage
+        -- works on groupby result, so list is nonempty
         createImport names = mkImportDecl False False False Nothing (mkModuleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
                                           Nothing (Just $ mkImportSpecList (map (\n -> mkIESpec (mkUnqualName' n) Nothing) names))
 

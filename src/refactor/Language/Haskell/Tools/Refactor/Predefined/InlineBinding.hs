@@ -136,7 +136,8 @@ createReplacement (FunctionBind (AnnList [Match lhs (UnguardedRhs expr) locals])
                          in joinApps (parenIfNeeded (createLambda matchedPats (wrapLocals locals (replaceExprs argReplacement expr)))) appliedArgs
   where getArgsOf (MatchLhs _ (AnnList args)) = args
         getArgsOf (InfixLhs lhs _ rhs (AnnList more)) = lhs:rhs:more
-createReplacement (FunctionBind matches) 
+createReplacement (FunctionBind matches)
+                                                 -- function bind has at least one match
   = return $ \sc args -> let numArgs = getArgNum (head (matches ^? annList & matchLhs)) - length args
                              newArgs = take numArgs $ map mkName $ filter notInScope $ map (("x" ++ ) . show @Int) [1..]
                              notInScope str = not $ any (any ((== str) . occNameString . getOccName)) sc 

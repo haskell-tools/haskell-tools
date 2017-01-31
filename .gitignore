@@ -11,3 +11,5 @@ demoSources
 error-log.txt
 *.sublime-project
 *.sublime-workspace
+hackage-test
+stackage-test

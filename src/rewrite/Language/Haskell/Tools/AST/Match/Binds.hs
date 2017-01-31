@@ -45,17 +45,19 @@ pattern LocalFixity fixity <- Ann _ (ULocalFixity fixity)
 pattern TypeSignature :: NameList dom -> Type dom -> TypeSignature dom
 pattern TypeSignature n t <- Ann _ (UTypeSignature n t)
 
+-- TODO: match precedence with maybe
+
 -- | A left-associative fixity declaration (@ infixl 5 +, - @).
-pattern InfixL :: Int -> OperatorList dom -> FixitySignature dom
-pattern InfixL prec op <- Ann _ (UFixitySignature (Ann _ AssocLeft) (Ann _ (Precedence prec)) op)
+pattern InfixL :: OperatorList dom -> FixitySignature dom
+pattern InfixL op <- Ann _ (UFixitySignature (Ann _ AssocLeft) _ op)
 
 -- | A right-associative fixity declaration (@ infixr 5 +, - @).
-pattern InfixR :: Int -> OperatorList dom -> FixitySignature dom
-pattern InfixR prec op <- Ann _ (UFixitySignature (Ann _ AssocRight) (Ann _ (Precedence prec)) op)
+pattern InfixR :: OperatorList dom -> FixitySignature dom
+pattern InfixR op <- Ann _ (UFixitySignature (Ann _ AssocRight) _ op)
 
 -- | A non-associative fixity declaration (@ infix 5 +, - @).
-pattern Infix :: Int -> OperatorList dom -> FixitySignature dom
-pattern Infix prec op <- Ann _ (UFixitySignature (Ann _ AssocNone) (Ann _ (Precedence prec)) op)
+pattern Infix :: OperatorList dom -> FixitySignature dom
+pattern Infix op <- Ann _ (UFixitySignature (Ann _ AssocNone) _ op)
 
 -- | An unguarded right-hand-side (@ = 3 @)
 pattern UnguardedRhs :: Expr dom -> Rhs dom

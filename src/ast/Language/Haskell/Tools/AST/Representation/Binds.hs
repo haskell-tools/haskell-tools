@@ -49,6 +49,8 @@ data ULocalBind dom stage
                     } -- ^ A local type signature
   | ULocalFixity    { _localFixity :: Ann UFixitySignature dom stage
                     } -- ^ A local fixity declaration
+  | ULocalInline    { _localInline :: Ann UInlinePragma dom stage
+                    } -- ^ A local inline pragma
                    
 -- | A type signature (@ f :: Int -> Int @)
 data UTypeSignature dom stage
@@ -61,7 +63,7 @@ data UTypeSignature dom stage
 -- | A fixity signature (@ infixl 5 +, - @).
 data UFixitySignature dom stage
   = UFixitySignature { _fixityAssoc :: Ann Assoc dom stage
-                     , _fixityPrecedence :: Ann Precedence dom stage
+                     , _fixityPrecedence :: AnnMaybeG Precedence dom stage
                      , _fixityOperators :: AnnListG UOperator dom stage
                      }
 
@@ -97,3 +99,31 @@ data URhsGuard dom stage
                 } -- ^ A let statement in a pattern guard (@ let x = 3 @)
   | UGuardCheck { _guardCheck :: Ann UExpr dom stage
                 } -- ^ An expression to check for a pattern guard
+
+-- | Pragmas that control how the definitions will be inlined
+data UInlinePragma dom stage
+  = UInlinePragma     { _inlineConlike :: AnnMaybeG UConlikeAnnot dom stage
+                      , _inlinePhase :: AnnMaybeG UPhaseControl dom stage
+                      , _inlineDef :: Ann UName dom stage
+                      } -- ^ A pragma that marks a function for inlining to the compiler (@ {-# INLINE thenUs #-} @)
+  | UNoInlinePragma   { _noInlineDef :: Ann UName dom stage
+                      } -- ^ A pragma that forbids a function from being inlined by the compiler (@ {-# NOINLINE f #-} @)
+  | UInlinablePragma  { _inlinePhase :: AnnMaybeG UPhaseControl dom stage
+                      , _inlinableDef :: Ann UName dom stage
+                      } -- ^ A pragma that marks a function that it may be inlined by the compiler (@ {-# INLINABLE thenUs #-} @)
+
+-- | A @CONLIKE@ modifier for an @INLINE@ pragma.
+data UConlikeAnnot dom stage = UConlikeAnnot
+
+-- | Controls the activation of a rewrite rule (@ [1] @)
+data UPhaseControl dom stage
+  = UPhaseControl { _phaseUntil :: AnnMaybeG PhaseInvert dom stage
+                  , _phaseNumber :: Ann PhaseNumber dom stage
+                  } 
+
+-- | Phase number for rewrite rules
+data PhaseNumber dom stage
+  = PhaseNumber { _phaseNum :: Integer }
+
+-- | A tilde that marks the inversion of the phase number
+data PhaseInvert dom stage = PhaseInvert

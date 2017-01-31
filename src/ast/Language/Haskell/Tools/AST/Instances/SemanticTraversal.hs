@@ -105,6 +105,7 @@ deriveSemanticTraversal ''UStmt'
 deriveSemanticTraversal ''UAlt'
 deriveSemanticTraversal ''UCaseRhs'
 deriveSemanticTraversal ''UGuardedCaseRhs'
+deriveSemanticTraversal ''UInlinePragma
 
 -- ULiteral
 deriveSemanticTraversal ''ULiteral

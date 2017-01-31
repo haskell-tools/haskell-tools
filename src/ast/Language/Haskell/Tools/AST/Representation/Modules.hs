@@ -17,8 +17,8 @@ data UModule dom stage
 -- | Module declaration with name and (optional) exports
 data UModuleHead dom stage
   = UModuleHead { _mhName :: Ann UModuleName dom stage
-                , _mhExports :: AnnMaybeG UExportSpecs dom stage
                 , _mhPragma :: AnnMaybeG UModulePragma dom stage
+                , _mhExports :: AnnMaybeG UExportSpecs dom stage
                 }
 
 -- | A list of export specifications surrounded by parentheses

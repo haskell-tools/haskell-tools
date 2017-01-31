@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns
            , FlexibleContexts 
+           , LambdaCase
            , DeriveFunctor
            , StandaloneDeriving
            #-}
@@ -31,7 +32,8 @@ instance SourceInfo st => Show (RoseTree st) where
                           
 -- | Transforms the heterogeneous AST into a homogeneous representation for pretty printing                   
 toRoseTree :: (SourceInfoTraversal n) => n dom st -> RoseTree st
-toRoseTree = head . head . tail . flip execState [[],[]] . toSrcRoseSt
+toRoseTree = (\case (root:_):_ -> root; _ -> error "toRoseTree: the result has no root") 
+                . tail . flip execState [[],[]] . toSrcRoseSt
   where toSrcRoseSt = sourceInfoTraverseUp (SourceInfoTrf (trf RoseSpan) (trf RoseList) (trf RoseOptional)) desc asc
   
         desc  = modify ([]:)

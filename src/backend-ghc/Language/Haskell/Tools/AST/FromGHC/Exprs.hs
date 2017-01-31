@@ -17,6 +17,7 @@ import GHC
 import Outputable as GHC (Outputable(..), showSDocUnsafe)
 import PrelNames as GHC (negateName)
 import SrcLoc as GHC
+import OccName as GHC
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), getFieldOccName)
@@ -56,6 +57,7 @@ createScopeInfo = do scope <- asks localsInScope
 
 trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.UExpr (Dom r) RangeStage)
 trfExpr' (HsVar name) = AST.UVar <$> trfName name
+trfExpr' (HsUnboundVar name) = AST.UVar <$> trfNameText (occNameString $ unboundVarOcc name)
 trfExpr' (HsRecFld fld) = AST.UVar <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
 trfExpr' (HsIPVar ip) = AST.UVar <$> trfImplicitName ip
 trfExpr' (HsOverLit (ol_val -> val)) = AST.ULit <$> annContNoSema (trfOverloadedLit val)
@@ -75,10 +77,11 @@ trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.ULeftSection
 trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.URightSection <$> trfOperator op <*> trfExpr expr
 trfExpr' (HsPar expr) = AST.UParen <$> trfExpr expr
 trfExpr' (ExplicitTuple tupArgs box) | all tupArgPresent tupArgs 
-  = wrap <$> between AnnOpenP AnnCloseP (trfAnnList' ", " (trfExpr . (\(Present e) -> e) . unLoc) tupArgs)
+  = wrap <$> between (if box == Boxed then AnnOpenP else AnnOpen) (if box == Boxed then AnnCloseP else AnnClose) 
+               (trfAnnList' ", " (trfExpr . (\(Present e) -> e) . unLoc) tupArgs)
   where wrap = if box == Boxed then AST.UTuple else AST.UUnboxedTuple
 trfExpr' (ExplicitTuple tupArgs box)
-  = wrap <$> between AnnOpenP AnnCloseP
+  = wrap <$> between (if box == Boxed then AnnOpenP else AnnOpen) (if box == Boxed then AnnCloseP else AnnClose)
                (do locs <- elemLocs
                    makeList ", " atTheEnd $ mapM trfTupSecElem (zip (map unLoc tupArgs) locs))
   where wrap = if box == Boxed then AST.UTupleSection else AST.UUnboxedTupSec

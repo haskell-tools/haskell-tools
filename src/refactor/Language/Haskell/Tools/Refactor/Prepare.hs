@@ -20,12 +20,14 @@ import GHC hiding (loadModule)
 import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import SrcLoc
+import Packages
 
 import Control.Exception
 import Control.Monad
+import Control.Monad.Trans
 import Control.Monad.IO.Class
 import Data.IntSet (member)
-import Data.List ((\\), intersperse)
+import Data.List ((\\), intersperse, isSuffixOf)
 import Data.List.Split
 import Data.Maybe
 import Language.Haskell.TH.LanguageExtensions
@@ -66,7 +68,13 @@ useFlags args = do
   -- TODO: print errors and warnings?
   let ((leftovers, _, _), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
   void $ setSessionDynFlags newDynFlags
+  when (any ("-package-db" `isSuffixOf`) args) reloadPkgDb
   return $ map unLoc leftovers
+
+-- | Reloads the package database based on the session flags
+reloadPkgDb :: Ghc ()
+reloadPkgDb = void $ setSessionDynFlags . fst =<< liftIO . initPackages . (\df -> df { pkgDatabase = Nothing }) 
+                                              =<< getSessionDynFlags 
 
 -- | Initialize GHC flags to default values that support refactoring
 initGhcFlags :: Ghc ()

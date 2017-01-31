@@ -15,9 +15,11 @@ import Data.Maybe
 import Distribution.ModuleName (components)
 import Distribution.ModuleName
 import Distribution.Package (Dependency(..), PackageName(..), pkgName)
+import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
+import Distribution.System
 import Distribution.Verbosity (silent)
 import Language.Haskell.Extension
 import System.Directory
@@ -172,22 +174,28 @@ srcDirFromRoot fileName moduleName
 -- The flags and extensions set in the cabal file will be used by default.
 modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
-modulesFromCabalFile root cabal = getModules . flattenPackageDescription <$> readPackageDescription silent (root </> cabal)
-  where getModules pkg = maybe [] ((:[]) . toModuleCollection pkg) (library pkg) 
-                           ++ map (toModuleCollection pkg) (executables pkg) 
-                           ++ map (toModuleCollection pkg) (testSuites pkg) 
-                           ++ map (toModuleCollection pkg) (benchmarks pkg)
+modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescription silent (root </> cabal)
+  where getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg) 
+                           ++ catMaybes (map (toModuleCollection pkg) (executables pkg)) 
+                           ++ catMaybes (map (toModuleCollection pkg) (testSuites pkg)) 
+                           ++ catMaybes (map (toModuleCollection pkg) (benchmarks pkg))
            
-        toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> ModuleCollection
-        toModuleCollection pkg tmc = let bi = getBuildInfo tmc 
-                                      in ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc) 
-                                                          root
-                                                          (map (normalise . (root </>)) $ hsSourceDirs bi) 
-                                                          (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
-                                                          (flagsFromBuildInfo bi)
-                                                          (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi)) 
+        toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe ModuleCollection
+        toModuleCollection pkg tmc 
+          = let bi = getBuildInfo tmc 
+             in if buildable bi
+                  then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc) 
+                                root
+                                (map (normalise . (root </>)) $ hsSourceDirs bi) 
+                                (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
+                                (flagsFromBuildInfo bi)
+                                (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi)) 
+                  else Nothing
 
         moduleName = concat . intersperse "." . components
+        setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst 
+                       . finalizePackageDescription [] (const True) buildPlatform 
+                                                    (unknownCompilerInfo buildCompilerId NoAbiTag) []
 
 class ToModuleCollection t where 
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
@@ -202,7 +210,8 @@ instance ToModuleCollection Library where
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
-  getModuleNames = exeModules
+  getModuleNames e = {- fromString (toModuleName $ modulePath e) : -} exeModules e
+    where toModuleName = map (\case c | c `elem` pathSeparators -> '.'; c -> c) . dropExtension
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
@@ -236,11 +245,11 @@ enableAllPackages mcs dfs = applyDependencies mcs allDeps dfs
 
 flagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 -- the import pathes are already set globally
-flagsFromBuildInfo BuildInfo{ defaultExtensions, options } df
+flagsFromBuildInfo bi@BuildInfo{ options } df
   = do (df,_,_) <- parseDynamicFlags df (map (L noSrcSpan) $ concatMap snd options)
        return $ foldl (.) id (map (\case EnableExtension ext -> translateExtension ext
                                          _                   -> id                               
-                                  ) defaultExtensions)
+                                  ) (usedExtensions bi))
                           $ df
   where -- | Map the cabal extensions to the ones that GHC recognizes
         translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances

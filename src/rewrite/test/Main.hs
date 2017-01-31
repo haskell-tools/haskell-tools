@@ -124,12 +124,12 @@ testDecls
 testModules
   = [ ("empty module", "", G.mkModule [] Nothing [] [])
     , ("exports", "module Test(x, A(a), B(..)) where"
-      , G.mkModule [] (Just $ mkModuleHead (G.mkModuleName "Test") 
-          (Just $ mkExportSpecs 
+      , G.mkModule [] (Just $ mkModuleHead (G.mkModuleName "Test") Nothing 
+          (Just $ mkExportSpecs
                     [ mkExportSpec $ mkIESpec (mkName "x") Nothing
                     , mkExportSpec $ mkIESpec (mkName "A") (Just $ mkSubList [mkName "a"])
                     , mkExportSpec $ mkIESpec (mkName "B") (Just mkSubAll)
-                    ]) Nothing) [] [])
+                    ])) [] [])
     , ("imports",  "\nimport qualified A\n"
                   ++ "import B as BB(x)\n"
                   ++ "import B hiding (x)"

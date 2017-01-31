@@ -3,6 +3,7 @@
            , FlexibleContexts
            , TemplateHaskell
            , TypeFamilies
+           , StandaloneDeriving
            #-}
 module Language.Haskell.Tools.Refactor.CLI (refactorSession, tryOut) where
 
@@ -15,11 +16,15 @@ import Data.List.Split
 import Data.Maybe
 import System.Directory
 import System.IO
+import System.Exit
 
 import ErrUtils
 import GHC
 import GHC.Paths ( libdir )
 import HscTypes as GHC
+import DynFlags as GHC
+import Packages
+import Outputable
 
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
@@ -38,23 +43,28 @@ data CLISessionState =
 
 makeReferences ''CLISessionState
 
-tryOut :: IO ()
-tryOut = refactorSession stdin stdout 
-           [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
-           , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
+deriving instance Show PkgConfRef
 
-refactorSession :: Handle -> Handle -> [String] -> IO ()
-refactorSession input output args = runGhc (Just libdir) $ handleSourceError printSrcErrors 
+tryOut :: IO ()
+tryOut = void $ refactorSession stdin stdout 
+                  [ "-dry-run", "-one-shot", "-module-name=Language.Haskell.Tools.AST", "-refactoring=OrganizeImports"
+                  , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
+
+refactorSession :: Handle -> Handle -> [String] -> IO Bool
+refactorSession input output args = runGhc (Just libdir) $ handleSourceError printSrcErrors
                                                          $ flip evalStateT initSession $
   do lift $ initGhcFlags
      workingDirsAndHtFlags <- lift $ useFlags args
-     let (htFlags, workingDirs) = partition (\f -> head f == '-') workingDirsAndHtFlags
-     if null workingDirs then liftIO $ hPutStrLn output usageMessage
-                         else do doRun <- initializeSession output workingDirs htFlags
-                                 when doRun $ runSession input output htFlags
+     let (htFlags, workingDirs) = partition (\case ('-':_) -> True; _ -> False) workingDirsAndHtFlags
+     if null workingDirs then do liftIO $ hPutStrLn output usageMessage
+                                 return False
+                         else do initSuccess <- initializeSession output workingDirs htFlags
+                                 when initSuccess $ runSession input output htFlags
+                                 return initSuccess
      
   where printSrcErrors err = do dfs <- getSessionDynFlags 
                                 liftIO $ printBagOfErrors dfs (srcErrorMessages err)
+                                return False
 
         initializeSession :: Handle -> [FilePath] -> [String] -> CLIRefactorSession Bool
         initializeSession output workingDirs flags = do
@@ -86,6 +96,8 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
                     do performSessionCommand output (LoadModule modName)
                        command <- readSessionCommand output (takeWhile (/='"') $ dropWhile (=='"') $ refactoring)
                        void $ performSessionCommand output command
+                  ([],["ProjectOrganizeImports"]) ->
+                    void $ performSessionCommand output (RefactorCommand ProjectOrganizeImports)
                   _ -> liftIO $ hPutStrLn output "-module-name or -refactoring flag not specified correctly. Not doing any refactoring."
         runSession input output _ = runSessionLoop input output
 
@@ -131,8 +143,12 @@ performSessionCommand _ Exit = do modify $ exiting .= True
                                   return []
 performSessionCommand output (RefactorCommand cmd) 
   = do actMod <- gets (^. actualMod)
-       (Just actualMod, otherMods) <- getMods actMod
-       res <- lift $ performCommand cmd actualMod otherMods
+       (actualMod, otherMods) <- getMods actMod
+       res <- case actualMod of 
+         Just mod -> lift $ performCommand cmd mod otherMods
+         -- WALKAROUND: support running refactors that need no module selected
+         Nothing -> case otherMods of (hd:rest) -> lift $ performCommand cmd hd rest
+                                      []        -> return (Right [])
        inDryMode <- gets (^. dryMode)
        case res of Left err -> do liftIO $ hPutStrLn output err
                                   return []

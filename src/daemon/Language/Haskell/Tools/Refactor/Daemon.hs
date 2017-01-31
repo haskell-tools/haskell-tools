@@ -62,6 +62,7 @@ runDaemon :: [String] -> IO ()
 runDaemon args = withSocketsDo $
     do let finalArgs = args ++ drop (length args) defaultArgs
            isSilent = read (finalArgs !! 1)
+       when (not isSilent) $ putStrLn $ "Starting Haskell Tools daemon"
        addrinfos <- getAddrInfo
                     (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                     Nothing (Just (finalArgs !! 0))
@@ -77,7 +78,8 @@ defaultArgs = ["4123", "True"]
 
 clientLoop :: Bool -> Socket -> IO ()
 clientLoop isSilent sock
-  = do (conn,_) <- accept sock
+  = do when (not isSilent) $ putStrLn $ "Starting client loop"
+       (conn,_) <- accept sock
        ghcSess <- initGhcSession
        state <- newMVar initSession
        serverLoop isSilent ghcSess state conn

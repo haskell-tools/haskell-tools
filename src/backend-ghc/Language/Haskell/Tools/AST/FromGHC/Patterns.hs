@@ -14,6 +14,7 @@ import HsPat as GHC
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..), HsConDetails(..))
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (getFieldOccName)
 import SrcLoc as GHC
+import Outputable as GHC
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.Literals (trfLiteral', trfOverloadedLit)
@@ -26,14 +27,17 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
+import Debug.Trace
+
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.UPattern (Dom r) RangeStage)
 -- field wildcards are not directly represented in GHC AST
 trfPattern (L l (ConPatIn name (RecCon (HsRecFields flds _)))) | any ((l ==) . getLoc) flds 
-  = do let (fromWC, notWC) = partition ((l ==) . getLoc) flds
-       normalFields <- mapM (trfLocNoSema trfPatternField') notWC
-       wildc <- annLocNoSema (tokenLoc AnnDotdot) (AST.UFieldWildcardPattern <$> annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -> n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))
-       annLocNoSema (pure l) (AST.URecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
-trfPattern p | otherwise = trfLocNoSema trfPattern' (correctPatternLoc p)
+  = focusOn l $ do 
+      let (fromWC, notWC) = partition ((l ==) . getLoc) flds
+      normalFields <- mapM (trfLocNoSema trfPatternField') notWC
+      wildc <- annLocNoSema (tokenLoc AnnDotdot) (AST.UFieldWildcardPattern <$> annCont (createImplicitFldInfo (unLoc . (\(VarPat n) -> n) . unLoc) (map unLoc fromWC)) (pure AST.FldWildcard))
+      annLocNoSema (pure l) (AST.URecPat <$> trfName name <*> makeNonemptyList ", " (pure (normalFields ++ [wildc])))
+trfPattern p = trfLocNoSema trfPattern' (correctPatternLoc p)
 
 -- | Locations for right-associative infix patterns are incorrect in GHC AST
 correctPatternLoc :: Located (Pat n) -> Located (Pat n)
@@ -48,11 +52,11 @@ trfPattern' (LazyPat pat) = AST.UIrrefutablePat <$> trfPattern pat
 trfPattern' (AsPat name pat) = AST.UAsPat <$> define (trfName name) <*> trfPattern pat
 trfPattern' (ParPat pat) = AST.UParenPat <$> trfPattern pat
 trfPattern' (BangPat pat) = AST.UBangPat <$> trfPattern pat
-trfPattern' (ListPat pats _ _) = AST.UListPat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (TuplePat pats Boxed _) = AST.UTuplePat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (TuplePat pats Unboxed _) = AST.UUnboxTuplePat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (PArrPat pats _) = AST.UParArrPat <$> trfAnnList ", " trfPattern' pats
-trfPattern' (ConPatIn name (PrefixCon args)) = AST.UAppPat <$> trfName name <*> trfAnnList " " trfPattern' args
+trfPattern' (ListPat pats _ _) = AST.UListPat <$> makeList ", " atTheEnd (mapM trfPattern pats)
+trfPattern' (TuplePat pats Boxed _) = AST.UTuplePat <$> makeList ", " atTheEnd (mapM trfPattern pats)
+trfPattern' (TuplePat pats Unboxed _) = AST.UUnboxTuplePat <$> makeList ", " atTheEnd (mapM trfPattern pats)
+trfPattern' (PArrPat pats _) = AST.UParArrPat <$> makeList ", " atTheEnd (mapM trfPattern pats)
+trfPattern' (ConPatIn name (PrefixCon args)) = AST.UAppPat <$> trfName name <*> makeList " " atTheEnd (mapM trfPattern args)
 trfPattern' (ConPatIn name (RecCon (HsRecFields flds _))) = AST.URecPat <$> trfName name <*> trfAnnList ", " trfPatternField' flds
 trfPattern' (ConPatIn name (InfixCon left right)) = AST.UInfixAppPat <$> trfPattern left <*> trfOperator name <*> trfPattern right
 trfPattern' (ViewPat expr pat _) = AST.UViewPat <$> trfExpr expr <*> trfPattern pat

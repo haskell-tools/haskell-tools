@@ -112,6 +112,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug URole dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UCmd dom st
 instance (SourceInfo st, Domain dom) => TreeDebug ULanguageExtension dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UMatchLhs dom st
+instance (SourceInfo st, Domain dom) => TreeDebug UInlinePragma dom st
 
 -- ULiteral
 instance (SourceInfo st, Domain dom) => TreeDebug ULiteral dom st

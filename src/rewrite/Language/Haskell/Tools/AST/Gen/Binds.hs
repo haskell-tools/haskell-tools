@@ -72,17 +72,17 @@ mkTypeSignature n t = mkAnn (child <> " :: " <> child) (UTypeSignature (mkAnnLis
 -- | Creates a left-associative fixity declaration (@ infixl 5 +, - @).
 mkInfixL :: Int -> Operator dom -> FixitySignature dom
 mkInfixL prec op = mkAnn (child <> " " <> child <> " " <> child) 
-                     $ UFixitySignature (mkAnn "infixl" AssocLeft) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
+                     $ UFixitySignature (mkAnn "infixl" AssocLeft) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates a right-associative fixity declaration (@ infixr 5 +, - @).
 mkInfixR :: Int -> Operator dom -> FixitySignature dom
 mkInfixR prec op = mkAnn (child <> " " <> child <> " " <> child) 
-                     $ UFixitySignature (mkAnn "infixr" AssocRight) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
+                     $ UFixitySignature (mkAnn "infixr" AssocRight) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates a non-associative fixity declaration (@ infix 5 +, - @).
 mkInfix :: Int -> Operator dom -> FixitySignature dom
 mkInfix prec op = mkAnn (child <> " " <> child <> " " <> child) 
-                    $ UFixitySignature (mkAnn "infix" AssocNone) (mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
+                    $ UFixitySignature (mkAnn "infix" AssocNone) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates an unguarded right-hand-side (@ = 3 @)
 mkUnguardedRhs :: Expr dom -> Rhs dom

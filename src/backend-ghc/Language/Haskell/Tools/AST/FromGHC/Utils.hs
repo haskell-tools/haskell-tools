@@ -75,8 +75,9 @@ createImplicitNameInfo name = do locals <- asks localsInScope
 -- | Creates a semantic information for an implicit name
 createImplicitFldInfo :: (GHCName n, HsHasName n) => (a -> n) -> [HsRecField n a] -> Trf ImplicitFieldInfo
 createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))
-  where getLabelAndExpr fld = ( head $ hsGetNames $ unLoc (getFieldOccName (hsRecFieldLbl fld))
-                              , head $ hsGetNames $ select (hsRecFieldArg fld) )
+  where getLabelAndExpr fld = ( getTheName $ unLoc (getFieldOccName (hsRecFieldLbl fld))
+                              , getTheName $ select (hsRecFieldArg fld) )
+        getTheName = (\case e:_ -> e; [] -> error "createImplicitFldInfo: missing names") . hsGetNames
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)

@@ -110,6 +110,7 @@ deriving instance Eq (URole dom stage)
 deriving instance Eq (UCmd dom stage)
 deriving instance Eq (ULanguageExtension dom stage)
 deriving instance Eq (UMatchLhs dom stage)
+deriving instance Eq (UInlinePragma dom stage)
 
 -- ULiteral
 deriving instance Eq (ULiteral dom stage)

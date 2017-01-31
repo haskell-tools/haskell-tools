@@ -22,9 +22,9 @@ mkModule filePrags head imps decls
                 (mkAnnList (after "\n" $ indented list) imps) (mkAnnList (after "\n" $ indented list) decls)
                
 -- | Module declaration with name and (optional) exports
-mkModuleHead :: ModuleName dom -> Maybe (ExportSpecs dom) -> Maybe (ModulePragma dom) -> ModuleHead dom
-mkModuleHead n es pr = mkAnn ("module " <> child <> child <> child <> " where") 
-                         $ UModuleHead n (mkAnnMaybe opt es) (mkAnnMaybe (after "\n" opt) pr)
+mkModuleHead :: ModuleName dom -> Maybe (ModulePragma dom) -> Maybe (ExportSpecs dom) -> ModuleHead dom
+mkModuleHead n pr es = mkAnn ("module " <> child <> child <> child <> " where") 
+                         $ UModuleHead n (mkAnnMaybe (after "\n" opt) pr) (mkAnnMaybe opt es)
 
 -- | A list of export specifications surrounded by parentheses
 mkExportSpecs :: [ExportSpec dom] -> ExportSpecs dom

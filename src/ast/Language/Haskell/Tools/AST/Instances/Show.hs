@@ -110,6 +110,7 @@ deriving instance Show (URole dom stage)
 deriving instance Show (UCmd dom stage)
 deriving instance Show (ULanguageExtension dom stage)
 deriving instance Show (UMatchLhs dom stage)
+deriving instance Show (UInlinePragma dom stage)
 
 
 -- ULiteral

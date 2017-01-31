@@ -383,15 +383,15 @@ pattern AnnPragma subj ann <- Ann _ (UAnnPragma subj ann)
 
 -- | A pragma that marks a function for inlining to the compiler (@ {-\# INLINE thenUs \#-} @)
 pattern InlinePragma :: MaybeConlikeAnnot dom -> MaybePhaseControl dom -> Name dom -> TopLevelPragma dom
-pattern InlinePragma conlike phase name <- Ann _ (UInlinePragma conlike phase name)
+pattern InlinePragma conlike phase name <- Ann _ (UInlinePragmaDecl (Ann _ (UInlinePragma conlike phase name)))
 
 -- | A pragma that forbids a function from being inlined by the compiler (@ {-\# NOINLINE f \#-} @)
-pattern NoInlinePragma :: MaybeConlikeAnnot dom -> MaybePhaseControl dom -> Name dom -> TopLevelPragma dom
-pattern NoInlinePragma conlike phase name <- Ann _ (UNoInlinePragma conlike phase name)
+pattern NoInlinePragma :: Name dom -> TopLevelPragma dom
+pattern NoInlinePragma name <- Ann _ (UInlinePragmaDecl (Ann _ (UNoInlinePragma name)))
 
 -- | A pragma that marks a function that it may be inlined by the compiler (@ {-\# INLINABLE thenUs \#-} @)
 pattern InlinablePragma :: MaybePhaseControl dom -> Name dom -> TopLevelPragma dom
-pattern InlinablePragma phase name <- Ann _ (UInlinablePragma phase name)
+pattern InlinablePragma phase name <- Ann _ (UInlinePragmaDecl (Ann _ (UInlinablePragma phase name)))
 
 -- | A pragma for maintaining line numbers in generated sources (@ {-\# LINE 123 \"somefile\" \#-} @)
 pattern LinePragma :: Int -> MaybeStringNode dom -> TopLevelPragma dom

@@ -76,8 +76,9 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     
     getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
-                          locals <- asks (head . localsInScope)
-                          liftGhc $ mapM (loadIdsForDecls locals) decls
+                          allLocals <- asks localsInScope
+                          case allLocals of locals:_ -> liftGhc $ mapM (loadIdsForDecls locals) decls
+                                            [] -> error "getDeclsToInsert: empty scope"
        where loadIdsForDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
              loadIdsForDecls locals = AST.semaTraverse $
                 AST.SemaTrf (AST.nameInfo !~ findName) pure (traverse findName) pure pure pure
@@ -112,15 +113,17 @@ trfDecl = trfLocNoSema $ \case
                     <*> trfInstBody binds sigs typefam datafam
   InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd _ _ _ cons derivs) _))
     -> AST.UDataInstDecl <$> trfDataKeyword nd
-                        <*> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats)
-                        <*> makeList " | " (after AnnEqual) (mapM trfConDecl cons)
+                        <*> (focusAfter AnnInstance . focusBeforeIfPresent AnnEqual . focusBeforeIfPresent AnnDeriving) 
+                              (makeInstanceRuleTyVars con pats)
+                                                       -- the location is needed when there is no = sign
+                        <*> makeListBefore " = " " | " (pure $ srcSpanStart $ foldLocs $ getLoc con : map getLoc (hsib_body pats)) (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
   InstD (TyFamInstD (TyFamInstDecl (L _ (TyFamEqn con pats rhs)) _))
     -> AST.UTypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> trfVal bind
   SigD sig -> trfSig sig
   DerivD (DerivDecl t overlap) -> AST.UDerivDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
-  -- TODO: INLINE, SPECIALIZE, MINIMAL, VECTORISE pragmas, Warnings, Annotations, rewrite rules, role annotations
+  -- TODO: Warnings, rewrite rules
   RuleD (HsRules _ rules) -> AST.UPragmaDecl <$> annContNoSema (AST.URulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
   RoleAnnotD (RoleAnnotDecl name roles) -> AST.URoleDecl <$> trfQualifiedName name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.UDefaultDecl . nonemptyAnnList <$> mapM trfType types
@@ -129,6 +132,10 @@ trfDecl = trfLocNoSema $ \case
   ForD (ForeignExport name (hsib_body -> typ) _ (CExport (L l (CExportStatic _ _ ccall)) _)) 
     -> AST.UForeignExport <$> annLocNoSema (pure l) (trfCallConv' ccall) <*> trfName name <*> trfType typ
   SpliceD (SpliceDecl (unLoc -> spl) _) -> AST.USpliceDecl <$> (annContNoSema $ trfSplice' spl)
+  WarningD (Warnings src [L _ (Warning names (DeprecatedTxt _ [L l (StringLiteral _ fs)]))]) 
+    -> AST.UPragmaDecl <$> annContNoSema (AST.UDeprPragma <$> (makeNonemptyList " " $ mapM trfName names) <*> trfFastString (L l fs))
+  WarningD (Warnings src [L _ (Warning names (WarningTxt _ [L l (StringLiteral _ fs)]))]) 
+    -> AST.UPragmaDecl <$> annContNoSema (AST.UWarningPragma <$> (makeNonemptyList " " $ mapM trfName names) <*> trfFastString (L l fs))
   AnnD (HsAnnotation stxt subject expr) 
     -> AST.UPragmaDecl <$> annContNoSema (AST.UAnnPragma <$> trfAnnotationSubject stxt subject (srcSpanStart $ getLoc expr) <*> trfExpr expr)
   d -> error ("Illegal declaration: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")")
@@ -163,25 +170,13 @@ trfSig (ts @ (TypeSig {})) = AST.UTypeSigDecl <$> defineTypeVars (annContNoSema 
 trfSig (FixSig fs) = AST.UFixityDecl <$> (annContNoSema $ trfFixitySig fs)
 trfSig (PatSynSig id typ) 
   = AST.UPatTypeSigDecl <$> annContNoSema (AST.UPatternTypeSignature <$> trfName id <*> trfType (hsib_body typ))
-trfSig (InlineSig name (InlinePragma _ Inlinable _ phase _)) 
-  = AST.UPragmaDecl <$> annContNoSema (AST.UInlinablePragma <$> trfPhase (pure $ srcSpanStart $ getLoc name) phase <*> trfName name)
-trfSig (InlineSig name (InlinePragma src inl _ phase cl)) 
-  = do rng <- asks contRange
-       let parts = map getLoc $ splitLocated (L rng src)
-       -- TODO: Inlinable, EmptyInlineSpec
-       AST.UPragmaDecl <$> annContNoSema ((case inl of Inline -> AST.UInlinePragma; NoInline -> AST.UNoInlinePragma) 
-                                     <$> trfConlike parts cl 
-                                     <*> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
-                                     <*> trfName name)
+trfSig (InlineSig name prag)  
+  = AST.UPragmaDecl <$> annContNoSema (AST.UInlinePragmaDecl <$> trfInlinePragma name prag)
 trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase)) 
   = AST.UPragmaDecl <$> annContNoSema (AST.USpecializePragma <$> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
                                        <*> trfName name 
                                        <*> (orderAnnList <$> trfAnnList ", " trfType' types))
 trfSig s = error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
-
-trfConlike :: [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybeG AST.UConlikeAnnot (Dom r) RangeStage)
-trfConlike parts ConLike = makeJust <$> annLocNoSema (pure $ parts !! 2) (pure AST.UConlikeAnnot)
-trfConlike parts FunLike = nothing " " "" (pure $ srcSpanEnd $ parts !! 1)
 
 trfConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.UConDecl (Dom r) RangeStage)
 trfConDecl = trfLocNoSema trfConDecl'
@@ -279,7 +274,8 @@ trfTypeEq = trfLocNoSema $ \(TyFamEqn name pats rhs)
                                      (AST.UTyApp <$> pure typ <*> trfType p)) base pats
                  
 trfFunDeps :: TransformName n r => [Located (FunDep (Located n))] -> Trf (AnnMaybeG AST.UFunDeps (Dom r) RangeStage)
-trfFunDeps [] = nothing "| " "" $ focusBeforeIfPresent AnnWhere atTheEnd
+trfFunDeps [] = do whereToken <- tokenLoc AnnWhere
+                   nothing "| " "" (if isGoodSrcSpan whereToken then pure $ srcSpanStart whereToken else atTheEnd)
 trfFunDeps fundeps = makeJust <$> annLocNoSema (combineSrcSpans (collectLocs fundeps) <$> tokenLoc AnnVbar) 
                                          (AST.UFunDeps <$> trfAnnList ", " trfFunDep' fundeps)
   
@@ -335,7 +331,8 @@ trfClassElemSig = trfLocNoSema $ \case
   ClassOpSig False names typ -> AST.UClsSig <$> (annContNoSema $ AST.UTypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                            <*> trfType (hsib_body typ))
   MinimalSig _ formula -> AST.UClsMinimal <$> trfMinimalFormula formula
-  s -> error ("Illegal signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
+  InlineSig name prag -> AST.UClsInline <$> trfInlinePragma name prag
+  s -> error ("Illegal signature in class: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
          
 trfTypeFam :: TransformName n r => Located (FamilyDecl n) -> Trf (Ann AST.UTypeFamily (Dom r) RangeStage)
 trfTypeFam = trfLocNoSema trfTypeFam'
@@ -376,6 +373,7 @@ trfClassInstSig = trfLocNoSema $ \case
   ClassOpSig _ names typ -> AST.UInstBodyTypeSig <$> (annContNoSema $ AST.UTypeSignature <$> define (makeNonemptyList ", " (mapM trfName names)) 
                                                 <*> trfType (hsib_body typ))
   SpecInstSig _ typ -> AST.USpecializeInstance <$> trfType (hsib_body typ)
+  InlineSig name prag -> AST.UInlineInstance <$> trfInlinePragma name prag
   s -> error ("Illegal class instance signature: " ++ showSDocUnsafe (ppr s) ++ " (ctor: " ++ show (toConstr s) ++ ")")
           
 trfInstTypeFam :: TransformName n r => Located (TyFamInstDecl n) -> Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
@@ -481,24 +479,12 @@ trfRole = trfLocNoSema $ \case Just Nominal -> pure AST.UNominal
                                Just Representational -> pure AST.URepresentational
                                Just GHC.Phantom -> pure AST.UPhantom
                                Nothing -> error "trfRole: no role"
-         
-trfPhase :: Trf SrcLoc -> Activation -> Trf (AnnMaybeG AST.UPhaseControl (Dom r) RangeStage)
-trfPhase l AlwaysActive = nothing "" " " l
-trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS) 
-                                                          (AST.UPhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
-trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
-                                                           (AST.UPhaseControl <$> (makeJust <$> annLocNoSema (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
--- TODO
-trfPhase _ NeverActive = error "NeverActive pragmas not yet supported"
 
-trfPhaseNum ::  PhaseNum -> Trf (Ann AST.PhaseNumber (Dom r) RangeStage)
-trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i) 
-   
 trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.URule (Dom r) RangeStage)
 trfRewriteRule = trfLocNoSema $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ right _) ->
   AST.URule <$> trfFastString (L nameLoc ruleName) 
-            <*> trfPhase (before AnnForall) act
-            <*> makeNonemptyList " " (mapM trfRuleBndr bndrs)
+            <*> trfPhase (pure $ srcSpanEnd nameLoc) act
+            <*> makeListAfter " " " " (pure $ srcSpanStart $ getLoc left) (mapM trfRuleBndr bndrs)
             <*> trfExpr left
             <*> trfExpr right
 

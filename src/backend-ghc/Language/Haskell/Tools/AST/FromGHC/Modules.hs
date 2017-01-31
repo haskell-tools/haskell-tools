@@ -109,8 +109,8 @@ trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Locat
 trfModuleHead (Just mn) exports modPrag
   = makeJust <$> (annLocNoSema (tokensLoc [AnnModule, AnnWhere])
                                (AST.UModuleHead <$> trfModuleName mn 
-                                                <*> trfExportList (srcSpanEnd $ getLoc mn) exports
-                                                <*> trfModulePragma modPrag))
+                                                <*> trfModulePragma (srcSpanEnd $ getLoc mn) modPrag
+                                                <*> trfExportList (before AnnWhere) exports))
 trfModuleHead _ Nothing _ = nothing "" "" moduleHeadPos
   where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
                                                  _ -> atTheStart
@@ -131,18 +131,18 @@ trfLanguagePragma lstr@(L l _) = annLocNoSema (pure l) (AST.ULanguagePragma <$> 
 trfOptionsPragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
 trfOptionsPragma (L l str) = annLocNoSema (pure l) (AST.UOptionsPragma <$> annContNoSema (pure $ AST.UStringNode str))
 
-trfModulePragma :: Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModulePragma (Dom r) RangeStage)
-trfModulePragma = trfMaybeDefault " " "" (trfLocNoSema $ \case WarningTxt _ txts -> AST.UModuleWarningPragma <$> trfAnnList " " trfText' txts
-                                                               DeprecatedTxt _ txts -> AST.UModuleDeprecatedPragma <$> trfAnnList " " trfText' txts) 
-                                  (before AnnWhere)
+trfModulePragma :: SrcLoc -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModulePragma (Dom r) RangeStage)
+trfModulePragma l = trfMaybeDefault " " "" (trfLocNoSema $ \case WarningTxt _ txts -> AST.UModuleWarningPragma <$> trfAnnList " " trfText' txts
+                                                                 DeprecatedTxt _ txts -> AST.UModuleDeprecatedPragma <$> trfAnnList " " trfText' txts) 
+                                    (pure l)
 
 trfText' :: StringLiteral -> Trf (AST.UStringNode (Dom r) RangeStage)
 trfText' = pure . AST.UStringNode . unpackFS . sl_fs
 
 
 
-trfExportList :: TransformName n r => SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybeG AST.UExportSpecs (Dom r) RangeStage)
-trfExportList loc = trfMaybeDefault " " "" (trfLocNoSema trfExportList') (pure loc)
+trfExportList :: TransformName n r => Trf SrcLoc -> Maybe (Located [LIE n]) -> Trf (AnnMaybeG AST.UExportSpecs (Dom r) RangeStage)
+trfExportList loc = trfMaybeDefault "" " " (trfLocNoSema trfExportList') loc
 
 trfExportList' :: TransformName n r => [LIE n] -> Trf (AST.UExportSpecs (Dom r) RangeStage)
 trfExportList' exps = AST.UExportSpecs <$> (makeList ", " (after AnnOpenP) (orderDefs . catMaybes <$> (mapM trfExport exps)))
@@ -161,17 +161,20 @@ trfImports (filter (not . ideclImplicit . unLoc) -> imps)
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
 trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc isSafe isQual _ declAs declHiding)) =
-  let -- default positions of optional parts of an import declaration
-      annBeforeQual = if isSrc then AnnClose else AnnImport
-      annBeforeSafe = if isQual then AnnQualified else annBeforeQual
-      annBeforePkg = if isSafe then AnnSafe else annBeforeSafe
-  in annLoc (createImportData impDecl) (pure l) $ AST.UImportDecl 
+  do safeTok <- tokenLoc AnnSafe
+
+     let -- default positions of optional parts of an import declaration
+         annBeforeQual = if isSrc then AnnClose else AnnImport
+         annBeforeSafe = if isQual then AnnQualified else annBeforeQual
+         annBeforePkg = if isGoodSrcSpan safeTok then AnnSafe else annBeforeSafe
+
+     annLoc (createImportData impDecl) (pure l) $ AST.UImportDecl 
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)
                      else nothing " " "" (after AnnImport))
        <*> (if isQual then makeJust <$> (annLocNoSema (tokenLoc AnnQualified) (pure AST.UImportQualified)) 
                       else nothing " " "" (after annBeforeQual))
-       <*> (if isSafe then makeJust <$> (annLocNoSema (tokenLoc AnnSafe) (pure AST.UImportSafe)) 
-                      else nothing " " "" (after annBeforeSafe))
+       <*> (if isGoodSrcSpan safeTok then makeJust <$> (annLocNoSema (pure safeTok) (pure AST.UImportSafe)) 
+                                     else nothing " " "" (after annBeforeSafe))
        <*> maybe (nothing " " "" (after annBeforePkg)) 
                  (\str -> makeJust <$> (annLocNoSema (tokenLoc AnnPackageName) (pure (AST.UStringNode (unpackFS $ sl_fs str))))) pkg
        <*> trfModuleName name 

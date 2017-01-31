@@ -12,8 +12,12 @@ import HsExpr as GHC
 import HsPat as GHC (LPat)
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
 import SrcLoc as GHC
+import Outputable as GHC
+import BasicTypes as GHC
 
 import Data.List
+import Data.Data
+import Control.Monad.Reader
 
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.Monad
@@ -83,7 +87,7 @@ trfRhsGuard' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.URhsGuard (D
 trfRhsGuard' (BindStmt pat body _ _ _) = AST.UGuardBind <$> trfPattern pat <*> trfExpr body
 trfRhsGuard' (BodyStmt body _ _ _) = AST.UGuardCheck <$> trfExpr body
 trfRhsGuard' (LetStmt (unLoc -> binds)) = AST.UGuardLet <$> trfLocalBinds binds
-trfRhsGuard' _ = error "trfRhsGuard': not a valid guard stmt"
+trfRhsGuard' d = error $ "Illegal guard: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")"
   
 trfWhereLocalBinds :: TransformName n r => SrcSpan -> HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
 trfWhereLocalBinds _ EmptyLocalBinds = nothing "" "" atTheEnd
@@ -125,7 +129,8 @@ trfLocalSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.ULocalBind (
 trfLocalSig = trfLocNoSema $ \case
   ts@(TypeSig {}) -> AST.ULocalSignature <$> annContNoSema (trfTypeSig' ts)
   (FixSig fs) -> AST.ULocalFixity <$> annContNoSema (trfFixitySig fs)
-  _ -> error "trfLocalSig: not a type or fixity sig"
+  (InlineSig name prag) -> AST.ULocalInline <$> trfInlinePragma name prag
+  d -> error $ "Illegal local signature: " ++ showSDocUnsafe (ppr d) ++ " (ctor: " ++ show (toConstr d) ++ ")"
   
 trfTypeSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.UTypeSignature (Dom r) RangeStage)
 trfTypeSig = trfLocNoSema trfTypeSig'
@@ -133,15 +138,46 @@ trfTypeSig = trfLocNoSema trfTypeSig'
 trfTypeSig' :: TransformName n r => Sig n -> Trf (AST.UTypeSignature (Dom r) RangeStage)
 trfTypeSig' (TypeSig names typ) 
   = defineTypeVars $ AST.UTypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType (hswc_body $ hsib_body typ)
-trfTypeSig' _ = error "trfTypeSig': not a type sig"
+trfTypeSig' ts = error $ "Illegal type signature: " ++ showSDocUnsafe (ppr ts) ++ " (ctor: " ++ show (toConstr ts) ++ ")"
 
 trfFixitySig :: TransformName n r => FixitySig n -> Trf (AST.UFixitySignature (Dom r) RangeStage)
 trfFixitySig (FixitySig names (Fixity _ prec dir)) 
-  = AST.UFixitySignature <$> transformDir dir
-                         <*> annLocNoSema (tokenLoc AnnVal) (pure $ AST.Precedence prec) 
-                         <*> (nonemptyAnnList . nub <$> mapM trfOperator names)
+  = do precLoc <- tokenLoc AnnVal
+       AST.UFixitySignature <$> transformDir dir
+                            <*> (if isGoodSrcSpan precLoc 
+                                   then makeJust <$> (annLocNoSema (return precLoc) $ pure $ AST.Precedence prec)
+                                                                                         -- names cannot be empty
+                                   else nothing "" " " (return $ srcSpanStart $ getLoc $ head names))
+                            <*> (nonemptyAnnList . nub <$> mapM trfOperator names)
   where transformDir InfixL = directionChar (pure AST.AssocLeft)
         transformDir InfixR = directionChar (pure AST.AssocRight)
         transformDir InfixN = annLocNoSema (srcLocSpan . srcSpanEnd <$> tokenLoc AnnInfix) (pure AST.AssocNone)
         
         directionChar = annLocNoSema ((\l -> mkSrcSpan (updateCol (subtract 1) l) l) . srcSpanEnd <$> tokenLoc AnnInfix)
+
+trfInlinePragma :: TransformName n r => Located n -> InlinePragma -> Trf (Ann AST.UInlinePragma (Dom r) RangeStage)
+trfInlinePragma name (InlinePragma _ Inlinable _ phase _) 
+  = annContNoSema (AST.UInlinablePragma <$> trfPhase (pure $ srcSpanStart $ getLoc name) phase <*> trfName name)
+trfInlinePragma name (InlinePragma src NoInline _ _ cl) = annContNoSema (AST.UNoInlinePragma <$> trfName name)
+trfInlinePragma name (InlinePragma src Inline _ phase cl) 
+  = annContNoSema $ do rng <- asks contRange
+                       let parts = map getLoc $ splitLocated (L rng src)
+                       AST.UInlinePragma <$> trfConlike parts cl 
+                                         <*> trfPhase (pure $ srcSpanStart (getLoc name)) phase 
+                                         <*> trfName name
+
+trfPhase :: Trf SrcLoc -> Activation -> Trf (AnnMaybeG AST.UPhaseControl (Dom r) RangeStage)
+trfPhase l AlwaysActive = nothing " " "" l
+trfPhase _ (ActiveAfter _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS) 
+                                                          (AST.UPhaseControl <$> nothing "" "" (before AnnCloseS) <*> trfPhaseNum pn)
+trfPhase _ (ActiveBefore _ pn) = makeJust <$> annLocNoSema (combineSrcSpans <$> tokenLoc AnnOpenS <*> tokenLoc AnnCloseS)
+                                                           (AST.UPhaseControl <$> (makeJust <$> annLocNoSema (tokenLoc AnnTilde) (pure AST.PhaseInvert)) <*> trfPhaseNum pn)
+trfPhase _ NeverActive = do range <- asks contRange 
+                            error $ "NeverActive pragmas should be checked earlier : " ++ show range
+
+trfPhaseNum ::  PhaseNum -> Trf (Ann AST.PhaseNumber (Dom r) RangeStage)
+trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromIntegral i)
+
+trfConlike :: [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybeG AST.UConlikeAnnot (Dom r) RangeStage)
+trfConlike parts ConLike = makeJust <$> annLocNoSema (pure $ parts !! 2) (pure AST.UConlikeAnnot)
+trfConlike parts FunLike = nothing " " "" (pure $ srcSpanEnd $ parts !! 1)
