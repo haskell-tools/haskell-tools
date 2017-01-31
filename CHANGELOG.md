@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.5
+ - New Refactoring: Float Out
+ - Enhancements of existing refactorings:
+   - Organize imports had been extended
+     - Now recognizes import groups and does not reorder them
+     - Uses a heuristics for removing imports
+   - Extract binding now can extract operator sections, and recognizes known associative operators
+ - Daemon: support for package DBs, automatically find cabal-sandbox and stack DBs
+ - Created automatic testing for hackage and stackage, found and fixed a few problems (mostly transformation errors on edge cases)
+ - Resolved formatting failures by defaulting to relative indentation for newly generated elements
+ - Minor features for CLI
+
 ## 0.4
 
  - Inline Binding refactoring
