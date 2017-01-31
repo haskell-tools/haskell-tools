@@ -19,13 +19,13 @@ import FastString
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
-import SrcLoc
 import Packages
+import SrcLoc
 
 import Control.Exception
 import Control.Monad
-import Control.Monad.Trans
 import Control.Monad.IO.Class
+import Control.Monad.Trans
 import Data.IntSet (member)
 import Data.List ((\\), intersperse, isSuffixOf)
 import Data.List.Split

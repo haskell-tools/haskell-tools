@@ -155,7 +155,7 @@ makeCliTest wd rfs = do
     inHandle <- newFileHandle inKnob "<input>" ReadMode
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
-    refactorSession inHandle outHandle [wd]
+    void $ refactorSession inHandle outHandle [wd]
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

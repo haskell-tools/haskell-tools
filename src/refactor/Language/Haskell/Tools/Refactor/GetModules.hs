@@ -12,10 +12,10 @@ import Data.Function (on)
 import Data.List (intersperse, find, sortBy)
 import qualified Data.Map as Map
 import Data.Maybe
+import Distribution.Compiler
 import Distribution.ModuleName (components)
 import Distribution.ModuleName
 import Distribution.Package (Dependency(..), PackageName(..), pkgName)
-import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
