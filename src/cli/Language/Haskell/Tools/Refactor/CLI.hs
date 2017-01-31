@@ -15,16 +15,16 @@ import Data.List
 import Data.List.Split
 import Data.Maybe
 import System.Directory
-import System.IO
 import System.Exit
+import System.IO
 
+import DynFlags as GHC
 import ErrUtils
 import GHC
 import GHC.Paths ( libdir )
 import HscTypes as GHC
-import DynFlags as GHC
-import Packages
 import Outputable
+import Packages
 
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor

@@ -7,17 +7,17 @@ module Language.Haskell.Tools.AST.FromGHC.Binds where
 import ApiAnnotation as GHC (AnnKeywordId(..))
 import Bag as GHC (bagToList)
 import BasicTypes as GHC (FixityDirection(..), Fixity(..))
+import BasicTypes as GHC
 import HsBinds as GHC
 import HsExpr as GHC
 import HsPat as GHC (LPat)
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
+import Outputable as GHC (Outputable(..), showSDocUnsafe)
 import SrcLoc as GHC
-import Outputable as GHC
-import BasicTypes as GHC
 
+import Control.Monad.Reader (Monad(..), mapM, asks)
+import Data.Data (Data(..))
 import Data.List
-import Data.Data
-import Control.Monad.Reader
 
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.Monad

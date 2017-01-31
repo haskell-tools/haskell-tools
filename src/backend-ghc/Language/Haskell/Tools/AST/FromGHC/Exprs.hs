@@ -14,10 +14,10 @@ import Data.Maybe (Maybe(..), isJust, fromMaybe)
 
 import BasicTypes as GHC (Boxity(..))
 import GHC
+import OccName as GHC (occNameString)
 import Outputable as GHC (Outputable(..), showSDocUnsafe)
 import PrelNames as GHC (negateName)
 import SrcLoc as GHC
-import OccName as GHC
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), getFieldOccName)

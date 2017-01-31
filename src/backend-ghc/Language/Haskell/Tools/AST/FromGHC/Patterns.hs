@@ -14,7 +14,6 @@ import HsPat as GHC
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..), HsConDetails(..))
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (getFieldOccName)
 import SrcLoc as GHC
-import Outputable as GHC
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.Literals (trfLiteral', trfOverloadedLit)
@@ -26,8 +25,6 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 
 import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
-
-import Debug.Trace
 
 trfPattern :: TransformName n r => Located (Pat n) -> Trf (Ann AST.UPattern (Dom r) RangeStage)
 -- field wildcards are not directly represented in GHC AST
