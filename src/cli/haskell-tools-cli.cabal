@@ -103,7 +103,7 @@ benchmark cli-benchmark
                      , haskell-tools-cli         >= 0.4 && < 0.5
                      , criterion                 >= 1.1 && < 1.2
                      , time                      >= 1.6 && < 1.7
-                     , aeson                     >= 1.0 && < 1.1
+                     , aeson                     >= 1.0 && < 1.2
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
                      , knob                      >= 0.1 && < 0.2

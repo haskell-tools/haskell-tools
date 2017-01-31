@@ -240,11 +240,11 @@ reloadingTests =
 
 pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
 pkgDbTests 
-  = [ ( "stack"
+  = [ {- ( "stack"
        , withCurrentDirectory (testRoot </> "stack") initStack
        , [SetPackageDB StackDB, AddPackages [testRoot </> "stack"]]
        , [LoadedModules [testRoot </> "stack" </> "UseGroups.hs"]] )
-    , ( "cabal-sandbox"
+    , -} ( "cabal-sandbox"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"]]
       , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
@@ -252,10 +252,10 @@ pkgDbTests
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [SetPackageDB AutoDB, AddPackages [testRoot </> "cabal-sandbox"]]
       , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
-    , ( "stack-auto"
-      , withCurrentDirectory (testRoot </> "stack") initStack
-      , [SetPackageDB AutoDB, AddPackages [testRoot </> "stack"]]
-      , [LoadedModules [testRoot </> "stack" </> "UseGroups.hs"]] )
+    -- , ( "stack-auto"
+    --   , withCurrentDirectory (testRoot </> "stack") initStack
+    --   , [SetPackageDB AutoDB, AddPackages [testRoot </> "stack"]]
+    --   , [LoadedModules [testRoot </> "stack" </> "UseGroups.hs"]] )
     , ( "pkg-db-reload"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [ SetPackageDB AutoDB

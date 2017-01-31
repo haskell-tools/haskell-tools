@@ -112,15 +112,15 @@ cppIfDefReloads = [ "Language.Preprocessor.Cpphs.CppIfdef"
                   , "Language.Preprocessor.Cpphs" ]
 macroPassReloads = "Language.Preprocessor.Cpphs.MacroPass" : cppIfDefReloads
 
-cppHsMods = [ "Language.Preprocessor.Cpphs.Options"
+cppHsMods = [ "Language.Preprocessor.Unlit"
             , "Language.Preprocessor.Cpphs.SymTab"
             , "Language.Preprocessor.Cpphs.Position"
             , "Language.Preprocessor.Cpphs.ReadFirst"
+            , "Language.Preprocessor.Cpphs.Options"
             , "Language.Preprocessor.Cpphs.HashDefine"
             , "Language.Preprocessor.Cpphs.Tokenise"
             , "Language.Preprocessor.Cpphs.MacroPass"
             , "Language.Preprocessor.Cpphs.CppIfdef"
-            , "Language.Preprocessor.Unlit"
             , "Language.Preprocessor.Cpphs.RunCpphs"
             , "Language.Preprocessor.Cpphs" ]
 

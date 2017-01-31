@@ -70,6 +70,7 @@ deriving instance Show (HsPatSynDir RdrName)
 deriving instance Show (HsRecFields RdrName (LPat RdrName))
 deriving instance Show (HsRecordBinds RdrName)
 deriving instance Show (HsSplice RdrName)
+deriving instance Show (HsSplicedThing RdrName)
 deriving instance Show (HsStmtContext RdrName)
 deriving instance Show (HsTupArg RdrName)
 deriving instance Show (HsTyVarBndr RdrName)
@@ -147,6 +148,7 @@ deriving instance Show (HsPatSynDir Name)
 deriving instance Show (HsRecFields Name (LPat Name))
 deriving instance Show (HsRecordBinds Name)
 deriving instance Show (HsSplice Name)
+deriving instance Show (HsSplicedThing Name)
 deriving instance Show (HsStmtContext Name)
 deriving instance Show (HsTupArg Name)
 deriving instance Show (HsTyVarBndr Name)
@@ -224,6 +226,7 @@ deriving instance Show (HsPatSynDir Id)
 deriving instance Show (HsRecFields Id (LPat Id))
 deriving instance Show (HsRecordBinds Id)
 deriving instance Show (HsSplice Id)
+deriving instance Show (HsSplicedThing Id)
 deriving instance Show (HsStmtContext Id)
 deriving instance Show (HsTupArg Id)
 deriving instance Show (HsTyVarBndr Id)
@@ -358,3 +361,5 @@ instance OutputableBndr a => Show (HsIPBinds a) where
 instance Show a => Show (Bag a) where
   show = show . bagToList
 
+instance Show ThModFinalizers where
+  show _ = ""

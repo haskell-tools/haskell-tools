@@ -118,4 +118,7 @@ test-suite haskell-tools-test
                      , haskell-tools-rewrite     >= 0.4  && < 0.5
                      , haskell-tools-prettyprint >= 0.4  && < 0.5
                      , haskell-tools-refactor    >= 0.4  && < 0.5
+                     -- libraries used by the examples
+                     , old-time                  >= 1.1  && < 1.2
+                     , polyparse                 >= 1.12 && < 1.13
   default-language:    Haskell2010
