@@ -66,6 +66,7 @@ library
                      , ghc-paths                 >= 0.1   && < 0.2
                      , references                >= 0.3.2 && < 1.0
                      , network                   >= 2.6   && < 3.0
+                     , Diff                      >= 0.3   && < 0.4
                      , haskell-tools-ast         >= 0.5   && < 0.6
                      , haskell-tools-prettyprint >= 0.5   && < 0.6
                      , haskell-tools-refactor    >= 0.5   && < 0.6
@@ -87,7 +88,7 @@ test-suite haskell-tools-daemon-tests
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2.5g -O2
   hs-source-dirs:      test
-  main-is:             Main.hs  
+  main-is:             Main.hs
   build-depends:       base                      >= 4.9  && < 4.10
                      , HUnit                     >= 1.5  && < 1.6
                      , ghc                       >= 8.0   && < 8.1

@@ -17,6 +17,7 @@ import Network.Socket hiding (KeepAlive, send, recv)
 import Network.Socket.ByteString.Lazy as Sock
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List as List
+import Data.List (sort)
 import Data.Aeson
 import Data.Maybe
 import System.IO
@@ -32,24 +33,24 @@ pORT_NUM_END = 4200
 
 main :: IO ()
 main = do unsetEnv "GHC_PACKAGE_PATH"
-          portCounter <- newMVar pORT_NUM_START 
+          portCounter <- newMVar pORT_NUM_START
           tr <- canonicalizePath testRoot
           isStackRun <- isJust <$> lookupEnv "STACK_EXE"
           defaultMain (allTests isStackRun tr portCounter)
 
 allTests :: Bool -> FilePath -> MVar Int -> TestTree
 allTests isSource testRoot portCounter
-  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10)) 
-      $ testGroup "daemon-tests" 
-          [ testGroup "simple-tests" 
-              $ map (makeDaemonTest portCounter . (\(label, input, output) -> (Nothing, label, input, output))) simpleTests
-          , testGroup "loading-tests" 
-              $ map (makeDaemonTest portCounter . (\(label, input, output) -> (Nothing, label, input, output))) loadingTests
-          , testGroup "refactor-tests" 
-              $ map (makeDaemonTest portCounter . (\(label, dir, input, output) -> (Just (testRoot </> dir), label, input, output))) (refactorTests testRoot)
-          , testGroup "reload-tests" 
+  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10))
+      $ testGroup "daemon-tests"
+          [ testGroup "simple-tests"
+              $ map (makeDaemonTest portCounter) simpleTests
+          , testGroup "loading-tests"
+              $ map (makeDaemonTest portCounter) loadingTests
+          , testGroup "refactor-tests"
+              $ map (makeRefactorTest portCounter) (refactorTests testRoot)
+          , testGroup "reload-tests"
               $ map (makeReloadTest portCounter) reloadingTests
-          , testGroup "compilation-problem-tests" 
+          , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
@@ -62,7 +63,7 @@ allTests isSource testRoot portCounter
 testSuffix = "_test"
 
 simpleTests :: [(String, [ClientMessage], [ResponseMsg])]
-simpleTests = 
+simpleTests =
   [ ( "empty-test", [], [] )
   , ( "keep-alive", [KeepAlive], [KeepAliveResponse] )
   ]
@@ -71,175 +72,173 @@ loadingTests :: [(String, [ClientMessage], [ResponseMsg])]
 loadingTests =
   [ ( "load-package"
     , [AddPackages [testRoot </> "has-cabal"]]
-    , [LoadedModules [testRoot </> "has-cabal" </> "A.hs"]] )
+    , [ LoadingModules [testRoot </> "has-cabal" </> "A.hs"]
+      , LoadedModules [(testRoot </> "has-cabal" </> "A.hs", "A")]] )
   , ( "no-cabal"
     , [AddPackages [testRoot </> "no-cabal"]]
-    , [LoadedModules [testRoot </> "no-cabal" </> "A.hs"]] )
+    , [ LoadingModules [testRoot </> "no-cabal" </> "A.hs"]
+      , LoadedModules [(testRoot </> "no-cabal" </> "A.hs", "A")]] )
   , ( "source-dir"
     , [AddPackages [testRoot </> "source-dir"]]
-    , [LoadedModules [testRoot </> "source-dir" </> "src" </> "A.hs"]] )
+    , [ LoadingModules [testRoot </> "source-dir" </> "src" </> "A.hs"]
+      , LoadedModules [(testRoot </> "source-dir" </> "src" </> "A.hs", "A")]] )
   , ( "source-dir-outside"
     , [AddPackages [testRoot </> "source-dir-outside"]]
-    , [LoadedModules [testRoot </> "source-dir-outside" </> ".." </> "src" </> "A.hs"]] )
+    , [ LoadingModules [testRoot </> "source-dir-outside" </> ".." </> "src" </> "A.hs"]
+      , LoadedModules [(testRoot </> "source-dir-outside" </> ".." </> "src" </> "A.hs", "A")]] )
   , ( "multi-packages"
     , [ AddPackages [ testRoot </> "multi-packages" </> "package1"
                     , testRoot </> "multi-packages" </> "package2" ]]
-    , [ LoadedModules [ testRoot </> "multi-packages" </> "package2" </> "B.hs"
-                      , testRoot </> "multi-packages" </> "package1" </> "A.hs"]] )
+    , [ LoadingModules [ testRoot </> "multi-packages" </> "package1" </> "A.hs"
+                       , testRoot </> "multi-packages" </> "package2" </> "B.hs" ]
+      , LoadedModules [ (testRoot </> "multi-packages" </> "package2" </> "B.hs", "B") ]
+      , LoadedModules [ (testRoot </> "multi-packages" </> "package1" </> "A.hs", "A") ] ] )
   , ( "multi-packages-flags"
     , [ AddPackages [ testRoot </> "multi-packages-flags" </> "package1"
                     , testRoot </> "multi-packages-flags" </> "package2" ]]
-    , [ LoadedModules [ testRoot </> "multi-packages-flags" </> "package2" </> "B.hs"
-                      , testRoot </> "multi-packages-flags" </> "package1" </> "A.hs"]] )
+    , [ LoadingModules [ testRoot </> "multi-packages-flags" </> "package1" </> "A.hs"
+                       , testRoot </> "multi-packages-flags" </> "package2" </> "B.hs" ]
+      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package2" </> "B.hs", "B") ]
+      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package1" </> "A.hs", "A") ] ] )
   , ( "multi-packages-dependent"
     , [ AddPackages [ testRoot </> "multi-packages-dependent" </> "package1"
                     , testRoot </> "multi-packages-dependent" </> "package2" ]]
-    , [ LoadedModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs"
-                      , testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs"]] )
+    , [ LoadingModules [ testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs"
+                       , testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs" ]
+      , LoadedModules [ (testRoot </> "multi-packages-dependent" </> "package1" </> "A.hs", "A") ]
+      , LoadedModules [ (testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs", "B") ] ] )
   , ( "has-th"
     , [AddPackages [testRoot </> "has-th"]]
-    , [LoadedModules [testRoot </> "has-th" </> "TH.hs", testRoot </> "has-th" </> "A.hs"]] )
+    , [ LoadingModules [ testRoot </> "has-th" </> "A.hs",  testRoot </> "has-th" </> "TH.hs" ]
+      , LoadedModules [ (testRoot </> "has-th" </> "TH.hs", "TH") ]
+      , LoadedModules [ (testRoot </> "has-th" </> "A.hs", "A") ] ] )
   , ( "th-added-later"
     , [ AddPackages [testRoot </> "th-added-later" </> "package1"]
       , AddPackages [testRoot </> "th-added-later" </> "package2"]
       ]
-    , [ LoadedModules [testRoot </> "th-added-later" </> "package1" </> "A.hs"] 
-      , LoadedModules [testRoot </> "th-added-later" </> "package2" </> "B.hs"]] )
+    , [ LoadingModules [ testRoot </> "th-added-later" </> "package1" </> "A.hs" ]
+      , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
+      , LoadingModules [ testRoot </> "th-added-later" </> "package1" </> "A.hs"
+                       , testRoot </> "th-added-later" </> "package2" </> "B.hs" ]
+      , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
+      , LoadedModules [(testRoot </> "th-added-later" </> "package2" </> "B.hs", "B")] ] )
   ]
 
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
-compProblemTests = 
+compProblemTests =
   [ ( "load-error"
-    , [ Right $ AddPackages [testRoot </> "load-error"] ] 
-    , \case [CompilationProblem {}] -> True; _ -> False)
+    , [ Right $ AddPackages [testRoot </> "load-error"] ]
+    , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
   , ( "source-error"
-    , [ Right $ AddPackages [testRoot </> "source-error"] ] 
-    , \case [CompilationProblem {}] -> True; _ -> False)
+    , [ Right $ AddPackages [testRoot </> "source-error"] ]
+    , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-error"
-    , [ Right $ AddPackages [testRoot </> "empty"] 
+    , [ Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\nimport No.Such.Module"
-      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] [] 
+      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
-    , \case [LoadedModules {}, CompilationProblem {}] -> True; _ -> False)
+    , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-source-error"
-    , [ Right $ AddPackages [testRoot </> "empty"] 
+    , [ Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\naa = 3 + ()"
-      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] [] 
+      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
-    , \case [LoadedModules {}, CompilationProblem {}] -> True; _ -> False)
+    , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   ]
 
 sourceRoot = ".." </> ".." </> "src"
 
 selfLoadingTest :: MVar Int -> TestTree
-selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do  
+selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do
     actual <- communicateWithDaemon port
                 [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor", "daemon"]) ]
-    assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual) 
+    assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual)
                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
 
 
-refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg])]
+refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
 refactorTests testRoot =
-  [ ( "simple-refactor", "simple-refactor"
+  [ ( "simple-refactor", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"]
       ]
-    , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ] 
-      , LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
-      ] )
-  , ( "hs-boots", "hs-boots"
+    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{}, LoadedModules [ (aPath', _) ]]
+              -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
+  , ( "hs-boots", testRoot </> "hs-boots"
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"]
       ]
-    , [ LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs-boot", testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot"
-                      , testRoot </> "hs-boots" ++ testSuffix </> "A.hs", testRoot </> "hs-boots" ++ testSuffix </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs", testRoot </> "hs-boots" ++ testSuffix </> "B.hs"
-                       , testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot" ] 
-      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot" ]
-      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs-boot" ]
-      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "A.hs" ]
-      , LoadedModules [ testRoot </> "hs-boots" ++ testSuffix </> "B.hs" ]
-      ] )
-  , ( "remove-module", "simple-refactor"
+    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _, ModulesChanged _
+              , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
+              , LoadedModules [ (path3, _) ], LoadedModules [ (path4, _) ]
+              ] -> let allPathes = map ((testRoot </> "hs-boots" ++ testSuffix) </>) ["A.hs","B.hs","A.hs-boot","B.hs-boot"]
+                    in sort [path1,path2,path3,path4] == sort allPathes
+            _ -> False )
+  , ( "remove-module", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"]
       ]
-    , [ LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs" ] 
-      , LoadedModules [ testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs" ]
-      ] )
+    , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{},LoadedModules [ (aaPath, _) ]]
+              -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
+                   && aaPath == testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs"
+            _ -> False )
   ]
 
-reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg])]
+reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg] -> Bool)]
 reloadingTests =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
-    , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()" 
+    , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
     , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] 
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"]
       ]
-    , [ LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
-                      , testRoot </> "reloading" ++ testSuffix </> "B.hs"
-                      , testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
-      , ModulesChanged [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
-                       , testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "B.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
-      ]
-    )
+    , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
+              , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
+              , ModulesChanged _, LoadingModules{},LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
+              ] -> let allPathes = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
+                    in [pathC,pathB,pathA] == allPathes
+                         && [pathC',pathB',pathA'] == allPathes
+                         && [pathC'',pathB'',pathA''] == allPathes
+            _ -> False )
   , ( "reloading-package", testRoot </> "changing-cabal"
     , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
-    , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B" 
+    , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
     , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] 
+      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"]
       ]
-    , [ LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs"
-                      , testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs"
-                       , testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "A.hs" ]
-      , LoadedModules [ testRoot </> "changing-cabal" ++ testSuffix </> "B.hs" ]
-      ]
-    )
+    , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
+              , LoadedModules [(pathB',_)], ModulesChanged _
+              , LoadingModules{}, LoadedModules [(pathA'',_)], LoadedModules [(pathB'',_)]
+              ] -> let [pA,pB] = map ((testRoot </> "changing-cabal" ++ testSuffix) </>) ["A.hs","B.hs"]
+                    in pA == pathA && pA == pathA' && pA == pathA'' && pB == pathB' && pB == pathB''
+            _ -> False )
   , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , do removeFile (testRoot </> "reloading" ++ testSuffix </> "A.hs")
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
-    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] 
+    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
                [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] 
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"]
       ]
-    , [ LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs"
-                      , testRoot </> "reloading" ++ testSuffix </> "B.hs"
-                      , testRoot </> "reloading" ++ testSuffix </> "A.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
-      , ModulesChanged [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
-      , LoadedModules [ testRoot </> "reloading" ++ testSuffix </> "C.hs" ]
-      ]
-    )
+    , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
+              , LoadingModules{}, LoadedModules [(pathC',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathC'',_)] ]
+              -> let [pC,pB,pA] = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
+                  in pA == pathA && pB == pathB && pC == pathC && pC == pathC' && pC == pathC''
+            _ -> False )
   , ( "remove-package", testRoot </> "multi-packages-dependent"
     , [ AddPackages [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1"
                     , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" ]]
     , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
-    , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"] 
-      , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs") 
-                                              "3:1-3:2" ["d"] 
+    , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
+                                              "3:1-3:2" ["d"]
       ]
-    , [ LoadedModules [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs"
-                      , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" </> "B.hs" ]
-      , ModulesChanged [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs" ]
-      , LoadedModules [ testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs" ]
-      ]
-    )
+    , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathA,_)] ]
+              -> let [pA,pB] = map ((testRoot </> "multi-packages-dependent" ++ testSuffix) </>) [ "package1" </> "A.hs", "package2" </> "B.hs"]
+                  in pA == pathA && pA == pathA' && pB == pathB'
+            _ -> False )
   ]
 
 pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
-pkgDbTests 
+pkgDbTests
   = [ {- ( "stack"
        , withCurrentDirectory (testRoot </> "stack") initStack
        , [SetPackageDB StackDB, AddPackages [testRoot </> "stack"]]
@@ -247,11 +246,13 @@ pkgDbTests
     , -} ( "cabal-sandbox"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"]]
-      , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
+      , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
+        , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]] )
     , ( "cabal-sandbox-auto"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [SetPackageDB AutoDB, AddPackages [testRoot </> "cabal-sandbox"]]
-      , [LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]] )
+      , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
+        , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]] )
     -- , ( "stack-auto"
     --   , withCurrentDirectory (testRoot </> "stack") initStack
     --   , [SetPackageDB AutoDB, AddPackages [testRoot </> "stack"]]
@@ -261,9 +262,11 @@ pkgDbTests
       , [ SetPackageDB AutoDB
         , AddPackages [testRoot </> "cabal-sandbox"]
         , ReLoad [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] []]
-      , [ LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
-        , LoadedModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] ])
-    ] 
+      , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
+        , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]
+        , LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
+        , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")] ])
+    ]
   where initCabalSandbox = do
           sandboxExists <- doesDirectoryExist ".cabal-sandbox"
           when sandboxExists $ tryToExecute "cabal" ["sandbox", "delete"]
@@ -277,48 +280,50 @@ pkgDbTests
 
 
 execute :: String -> [String] -> IO ()
-execute cmd args 
+execute cmd args
   = do let command = (cmd ++ concat (map (" " ++) args))
        (_, Just stdOut, Just stdErr, handle) <- createProcess ((shell command) { std_out = CreatePipe, std_err = CreatePipe })
        exitCode <- waitForProcess handle
-       when (exitCode /= ExitSuccess) $ do 
+       when (exitCode /= ExitSuccess) $ do
          output <- hGetContents stdOut
          errors <- hGetContents stdErr
          error ("Command exited with nonzero: " ++ command ++ " output:\n" ++ output ++ "\nerrors:\n" ++ errors)
 
 tryToExecute :: String -> [String] -> IO ()
-tryToExecute cmd args 
+tryToExecute cmd args
   = do let command = (cmd ++ concat (map (" " ++) args))
        (_, _, _, handle) <- createProcess ((shell command) { std_out = NoStream, std_err = NoStream })
        void $ waitForProcess handle
 
-makeDaemonTest :: MVar Int -> (Maybe FilePath, String, [ClientMessage], [ResponseMsg]) -> TestTree
-makeDaemonTest port (Nothing, label, input, expected) = testCase label $ do  
+makeDaemonTest :: MVar Int -> (String, [ClientMessage], [ResponseMsg]) -> TestTree
+makeDaemonTest port (label, input, expected) = testCase label $ do
     actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
-makeDaemonTest port (Just dir, label, input, expected) = testCase label $ do 
+
+makeRefactorTest :: MVar Int -> (String, FilePath, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeRefactorTest port (label, dir, input, validator) = testCase label $ do
     exists <- doesDirectoryExist (dir ++ testSuffix)
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
     actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
-    assertEqual "" expected actual
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
-makeReloadTest :: MVar Int -> (String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg]) -> TestTree
-makeReloadTest port (label, dir, input1, io, input2, expected) = testCase label $ do  
+makeReloadTest :: MVar Int -> (String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeReloadTest port (label, dir, input1, io, input2, validator) = testCase label $ do
     exists <- doesDirectoryExist (dir ++ testSuffix)
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
     actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
-    assertEqual "" expected actual
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 makePkgDbTest :: MVar Int -> (String, IO (), [ClientMessage], [ResponseMsg]) -> TestTree
-makePkgDbTest port (label, prepare, inputs, expected) 
-  = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30)) 
-      $ testCase label $ do  
+makePkgDbTest port (label, prepare, inputs, expected)
+  = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
+      $ testCase label $ do
           actual <- communicateWithDaemon port ([Left prepare] ++ map Right inputs)
           assertEqual "" expected actual
 
@@ -344,14 +349,14 @@ communicateWithDaemon port msgs = withSocketsDo $ do
     sendAll sock $ encode Stop
     close sock
     return (concat intermedRes ++ resps)
-  where waitToConnect sock addr 
+  where waitToConnect sock addr
           = connect sock addr `catch` \(e :: SomeException) -> waitToConnect sock addr
-        retryConnect port = do portNum <- readMVar port 
+        retryConnect port = do portNum <- readMVar port
                                forkIO $ runDaemon [show portNum, "True"]
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
-                                              modifyMVar_ port (\i -> if i < pORT_NUM_END 
-                                                                        then return (i+1) 
+                                              modifyMVar_ port (\i -> if i < pORT_NUM_END
+                                                                        then return (i+1)
                                                                         else error "The port number reached the maximum")
                                               retryConnect port
 
@@ -359,19 +364,22 @@ communicateWithDaemon port msgs = withSocketsDo $ do
 readSockResponsesUntil :: Socket -> ResponseMsg -> BS.ByteString -> IO [ResponseMsg]
 readSockResponsesUntil sock rsp bs
   = do resp <- recv sock 2048
+       -- putStrLn $ "###" ++ BS.unpack resp
        let fullBS = bs `BS.append` resp
-       if BS.null resp 
+       if BS.null resp
          then return []
          else
            let splitted = BS.split '\n' fullBS
                recognized = catMaybes $ map decode splitted
-            in if rsp `elem` recognized 
-                 then return $ List.delete rsp recognized 
+            in if rsp `elem` recognized
+                 then return $ List.delete rsp recognized
                  else readSockResponsesUntil sock rsp fullBS
 
 testRoot = "examples" </> "Project"
 
+deriving instance Eq UndoRefactor
 deriving instance Eq ResponseMsg
+instance FromJSON UndoRefactor
 instance FromJSON ResponseMsg
 instance ToJSON ClientMessage
 instance ToJSON PackageDB
@@ -400,15 +408,15 @@ longestCommonPrefix :: (Eq a) => [[a]] -> [a]
 longestCommonPrefix = foldl1 commonPrefix
 
 instance FromJSON SrcSpan where
-    parseJSON (Object v) = mkSrcSpanReal <$> v .: "file" 
-                                         <*> v .: "startRow" 
-                                         <*> v .: "startCol" 
+    parseJSON (Object v) = mkSrcSpanReal <$> v .: "file"
+                                         <*> v .: "startRow"
+                                         <*> v .: "startCol"
                                          <*> v .: "endRow"
                                          <*> v .: "endCol"
     parseJSON _          = fail "not an object"
 
 
 mkSrcSpanReal :: String -> Int -> Int -> Int -> Int -> SrcSpan
-mkSrcSpanReal file startRow startCol endRow endCol 
+mkSrcSpanReal file startRow startCol endRow endCol
   = mkSrcSpan (mkSrcLoc (mkFastString file) startRow startCol)
               (mkSrcLoc (mkFastString file) endRow endCol)
