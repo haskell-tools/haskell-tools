@@ -13,13 +13,12 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.AST
                      , Language.Haskell.Tools.AST.References
                      , Language.Haskell.Tools.AST.Helpers
                      , Language.Haskell.Tools.AST.Ann
                      , Language.Haskell.Tools.AST.SemaInfoTypes
-                     , Language.Haskell.Tools.AST.SemaInfoClasses 
+                     , Language.Haskell.Tools.AST.SemaInfoClasses
 
   other-modules:       Language.Haskell.Tools.AST.Representation.Modules
                      , Language.Haskell.Tools.AST.Representation.TH
@@ -34,7 +33,6 @@ library
                      , Language.Haskell.Tools.AST.Representation.Names
 
                      , Language.Haskell.Tools.AST.MakeASTReferences
-                     , Language.Haskell.Tools.AST.Utils.OrdSrcSpan
                      , Language.Haskell.Tools.AST.Utils.GHCInstances
 
                      , Language.Haskell.Tools.AST.Instances
@@ -46,7 +44,7 @@ library
                      , Language.Haskell.Tools.AST.Instances.SourceInfoTraversal
                      , Language.Haskell.Tools.AST.TH.SemanticTraversal
                      , Language.Haskell.Tools.AST.TH.SourceInfoTraversal
-                     
+
   build-depends:       base             >= 4.9  && < 4.10
                      , ghc              >= 8.0  && < 8.1
                      , references       >= 0.3  && < 0.4

@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances
            , FlexibleContexts
            , UndecidableInstances
-           , NamedFieldPuns 
+           , NamedFieldPuns
            #-}
 
 -- | Pretty printing the AST
@@ -24,7 +24,7 @@ import Data.Sequence hiding (null, replicate)
 prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String
 prettyPrint = toList . printRose . toRoseTree
 
-printRose :: RoseTree SrcTemplateStage -> Seq Char      
+printRose :: RoseTree SrcTemplateStage -> Seq Char
 printRose rt = evalState (printRose' startLoc rt) startLoc
   where startLoc = mkRealSrcLoc (fsLit "") 1 1
 
@@ -34,7 +34,7 @@ type PPState = State RealSrcLoc
 printRose' :: RealSrcLoc -> RoseTree SrcTemplateStage -> PPState (Seq Char)
 -- simple implementation could be optimized a bit
 -- warning: the length of the file should not exceed maxbound::Int
-printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relInd)) children) 
+printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relInd)) children)
   = do slide <- calculateSlide rng
        let printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
            printTemplateElems (TextElem txt : rest) children = putString slide min txt >+< printTemplateElems rest children
@@ -46,52 +46,52 @@ printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relIn
            min = minInd `max` getPosByRelative parent relInd
 
        printTemplateElems elems children
-  
+
 printRose' _ (RoseTree (RoseList (SourceTemplateList {})) []) = return empty
-printRose' parent (RoseTree (RoseList (SourceTemplateList rng bef aft defSep indented seps minInd relInd)) children) 
+printRose' parent (RoseTree (RoseList (SourceTemplateList rng bef aft defSep indented seps minInd relInd)) children)
     = do slide <- calculateSlide rng
          actRng <- get
          let min = minInd `max` getPosByRelative parent relInd
-         putString slide min bef 
-           >+< (if indented then printListWithSepsIndented else printListWithSeps) actRng slide min actualSeps children 
+         putString slide min bef
+           >+< (maybe printListWithSeps printListWithSepsIndented indented) actRng slide min actualSeps children
            >+< putString slide min aft
   where actualSeps = case seps of [] -> repeat defSep
                                   _  -> seps ++ repeat (last seps)
 
 printRose' _ (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty
-printRose' parent (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd relInd)) [child]) 
+printRose' parent (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd relInd)) [child])
   = do slide <- calculateSlide rng
        actRng <- get
        let min = minInd `max` getPosByRelative parent relInd
        putString slide min bef >+< printRose' actRng child >+< putString slide min aft
 printRose' _ (RoseTree (RoseOptional _) _) = error "More than one child element in an optional node."
-    
+
 getPosByRelative :: RealSrcLoc -> Maybe Int -> Int
 getPosByRelative sp (Just i) = srcLocCol sp + i - 1
 getPosByRelative _ _ = 0
 
 calculateSlide :: SrcSpan -> PPState Int
-calculateSlide (RealSrcSpan originalSpan) = do 
+calculateSlide (RealSrcSpan originalSpan) = do
   actualSpan <- get
   return $ srcLocCol actualSpan - srcLocCol (realSrcSpanStart originalSpan)
 calculateSlide _ = return 0
 
 putString :: Int -> Int -> String -> PPState (Seq Char)
-putString slide minInd s 
+putString slide minInd s
   = do modify $ advanceStr newStr
        return (fromList newStr)
   where start:rest = splitOn "\n" s
         newStr = concat $ intersperse ("\n" ++ replicate slide ' ') (start : map (extendToNSpaces minInd) rest)
         extendToNSpaces n str = replicate n ' ' ++ (List.dropWhile (== ' ') $ List.take n str) ++ List.drop n str
-                  
+
 advanceStr :: String -> RealSrcLoc -> RealSrcLoc
 advanceStr s loc = foldl advanceSrcLoc loc s
 
 untilReaches :: String -> RealSrcLoc -> RealSrcLoc -> (String, Int)
-untilReaches s start end 
-  = let ls = splitOn "\n" s 
-     in case ls of _:_:_ -> (unlines (init ls) ++) 
-                              `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end 
+untilReaches s start end
+  = let ls = splitOn "\n" s
+     in case ls of _:_:_ -> (unlines (init ls) ++)
+                              `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end
                    _ -> (s, srcLocCol start)
   where
     untilReaches' [] curr _ = ([], srcLocCol curr)
@@ -99,28 +99,32 @@ untilReaches s start end
       = (c:) `mapFst` untilReaches' rest advancedLoc until
       where advancedLoc = advanceSrcLoc curr c
     untilReaches' _ curr _ = ([], srcLocCol curr)
-    
+
 mapFst :: (a -> b) -> (a, x) -> (b, x)
 mapFst f (a, x) = (f a, x)
 
 (>+<) :: PPState (Seq Char) -> PPState (Seq Char) -> PPState (Seq Char)
 (>+<) = liftM2 (><)
-    
+
 printListWithSeps :: RealSrcLoc -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printListWithSeps = printListWithSeps' putString
+printListWithSeps = printListWithSeps' (const putString) 0
 
 -- | Prints the elements of a list where the elements must be printed in the same line (do stmts, case alts, let binds, ...)
-printListWithSepsIndented :: RealSrcLoc -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printListWithSepsIndented parent slide minInd seps children
+printListWithSepsIndented :: [Bool] -> RealSrcLoc -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+printListWithSepsIndented indentedChildren parent slide minInd seps children
   = do base <- get
-       let putCorrectSep _ min s = do curr <- get
-                                      let (shortened, currCol) = untilReaches s curr base
-                                      putString 0 min $ shortened ++ replicate (srcLocCol base - currCol) ' '
-       printListWithSeps' putCorrectSep parent slide minInd seps children
-    
-printListWithSeps' :: (Int -> Int -> String -> PPState (Seq Char)) -> RealSrcLoc -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-printListWithSeps' _ _ _ _ _ [] = return empty
-printListWithSeps' _ parent _ _ _ [child] = printRose' parent child
-printListWithSeps' putCorrectSep parent slide minInd (sep:seps) (child:children) 
-  = printRose' parent child >+< putCorrectSep slide minInd sep >+< printListWithSeps' putCorrectSep parent slide minInd seps children
-printListWithSeps' _ _ _ _ [] _ = error "printListWithSeps': the number of elements and separators does not match"
+       let putCorrectSep i _ min s | isIndented i
+              = do curr <- get
+                   let (shortened, currCol) = untilReaches s curr base
+                   putString 0 min $ shortened ++ replicate (srcLocCol base - currCol) ' '
+           putCorrectSep _ slide minInd s = putString slide minInd s
+       printListWithSeps' putCorrectSep 0 parent slide minInd seps children
+  where -- the ith separator is before the ith element
+        isIndented i = case List.drop i indentedChildren of False:_ -> False; _ -> True
+
+printListWithSeps' :: (Int -> Int -> Int -> String -> PPState (Seq Char)) -> Int -> RealSrcLoc -> Int -> Int -> [String] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
+printListWithSeps' _ _ _ _ _ _ [] = return empty
+printListWithSeps' _ _ parent _ _ _ [child] = printRose' parent child
+printListWithSeps' putCorrectSep i parent slide minInd (sep:seps) (child:children)
+  = printRose' parent child >+< putCorrectSep i slide minInd sep >+< printListWithSeps' putCorrectSep (i+1) parent slide minInd seps children
+printListWithSeps' _ _ _ _ _ [] _ = error "printListWithSeps': the number of elements and separators does not match"

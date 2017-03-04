@@ -12,7 +12,6 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.AST.Rewrite
                      , Language.Haskell.Tools.AST.ElementTypes
                      , Language.Haskell.Tools.AST.Gen
@@ -53,7 +52,7 @@ test-suite haskell-tools-rewrite-tests
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
-  main-is:             Main.hs  
+  main-is:             Main.hs
   build-depends:       base                      >= 4.9 && < 4.10
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9 && < 0.10

@@ -26,7 +26,7 @@ opt :: OptionalInfo SrcTemplateStage
 opt = SourceTemplateOpt noSrcSpan "" "" 0 Nothing
 
 list :: ListInfo SrcTemplateStage
-list = SourceTemplateList noSrcSpan "" "" "" False [] 0 Nothing
+list = SourceTemplateList noSrcSpan "" "" "" Nothing [] 0 Nothing
 
 -- * Modifiers
 
@@ -77,7 +77,7 @@ separatedBy sep = srcTmpDefaultSeparator .= sep
 
 -- | The elements of the list should be indented on the same column
 indented :: ListInfo SrcTemplateStage -> ListInfo SrcTemplateStage
-indented = (srcTmpIndented .= True) . (srcTmpDefaultSeparator .= "\n")
+indented = (srcTmpIndented .= Just []) . (srcTmpDefaultSeparator .= "\n")
 
 -- | Concatenates two source templates to produce a new template with all child elements.
 (<>) :: SpanInfo SrcTemplateStage -> SpanInfo SrcTemplateStage -> SpanInfo SrcTemplateStage

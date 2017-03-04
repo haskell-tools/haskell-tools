@@ -14,11 +14,12 @@
 module Language.Haskell.Tools.AST.FromGHC.Names where
 
 import Control.Monad.Reader ((=<<), asks)
-import Data.Char (isDigit, isLetter)
+import Data.Char (isAlphaNum)
+import Data.List.Split (splitOn)
 
 import FastString as GHC (FastString, unpackFS)
 import HsSyn as GHC
-import Name as GHC (isSymOcc)
+import Name as GHC (isSymOcc, occNameString)
 import qualified Name as GHC (Name)
 import RdrName as GHC (RdrName)
 import SrcLoc as GHC
@@ -35,18 +36,18 @@ trfOperator = trfLocNoSema trfOperator'
 
 trfOperator' :: TransformName n r => n -> Trf (AST.UOperator (Dom r) RangeStage)
 trfOperator' n
-  | isSymOcc (occName n) = AST.UNormalOp <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
-  | otherwise = AST.UBacktickOp <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
-     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+  | isSymOcc (occName n) = AST.UNormalOp <$> trfQualifiedNameFocus True n
+  | otherwise = AST.UBacktickOp <$> trfQualifiedNameFocus True n
 
 trfName :: TransformName n r => Located n -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfName = trfLocNoSema trfName'
 
 trfName' :: TransformName n r => n -> Trf (AST.UName (Dom r) RangeStage)
 trfName' n
-  | isSymOcc (occName n) = AST.UParenName <$> (annLoc (createNameInfo (transformName n)) loc (trfQualifiedName' n))
-  | otherwise = AST.UNormalName <$> (annCont (createNameInfo (transformName n)) (trfQualifiedName' n))
-     where loc = mkSrcSpan <$> (updateCol (+1) <$> atTheStart) <*> (updateCol (subtract 1) <$> atTheEnd)
+  | isSymOcc (occName n) = (if isSpecKind then AST.UNormalName else AST.UParenName) <$> trfQualifiedNameFocus isSpecKind n
+  | otherwise = AST.UNormalName <$> trfQualifiedNameFocus False n
+  where -- special names that are operators, but appear in name context
+    isSpecKind = occNameString (occName n) `elem` ["*", "#", "?", "??"]
 
 trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af
@@ -54,29 +55,35 @@ trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af
 trfAmbiguousFieldName' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' (unpackPostRn @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
-trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _) 
-  = annLocNoSema (pure l) 
-      $ AST.UNormalName 
-          <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (rdrNameStr rdr))
+trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
+  = annLocNoSema (pure l)
+      $ (if (isSymOcc (occName rdr)) then AST.UParenName else AST.UNormalName)
+          <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (isSymOcc (occName rdr)) (rdrNameStr rdr))
 
-class (DataId n, Eq n, GHCName n) => TransformableName n where
+trfAmbiguousOperator' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UOperator (Dom r) RangeStage)
+trfAmbiguousOperator' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfOperator' (unpackPostRn @n rdr pr)
+-- no Id transformation is done, so we can basically ignore the postTC value
+trfAmbiguousFieldOperator' _ (Ambiguous (L l rdr) _)
+  = annLocNoSema (pure l)
+      $ (if (isSymOcc (occName rdr)) then AST.UNormalOp else AST.UBacktickOp)
+          <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfOperatorStr (not $ isSymOcc (occName rdr)) (rdrNameStr rdr))
+
+
+class (DataId n, Eq n, GHCName n, FromGHCName n) => TransformableName n where
   correctNameString :: n -> Trf String
   getDeclSplices :: Trf [Located (HsSplice n)]
-  fromGHCName :: GHC.Name -> n 
 
 instance TransformableName RdrName where
   correctNameString = pure . rdrNameStr
   getDeclSplices = pure []
-  fromGHCName = rdrName
 
 instance TransformableName GHC.Name where
   correctNameString n = getOriginalName (rdrName n)
   getDeclSplices = asks declSplices
-  fromGHCName = id
 
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC UName annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (TransformableName name, HsHasName name, TransformableName res, HsHasName res, GHCName res) 
+class (TransformableName name, HsHasName name, TransformableName res, HsHasName res, GHCName res)
         => TransformName name res where
   -- | Demote a given name
   transformName :: name -> res
@@ -89,46 +96,54 @@ instance {-# OVERLAPS #-} (TransformableName res, GHCName res, HsHasName res) =>
 
 trfNameText :: String -> Trf (Ann AST.UName (Dom r) RangeStage)
 trfNameText str
-  = annContNoSema (AST.UNormalName <$> annLoc (createImplicitNameInfo str) (asks contRange) (AST.nameFromList <$> trfNameStr str))
+  = annContNoSema (AST.UNormalName <$> annLoc (createImplicitNameInfo str) (asks contRange) (AST.nameFromList <$> trfNameStr (isOperatorStr str) str))
 
 trfImplicitName :: HsIPName -> Trf (Ann AST.UName (Dom r) RangeStage)
-trfImplicitName (HsIPName fs) 
-  = let nstr = unpackFS fs 
+trfImplicitName (HsIPName fs)
+  = let nstr = unpackFS fs
      in do rng <- asks contRange
            let rng' = mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (srcSpanEnd rng)
-           annContNoSema (AST.UImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng') (AST.nameFromList <$> trfNameStr nstr))
+           annContNoSema (AST.UImplicitName <$> annLoc (createImplicitNameInfo nstr) (pure rng')
+                                                  (AST.nameFromList <$> trfNameStr (isOperatorStr nstr) nstr))
 
-trfQualifiedName :: TransformName n r => Located n -> Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
-trfQualifiedName (L l n) = annLoc (createNameInfo (transformName n)) (pure l) (trfQualifiedName' n)
+isOperatorStr :: String -> Bool
+isOperatorStr = any (not . isAlphaNum)
+
+trfQualifiedName :: TransformName n r => Bool -> Located n -> Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
+trfQualifiedName isOperator (L l n) = focusOn l $ trfQualifiedNameFocus isOperator n
+
+trfQualifiedNameFocus :: TransformName n r => Bool -> n -> Trf (Ann AST.UQualifiedName (Dom r) RangeStage)
+trfQualifiedNameFocus isOperator n
+  = do rng <- asks contRange
+       let rng' = if isOperator == isSymOcc (occName n) then rng
+                    else mkSrcSpan (updateCol (+1) (srcSpanStart rng)) (updateCol (subtract 1) (srcSpanEnd rng))
+       annLoc (createNameInfo (transformName n)) (pure rng') (trfQualifiedName' n)
 
 trfQualifiedName' :: TransformName n r => n -> Trf (AST.UQualifiedName (Dom r) RangeStage)
-trfQualifiedName' n = AST.nameFromList <$> (trfNameStr =<< correctNameString n)
+trfQualifiedName' n = AST.nameFromList <$> ((if isSymOcc (occName n) then trfOperatorStr else trfNameStr) False =<< correctNameString n)
+
+trfOperatorStr :: Bool -> String -> Trf (AnnListG AST.UNamePart (Dom r) RangeStage)
+trfOperatorStr isInParen str = do rng <- correctSpan <$> asks contRange
+                                  makeList "." (pure $ srcSpanStart rng)
+                                               (pure [Ann (noSemaInfo $ AST.NodeSpan rng) (AST.UNamePart str)])
+  where correctSpan sp = if isInParen then mkSrcSpan (updateCol (+1) (srcSpanStart sp))
+                                                     (updateCol (subtract 1) (srcSpanEnd sp))
+                                      else sp
 
 -- | Creates a qualified name from a name string
-trfNameStr :: String -> Trf (AnnListG AST.UNamePart (Dom r) RangeStage)
-trfNameStr str = makeList "." atTheStart (trfNameStr' str <$> atTheStart)
+trfNameStr :: Bool -> String -> Trf (AnnListG AST.UNamePart (Dom r) RangeStage)
+trfNameStr isInBackticks str = makeList "." atTheStart (trfNameStr' str . correct <$> atTheStart)
+  where correct = if isInBackticks then updateCol (+1) else id
 
 trfNameStr' :: String -> SrcLoc -> [Ann AST.UNamePart (Dom r) RangeStage]
-trfNameStr' str srcLoc = fst $
+trfNameStr' str startLoc = fst $
   foldl (\(r,loc) np -> let nextLoc = advanceAllSrcLoc loc np
-                         in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UNamePart np)], advanceAllSrcLoc nextLoc "." ) ) 
-  ([], srcLoc) (nameParts str)
+                         in ( r ++ [Ann (noSemaInfo $ AST.NodeSpan (mkSrcSpan loc nextLoc)) (AST.UNamePart np)], advanceAllSrcLoc nextLoc "." ) )
+  ([], startLoc) (splitOn "." str)
   where -- | Move the source location according to a string
         advanceAllSrcLoc :: SrcLoc -> String -> SrcLoc
         advanceAllSrcLoc (RealSrcLoc rl) str = RealSrcLoc $ foldl advanceSrcLoc rl str
         advanceAllSrcLoc oth _ = oth
-
-        -- | Break up a name into parts, but take care for operators
-        nameParts :: String -> [String]
-        nameParts = nameParts' ""
-
-        nameParts' :: String -> String -> [String]
-        nameParts' carry (c : rest) | isLetter c || isDigit c || c == '\'' || c == '_' || c == '#'
-                                    = nameParts' (c:carry) rest
-        nameParts' carry@(_:_) ('.' : rest) = reverse carry : nameParts rest
-        nameParts' "" rest = [rest] 
-        nameParts' carry [] = [reverse carry]
-        nameParts' carry str = error $ "nameParts': " ++ show carry ++ " " ++ show str
 
 trfFastString :: Located FastString -> Trf (Ann AST.UStringNode (Dom r) RangeStage)
 trfFastString = trfLocNoSema $ pure . AST.UStringNode . unpackFS

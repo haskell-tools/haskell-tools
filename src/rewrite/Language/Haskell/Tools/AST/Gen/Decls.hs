@@ -8,16 +8,16 @@ module Language.Haskell.Tools.AST.Gen.Decls where
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
-import Language.Haskell.Tools.AST.Gen.Utils (mkAnn, mkAnnList, mkAnnMaybe)
+import Language.Haskell.Tools.AST.Gen.Utils
 import Language.Haskell.Tools.Transform
 
 -- | Creates a type synonym ( @type String = [Char]@ )
-mkTypeDecl :: DeclHead dom -> Type dom -> Decl dom 
+mkTypeDecl :: DeclHead dom -> Type dom -> Decl dom
 mkTypeDecl dh typ = mkAnn (child <> " :: " <> child) $ UTypeDecl dh typ
 
 -- | Creates a standalone deriving declaration (@ deriving instance X T @)
 mkStandaloneDeriving :: Maybe (OverlapPragma dom) -> InstanceRule dom -> Decl dom
-mkStandaloneDeriving overlap instRule = mkAnn ("deriving instance" <> child <> child) 
+mkStandaloneDeriving overlap instRule = mkAnn ("deriving instance" <> child <> child)
                                           $ UDerivDecl (mkAnnMaybe (after " " opt) overlap) instRule
 
 -- | Creates a fixity declaration (@ infixl 5 +, - @)
@@ -44,44 +44,45 @@ mkSpliceDecl = mkAnn child . USpliceDecl
 
 -- | Creates a data or newtype declaration.
 mkDataDecl :: DataOrNewtypeKeyword dom -> Maybe (Context dom) -> DeclHead dom -> [ConDecl dom] -> Maybe (Deriving dom) -> Decl dom
-mkDataDecl keyw ctx dh cons derivs 
-  = mkAnn (child <> " " <> child <> child <> child <> child) 
-      $ UDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh 
+mkDataDecl keyw ctx dh cons derivs
+  = mkAnn (child <> " " <> child <> child <> child <> child)
+      $ UDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh
                  (mkAnnList (after " = " $ separatedBy " | " list) cons) (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | Creates a GADT-style data or newtype declaration.
 mkGADTDataDecl :: DataOrNewtypeKeyword dom -> Maybe (Context dom) -> DeclHead dom -> Maybe (KindConstraint dom)
                     -> [GadtConDecl dom] -> Maybe (Deriving dom) -> Decl dom
-mkGADTDataDecl keyw ctx dh kind cons derivs 
-  = mkAnn (child <> " " <> child <> child <> child <> child <> child) 
-      $ UGDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh 
-                  (mkAnnMaybe (after " " opt) kind) (mkAnnList (after " = " $ separatedBy " | " list) cons) 
+mkGADTDataDecl keyw ctx dh kind cons derivs
+  = mkAnn (child <> " " <> child <> child <> child <> child <> child)
+      $ UGDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh
+                  (mkAnnMaybe (after " " opt) kind) (mkAnnList (after " = " $ separatedBy " | " list) cons)
                   (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | Creates a GADT constructor declaration (@ D1 :: Int -> T String @)
 mkGadtConDecl :: [Name dom] -> Type dom -> GadtConDecl dom
-mkGadtConDecl names typ = mkAnn (child <> " :: " <> child) $ UGadtConDecl (mkAnnList (separatedBy ", " list) names) 
-                                                               (mkAnn child $ UGadtNormalType typ)
+mkGadtConDecl names typ
+  = mkAnn (child <> " :: " <> child <> child <> child)
+      $ UGadtConDecl (mkAnnList (separatedBy ", " list) names) emptyList noth (mkAnn child $ UGadtNormalType typ)
 
 -- | Creates a GADT constructor declaration with record syntax (@ D1 :: { val :: Int } -> T String @)
 mkGadtRecordConDecl :: [Name dom] -> [FieldDecl dom] -> Type dom -> GadtConDecl dom
-mkGadtRecordConDecl names flds typ 
-  = mkAnn (child <> " :: " <> child) $ UGadtConDecl (mkAnnList (separatedBy ", " list) names) 
-      $ mkAnn (child <> " -> " <> child) 
+mkGadtRecordConDecl names flds typ
+  = mkAnn (child <> " :: " <> child <> child <> child) $ UGadtConDecl (mkAnnList (separatedBy ", " list) names) emptyList noth
+      $ mkAnn (child <> " -> " <> child)
       $ UGadtRecordType (mkAnnList (after "{ " $ separatedBy ", " $ followedBy " }" list) flds) typ
 
 -- | Creates an ordinary data constructor (@ C t1 t2 @)
 mkConDecl :: Name dom -> [Type dom] -> ConDecl dom
-mkConDecl name args = mkAnn (child <> child) $ UConDecl name (mkAnnList (after " " $ separatedBy " " $ list) args)
+mkConDecl name args = mkAnn (child <> child <> child <> child) $ UConDecl emptyList noth name (mkAnnList (after " " $ separatedBy " " $ list) args)
 
 -- | Creates a record data constructor (@ Point { x :: Double, y :: Double } @)
 mkRecordConDecl :: Name dom -> [FieldDecl dom] -> ConDecl dom
-mkRecordConDecl name fields 
-  = mkAnn (child <> " { " <> child <> " }") $ URecordDecl name (mkAnnList (separatedBy ", " list) fields)
+mkRecordConDecl name fields
+  = mkAnn (child <> child <> child <> " { " <> child <> " }") $ URecordDecl emptyList noth name (mkAnnList (separatedBy ", " list) fields)
 
 -- | Creates an infix data constructor (@ t1 :+: t2 @)
 mkInfixConDecl :: Type dom -> Operator dom -> Type dom -> ConDecl dom
-mkInfixConDecl lhs op rhs = mkAnn (child <> " " <> child <> " " <> child) $ UInfixConDecl lhs op rhs
+mkInfixConDecl lhs op rhs = mkAnn (child <> child <> child <> " " <> child <> " " <> child) $ UInfixConDecl emptyList noth lhs op rhs
 
 -- | Creates a field declaration (@ fld :: Int @) for a constructor
 mkFieldDecl :: [Name dom] -> Type dom -> FieldDecl dom
@@ -104,11 +105,11 @@ mkNewtypeKeyword = mkAnn "newtype" UNewtypeKeyword
 
 -- | Creates a type class declaration (@ class X a where f = ... @)
 mkClassDecl :: Maybe (Context dom) -> DeclHead dom -> [FunDep dom] -> Maybe (ClassBody dom) -> Decl dom
-mkClassDecl ctx dh funDeps body 
+mkClassDecl ctx dh funDeps body
   = let fdeps = case funDeps of [] -> Nothing
                                 _ -> Just $ mkAnn child $ UFunDeps $ mkAnnList (separatedBy ", " list) funDeps
-     in mkAnn ("class " <> child <> child <> child <> child) 
-          $ UClassDecl (mkAnnMaybe (followedBy " " opt) ctx) dh (mkAnnMaybe (after " | " opt) fdeps) (mkAnnMaybe opt body) 
+     in mkAnn ("class " <> child <> child <> child <> child)
+          $ UClassDecl (mkAnnMaybe (followedBy " " opt) ctx) dh (mkAnnMaybe (after " | " opt) fdeps) (mkAnnMaybe opt body)
 
 -- | Creates the list of declarations that can appear in a typeclass
 mkClassBody :: [ClassElement dom] -> ClassBody dom
@@ -122,11 +123,11 @@ mkClassElemSig = mkAnn child . UClsSig
 mkClassElemDef :: ValueBind dom -> ClassElement dom
 mkClassElemDef = mkAnn child . UClsDef
 
--- | Creates an associated type synonym in class: @ type T y :: * @ 
+-- | Creates an associated type synonym in class: @ type T y :: * @
 mkClassElemTypeFam :: DeclHead dom -> Maybe (TypeFamilySpec dom) -> ClassElement dom
 mkClassElemTypeFam dh tfSpec = mkAnn ("type " <> child) $ UClsTypeFam (mkAnn (child <> child) $ UTypeFamily dh (mkAnnMaybe opt tfSpec))
 
--- | Creates an associated data synonym in class: @ data T y :: * @ 
+-- | Creates an associated data synonym in class: @ data T y :: * @
 mkClassElemDataFam :: DeclHead dom -> Maybe (KindConstraint dom) -> ClassElement dom
 mkClassElemDataFam dh kind = mkAnn ("data " <> child) $ UClsTypeFam (mkAnn (child <> child) $ UDataFamily dh (mkAnnMaybe opt kind))
 
@@ -140,7 +141,7 @@ mkClsDefaultSig dh typ = mkAnn ("default " <> child <> " :: " <> child) $ UClsDe
 
 -- | Creates a functional dependency, given on the form @l1 ... ln -> r1 ... rn@
 mkFunDep :: [Name dom] -> [Name dom] -> FunDep dom
-mkFunDep lhss rhss = mkAnn (child <> " -> " <> child) 
+mkFunDep lhss rhss = mkAnn (child <> " -> " <> child)
                        $ UFunDep (mkAnnList (separatedBy ", " list) lhss) (mkAnnList (separatedBy ", " list) rhss)
 
 -- | Minimal pragma: @ {-\# MINIMAL (==) | (/=) \#-} @ in a class
@@ -183,12 +184,12 @@ mkInfixDeclHead lhs op rhs = mkAnn (child <> " " <> child <> " " <> child) $ UDH
 
 -- | Creates a type class instance declaration (@ instance X T [where f = ...] @)
 mkInstanceDecl :: Maybe (OverlapPragma dom) -> InstanceRule dom -> Maybe (InstBody dom) -> Decl dom
-mkInstanceDecl overlap instRule body = mkAnn ("instance " <> child <> child <> child) 
+mkInstanceDecl overlap instRule body = mkAnn ("instance " <> child <> child <> child)
                                  $ UInstDecl (mkAnnMaybe (after " " opt) overlap) instRule (mkAnnMaybe opt body)
 
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
 mkInstanceRule :: Maybe (Context dom) -> InstanceHead dom -> InstanceRule dom
-mkInstanceRule ctx ih 
+mkInstanceRule ctx ih
   = mkAnn (child <> child <> child) $ UInstanceRule (mkAnnMaybe (after " " opt) Nothing) (mkAnnMaybe (after " " opt) ctx) ih
 
 -- | Type or class name as a part of the instance declaration
@@ -196,7 +197,7 @@ mkInstanceHead :: Name dom -> InstanceHead dom
 mkInstanceHead = mkAnn child . UInstanceHeadCon
 
 -- | Infix application of the type/class name to the left operand as a part of the instance declaration
-mkInfixInstanceHead :: Type dom -> Name dom -> InstanceHead dom
+mkInfixInstanceHead :: Type dom -> Operator dom -> InstanceHead dom
 mkInfixInstanceHead typ n = mkAnn (child <> child) $ UInstanceHeadInfix typ n
 
 -- | Parenthesized instance head as a part of the instance declaration
@@ -225,17 +226,17 @@ mkInstanceTypeFamilyDef = mkAnn child . UInstBodyTypeDecl
 
 -- | An associated data type implementation (@ data A X = C1 | C2 @) int a type class instance
 mkInstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> Maybe (Deriving dom) -> InstBodyDecl dom
-mkInstanceDataFamilyDef keyw instRule cons derivs 
-  = mkAnn (child <> " " <> child <> child <> child) 
-      $ UInstBodyDataDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons) 
+mkInstanceDataFamilyDef keyw instRule cons derivs
+  = mkAnn (child <> " " <> child <> child <> child)
+      $ UInstBodyDataDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons)
                                         (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | An associated data type implemented using GADT style int a type class instance
-mkInstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Maybe (KindConstraint dom) -> [GadtConDecl dom] 
+mkInstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Maybe (KindConstraint dom) -> [GadtConDecl dom]
                                  -> Maybe (Deriving dom) -> InstBodyDecl dom
-mkInstanceDataFamilyGADTDef keyw instRule kind cons derivs 
-  = mkAnn (child <> " " <> child <> child <> child) 
-      $ UInstBodyGadtDataDecl keyw instRule (mkAnnMaybe opt kind) (mkAnnList (after " = " $ separatedBy " | " list) cons) 
+mkInstanceDataFamilyGADTDef keyw instRule kind cons derivs
+  = mkAnn (child <> " " <> child <> child <> child)
+      $ UInstBodyGadtDataDecl keyw instRule (mkAnnMaybe opt kind) (mkAnnList (after " = " $ separatedBy " | " list) cons)
                              (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | Specialize instance pragma (no phase selection is allowed) in a type class instance
@@ -243,39 +244,39 @@ mkInstanceSpecializePragma :: Type dom -> InstBodyDecl dom
 mkInstanceSpecializePragma = mkAnn ("{-# SPECIALIZE " <> child <> " #-}") . USpecializeInstance
 
 -- | @OVERLAP@ pragma for type instance definitions
-mkEnableOverlap :: OverlapPragma dom     
+mkEnableOverlap :: OverlapPragma dom
 mkEnableOverlap = mkAnn "{-# OVERLAP #-}" UEnableOverlap
 
 -- | @NO_OVERLAP@ pragma for type instance definitions
-mkDisableOverlap :: OverlapPragma dom    
+mkDisableOverlap :: OverlapPragma dom
 mkDisableOverlap = mkAnn "{-# NO_OVERLAP #-}" UDisableOverlap
 
 -- | @OVERLAPPABLE@ pragma for type instance definitions
-mkOverlappable :: OverlapPragma dom      
+mkOverlappable :: OverlapPragma dom
 mkOverlappable = mkAnn "{-# OVERLAPPABLE #-}" UOverlappable
 
 -- | @OVERLAPPING@ pragma for type instance definitions
-mkOverlapping :: OverlapPragma dom       
+mkOverlapping :: OverlapPragma dom
 mkOverlapping = mkAnn "{-# OVERLAPPING #-}" UOverlapping
 
 -- | @OVERLAPS@ pragma for type instance definitions
-mkOverlaps :: OverlapPragma dom          
+mkOverlaps :: OverlapPragma dom
 mkOverlaps = mkAnn "{-# OVERLAPS #-}" UOverlaps
 
 -- | @INCOHERENT@ pragma for type instance definitions
-mkIncoherentOverlap :: OverlapPragma dom 
+mkIncoherentOverlap :: OverlapPragma dom
 mkIncoherentOverlap = mkAnn "{-# INCOHERENT #-}" UIncoherentOverlap
 
 -- * Type roles
 
 -- | Creates a role annotations (@ type role Ptr representational @)
 mkRoleDecl :: QualifiedName dom -> [Role dom] -> Decl dom
-mkRoleDecl name roles 
+mkRoleDecl name roles
   = mkAnn ("type role " <> child <> child) $ URoleDecl name $ mkAnnList (separatedBy " " $ after " " list) roles
 
 -- | Marks a given type parameter as @nominal@.
 mkNominalRole :: Role dom
-mkNominalRole = mkAnn "nominal" UNominal 
+mkNominalRole = mkAnn "nominal" UNominal
 
 -- | Marks a given type parameter as @representational@.
 mkRepresentationalRole :: Role dom
@@ -289,7 +290,7 @@ mkPhantomRole = mkAnn "phantom" UPhantom
 
 -- | Creates a foreign import (@ foreign import foo :: Int -> IO Int @)
 mkForeignImport :: CallConv dom -> Maybe (Safety dom) -> Name dom -> Type dom -> Decl dom
-mkForeignImport cc safety name typ = mkAnn (child <> child <> " " <> child <> " :: " <> child) 
+mkForeignImport cc safety name typ = mkAnn (child <> child <> " " <> child <> " :: " <> child)
                                        $ UForeignImport cc (mkAnnMaybe (after " " opt) safety) name typ
 
 -- | Creates a foreign export (@ foreign export ccall foo :: Int -> IO Int @)
@@ -310,7 +311,7 @@ mkCApi = mkAnn "capi" UCApi
 
 -- | Specifies that the given foreign import is @unsafe@.
 mkUnsafe :: Safety dom
-mkUnsafe = mkAnn "unsafe" UUnsafe 
+mkUnsafe = mkAnn "unsafe" UUnsafe
 
 -- * Type and data families
 
@@ -320,10 +321,10 @@ mkTypeFamily dh famSpec = mkAnn child $ UTypeFamilyDecl (mkAnn (child <> child) 
 
 -- | Creates a closed type family declaration ( @type family F x where F Int = (); F a = Int@ )
 mkClosedTypeFamily :: DeclHead dom -> Maybe (KindConstraint dom) -> [TypeEqn dom] -> Decl dom
-mkClosedTypeFamily dh kind typeqs = mkAnn (child <> child <> " where " <> child) 
+mkClosedTypeFamily dh kind typeqs = mkAnn (child <> child <> " where " <> child)
                                       $ UClosedTypeFamilyDecl dh (mkAnnMaybe (after " " opt) kind) (mkAnnList (indented list) typeqs)
 
--- | Creates a data family declaration (@ data family A a :: * -> * @)   
+-- | Creates a data family declaration (@ data family A a :: * -> * @)
 mkDataFamily :: DeclHead dom -> Maybe (KindConstraint dom) -> Decl dom
 mkDataFamily dh kind = mkAnn child $ UTypeFamilyDecl (mkAnn (child <> child) $ UDataFamily dh (mkAnnMaybe (after " " opt) kind))
 
@@ -333,7 +334,7 @@ mkTypeFamilyKindSpec = mkAnn child . UTypeFamilyKind
 
 -- | Specifies the injectivity of a type family (@ = r | r -> a @)
 mkTypeFamilyInjectivitySpec :: Name dom -> [Name dom] -> TypeFamilySpec dom
-mkTypeFamilyInjectivitySpec res dependent 
+mkTypeFamilyInjectivitySpec res dependent
   = mkAnn child (UTypeFamilyInjectivity $ mkAnn (child <> " -> " <> child) $ UInjectivityAnn res (mkAnnList (separatedBy " " list) dependent))
 
 -- | Type equations as found in closed type families (@ T A = S @)
@@ -346,22 +347,22 @@ mkTypeInstance instRule typ = mkAnn ("type instance " <> child <> " = " <> child
 
 -- | Creates a data instance declaration (@ data instance Fam T = Con1 | Con2 @)
 mkDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> Maybe (Deriving dom) -> Decl dom
-mkDataInstance keyw instRule cons derivs 
-  = mkAnn (child <> " instance " <> child <> " = " <> child <> child) 
-      $ UDataInstDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons) 
+mkDataInstance keyw instRule cons derivs
+  = mkAnn (child <> " instance " <> child <> " = " <> child <> child)
+      $ UDataInstDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons)
                                     (mkAnnMaybe (after " deriving " opt) derivs)
 
 -- | Creates a GADT-style data instance declaration (@ data instance Fam T where ... @)
 mkGadtDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Maybe (KindConstraint dom) -> [GadtConDecl dom] -> Decl dom
-mkGadtDataInstance keyw instRule kind cons 
-  = mkAnn (child <> " instance " <> child <> child <> " where " <> child) 
+mkGadtDataInstance keyw instRule kind cons
+  = mkAnn (child <> " instance " <> child <> child <> " where " <> child)
       $ UGDataInstDecl keyw instRule (mkAnnMaybe (after " " opt) kind) (mkAnnList (indented list) cons)
 
 -- * Pattern synonyms
 
 -- | Creates a pattern synonym (@ pattern Arrow t1 t2 = App \"->\" [t1, t2] @)
 mkPatternSynonym :: PatSynLhs dom -> PatSynRhs dom -> Decl dom
-mkPatternSynonym lhs rhs = mkAnn child $ UPatternSynonymDecl $ mkAnn ("pattern " <> child <> " " <> child) 
+mkPatternSynonym lhs rhs = mkAnn child $ UPatternSynonymDecl $ mkAnn ("pattern " <> child <> " " <> child)
                                                              $ UPatternSynonym lhs rhs
 
 -- | Creates a left hand side of a pattern synonym with a constructor name and arguments (@ Arrow t1 t2 @)
@@ -374,7 +375,7 @@ mkInfixPatSyn lhs op rhs = mkAnn (child <> " " <> child <> " " <> child) $ UInfi
 
 -- | Creates a record-style pattern synonym left-hand side (@ Arrow { arrowFrom, arrowTo } @)
 mkRecordPatSyn :: Name dom -> [Name dom] -> PatSynLhs dom
-mkRecordPatSyn con args 
+mkRecordPatSyn con args
   = mkAnn (child <> child) $ URecordPatSyn con $ mkAnnList (after "{ " $ separatedBy ", " $ followedBy " }" list) args
 
 -- | Creates an automatically two-way pattern synonym (@ = App \"Int\" [] @)
@@ -387,7 +388,7 @@ mkOneWayPatSyn = mkAnn ("<- " <> child) . UOneDirectionalPatSyn
 
 -- | Creates a pattern synonym with the other direction explicitely specified (@ <- App \"Int\" [] where Int = App \"Int\" [] @)
 mkTwoWayPatSyn :: Pattern dom -> [Match dom] -> PatSynRhs dom
-mkTwoWayPatSyn pat match = mkAnn ("<- " <> child <> child) $ UBidirectionalPatSyn pat $ mkAnnMaybe (after " where " opt) 
+mkTwoWayPatSyn pat match = mkAnn ("<- " <> child <> child) $ UBidirectionalPatSyn pat $ mkAnnMaybe (after " where " opt)
                              $ Just $ mkAnn child $ UPatSynWhere $ mkAnnList (indented list) match
 
 -- | Creates a pattern type signature declaration (@ pattern Succ :: Int -> Int @)
@@ -409,13 +410,15 @@ mkRulePragma = mkAnn ("{-# RULES " <> child <> " #-}") . URulePragma . mkAnnList
 
 -- | A pragma that marks definitions as deprecated (@ {-\# DEPRECATED f "f will be replaced by g" \#-} @)
 mkDeprPragma :: [Name dom] -> String -> TopLevelPragma dom
-mkDeprPragma defs msg = mkAnn ("{-# DEPRECATED " <> child <> " " <> child <> " #-}") 
-                          $ UDeprPragma (mkAnnList (separatedBy ", " list) defs) $ mkAnn ("\"" <> child <> "\"") $ UStringNode msg
+mkDeprPragma defs msg = mkAnn ("{-# DEPRECATED " <> child <> " " <> child <> " #-}")
+                          $ UDeprPragma (mkAnnList (separatedBy ", " list) defs)
+                             (mkAnnList (separatedBy ", " list) [mkAnn ("\"" <> child <> "\"") $ UStringNode msg])
 
 -- | A pragma that marks definitions as deprecated (@ {-\# WARNING unsafePerformIO "you should know what you are doing" \#-} @)
 mkWarningPragma :: [Name dom] -> String -> TopLevelPragma dom
-mkWarningPragma defs msg = mkAnn ("{-# WARNING " <> child <> " " <> child <> " #-}") 
-                             $ UWarningPragma (mkAnnList (separatedBy ", " list) defs) $ mkAnn ("\"" <> child <> "\"") $ UStringNode msg
+mkWarningPragma defs msg = mkAnn ("{-# WARNING " <> child <> " " <> child <> " #-}")
+                             $ UWarningPragma (mkAnnList (separatedBy ", " list) defs)
+                                (mkAnnList (separatedBy ", " list) [mkAnn ("\"" <> child <> "\"") $ UStringNode msg])
 
 -- | A pragma that annotates a definition with an arbitrary value (@ {-\# ANN f 42 \#-} @)
 mkAnnPragma :: AnnotationSubject dom -> Expr dom -> TopLevelPragma dom
@@ -423,7 +426,7 @@ mkAnnPragma subj ann = mkAnn ("{-# ANN " <> child <> " " <> child <> " #-}") $ U
 
 -- | A pragma that marks a function for inlining to the compiler (@ {-\# INLINE thenUs \#-} @)
 mkInlinePragma :: Maybe (ConlikeAnnot dom) -> Maybe (PhaseControl dom) -> Name dom -> TopLevelPragma dom
-mkInlinePragma conlike phase name 
+mkInlinePragma conlike phase name
   = mkAnn ("{-# INLINE " <> child <> child <> child <> " #-}") $ UInlinePragmaDecl
       $ mkAnn child $ UInlinePragma (mkAnnMaybe (followedBy " " opt) conlike) (mkAnnMaybe (followedBy " " opt) phase) name
 
@@ -440,33 +443,37 @@ mkInlinablePragma phase name
 
 -- | A pragma for maintaining line numbers in generated sources (@ {-\# LINE 123 "somefile" \#-} @)
 mkLinePragma :: Int -> Maybe (StringNode dom) -> TopLevelPragma dom
-mkLinePragma line filename 
-  = mkAnn ("{-# LINE " <> child <> child <> " #-}") 
+mkLinePragma line filename
+  = mkAnn ("{-# LINE " <> child <> child <> " #-}")
      $ ULinePragma (mkAnn child $ LineNumber line) (mkAnnMaybe (after " " opt) filename)
 
 -- | A pragma that tells the compiler that a polymorph function should be optimized for a given type (@ {-\# SPECIALISE f :: Int -> b -> b \#-} @)
 mkSpecializePragma :: Maybe (PhaseControl dom) -> Name dom -> [Type dom] -> TopLevelPragma dom
-mkSpecializePragma phase def specTypes 
-  = mkAnn ("{-# SPECIALIZE " <> child <> child <> " " <> child <> " #-}") 
-     $ USpecializePragma (mkAnnMaybe (after " " opt) phase) def $ mkAnnList (separatedBy ", " list) specTypes
+mkSpecializePragma phase def specTypes
+  = mkAnn child (USpecializeDecl
+                  $ mkAnn ("{-# SPECIALIZE " <> child <> child <> " " <> child <> " #-}")
+                    $ USpecializePragma (mkAnnMaybe (after " " opt) phase) def $ mkAnnList (separatedBy ", " list) specTypes)
 
 -- | Marks that the pragma should be applied from a given compile phase (@ [2] @)
 mkPhaseControlFrom :: Integer -> PhaseControl dom
-mkPhaseControlFrom phaseNum 
-  = mkAnn ("[" <> child <> child <> "]") $ UPhaseControl (mkAnnMaybe opt Nothing) (mkAnn child $ PhaseNumber phaseNum)
+mkPhaseControlFrom phaseNum
+  = mkAnn ("[" <> child <> child <> "]") $ UPhaseControl (mkAnnMaybe opt Nothing) (mkAnnMaybe opt $ Just $ mkAnn child $ PhaseNumber phaseNum)
 
 -- | Marks that the pragma should be applied until a given compile phase (@ [~2] @)
 mkPhaseControlUntil :: Integer -> PhaseControl dom
-mkPhaseControlUntil phaseNum 
-  = mkAnn ("[" <> child <> child <> "]") $ UPhaseControl (mkAnnMaybe opt $ Just $ mkAnn "~" PhaseInvert) 
-                                                         (mkAnn child $ PhaseNumber phaseNum)
+mkPhaseControlUntil phaseNum
+  = mkAnn ("[" <> child <> child <> "]") $ UPhaseControl (mkAnnMaybe opt $ Just $ mkAnn "~" PhaseInvert)
+                                                         (mkAnnMaybe opt $ Just $ mkAnn child $ PhaseNumber phaseNum)
 
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
-mkRewriteRule :: String -> Maybe (PhaseControl dom) -> [TyVar dom] -> Expr dom -> Expr dom -> Rule dom
+mkRewriteRule :: String -> Maybe (PhaseControl dom) -> [RuleVar dom] -> Expr dom -> Expr dom -> Rule dom
 mkRewriteRule name phase vars lhs rhs
   = mkAnn (child <> " " <> child <> child <> child <> " = " <> child)
       $ URule (mkAnn ("\"" <> child <> "\"") $ UStringNode name) (mkAnnMaybe (followedBy " " opt) phase)
-              (mkAnnList (after "forall " $ separatedBy " " $ followedBy ". " list) vars) lhs rhs
+              (mkAnnList (after "forall " $ separatedBy " " $ followedBy ". " list) (vars)) lhs rhs
+
+mkRuleVar :: Name dom -> RuleVar dom
+mkRuleVar name = mkAnn child (URuleVar name)
 
 -- | The definition with the given name is annotated
 mkNameAnnotation :: Name dom -> AnnotationSubject dom

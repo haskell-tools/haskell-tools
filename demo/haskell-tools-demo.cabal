@@ -1,6 +1,6 @@
 name:                haskell-tools-demo
 version:             0.5.0.0
-synopsis:            A web-based demo for Haskell-tools Refactor. 
+synopsis:            A web-based demo for Haskell-tools Refactor.
 description:         Allows websocket clients to connect and performs refactorings on demand. The clients maintain a continous connection with the server, sending changes in the source files. When a refactor request is received, it performs the changes and sends the modified source files to the client.
 homepage:            https://github.com/haskell-tools/haskell-tools
 license:             BSD3
@@ -11,9 +11,8 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 
-library 
+library
   hs-source-dirs:      src
-  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.Demo
   other-modules:       Language.Haskell.Tools.ASTDebug
                      , Language.Haskell.Tools.ASTDebug.Instances
@@ -42,16 +41,16 @@ library
 executable ht-demo
   main-is:             Main.hs
   hs-source-dirs:      exe
-  ghc-options:         -with-rtsopts=-M1500m -O2
+  ghc-options:         -with-rtsopts=-M1500m
   build-depends:       base                      >= 4.9  && < 4.10
                      , haskell-tools-demo        >= 0.5  && < 0.6
   default-language:  Haskell2010
 
 test-suite haskell-tools-demo-tests
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g -O2
+  ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
-  main-is:             Main.hs  
+  main-is:             Main.hs
   build-depends:       base                      >= 4.9 && < 4.10
                      , HUnit                     >= 1.5 && < 1.6
                      , tasty                     >= 0.11 && < 0.12

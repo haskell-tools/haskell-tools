@@ -15,10 +15,12 @@ import Control.Monad.State
 import Control.Reference
 import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))
+import Data.Algorithm.Diff
+import qualified Data.ByteString.Char8 as StrictBS
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
 import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.ByteString.Char8 as StrictBS
+import Data.Either
 import Data.IORef
 import Data.List hiding (insert)
 import qualified Data.Map as Map
@@ -30,8 +32,7 @@ import Network.Socket.ByteString.Lazy
 import System.Directory
 import System.Environment
 import System.IO
-import Data.Algorithm.Diff
-import Data.Either
+import System.IO.Strict as StrictIO (hGetContents)
 
 import Bag
 import DynFlags
@@ -130,7 +131,7 @@ updateClient resp (AddPackages packagePathes) = do
     modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
     initializePackageDBIfNeeded
     res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
-                            (resp . LoadingModules . map getModSumOrig) packagePathes
+                            (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
     case res of
       Right (modules, ignoredMods) -> do
         mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
@@ -197,17 +198,23 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
                          .- Map.insert (SourceFileKey NormalHs n) (ModuleNotLoaded False)
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
-              liftIO $ withBinaryFile loc WriteMode (`hPutStr` prettyPrint m)
+              liftIO $ withBinaryFile loc WriteMode $ \handle -> do
+                hSetEncoding handle utf8
+                hPutStr handle (prettyPrint m)
               lift $ addTarget (Target (TargetModule (GHC.mkModuleName n)) True Nothing)
               return $ Right (SourceFileKey NormalHs n, loc, RemoveAdded loc)
             ContentChanged (n,m) -> do
               Just (_, mr) <- gets (lookupModInSCs n . (^. refSessMCs))
               let Just ms = mr ^? modRecMS
-              origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile (getModSumOrig ms))
               let newCont = prettyPrint m
-                  undo = createUndo 0 $ getGroupedDiff origCont newCont
                   file = getModSumOrig ms
-              liftIO $ withBinaryFile file WriteMode (`hPutStr` newCont)
+              origCont <- liftIO $ withBinaryFile file ReadMode $ \handle -> do
+                hSetEncoding handle utf8
+                StrictIO.hGetContents handle
+              let undo = createUndo 0 $ getGroupedDiff origCont newCont
+              origCont <- liftIO $ withBinaryFile file WriteMode $ \handle -> do
+                hSetEncoding handle utf8
+                hPutStr handle newCont
               return $ Right (n, file, UndoChanges file undo)
             ModuleRemoved mod -> do
               Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))

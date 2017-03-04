@@ -82,5 +82,4 @@ data UAssertion dom stage
   | UImplicitAssert { _assertImplVar :: Ann UName dom stage
                     , _assertImplType :: Ann UType dom stage
                     } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -> a -> Bool @)
-                 
-                 
+  | UWildcardAssert -- ^ Wildcard assertion (@ _ @), enabled by @PartialTypeSignatures@         

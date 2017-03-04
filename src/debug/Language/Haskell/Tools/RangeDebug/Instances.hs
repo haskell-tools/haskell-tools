@@ -3,7 +3,7 @@
            , MultiParamTypeClasses
            , StandaloneDeriving
            , DeriveGeneric
-           , UndecidableInstances 
+           , UndecidableInstances
            #-}
 module Language.Haskell.Tools.RangeDebug.Instances where
 
@@ -17,16 +17,16 @@ import Language.Haskell.Tools.AST
 -- Annotations
 instance TreeDebug e dom st => TreeDebug (Ann e) dom st where
   treeDebug' i (Ann a e) = identLine i ++ show (a ^. sourceInfo) ++ " " ++ take 40 (show e) ++ "..." ++ treeDebug' (i+1) e
-  
+
 identLine :: Int -> String
 identLine i = "\n" ++ replicate (i*2) ' '
-  
+
 instance TreeDebug e dom st => TreeDebug (AnnListG e) dom st where
-  treeDebug' i (AnnListG a ls) = identLine i ++ show (a ^. sourceInfo) ++ " <*>" ++ concatMap (treeDebug' (i + 1)) ls 
-  
+  treeDebug' i (AnnListG a ls) = identLine i ++ show (a ^. sourceInfo) ++ " <*>" ++ concatMap (treeDebug' (i + 1)) ls
+
 instance TreeDebug e dom st => TreeDebug (AnnMaybeG e) dom st where
   treeDebug' i (AnnMaybeG a e) = identLine i ++ show (a ^. sourceInfo) ++ " <?>" ++ maybe "" (\e -> treeDebug' (i + 1) e) e
-  
+
 -- Modules
 instance (SourceInfo st, Domain dom) => TreeDebug UModule dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UModuleHead dom st
@@ -85,6 +85,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug UFieldUpdate dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UBracket dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UTopLevelPragma dom st
 instance (SourceInfo st, Domain dom) => TreeDebug URule dom st
+instance (SourceInfo st, Domain dom) => TreeDebug URuleVar dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UAnnotationSubject dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UMinimalFormula dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UExprPragma dom st
@@ -113,6 +114,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug UCmd dom st
 instance (SourceInfo st, Domain dom) => TreeDebug ULanguageExtension dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UMatchLhs dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UInlinePragma dom st
+instance (SourceInfo st, Domain dom) => TreeDebug USpecializePragma dom st
 
 -- ULiteral
 instance (SourceInfo st, Domain dom) => TreeDebug ULiteral dom st

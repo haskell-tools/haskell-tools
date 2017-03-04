@@ -12,17 +12,17 @@ data UValueBind dom stage
   = USimpleBind { _valBindPat :: Ann UPattern dom stage
                 , _valBindRhs :: Ann URhs dom stage
                 , _valBindLocals :: AnnMaybeG ULocalBinds dom stage
-                } -- ^ Non-function binding (@ v = "12" @)  
+                } -- ^ Non-function binding (@ v = "12" @)
   -- TODO: use one name for a function instead of names in each match
   | UFunBind    { _funBindMatches :: AnnListG UMatch dom stage
                 } -- ^ Function binding (@ f 0 = 1; f x = x @). All matches must have the same name.
 
--- | Clause of function binding   
+-- | Clause of function binding
 data UMatch dom stage
   = UMatch { _matchLhs :: Ann UMatchLhs dom stage
            , _matchRhs :: Ann URhs dom stage
            , _matchBinds :: AnnMaybeG ULocalBinds dom stage
-           } 
+           }
 
 -- | Something on the left side of the match
 data UMatchLhs dom stage
@@ -34,12 +34,12 @@ data UMatchLhs dom stage
               , _matchLhsRhs :: Ann UPattern dom stage
               , _matchLhsArgs :: AnnListG UPattern dom stage
               } -- ^ An infix match lhs for an operator (@ a + b @)
-    
--- | Local bindings attached to a declaration (@ where x = 42 @)             
+
+-- | Local bindings attached to a declaration (@ where x = 42 @)
 data ULocalBinds dom stage
   = ULocalBinds { _localBinds :: AnnListG ULocalBind dom stage
                 }
-  
+
 -- | Bindings that are enabled in local blocks (where or let).
 data ULocalBind dom stage
   -- TODO: check that no other signature can be inside a local binding
@@ -51,13 +51,13 @@ data ULocalBind dom stage
                     } -- ^ A local fixity declaration
   | ULocalInline    { _localInline :: Ann UInlinePragma dom stage
                     } -- ^ A local inline pragma
-                   
+
 -- | A type signature (@ f :: Int -> Int @)
 data UTypeSignature dom stage
   = UTypeSignature { _tsName :: AnnListG UName dom stage
                    , _tsType :: Ann UType dom stage
-                   }     
-            
+                   }
+
 -- * Fixities
 
 -- | A fixity signature (@ infixl 5 +, - @).
@@ -72,10 +72,10 @@ data Assoc dom stage
   = AssocNone  -- ^ non-associative operator (declared with @infix@)
   | AssocLeft  -- ^ left-associative operator (declared with @infixl@)
   | AssocRight -- ^ right-associative operator (declared with @infixr@)
-   
+
 -- | Numeric precedence of an operator
 data Precedence dom stage
-  = Precedence { _precedenceValue :: Int } 
+  = Precedence { _precedenceValue :: Int }
 
 -- | Right hand side of a value binding (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
 data URhs dom stage
@@ -83,12 +83,12 @@ data URhs dom stage
                   } -- ^ An unguarded right-hand-side (@ = 3 @)
   | UGuardedRhss  { _rhsGuards :: AnnListG UGuardedRhs dom stage
                   } -- ^ An unguarded right-hand-side (@ | x == 1 = 3; | otherwise = 4 @)
-      
--- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)      
+
+-- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)
 data UGuardedRhs dom stage
   = UGuardedRhs { _guardStmts :: AnnListG URhsGuard dom stage -- ^ Cannot be empty.
                 , _guardExpr :: Ann UExpr dom stage
-                } 
+                }
 
 -- | Guards for value bindings and pattern matches (@ Just v <- x, v > 1 @)
 data URhsGuard dom stage
@@ -118,8 +118,8 @@ data UConlikeAnnot dom stage = UConlikeAnnot
 -- | Controls the activation of a rewrite rule (@ [1] @)
 data UPhaseControl dom stage
   = UPhaseControl { _phaseUntil :: AnnMaybeG PhaseInvert dom stage
-                  , _phaseNumber :: Ann PhaseNumber dom stage
-                  } 
+                  , _phaseNumber :: AnnMaybeG PhaseNumber dom stage
+                  }
 
 -- | Phase number for rewrite rules
 data PhaseNumber dom stage

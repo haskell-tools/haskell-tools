@@ -12,7 +12,7 @@ import Language.Haskell.Tools.AST.Representation.Types (UType)
 
 -- | Haskell expressions
 data UExpr dom stage
-  = UVar            { _exprName :: Ann UName dom stage 
+  = UVar            { _exprName :: Ann UName dom stage
                     } -- ^ A variable or a data constructor (@ a @)
   | ULit            { _exprLit :: Ann ULiteral dom stage
                     } -- ^ Literal expression (@ 42 @)
@@ -116,7 +116,7 @@ data UExpr dom stage
   | UStaticPtr      { _exprInner :: Ann UExpr dom stage
                     } -- ^ Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
   -- XML expressions omitted
-                   
+
 -- | Field update expressions
 data UFieldUpdate dom stage
   = UNormalFieldUpdate { _fieldName :: Ann UName dom stage
@@ -126,7 +126,7 @@ data UFieldUpdate dom stage
                        } -- ^ Update the field to the value of the same name (@ x @)
   | UFieldWildcard     { _fieldWildcard :: Ann UFieldWildcard dom stage
                        } -- ^ Update the fields of the bounded names to their values (@ .. @). Must be the last initializer. Cannot be used in a record update expression.
-      
+
 -- | Marker for a field wildcard. Only needed to attach semantic information in a type-safe way.
 data UFieldWildcard dom stage = FldWildcard
 
@@ -135,7 +135,7 @@ data UTupSecElem dom stage
   = Present { _tupSecExpr :: Ann UExpr dom stage
             } -- ^ An existing element in a tuple section
   | Missing -- ^ A missing element in a tuple section
-  
+
 -- | Clause of case expression (@ Just x -> x + 1 @)
 data UAlt' expr dom stage
   = UAlt { _altPattern :: Ann UPattern dom stage
@@ -145,7 +145,7 @@ data UAlt' expr dom stage
 type UAlt = UAlt' UExpr
 type UCmdAlt = UAlt' UCmd
 
-  
+
 -- | Right hand side of a match (possible with guards): (@ -> 3 @ or @ | x == 1 -> 3; | otherwise -> 4 @)
 data UCaseRhs' expr dom stage
   = UUnguardedCaseRhs { _rhsCaseExpr :: Ann expr dom stage
@@ -154,15 +154,15 @@ data UCaseRhs' expr dom stage
                       } -- ^ Guarded right-hand sides of a pattern match (@ | x == 1 -> 3; | otherwise -> 4 @)
 type UCaseRhs = UCaseRhs' UExpr
 type UCmdCaseRhs = UCaseRhs' UCmd
-                     
--- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
+
+-- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)
 data UGuardedCaseRhs' expr dom stage
   = UGuardedCaseRhs { _caseGuardStmts :: AnnListG URhsGuard dom stage -- ^ Cannot be empty.
                     , _caseGuardExpr :: Ann expr dom stage
-                    } 
+                    }
 type UGuardedCaseRhs = UGuardedCaseRhs' UExpr
 type UCmdGuardedCaseRhs = UGuardedCaseRhs' UCmd
-               
+
 -- | Pragmas that can be applied to expressions
 data UExprPragma dom stage
   = UCorePragma      { _pragmaStr :: Ann UStringNode dom stage
@@ -179,12 +179,12 @@ data USourceRange dom stage
                  , _srFromCol :: Ann Number dom stage
                  , _srToLine :: Ann Number dom stage
                  , _srToCol :: Ann Number dom stage
-                 }  
+                 }
 
 data Number dom stage
-  = Number { _numberInteger :: Integer 
+  = Number { _numberInteger :: Integer
            }
-        
+
 -- * Arrows
 
 data UCmd dom stage
@@ -204,7 +204,7 @@ data UCmd dom stage
                    } -- ^ An infix command application
   | ULambdaCmd     { _cmdBindings :: AnnListG UPattern dom stage -- ^ at least one
                    , _cmdInner :: Ann UCmd dom stage
-                   } -- ^ A lambda command 
+                   } -- ^ A lambda command
   | UParenCmd      { _cmdInner :: Ann UCmd dom stage
                    } -- ^ A parenthesized command
   | UCaseCmd       { _cmdExpr :: Ann UExpr dom stage

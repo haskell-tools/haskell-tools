@@ -52,11 +52,11 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/empty/*.hs
 
 library
-  ghc-options:         -O2
   build-depends:       base                      >= 4.9   && < 5.0
                      , aeson                     >= 1.0  && < 1.2
                      , bytestring                >= 0.10  && < 1.0
                      , filepath                  >= 1.4   && < 2.0
+                     , strict                    >= 0.3 && < 0.4
                      , containers                >= 0.5   && < 0.6
                      , mtl                       >= 2.2   && < 2.3
                      , split                     >= 0.2   && < 1.0
@@ -77,7 +77,6 @@ library
 
 
 executable ht-daemon
-  ghc-options:         -O2
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-daemon      >= 0.5 && < 0.6
   hs-source-dirs:      exe
@@ -86,7 +85,7 @@ executable ht-daemon
 
 test-suite haskell-tools-daemon-tests
   type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2.5g -O2
+  ghc-options:         -with-rtsopts=-M2.5g
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.9  && < 4.10

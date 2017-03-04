@@ -10,7 +10,7 @@ import Language.Haskell.Tools.AST.ElementTypes
 -- * Declarations
 
 -- | A type synonym ( @type String = [Char]@ )
-pattern TypeDecl :: DeclHead dom -> Type dom -> Decl dom 
+pattern TypeDecl :: DeclHead dom -> Type dom -> Decl dom
 pattern TypeDecl dh typ <- Ann _ (UTypeDecl dh typ)
 
 -- | Standalone deriving declaration (@ deriving instance X T @)
@@ -39,7 +39,7 @@ pattern SpliceDecl sp <- Ann _ (USpliceDecl sp)
 
 -- * Data type definitions
 
--- | A data or newtype declaration. Empty data type declarations without 
+-- | A data or newtype declaration. Empty data type declarations without
 -- where keyword are always belong to DataDecl.
 pattern DataDecl :: DataOrNewtypeKeyword dom -> MaybeContext dom -> DeclHead dom -> ConDeclList dom -> MaybeDeriving dom -> Decl dom
 pattern DataDecl keyw ctx dh cons derivs <- Ann _ (UDataDecl keyw ctx dh cons derivs)
@@ -50,23 +50,23 @@ pattern GADTDataDecl keyw ctx dh kind cons derivs  <- Ann _ (UGDataDecl keyw ctx
 
 -- | GADT constructor declaration (@ D1 :: Int -> T String @)
 pattern GadtConDecl :: NameList dom -> Type dom -> GadtConDecl dom
-pattern GadtConDecl names typ <- Ann _ (UGadtConDecl names (Ann _ (UGadtNormalType typ)))
+pattern GadtConDecl names typ <- Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtNormalType typ)))
 
 -- | GADT constructor declaration with record syntax (@ D1 :: { val :: Int } -> T String @)
 pattern GadtRecordConDecl :: NameList dom -> FieldDeclList dom -> Type dom -> GadtConDecl dom
-pattern GadtRecordConDecl names fields typ <- Ann _ (UGadtConDecl names (Ann _ (UGadtRecordType fields typ)))
+pattern GadtRecordConDecl names fields typ <- Ann _ (UGadtConDecl names _ _ (Ann _ (UGadtRecordType fields typ)))
 
 -- | Ordinary data constructor (@ C t1 t2 @)
 pattern ConDecl :: Name dom -> TypeList dom -> ConDecl dom
-pattern ConDecl name args <- Ann _ (UConDecl name args)
+pattern ConDecl name args <- Ann _ (UConDecl _ _ name args)
 
 -- | Creates a record data constructor (@ Point { x :: Double, y :: Double } @)
 pattern RecordConDecl :: Name dom -> FieldDeclList dom -> ConDecl dom
-pattern RecordConDecl name fields <- Ann _ (URecordDecl name fields)
+pattern RecordConDecl name fields <- Ann _ (URecordDecl _ _ name fields)
 
 -- | Infix data constructor (@ t1 :+: t2 @)
 pattern InfixConDecl :: Type dom -> Operator dom -> Type dom -> ConDecl dom
-pattern InfixConDecl lhs op rhs <- Ann _ (UInfixConDecl lhs op rhs)
+pattern InfixConDecl lhs op rhs <- Ann _ (UInfixConDecl _ _ lhs op rhs)
 
 -- | Field declaration (@ fld :: Int @)
 pattern FieldDecl :: NameList dom -> Type dom -> FieldDecl dom
@@ -86,11 +86,11 @@ pattern DataKeyword <- Ann _ UDataKeyword
 pattern NewtypeKeyword :: DataOrNewtypeKeyword dom
 pattern NewtypeKeyword <- Ann _ UNewtypeKeyword
 
--- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas  
+-- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas
 pattern FunDeps :: FunDepList dom -> FunDeps dom
 pattern FunDeps fds <- Ann _ (UFunDeps fds)
 
--- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@      
+-- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@
 pattern FunDep :: NameList dom -> NameList dom -> FunDep dom
 pattern FunDep lhs rhs <- Ann _ (UFunDep lhs rhs)
 
@@ -191,7 +191,7 @@ pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom ->
 pattern InstanceDataFamilyDef keyw instRule cons derivs  <- Ann _ (UInstBodyDataDecl keyw instRule cons derivs )
 
 -- | An associated data definition as a GADT (@ data A X where B :: Int -> A X @) in a class instance
-pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> MaybeKindConstraint dome -> AnnListG UGadtConDecl dom stage 
+pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> MaybeKindConstraint dome -> AnnListG UGadtConDecl dom stage
                                        -> MaybeDeriving dom -> InstBodyDecl dom
 pattern InstanceDataFamilyGADTDef keyw instRule kind cons derivs <- Ann _ (UInstBodyGadtDataDecl keyw instRule kind cons derivs)
 
@@ -208,40 +208,40 @@ pattern InstanceHead :: Name dom -> InstanceHead dom
 pattern InstanceHead name <- Ann _ (UInstanceHeadCon name)
 
 -- | Infix application of the type/class name to the left operand as an instance head
-pattern InfixInstanceHead :: Type dom -> Name dom -> InstanceHead dom
+pattern InfixInstanceHead :: Type dom -> Operator dom -> InstanceHead dom
 pattern InfixInstanceHead typ n <- Ann _ (UInstanceHeadInfix typ n)
 
 -- | Parenthesized instance head
 pattern ParenInstanceHead :: InstanceHead dom -> InstanceHead dom
 pattern ParenInstanceHead ih <- Ann _ (UInstanceHeadParen ih)
 
--- | Type application as an instance head 
+-- | Type application as an instance head
 pattern AppInstanceHead :: InstanceHead dom -> Type dom -> InstanceHead dom
 pattern AppInstanceHead fun arg <- Ann _ (UInstanceHeadApp fun arg)
 
 -- | @OVERLAP@ pragma
-pattern EnableOverlap :: OverlapPragma dom     
-pattern EnableOverlap <- Ann _ UEnableOverlap 
+pattern EnableOverlap :: OverlapPragma dom
+pattern EnableOverlap <- Ann _ UEnableOverlap
 
 -- | @NO_OVERLAP@ pragma
-pattern DisableOverlap :: OverlapPragma dom    
-pattern DisableOverlap <- Ann _ UDisableOverlap 
+pattern DisableOverlap :: OverlapPragma dom
+pattern DisableOverlap <- Ann _ UDisableOverlap
 
 -- | @OVERLAPPABLE@ pragma
-pattern Overlappable :: OverlapPragma dom      
-pattern Overlappable <- Ann _ UOverlappable 
+pattern Overlappable :: OverlapPragma dom
+pattern Overlappable <- Ann _ UOverlappable
 
 -- | @OVERLAPPING@ pragma
-pattern Overlapping :: OverlapPragma dom       
-pattern Overlapping <- Ann _ UOverlapping 
+pattern Overlapping :: OverlapPragma dom
+pattern Overlapping <- Ann _ UOverlapping
 
 -- | @OVERLAPS@ pragma
-pattern Overlaps :: OverlapPragma dom          
-pattern Overlaps <- Ann _ UOverlaps 
+pattern Overlaps :: OverlapPragma dom
+pattern Overlaps <- Ann _ UOverlaps
 
 -- | @INCOHERENT@ pragma
-pattern IncoherentOverlap :: OverlapPragma dom 
-pattern IncoherentOverlap <- Ann _ UIncoherentOverlap 
+pattern IncoherentOverlap :: OverlapPragma dom
+pattern IncoherentOverlap <- Ann _ UIncoherentOverlap
 
 -- * Type roles
 
@@ -282,7 +282,7 @@ pattern CApi <- Ann _ UCApi
 
 -- | Specifies that the given foreign import is @unsafe@.
 pattern Unsafe :: Safety dom
-pattern Unsafe <- Ann _ UUnsafe 
+pattern Unsafe <- Ann _ UUnsafe
 
 -- * Pattern synonyms
 
@@ -371,11 +371,11 @@ pattern RulePragma rules <- Ann _ (URulePragma rules)
 
 -- | A pragma that marks definitions as deprecated (@ {-\# DEPRECATED f "f will be replaced by g" \#-} @)
 pattern DeprPragma :: NameList dom -> String -> TopLevelPragma dom
-pattern DeprPragma defs msg <- Ann _ (UDeprPragma defs (Ann _ (UStringNode msg)))
+pattern DeprPragma defs msg <- Ann _ (UDeprPragma defs (AnnList [Ann _ (UStringNode msg)]))
 
 -- | A pragma that marks definitions as deprecated (@ {-\# WARNING unsafePerformIO "you should know what you are doing" \#-} @)
 pattern WarningPragma :: NameList dom -> String -> TopLevelPragma dom
-pattern WarningPragma defs msg <- Ann _ (UWarningPragma defs (Ann _ (UStringNode msg)))
+pattern WarningPragma defs msg <- Ann _ (UWarningPragma defs (AnnList [Ann _ (UStringNode msg)]))
 
 -- | A pragma that annotates a definition with an arbitrary value (@ {-\# ANN f 42 \#-} @)
 pattern AnnPragma :: AnnotationSubject dom -> Expr dom -> TopLevelPragma dom
@@ -399,18 +399,18 @@ pattern LinePragma line filename <- Ann _ (ULinePragma (Ann _ (LineNumber line))
 
 -- | A pragma that tells the compiler that a polymorph function should be optimized for a given type (@ {-\# SPECIALISE f :: Int -> b -> b \#-} @)
 pattern SpecializePragma :: MaybePhaseControl dom -> Name dom -> TypeList dom -> TopLevelPragma dom
-pattern SpecializePragma phase def specTypes <- Ann _ (USpecializePragma phase def specTypes)
+pattern SpecializePragma phase def specTypes <- Ann _ (USpecializeDecl (Ann _ (USpecializePragma phase def specTypes)))
 
 -- | Marks that the pragma should be applied from a given compile phase (@ [2] @)
 pattern PhaseControlFrom :: Integer -> PhaseControl dom
-pattern PhaseControlFrom phaseNum <- Ann _ (UPhaseControl AnnNothing (Ann _ (PhaseNumber phaseNum)))
+pattern PhaseControlFrom phaseNum <- Ann _ (UPhaseControl AnnNothing (AnnJust (Ann _ (PhaseNumber phaseNum))))
 
 -- | Marks that the pragma should be applied until a given compile phase (@ [~2] @)
 pattern PhaseControlUntil :: Integer -> PhaseControl dom
-pattern PhaseControlUntil phaseNum <- Ann _ (UPhaseControl (AnnJust _) (Ann _ (PhaseNumber phaseNum)))
+pattern PhaseControlUntil phaseNum <- Ann _ (UPhaseControl (AnnJust _) (AnnJust (Ann _ (PhaseNumber phaseNum))))
 
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
-pattern RewriteRule :: String -> MaybePhaseControl dom -> TyVarList dom -> Expr dom -> Expr dom -> Rule dom
+pattern RewriteRule :: String -> MaybePhaseControl dom -> RuleVarList dom -> Expr dom -> Expr dom -> Rule dom
 pattern RewriteRule name phase vars lhs rhs <- Ann _ (URule (Ann _ (UStringNode name)) phase vars lhs rhs)
 
 -- | The definition with the given name is annotated

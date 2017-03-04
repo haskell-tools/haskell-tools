@@ -76,6 +76,7 @@ deriveSourceInfoTraversal ''UFieldUpdate
 deriveSourceInfoTraversal ''UBracket
 deriveSourceInfoTraversal ''UTopLevelPragma
 deriveSourceInfoTraversal ''URule
+deriveSourceInfoTraversal ''URuleVar
 deriveSourceInfoTraversal ''UAnnotationSubject
 deriveSourceInfoTraversal ''UMinimalFormula
 deriveSourceInfoTraversal ''UExprPragma
@@ -106,6 +107,7 @@ deriveSourceInfoTraversal ''UAlt'
 deriveSourceInfoTraversal ''UCaseRhs'
 deriveSourceInfoTraversal ''UGuardedCaseRhs'
 deriveSourceInfoTraversal ''UInlinePragma
+deriveSourceInfoTraversal ''USpecializePragma
 
 -- ULiteral
 deriveSourceInfoTraversal ''ULiteral

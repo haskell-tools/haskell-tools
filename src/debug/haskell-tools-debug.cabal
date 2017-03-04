@@ -12,12 +12,13 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  ghc-options:         -O2
   exposed-modules:     Language.Haskell.Tools.Debug
   other-modules:       Language.Haskell.Tools.DebugGhcAST
                      , Language.Haskell.Tools.RangeDebug
                      , Language.Haskell.Tools.RangeDebug.Instances
   build-depends:       base                      >= 4.9 && < 4.10
+                     , filepath                  >= 1.4 && < 1.5
+                     , template-haskell          >= 2.11 && < 2.12
                      , references                >= 0.3 && < 0.4
                      , ghc                       >= 8.0 && < 8.1
                      , ghc-paths                 >= 0.1 && < 0.2
@@ -26,7 +27,7 @@ library
                      , haskell-tools-refactor    >= 0.5 && < 0.6
                      , haskell-tools-prettyprint >= 0.5 && < 0.6
   default-language:    Haskell2010
-  
+
 executable ht-debug
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-debug       >= 0.5 && < 0.6
