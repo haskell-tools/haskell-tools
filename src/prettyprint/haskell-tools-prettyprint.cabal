@@ -12,6 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.PrettyPrint
                      , Language.Haskell.Tools.Transform
                      , Language.Haskell.Tools.IndentationUtils
