@@ -64,15 +64,6 @@ executable ht-refact
   main-is:             Main.hs
   default-language:    Haskell2010
 
-executable ht-test-hackage
-  build-depends:       base                      >= 4.9 && < 4.10
-                     , directory                 >= 1.2 && < 1.4
-                     , process                   >= 1.4 && < 1.5
-                     , split                     >= 0.2 && < 0.3
-  hs-source-dirs:      test-hackage
-  main-is:             Main.hs
-  default-language:    Haskell2010
-
 executable ht-test-stackage
   build-depends:       base                      >= 4.9 && < 4.10
                      , directory                 >= 1.2 && < 1.4

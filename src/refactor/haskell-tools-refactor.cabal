@@ -51,6 +51,7 @@ extra-source-files: examples/CPP/*.hs
                   , examples/Type/*.hs
 
 library
+  ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.Refactor
                      , Language.Haskell.Tools.Refactor.BindingElem
                      , Language.Haskell.Tools.Refactor.GetModules
