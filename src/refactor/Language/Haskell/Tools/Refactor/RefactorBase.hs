@@ -72,6 +72,7 @@ data RefactorChange dom = ContentChanged { fromContentChanged :: (ModuleDom dom)
 -- | Exceptions that can occur while loading modules or during internal operations (not during performing the refactor).
 data RefactorException = IllegalExtensions [String]
                        | SourceCodeProblem ErrorMessages
+                       | ModuleNotInPackage String
                        | UnknownException String
   deriving (Show, Typeable)
 
@@ -81,8 +82,9 @@ instance Show ErrorMessages where
 instance Exception RefactorException where
   displayException (SourceCodeProblem prob)
     = "Source code problem: " ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc prob))
-  displayException (IllegalExtensions exts) 
+  displayException (IllegalExtensions exts)
     = "The following extensions are not allowed: " ++ (concat $ intersperse ", " exts) ++ "."
+  displayException (ModuleNotInPackage modName) = "The module is not in the package: " ++ modName
   displayException (UnknownException ex) = "An unexpected problem appeared: " ++ ex ++ "."
 
 instance Show (RefactorChange dom) where
@@ -96,13 +98,13 @@ runRefactor mod mods trf = runExceptT $ trf mod mods
 
 -- | Wraps a refactoring that only affects one module. Performs the per-module finishing touches.
 localRefactoring :: HasModuleInfo dom => LocalRefactoring dom -> Refactoring dom
-localRefactoring ref (name, mod) _ 
+localRefactoring ref (name, mod) _
   = (\m -> [ContentChanged (name, m)]) <$> localRefactoringRes id mod (ref mod)
 
 -- | Transform the result of the local refactoring
 localRefactoringRes :: HasModuleInfo dom
-                    => ((UnnamedModule dom -> UnnamedModule dom) -> a -> a) 
-                          -> UnnamedModule dom 
+                    => ((UnnamedModule dom -> UnnamedModule dom) -> a -> a)
+                          -> UnnamedModule dom
                           -> LocalRefactor dom a
                           -> Refactor a
 localRefactoringRes access mod trf
@@ -158,7 +160,7 @@ instance GhcMonad m => GhcMonad (ExceptT s m) where
 instance ExceptionMonad m => ExceptionMonad (ExceptT s m) where
   gcatch e c = ExceptT (runExceptT e `gcatch` (runExceptT . c))
   gmask m = ExceptT $ gmask (\f -> runExceptT $ m (ExceptT . f . runExceptT))
-  
+
 
 -- | Input and output information for the refactoring
 newtype LocalRefactorT dom m a = LocalRefactorT { fromRefactorT :: WriterT [GHC.Name] (ReaderT (RefactorCtx dom) m) a }
@@ -167,7 +169,7 @@ newtype LocalRefactorT dom m a = LocalRefactorT { fromRefactorT :: WriterT [GHC.
 -- | The information a refactoring can use
 data RefactorCtx dom = RefactorCtx { refModuleName :: GHC.Module
                                    , refCtxRoot :: Ann UModule dom SrcTemplateStage
-                                   , refCtxImports :: [Ann UImportDecl dom SrcTemplateStage] 
+                                   , refCtxImports :: [Ann UImportDecl dom SrcTemplateStage]
                                    }
 
 instance MonadTrans (LocalRefactorT dom) where
@@ -200,14 +202,14 @@ registeredNamesFromPrelude :: [GHC.Name]
 registeredNamesFromPrelude = GHC.basicKnownKeyNames ++ map GHC.tyConName GHC.wiredInTyCons
 
 otherNamesFromPrelude :: [String]
-otherNamesFromPrelude 
+otherNamesFromPrelude
  -- TODO: extend and revise this list
  -- TODO: prelude names are simply existing names?? No need to check??
   = ["GHC.Base.Maybe", "GHC.Base.Just", "GHC.Base.Nothing", "GHC.Base.maybe", "GHC.Base.either", "GHC.Base.not"
     , "Data.Tuple.curry", "Data.Tuple.uncurry", "GHC.Base.compare", "GHC.Base.max", "GHC.Base.min", "GHC.Base.id"]
 
 qualifiedName :: GHC.Name -> String
-qualifiedName name = case GHC.nameModule_maybe name of 
+qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
@@ -218,46 +220,46 @@ referenceOperator :: (HasImportInfo dom, HasModuleInfo dom) => GHC.Name -> Local
 referenceOperator = referenceName' mkQualOp'
 
 -- | Create a name that references the definition. Generates an import if the definition is not yet imported.
-referenceName' :: (HasImportInfo dom, HasModuleInfo dom) 
+referenceName' :: (HasImportInfo dom, HasModuleInfo dom)
                => ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> LocalRefactor dom (Ann nt dom SrcTemplateStage)
-referenceName' makeName name 
+referenceName' makeName name
   | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
   = return $ makeName [] name -- imported from prelude
-  | otherwise 
+  | otherwise
   = do RefactorCtx {refCtxRoot = mod, refCtxImports = imports, refModuleName = thisModule} <- ask
-       if maybe True (thisModule ==) (GHC.nameModule_maybe name) 
+       if maybe True (thisModule ==) (GHC.nameModule_maybe name)
          then return $ makeName [] name -- in the same module, use simple name
          else let possibleImports = filter ((name `elem`) . (\imp -> semanticsImported $ imp ^. semantics)) imports
                   fromPrelude = name `elem` semanticsImplicitImports (mod ^. semantics)
                in if | fromPrelude -> return $ makeName [] name
                      | null possibleImports -> do tell [name]
                                                   return $ makeName [] name
-                     | otherwise -> return $ referenceBy makeName name possibleImports 
+                     | otherwise -> return $ referenceBy makeName name possibleImports
                                      -- use it according to the best available import
 
 -- | Reference the name by the shortest suitable import
 referenceBy :: ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> [Ann UImportDecl dom SrcTemplateStage] -> Ann nt dom SrcTemplateStage
-referenceBy makeName name imps = 
+referenceBy makeName name imps =
   let prefixes = map importQualifier imps
    in makeName (minimumBy (compare `on` (length . concat)) prefixes) name
   where importQualifier :: Ann UImportDecl dom SrcTemplateStage -> [String]
-        importQualifier imp 
-          = if isJust (imp ^? importQualified&annJust) 
-              then case imp ^? importAs&annJust&importRename of 
+        importQualifier imp
+          = if isJust (imp ^? importQualified&annJust)
+              then case imp ^? importAs&annJust&importRename of
                       Nothing -> splitOn "." (imp ^. importModule&moduleNameString) -- fully qualified import
                       Just asName -> splitOn "." (asName ^. moduleNameString) -- the name given by as clause
               else [] -- unqualified import
 
 -- | Different classes of definitions that have different kind of names.
 data NameClass = Variable         -- ^ Normal value definitions: functions, variables
-               | Ctor             -- ^ Data constructors 
+               | Ctor             -- ^ Data constructors
                | ValueOperator    -- ^ Functions with operator-like names
                | DataCtorOperator -- ^ Constructors with operator-like names
                | SynonymOperator  -- ^ UType definitions with operator-like names
 
 -- | Get which category does a given name belong to
 classifyName :: RefactorMonad m => GHC.Name -> m NameClass
-classifyName n = liftGhc (lookupName n) >>= return . \case 
+classifyName n = liftGhc (lookupName n) >>= return . \case
     Just (AnId {}) | isop     -> ValueOperator
     Just (AnId {})            -> Variable
     Just (AConLike {}) | isop -> DataCtorOperator
@@ -267,11 +269,11 @@ classifyName n = liftGhc (lookupName n) >>= return . \case
     Just (ACoAxiom {})        -> error "classifyName: ACoAxiom"
     Nothing | isop            -> ValueOperator
     Nothing                   -> Variable
-  where isop = GHC.isSymOcc (GHC.getOccName n) 
+  where isop = GHC.isSymOcc (GHC.getOccName n)
 
 -- | Checks if a given name is a valid module name
 validModuleName :: String -> Bool
-validModuleName s = all (nameValid Ctor) (splitOn "." s) 
+validModuleName s = all (nameValid Ctor) (splitOn "." s)
 
 -- | Check if a given name is valid for a given kind of definition
 nameValid :: NameClass -> String -> Bool

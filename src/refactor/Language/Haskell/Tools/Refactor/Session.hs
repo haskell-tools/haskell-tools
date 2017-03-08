@@ -126,18 +126,20 @@ getReachableModules loadCallback selected = do
 -- | Reload a given module. Perform a callback.
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
 reloadModule report ms = do
-  let modName = modSumName ms
   mcs <- gets (^. refSessMCs)
-  let mc = fromMaybe (error $ "reloadModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
+  let modName = modSumName ms
       codeGen = hasGeneratedCode (keyFromMS ms) mcs
-  let dfs = ms_hspp_opts ms
-  dfs' <- liftIO $ compileInContext mc mcs dfs
-  let ms' = ms { ms_hspp_opts = dfs' }
-  newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
-    parseTyped (if codeGen then forceCodeGen ms' else ms')
-  modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules
-             .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
-  liftIO $ report ms
+  case lookupModuleColl modName mcs of
+    Just mc -> do
+      let dfs = ms_hspp_opts ms
+      dfs' <- liftIO $ compileInContext mc mcs dfs
+      let ms' = ms { ms_hspp_opts = dfs' }
+      newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
+        parseTyped (if codeGen then forceCodeGen ms' else ms')
+      modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules
+                 .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+      liftIO $ report ms
+    Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
 checkEvaluatedMods :: IsRefactSessionState st => (ModSummary -> IO a) -> [ModSummary] -> StateT st Ghc [a]
 checkEvaluatedMods report mods = do

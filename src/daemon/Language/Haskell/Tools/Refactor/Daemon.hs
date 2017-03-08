@@ -122,25 +122,29 @@ updateClient resp KeepAlive = liftIO (resp KeepAliveResponse) >> return True
 updateClient resp Disconnect = liftIO (resp Disconnected) >> return False
 updateClient _ (SetPackageDB pkgDB) = modify (packageDB .= pkgDB) >> return True
 updateClient resp (AddPackages packagePathes) = do
-    existingMCs <- gets (^. refSessMCs)
-    let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
-    needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existing))
-                      <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
-    modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
-    forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
-    modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
-    initializePackageDBIfNeeded
-    res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
-                            (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
-    case res of
-      Right (modules, ignoredMods) -> do
-        mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
-        liftIO $ when (not $ null ignoredMods)
-                   $ resp $ ErrorMessage
-                              $ "The following modules are ignored: "
-                                   ++ concat (intersperse ", " ignoredMods)
-                                   ++ ". Multiple modules with the same qualified name are not supported."
-      Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err)
+    nonExisting <- filterM ((return . not) <=< liftIO . doesDirectoryExist) packagePathes
+    if (not (null nonExisting))
+      then liftIO $ resp $ ErrorMessage $ "The following packages are not found: " ++ concat (intersperse ", " nonExisting)
+      else do
+        existingMCs <- gets (^. refSessMCs)
+        let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
+        needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existing))
+                          <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
+        modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
+        forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
+        modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+        initializePackageDBIfNeeded
+        res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
+                                (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
+        case res of
+          Right (modules, ignoredMods) -> do
+            mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
+            liftIO $ when (not $ null ignoredMods)
+                       $ resp $ ErrorMessage
+                                  $ "The following modules are ignored: "
+                                       ++ concat (intersperse ", " ignoredMods)
+                                       ++ ". Multiple modules with the same qualified name are not supported."
+          Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err)
     return True
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
         initializePackageDBIfNeeded = do
