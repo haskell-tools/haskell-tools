@@ -20,7 +20,7 @@ import SrcLoc
 import Control.Monad.State
 import Control.Reference
 import Data.Generics.Uniplate.Data ()
-import Data.List (find)
+import Data.List (find, intersperse)
 import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
@@ -44,13 +44,13 @@ extractBinding :: forall dom . ExtractBindingDomain dom
                    -> Simple Traversal (ValueBind dom) (Expr dom)
                    -> String -> LocalRefactoring dom
 extractBinding sp selectDecl selectExpr name mod
-  = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [QualifiedName dom])
+  = let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName dom])
         exprRanges = map getRange (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
      in case exprRanges of
           exprRange:_ ->
-            if conflicting
-              then refactError "The given name causes name conflict."
+            if not (null conflicting)
+              then refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpan . getRange) conflicting))
               else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
                       case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
                                  Nothing -> refactError "There is no applicable expression to extract."
