@@ -17,7 +17,7 @@ $(function() {
             setInterval(function() { toServer({ tag: 'KeepAlive', contents: [] }); }, 1000);
         }
 
-        ws.onmessage = function(evt) { 
+        ws.onmessage = function(evt) {
             var data = evt.data;
             responseHandler($.parseJSON(data));
         };
@@ -67,6 +67,7 @@ $(function() {
                     if (moduleName == currentTab) {
                         currentModuleRemoved = true;
                     }
+                    deleteTab(moduleName);
                 } else if (contInd == -1) {
                     tabs.push(moduleName);
                     createTab(moduleName, false);
