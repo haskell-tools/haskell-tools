@@ -177,15 +177,20 @@ updateClient resp (ReLoad changed removed) =
 updateClient _ Stop = modify (exiting .= True) >> return False
 
 updateClient resp (PerformRefactoring refact modPath selection args) = do
-    (Just actualMod, otherMods) <- getFileMods modPath
-    let cmd = analyzeCommand refact (selection:args)
-    res <- lift $ performCommand cmd actualMod otherMods
-    case res of
-      Left err -> liftIO $ resp $ ErrorMessage err
-      Right diff -> do changedMods <- applyChanges diff
-                       liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
-                       void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
+    (selectedMod, otherMods) <- getFileMods modPath
+    case selectedMod of
+      Just actualMod -> do
+        let cmd = analyzeCommand refact (selection:args)
+        res <- lift $ performCommand cmd actualMod otherMods
+        case res of
+          Left err -> liftIO $ resp $ ErrorMessage err
+          Right diff -> do changedMods <- applyChanges diff
+                           liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
+                           void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
+      Nothing -> liftIO $ resp $ ErrorMessage $ "The following file is not loaded to Haskell-tools: "
+                                                   ++ modPath ++ ". Please add the containing package."
     return True
+
   where applyChanges changes = do
           forM changes $ \case
             ModuleCreated n m otherM -> do
