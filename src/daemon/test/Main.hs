@@ -144,6 +144,12 @@ compProblemTests =
       , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
+  , ( "no-such-file"
+    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] ]
+    , \case [ ErrorMessage _ ] -> True; _ -> False )
+  , ( "additional-files"
+    , [ Right $ AddPackages [testRoot </> "additional-files"] ]
+    , \case [ LoadingModules {}, ErrorMessage _ ] -> True; _ -> False )
   ]
 
 sourceRoot = ".." </> ".." </> "src"
