@@ -154,10 +154,10 @@
 <div class="slide editorslide">
   <div id="tabs" class="slidecont">
     <ul id="editortabs">
-      <li><a href="#tab-defaultslide">Demo</a><span class='ui-icon ui-icon-circle-close ui-closable-tab'></span></li>
+      <li id='tab-header-Demo'><a href="#tab-Demo">Demo</a><span class='ui-icon ui-icon-circle-close ui-closable-tab'></span></li>
     </ul>
     <div id="tabpanels">
-      <div id="tab-defaultslide"></div>
+      <div id="tab-Demo"></div>
     </div>
     <div class="tabcont">
       <div id="ast"></div>
@@ -195,7 +195,7 @@
     <form>
       <fieldset>
         <label for="modulenamefld">Module name</label>
-        <input type="text" id="modulenamefld" name="modulenamefld" value="MyModule" class="text ui-widget-content ui-corner-all"> 
+        <input type="text" id="modulenamefld" name="modulenamefld" value="MyModule" class="text ui-widget-content ui-corner-all">
         <!-- Allow form submission with keyboard without duplicating the dialog button -->
         <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
       </fieldset>
@@ -207,7 +207,7 @@
     <form>
       <fieldset>
         <label for="newname">New name</label>
-        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname"> 
+        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname">
         <!-- Allow form submission with keyboard without duplicating the dialog button -->
         <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
       </fieldset>
@@ -219,7 +219,7 @@
     <form>
       <fieldset>
         <label for="newname">Name of extracted binding</label>
-        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname"> 
+        <input type="text" name="newname" class="text ui-widget-content ui-corner-all newname">
         <!-- Allow form submission with keyboard without duplicating the dialog button -->
         <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
       </fieldset>

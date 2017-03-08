@@ -6,6 +6,7 @@
            , TypeFamilies
            , FlexibleContexts
            , ViewPatterns
+           , TupleSections
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
@@ -27,8 +28,8 @@ type DomainRenameDefinition dom = ( HasNameInfo dom, HasScopeInfo dom, HasDefini
 
 renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Refactoring dom
 renameDefinition' sp str mod mods
-  = case (getNodeContaining sp (snd mod) :: Maybe (QualifiedName dom)) >>= (fmap getName . semanticsName) of 
-      Just name -> do let sameNames = bindsWithSameName name (snd mod ^? biplateRef) 
+  = case (getNodeContaining sp (snd mod) :: Maybe (QualifiedName dom)) >>= (fmap getName . semanticsName) of
+      Just name -> do let sameNames = bindsWithSameName name (snd mod ^? biplateRef)
                       renameDefinition name sameNames str mod mods
         where bindsWithSameName :: GHC.Name -> [FieldWildcard dom] -> [GHC.Name]
               bindsWithSameName name wcs = catMaybes $ map ((lookup name) . semanticsImplicitFlds) wcs
@@ -37,33 +38,33 @@ renameDefinition' sp str mod mods
                    Nothing -> refactError "No name is selected"
 
 renameModule :: forall dom . DomainRenameDefinition dom => String -> String -> Refactoring dom
-renameModule from to m mods 
-    | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module" 
-    | not (validModuleName to) = refactError "The given name is not a valid module name" 
-    | otherwise = -- here it is important that the delete is the last, because rename 
+renameModule from to m mods
+    | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module"
+    | not (validModuleName to) = refactError "The given name is not a valid module name"
+    | otherwise = -- here it is important that the delete is the last, because rename
                   -- can still use the info about the deleted module
                   fmap (\ls -> map (alterChange from to) ls ++ [ModuleRemoved from])
-                    $ localRefactoring (replaceModuleNames >=> alterNormalNames) m mods
-  where alterChange from to (ContentChanged (mod,res)) 
-          | (mod ^. sfkModuleName) == from 
+                    $ mapM (\(name,mod) -> ContentChanged . (name,) <$> localRefactoringRes id mod (replaceModuleNames =<< alterNormalNames mod)) (m:mods)
+  where alterChange from to (ContentChanged (mod,res))
+          | (mod ^. sfkModuleName) == from
           = ModuleCreated to res (SourceFileKey NormalHs from)
-        alterChange _ _ c = c 
+        alterChange _ _ c = c
 
         replaceModuleNames :: LocalRefactoring dom
         replaceModuleNames = biplateRef @_ @(ModuleName dom) & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
 
         alterNormalNames :: LocalRefactoring dom
-        alterNormalNames mod = if from `elem` moduleQualifiers mod 
+        alterNormalNames mod = if from `elem` moduleQualifiers mod
            then biplateRef @_ @(QualifiedName dom) & filtered (\e -> concat (intersperse "." (e ^? qualifiers&annList&simpleNameStr)) == from)
                   !- (\e -> mkQualifiedName (splitOn "." to) (e ^. unqualifiedName&simpleNameStr)) $ mod
            else return mod
 
         moduleQualifiers :: Module dom -> [String]
-        moduleQualifiers mod = mod ^? modImports & annList & filtered (\m -> isAnnNothing (m ^. importAs)) 
+        moduleQualifiers mod = mod ^? modImports & annList & filtered (\m -> isAnnNothing (m ^. importAs))
                                               & importModule & moduleNameString
 
         nameConflict :: String -> Module dom -> Bool
-        nameConflict to mod 
+        nameConflict to mod
           = let modName = mod ^? modHead&annJust&mhName&moduleNameString
                 imports = mod ^? modImports&annList
                 importNames = map (\imp -> fromMaybe (imp ^. importModule) (imp ^? importAs&annJust&importRename) ^. moduleNameString) imports
@@ -76,7 +77,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
          if | not (nameValid nameCls newName) -> refactError "The new name is not valid"
             | not defFound -> refactError "The definition to rename was not found"
             | otherwise -> return $ map ContentChanged changedModules
-  where     
+  where
     renameInAModule :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> ModuleDom dom -> StateT Bool Refactor (Maybe (ModuleDom dom))
     renameInAModule toChangeOrig toChangeWith newName (name, mod)
       = mapStateT (localRefactoringRes (\f (a,s) -> (fmap (\(n,r) -> (n, f r)) a,s)) mod) $
@@ -84,7 +85,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
              if isChanged then return $ Just (name, res)
                           else return Nothing
 
-    changeName :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> QualifiedName dom 
+    changeName :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> QualifiedName dom
                                                          -> StateT Bool (StateT Bool (LocalRefactor dom)) (QualifiedName dom)
     changeName toChangeOrig toChangeWith str name
       | maybe False (`elem` toChange) actualName
@@ -93,11 +94,11 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
       = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
-           when (actualName == Just toChangeOrig) 
+           when (actualName == Just toChangeOrig)
              $ lift $ modify (|| semanticsDefining name) -- state that the definition is renamed in the global state
            return $ unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)
       | let namesInScope = semanticsScope name
-         in case semanticsName name of 
+         in case semanticsName name of
               Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChangeOrig exprName
                                               && conflicts toChangeOrig exprName namesInScope
               Nothing -> False -- ambiguous names
@@ -107,7 +108,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
             actualName = fmap getName (semanticsName name)
 
 conflicts :: GHC.Name -> GHC.Name -> [[GHC.Name]] -> Bool
-conflicts overwrites overwritten (scopeBlock : scope) 
+conflicts overwrites overwritten (scopeBlock : scope)
   | overwritten `elem` scopeBlock && overwrites `notElem` scopeBlock = False
   | overwrites `elem` scopeBlock = True
   | otherwise = conflicts overwrites overwritten scope
