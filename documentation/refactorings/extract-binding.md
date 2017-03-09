@@ -25,3 +25,5 @@ The refactoring requires a new name for the extracted definition. The new name s
 It does not automatically find equivalent or similar expressions, but after extracting them you can replace other occurrences of the expression with the binding or generalize the generated local definition.
 
 You can apply the [Float out](float-out.md) refactor to promote the generated binding into a top-level binding if you want to use it in other definitions.
+
+You can also apply the [Generate type signature](generate-signature.md) refactoring to the generated binding to give it a type signature.

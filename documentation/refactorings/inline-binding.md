@@ -2,6 +2,8 @@
 
 The inline binding refactoring removes the selected binding and replaces all its uses with the right-hand side of the definition. It can be used the simplify the program if there are a lot of definitions that are only used once. Inline binding should only be used for simple functions that are only used locally.
 
+When using inline binding the definition to inline must be selected (not the type signature or one of the uses).
+
 Here the plus operation is only a new name for the `+` operator:
 
 ```
