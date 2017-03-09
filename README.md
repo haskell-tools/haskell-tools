@@ -17,3 +17,5 @@ The goal of this project is to create developer tools for the functional program
  - [Known issues and limitations](documentation/limitations.md)
 
  - [Contribute to the project](documentation/contribute.md)
+
+ - [Guide for reporting bugs](documentation/report-bugs.md)

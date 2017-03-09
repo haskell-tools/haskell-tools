@@ -1,4 +1,4 @@
-## Using the command line refactorer
+# Using the command line refactorer
 
   - If you are using stack to build from source: `stack exec ht-refact -- [flags] package-roots`
   - Otherwise, install the `haskell-tools-cli` package and use `ht-refact [flags] package-roots`.
@@ -8,13 +8,14 @@
 
 When the interactive session is started:
   - Select a module to refactor with `SelectModule modulename`
-  - Use the refactorings:
+  - Use the [refactorings](refactorings.md):
     - `RenameDefinition src-range new-name`
     - `ExtractBinding src-range new-name`
     - `InlineBinding src-range`
     - `GenerateSignature src-range`
     - `OrganizeImports`
     - `GenerateExports`
+    - `FloatOut src-range`
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format.
   - The CLI automatically reloads the changed modules.
   - When finished, use `Exit` to close the CLI.
