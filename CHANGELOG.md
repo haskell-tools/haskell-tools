@@ -1,9 +1,19 @@
 # CHANGELOG
 
+## 0.5
+
+ - Organize imports is completely reworked. Now it makes explicitly stated if only a few definitions are imported, keeps import blocks and uses a heuristic to check if an import can be completely removed.
+ - Created Float out refactoring.
+ - Handle source errors in daemon.
+ - Improvements in CLI (no reload after one-shot, only checking modules, dry-run + one shot working together)
+ - Fixed whitespace modifications after a refactoring.
+ - Fixed demo for renaming between modules.
+ - Package DB handling in daemon.
+
 ## 0.4
 
  - Inline Binding refactoring
- - Solved various issues of other refactorings: 
+ - Solved various issues of other refactorings:
    - Renaming a module produce a new module in the original module's source dir
    - Error for GenerateSignature when bindings have complex pattern left-hand-side
    - Resolved ExtractBinding indentation conflicts with case alternatives
