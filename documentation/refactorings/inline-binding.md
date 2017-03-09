@@ -15,9 +15,6 @@ calculator a b = putStrLn $ "a+b = " ++ show (plus a b)
 Inlining it will result a much simpler program (of course, the `+` operator should be used infix):
 
 ```
-plus :: Int -> Int -> Int
-plus = (+)
-
 calculator :: Int -> Int -> IO ()
 calculator a b = putStrLn $ "a+b = " ++ show ((+) a b)
 ```
