@@ -21,9 +21,9 @@ import SrcLoc (RealSrcSpan)
 type FloatOutDefinition dom = (HasNameInfo dom, HasScopeInfo dom)
 
 floatOut :: FloatOutDefinition dom => RealSrcSpan -> LocalRefactoring dom
-floatOut sp mod 
+floatOut sp mod
   = do (mod', st) <- runStateT (nodesContaining sp !~ extractAndInsert sp $ mod) NotEncountered
-       case st of NotEncountered -> refactError "No definition is selected."
+       case st of NotEncountered -> refactError "No definition is selected. The selection range must be inside the definition."
                   Extracted bnds -> -- insert it to the global definition list
                                     return $ modDecl & annListElems .- (++ map toTopLevel bnds) $ removeEmpties mod'
                   Inserted -> -- already inserted to a local scope
@@ -38,9 +38,9 @@ floatOut sp mod
 data FloatState dom = NotEncountered | Extracted [LocalBind dom] | Inserted
 
 extractAndInsert :: FloatOutDefinition dom => RealSrcSpan -> LocalBindList dom -> StateT (FloatState dom) (LocalRefactor dom) (LocalBindList dom)
-extractAndInsert sp locs 
+extractAndInsert sp locs
   | hasSharedSig = refactError "Cannot float out a definition, since it has a signature shared with other bindings that stay in the scope."
-  | not (null nameConflicts) = refactError $ "Cannot float out a definition, since it would cause a name conflicts in the target scope: " 
+  | not (null nameConflicts) = refactError $ "Cannot float out a definition, since it would cause a name conflicts in the target scope: "
                                                 ++ concat (intersperse ", " nameConflicts)
   | not (null implicitConflicts) = refactError $ "Cannot float out a definition, since it uses the implicit parameters: "
                                                    ++ concat (intersperse ", " implicitConflicts)
@@ -49,7 +49,7 @@ extractAndInsert sp locs
                               Inserted -> return locs
   where selected = locs ^? annList & filtered (isInside sp)
         floated = normalizeElements $ selected ++ (locs ^? annList & filtered (nameIsSelected . (^? elementName)))
-          where nameIsSelected [n] = n `elem` concatMap (^? elementName) selected 
+          where nameIsSelected [n] = n `elem` concatMap (^? elementName) selected
                 nameIsSelected _ = False
 
         filteredLocs = filterList (\e -> not (getRange e `elem` floatedElemRanges)) locs
@@ -64,11 +64,11 @@ checkConflict :: forall dom . FloatOutDefinition dom => LocalBind dom -> ([Strin
 checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
   where bndNames = bnd ^? elementName
         getConflict bndName = filter ((== nameStr) . Just) $ map (occNameString . getOccName) outerScope
-          where outerScope = concat $ take 1 $ drop 2 $ semanticsScope bndName 
+          where outerScope = concat $ take 1 $ drop 2 $ semanticsScope bndName
                 nameStr = fmap (occNameString . getOccName) $ semanticsName bndName
-        implicits = map (occNameString . getOccName) 
+        implicits = map (occNameString . getOccName)
                         (concatMap getPossibleImplicits bndNames `intersect` getQNames (bnd ^? biplateRef))
-        
+
         getQNames :: [QualifiedName dom] -> [GHC.Name]
         getQNames = catMaybes . map semanticsName
 

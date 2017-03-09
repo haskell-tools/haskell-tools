@@ -40,7 +40,7 @@ renameDefinition' sp str mod mods
 renameModule :: forall dom . DomainRenameDefinition dom => String -> String -> Refactoring dom
 renameModule from to m mods
     | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module"
-    | not (validModuleName to) = refactError "The given name is not a valid module name"
+    | isJust (validModuleName to) = refactError $ "The given name is not a valid module name: " ++ fromJust (validModuleName to)
     | otherwise = -- here it is important that the delete is the last, because rename
                   -- can still use the info about the deleted module
                   fmap (\ls -> map (alterChange from to) ls ++ [ModuleRemoved from])
@@ -74,8 +74,8 @@ renameDefinition :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> Stri
 renameDefinition toChangeOrig toChangeWith newName mod mods
     = do nameCls <- classifyName toChangeOrig
          (changedModules,defFound) <- runStateT (catMaybes <$> mapM (renameInAModule toChangeOrig toChangeWith newName) (mod:mods)) False
-         if | not (nameValid nameCls newName) -> refactError "The new name is not valid"
-            | not defFound -> refactError "The definition to rename was not found"
+         if | isJust (nameValid nameCls newName) -> refactError $ "The new name is not valid: " ++ fromJust (nameValid nameCls newName)
+            | not defFound -> refactError "The definition to rename was not found. Maybe it is in another package."
             | otherwise -> return $ map ContentChanged changedModules
   where
     renameInAModule :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> ModuleDom dom -> StateT Bool Refactor (Maybe (ModuleDom dom))

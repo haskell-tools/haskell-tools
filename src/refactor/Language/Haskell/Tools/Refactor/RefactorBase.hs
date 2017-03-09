@@ -272,34 +272,33 @@ classifyName n = liftGhc (lookupName n) >>= return . \case
   where isop = GHC.isSymOcc (GHC.getOccName n)
 
 -- | Checks if a given name is a valid module name
-validModuleName :: String -> Bool
-validModuleName s = all (nameValid Ctor) (splitOn "." s)
+validModuleName :: String -> Maybe String
+validModuleName s = foldl mappend mempty $ map (nameValid Ctor) (splitOn "." s)
 
 -- | Check if a given name is valid for a given kind of definition
-nameValid :: NameClass -> String -> Bool
-nameValid _ "" = False
-nameValid _ str | str `elem` reservedNames = False
+nameValid :: NameClass -> String -> Maybe String
+nameValid _ "" = Just "An empty name is not valid"
+nameValid _ str | str `elem` reservedNames = Just $ "'" ++ str ++ "' is a reserved name"
   where -- TODO: names reserved by extensions
         reservedNames = [ "case", "class", "data", "default", "deriving", "do", "else", "if", "import", "in", "infix"
                         , "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type", "where", "_"
                         , "..", ":", "::", "=", "\\", "|", "<-", "->", "@", "~", "=>", "[]"
                         ]
 -- Operators that are data constructors (must start with ':')
-nameValid DataCtorOperator (':' : nameRest)
-  = all isOperatorChar nameRest
--- UType families and synonyms that are operators (can start with ':')
-nameValid SynonymOperator (c : nameRest)
-  = isOperatorChar c && all isOperatorChar nameRest
+nameValid DataCtorOperator (':' : nameRest) | all isOperatorChar nameRest = Nothing
+nameValid DataCtorOperator _ = Just "A constructor operator must start with ':' and only contain operator characters."
+-- Type families and synonyms that are operators (can start with ':')
+nameValid SynonymOperator name | all isOperatorChar name = Nothing
+nameValid SynonymOperator _ = Just "An operator must only contain operator characters."
 -- Normal value operators (cannot start with ':')
-nameValid ValueOperator (c : nameRest)
-  = isOperatorChar c && c /= ':' && all isOperatorChar nameRest
+nameValid ValueOperator (c : nameRest) | isOperatorChar c && c /= ':' && all isOperatorChar nameRest = Nothing
+nameValid ValueOperator _ = Just "An operator that is a value must only contain operator characters and cannot start with ':'"
 -- Data and type constructors (start with uppercase)
-nameValid Ctor (c : nameRest)
-  = isUpper c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
+nameValid Ctor (c : nameRest) | isUpper c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest = Nothing
+nameValid Ctor _ = Just "A constructor or module name must start with an uppercase letter, and only contain letters, digits, apostrhophe or underscore"
 -- Variables and type variables (start with lowercase)
-nameValid Variable (c : nameRest)
-  = isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest
-nameValid _ _ = False
+nameValid Variable (c : nameRest) | isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest = Nothing
+nameValid Variable _ = Just "The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore"
 
 isIdStartChar :: Char -> Bool
 isIdStartChar c = (isLetter c && isAscii c) || c == '\'' || c == '_'

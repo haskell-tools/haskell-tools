@@ -85,12 +85,12 @@ trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMa
 trfCtx sp (L _ []) = nothing " " "" sp
 trfCtx _ (L l [L _ (HsParTy t)])
   = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow)
-                              (AST.UContextMulti <$> trfAnnList ", " trfAssertion' [t])
+                              (AST.UContext <$> annLocNoSema (pure l) (AST.UTupleAssert <$> (trfAnnList ", " trfAssertion' [t])))
 trfCtx _ (L l [t])
   = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow)
-                              (AST.UContextOne <$> trfAssertion t)
+                              (AST.UContext <$> trfAssertion t)
 trfCtx _ (L l ctx) = makeJust <$> annLocNoSema (combineSrcSpans l <$> tokenLoc AnnDarrow)
-                                               (AST.UContextMulti <$> trfAnnList ", " trfAssertion' ctx)
+                                               (AST.UContext <$> annLocNoSema (pure l) (AST.UTupleAssert <$> (trfAnnList ", " trfAssertion' ctx)))
 
 trfAssertion :: TransformName n r => LHsType n -> Trf (Ann AST.UAssertion (Dom r) RangeStage)
 trfAssertion = trfLocNoSema trfAssertion'
@@ -100,6 +100,8 @@ trfAssertion' (cleanHsType -> HsParTy t)
   = trfAssertion' (unLoc t)
 trfAssertion' (cleanHsType -> HsOpTy left op right)
   = AST.UInfixAssert <$> trfType left <*> trfOperator op <*> trfType right
+trfAssertion' (cleanHsType -> HsTupleTy _ tys)
+  = AST.UTupleAssert <$> makeList ", " (after AnnOpenP) (mapM trfAssertion tys)
 trfAssertion' (cleanHsType -> HsWildCardTy _)
   = pure AST.UWildcardAssert
 trfAssertion' (cleanHsType -> t) = case cleanHsType base of

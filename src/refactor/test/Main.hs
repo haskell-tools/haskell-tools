@@ -180,6 +180,7 @@ languageTests =
   , "Type.ExplicitTypeApplication"
   , "Type.Forall"
   , "Type.Primitives"
+  , "Type.TupleAssert"
   , "Type.TypeOperators"
   , "Type.Unpack"
   , "Type.Wildcard"

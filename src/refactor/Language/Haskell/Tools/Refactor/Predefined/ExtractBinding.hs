@@ -34,8 +34,9 @@ tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name
 
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod
-  = if isValidBindingName name then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
-                               else refactError "The given name is not a valid for the extracted binding"
+  = if isNothing (isValidBindingName name)
+      then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
+      else refactError $ "The given name is not a valid for the extracted binding: " ++ fromJust (isValidBindingName name)
 
 -- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
 -- Checks if the introduction of the name causes a name conflict.
@@ -217,5 +218,5 @@ generateBind :: String -> [Pattern dom] -> Expr dom -> ValueBind dom
 generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing
 generateBind name args e = mkFunctionBind [mkMatch (mkMatchLhs (mkNormalName $ mkSimpleName name) args) (mkUnguardedRhs e) Nothing]
 
-isValidBindingName :: String -> Bool
+isValidBindingName :: String -> Maybe String
 isValidBindingName = nameValid Variable

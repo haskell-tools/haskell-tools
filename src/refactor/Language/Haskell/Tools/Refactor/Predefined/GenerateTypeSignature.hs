@@ -102,8 +102,8 @@ generateTypeFor prec t
   -- context
   | (break (not . isPredTy) -> (preds, other), rt) <- splitFunTys t
   , not (null preds)
-  = do ctx <- case preds of [pred] -> mkContextOne <$> generateAssertionFor pred
-                            _ -> mkContextMulti <$> mapM generateAssertionFor preds
+  = do ctx <- case preds of [pred] -> mkContext <$> generateAssertionFor pred
+                            _      -> mkContext <$> (mkTupleAssertion <$> mapM generateAssertionFor preds)
        wrapParen 0 <$> (mkCtxType ctx <$> generateTypeFor 0 (mkFunTys other rt))
   -- function
   | Just (at, rt) <- splitFunTy_maybe t
