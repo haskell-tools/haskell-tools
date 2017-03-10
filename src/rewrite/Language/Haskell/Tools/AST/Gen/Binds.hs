@@ -29,10 +29,10 @@ mkFunctionBind = mkAnn child . UFunBind . mkAnnList (indented list)
 mkFunctionBind' :: Name dom -> [([Pattern dom], Expr dom)] -> ValueBind dom
 mkFunctionBind' name matches = mkFunctionBind $ map (\(args, rhs) -> mkMatch (mkMatchLhs name args) (mkUnguardedRhs rhs) Nothing) matches
 
--- | Creates a clause of function binding   
+-- | Creates a clause of function binding
 mkMatch :: MatchLhs dom -> Rhs dom -> Maybe (LocalBinds dom) -> Match dom
-mkMatch lhs rhs locs 
-  = mkAnn (child <> child <> child) 
+mkMatch lhs rhs locs
+  = mkAnn (child <> child <> child)
       $ UMatch lhs rhs (mkAnnMaybe (after " " opt) locs)
 
 -- | Creates a match lhs with the function name and parameter names (@ f a b @)
@@ -41,12 +41,11 @@ mkMatchLhs n pats = mkAnn (child <> child) $ UNormalLhs n (mkAnnList (after " " 
 
 -- | Creates an infix match lhs for an operator (@ a + b @)
 mkInfixLhs :: Pattern dom -> Operator dom -> Pattern dom -> [Pattern dom] -> MatchLhs dom
-mkInfixLhs lhs op rhs pats 
+mkInfixLhs lhs op rhs pats
   = mkAnn (child <> child <> child <> child) $ UInfixLhs lhs op rhs (mkAnnList (after " " $ separatedBy " " list) pats)
 
 -- | Local bindings attached to a declaration (@ where x = 42 @)
 mkLocalBinds :: [LocalBind dom] -> MaybeLocalBinds dom
--- TODO: make the indentation automatic
 mkLocalBinds = mkAnnMaybe (relativeIndented 2 $ after "\nwhere " opt)
                      . Just . mkAnn child . ULocalBinds . mkAnnList (indented list)
 
@@ -71,17 +70,17 @@ mkTypeSignature n t = mkAnn (child <> " :: " <> child) (UTypeSignature (mkAnnLis
 
 -- | Creates a left-associative fixity declaration (@ infixl 5 +, - @).
 mkInfixL :: Int -> Operator dom -> FixitySignature dom
-mkInfixL prec op = mkAnn (child <> " " <> child <> " " <> child) 
+mkInfixL prec op = mkAnn (child <> " " <> child <> " " <> child)
                      $ UFixitySignature (mkAnn "infixl" AssocLeft) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates a right-associative fixity declaration (@ infixr 5 +, - @).
 mkInfixR :: Int -> Operator dom -> FixitySignature dom
-mkInfixR prec op = mkAnn (child <> " " <> child <> " " <> child) 
+mkInfixR prec op = mkAnn (child <> " " <> child <> " " <> child)
                      $ UFixitySignature (mkAnn "infixr" AssocRight) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates a non-associative fixity declaration (@ infix 5 +, - @).
 mkInfix :: Int -> Operator dom -> FixitySignature dom
-mkInfix prec op = mkAnn (child <> " " <> child <> " " <> child) 
+mkInfix prec op = mkAnn (child <> " " <> child <> " " <> child)
                     $ UFixitySignature (mkAnn "infix" AssocNone) (mkAnnMaybe opt $ Just $ mkAnn (fromString (show prec)) (Precedence prec)) (mkAnnList (separatedBy ", " list) [op])
 
 -- | Creates an unguarded right-hand-side (@ = 3 @)
@@ -92,7 +91,7 @@ mkUnguardedRhs = mkAnn (" = " <> child) . UUnguardedRhs
 mkGuardedRhss :: [GuardedRhs dom] -> Rhs dom
 mkGuardedRhss = mkAnn child . UGuardedRhss . mkAnnList (indented list)
 
--- | Creates a guarded right-hand side of a value binding (@ | x > 3 = 2 @)    
+-- | Creates a guarded right-hand side of a value binding (@ | x > 3 = 2 @)
 mkGuardedRhs :: [RhsGuard dom] -> Expr dom -> GuardedRhs dom
 mkGuardedRhs guards expr = mkAnn ("| " <> child <> " = " <> child) $ UGuardedRhs (mkAnnList (separatedBy ", " list) guards) expr
 

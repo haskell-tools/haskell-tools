@@ -14,3 +14,5 @@
   - We have issues with type checking `Template Haskell` brackets when they contain splices.
   - There are GHC code generation bugs that result in Segmentation fault/access violation errors when refactoring few of the packages. Similar issues have been spotted when using ghci to refactor code (without stack), and when profiling the tool.
   - Inlining a binding can cause typechecking errors because of ambiguous type variables. To prevent these cases we would need to re-typecheck the AST.
+  - Organize imports works with rough heuristics for removing imports, and is not always successful.
+  - When checking for reserved names, we don't check for names reserved by extensions.

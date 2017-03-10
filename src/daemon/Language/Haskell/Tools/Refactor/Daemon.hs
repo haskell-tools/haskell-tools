@@ -57,8 +57,6 @@ import Language.Haskell.Tools.Refactor.Session
 
 import Debug.Trace
 
--- TODO: handle boot files
-
 runDaemonCLI :: IO ()
 runDaemonCLI = getArgs >>= runDaemon
 

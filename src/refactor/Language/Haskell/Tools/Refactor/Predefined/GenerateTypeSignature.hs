@@ -151,7 +151,6 @@ generateTypeFor prec t
           | Just (tc, types) <- splitTyConApp_maybe t
           = mkClassAssert <$> referenceName (idName $ getTCId tc) <*> mapM (generateTypeFor 0) types
           | otherwise = error "generateAssertionFor: type not supported yet."
-        -- TODO: infix things
 
 -- | Check whether the definition already has a type signature
 typeSignatureAlreadyExist :: (GenerateSignatureDomain dom, BindingElem d) => AnnList d dom -> ValueBind dom -> Bool
