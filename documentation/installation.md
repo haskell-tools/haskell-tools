@@ -7,7 +7,7 @@
     - `stack install haskell-tools-daemon haskell-tools-cli`
   - *Alternative*: use cabal
     - Use `cabal install haskell-tools-daemon haskell-tools-cli`
-    - Because of the lack of consistent snapshots, you might need to install some dependencies with exact versions before trying to install a haskell tools package if the dependency analysis fails. You should check out the latest versions from [stackage.org](stackage.org) of the package that causes the failure. For example once I needed to pre-install `hashable-1.2.5.0`
+    - Because of the lack of consistent snapshots, you might need to install some dependencies with exact versions before trying to install a haskell tools package if the dependency analysis fails. You should check out the latest versions from [stackage.org](https://www.stackage.org/) of the package that causes the failure. For example once I needed to pre-install `hashable-1.2.5.0`
 
 # Installation (last build)
 

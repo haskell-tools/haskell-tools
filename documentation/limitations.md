@@ -10,7 +10,7 @@
     - Two components that are using packages that define modules that have same names could not be used by the refactorer.
     - Some extensions are globally enabled if any component uses them. These are: ``
   - `ApplicativeDo` extension is not supported (it completely changes the syntax tree underlying a do-notation block)
-  - `OverloadedLabels` extension is not supported (it implicitely binds unbound names and is risky for multiple refactorings)
+  - `OverloadedLabels` extension is not supported (it implicitly binds unbound names and is risky for multiple refactorings)
   - We have issues with type checking `Template Haskell` brackets when they contain splices.
   - There are GHC code generation bugs that result in Segmentation fault/access violation errors when refactoring few of the packages. Similar issues have been spotted when using ghci to refactor code (without stack), and when profiling the tool.
   - Inlining a binding can cause typechecking errors because of ambiguous type variables. To prevent these cases we would need to re-typecheck the AST.

@@ -23,7 +23,7 @@ When we attach comments to elements we use simple rules to check if a comment be
 The attaching rules respect the haddock conventions:
   - Comments starting with `-- |` are attached to the next element.
   - Comments starting with `-- ^` are attached to the previous element.
-  - If a comment is after an element in the same line, than it is attached to this element.
+  - If a comment is after an element in the same line, then it is attached to this element.
   - A comment is attached to an element if it is in the previous line and is aligned to the same column.
 
 ## Handling indentation
@@ -40,17 +40,17 @@ Optional elements in the AST may or may not contain a child element. They may co
 
 If an element in the AST can have any number of children (for example, a list of declarations), we store the separators between the children and the text before and after the list. If the list is empty, we don't pretty print anything for the node. If the list has at least one element, we show the before and after texts. If the list has at least two element, we put a separator between them.
 
-The separators that are present in the original source code are intact. When new element is added, we get the most common separator from the list and use that to separate the new element from the rest. If there are no separators, than a default one will be used that depends on the kind of node we have.
+The separators that are present in the original source code are intact. When new element is added, we get the most common separator from the list and use that to separate the new element from the rest. If there are no separators, then a default one will be used that depends on the kind of node we have.
 
 In the [ListOperations](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/ListOperations.hs) module defines a few useful operations on multiplicity AST elements, for example filtering and inserting new elements.
 
 ## Source information
 
-You can get the position of a node in the original source by the `getRange` function. Refactorings should not change any of the source informations in the nodes.
+You can get the position of a node in the original source by the `getRange` function. Refactorings should not change any of the source information in the nodes.
 
 ## Semantic information
 
-**Domain**: The collection of the semantic informations added to a given AST is the domain of the AST. The domain decides which AST elements have semantic annotation and what will be the type of these annotations.
+**Domain**: The collection of the semantic information added to a given AST is the domain of the AST. The domain decides which AST elements have semantic annotation and what will be the type of these annotations.
 
 The domain of an AST depends on how far GHC can progress with the compilation of the module. If the module is type-correct, its domain will be `IdDom`, if it can be renamed but it is not type correct, its domain will be `Dom Name`, if the module can be parsed but cannot be renamed, the domain will be `Dom RdrName`.
 

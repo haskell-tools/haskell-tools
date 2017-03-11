@@ -1,6 +1,6 @@
 # Rename definition refactoring
 
-To rename a definition, select one of the occurrences. All occurrences (even in other modules) of the selected name will be renamed. Every Haskell definition (function, type, variable, constructor, field, typeclass, etc...) can be renamed. The selected name don't have to be in the definition of the renamed thing, it can be a simple usage of it.
+To rename a definition, select one of the occurrences. All occurrences (even in other modules) of the selected name will be renamed. Every Haskell definition (function, type, variable, constructor, field, typeclass, etc...) can be renamed. The selected name doesn't have to be in the definition of the renamed thing, it can be a simple usage of it.
 
 ```
 f :: (Num a, Integral a) => a -> a -> a

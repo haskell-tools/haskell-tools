@@ -2,7 +2,7 @@
 
 The extract binding can be used to reduce the complexity of an expression by introducing a local definition. It can also improve the clarity of the definition by giving descriptive names to the sub-expressions. The definition will be placed in the `where` section of the nearest containing binding.
 
-Any used local definitions, parameters and implicitely passed values will be explicitely passed to the new function.
+Any used local definitions, parameters and implicitely passed values will be explicitly passed to the new function.
 
 ```
 combination :: Int -> [a] -> [([a],[a])]
