@@ -19,3 +19,5 @@ When the interactive session is started:
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format.
   - The CLI automatically reloads the changed modules.
   - When finished, use `Exit` to close the CLI.
+
+Currently ht-refact does not refresh modules when the source files are modified by an external program, so don't edit the source files while running the CLI in an interactive mode.

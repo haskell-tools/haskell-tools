@@ -100,9 +100,9 @@ mkCNameInfo = CNameInfo
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
                                , _defDynFlags :: DynFlags -- ^ The compilation flags that are set up when the module was compiled
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
-                               , _implicitNames :: [n] -- ^ Implicitely imported names
-                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed from Prelude.
-                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitely passed from Prelude.
+                               , _implicitNames :: [n] -- ^ implicitly imported names
+                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
+                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
                                }
   deriving Data
 
@@ -122,8 +122,8 @@ mkModuleInfo = ModuleInfo
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
                                , _importedNames :: [n] -- ^ Names actually imported from the module.
-                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed.
-                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitely passed.
+                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed.
+                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitly passed.
                                }
   deriving Data
 
@@ -135,7 +135,7 @@ mkImportInfo :: GHC.Module -> [n] -> [n] -> [ClsInst] -> [FamInst] -> ImportInfo
 mkImportInfo = ImportInfo
 
 -- | Info corresponding to an record-wildcard
-data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
+data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitly bounded names
                                            }
   deriving (Eq, Data)
 

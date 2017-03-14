@@ -34,7 +34,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes (Scope)
 importIsExact :: Ann UImportDecl dom stage -> Bool
 importIsExact = isJust . (^? importSpec&annJust&importSpecList)
 
--- | Does the import declaration import all elements that are not excluded explicitely?
+-- | Does the import declaration import all elements that are not excluded explicitly?
 importIsHiding :: Ann UImportDecl dom stage -> Bool
 importIsHiding = isJust . (^? importSpec&annJust&importSpecHiding)
 

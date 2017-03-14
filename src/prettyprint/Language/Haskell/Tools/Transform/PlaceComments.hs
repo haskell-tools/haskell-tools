@@ -125,7 +125,7 @@ expandAnnot elem
   where nodeSp :: Simple Partial (Ann elem dom stage) SrcSpan
         nodeSp = annotation&sourceInfo&nodeSpan
 
--- This classification does not prefer inline comments to previous line comments, this is implicitely done
+-- This classification does not prefer inline comments to previous line comments, this is implicitly done
 -- by the order in which the elements are traversed.
 applicableComments :: Set SrcSpan -> SrcLoc -> SrcLoc
                    -> [((SrcLoc, SrcLoc), Located AnnotationComment)]
