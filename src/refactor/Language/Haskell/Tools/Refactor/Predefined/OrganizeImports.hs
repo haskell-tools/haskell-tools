@@ -63,7 +63,7 @@ organizeImports mod
                         -- obviously we don't want the names in the imports to be considered, but both from
                         -- the declarations (used), both from the module head (re-exported) will count as usage
                       $ (universeBi (mod ^. modHead) ++ universeBi (mod ^. modDecl) :: [QualifiedName dom])
-        -- Prelude is not actually exported, but we don't want to remove it if it is explicitely there
+        -- Prelude is not actually exported, but we don't want to remove it if it is explicitly there
         -- otherwise, we might add new imported elements that cause conflicts.
         exportedModules = "Prelude" : (mod ^? modHead & annJust & mhExports & annJust
                                                 & espExports & annList & exportModuleName & moduleNameString)
@@ -127,7 +127,7 @@ narrowImport noNarrowSubspecs exportedModules usedNames exportedNames imp
                -- members could bring into scope the exact definition that was hidden
   | otherwise
   = do namedThings <- mapM lookupName actuallyImported
-       let -- to explicitely import pattern synonyms or type operators we need to enable an extension, and the user might not expect this
+       let -- to explicitly import pattern synonyms or type operators we need to enable an extension, and the user might not expect this
            hasRiskyDef = any isRiskyDef namedThings
            groups = groupThings noNarrowSubspecs (semanticsImported imp)
                       (filter ((`elem` semanticsImported imp) . fst) exportedNames) (catMaybes namedThings)
@@ -192,7 +192,7 @@ neededImports exportedModules usedNames prelInsts prelFamInsts imps = neededImpo
                 otherClsInstances = map is_dfun (concatMap semanticsOrphanInsts kept ++ prelInsts)
                 otherFamInstances = map fi_axiom (concatMap semanticsFamInsts kept ++ prelFamInsts)
 
--- | Narrows the import specification (explicitely imported elements)
+-- | Narrows the import specification (explicitly imported elements)
 narrowImportSpecs :: forall dom . OrganizeImportsDomain dom
                   => Bool -> [GHC.Name] -> [(GHC.Name, Bool)] -> IESpecList dom -> LocalRefactor dom (IESpecList dom)
 narrowImportSpecs noNarrowSubspecs usedNames exportedNames

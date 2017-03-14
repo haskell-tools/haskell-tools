@@ -2,7 +2,7 @@
 
 The extract binding can be used to reduce the complexity of an expression by introducing a local definition. It can also improve the clarity of the definition by giving descriptive names to the sub-expressions. The definition will be placed in the `where` section of the nearest containing binding.
 
-Any used local definitions, parameters and implicitely passed values will be explicitly passed to the new function.
+Any used local definitions, parameters and implicitly passed values will be explicitly passed to the new function.
 
 ```
 combination :: Int -> [a] -> [([a],[a])]
@@ -12,7 +12,7 @@ combination n (x:xs) = [ (x:ys,zs) | (ys,zs) <- combination (n-1) xs ]
                          ++ [ (ys,x:zs) | (ys,zs) <- combination n xs ]
 ```
 
-Extracting the two part of the last right hand side gives us:
+Extracting the two list comprehensions of the last right hand side gives us:
 
 ```
 combination n (x:xs) = currentSelected ++ currentNotSelected

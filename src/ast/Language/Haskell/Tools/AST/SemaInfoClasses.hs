@@ -179,7 +179,7 @@ instance HasImportInfo dom => HasImportInfo' (Ann UImportDecl dom st) where
   semanticsOrphanInsts = semanticsOrphanInsts . (^. annotation&semanticInfo)
   semanticsFamInsts = semanticsFamInsts . (^. annotation&semanticInfo)
 
--- * Information about implicitely bounded fields
+-- * Information about implicitly bounded fields
 
 type HasImplicitFieldsInfo dom = (Domain dom, HasImplicitFieldsInfo' (SemanticInfo dom AST.UFieldWildcard))
 

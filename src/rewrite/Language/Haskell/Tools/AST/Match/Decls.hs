@@ -310,7 +310,7 @@ pattern SymmetricPatSyn pat <- Ann _ (UBidirectionalPatSyn pat AnnNothing)
 pattern OneWayPatSyn :: Pattern dom -> PatSynRhs dom
 pattern OneWayPatSyn pat <- Ann _ (UOneDirectionalPatSyn pat)
 
--- | A pattern synonym with the other direction explicitely specified (@ <- App \"Int\" [] where Int = App \"Int\" [] @)
+-- | A pattern synonym with the other direction explicitly specified (@ <- App \"Int\" [] where Int = App \"Int\" [] @)
 pattern TwoWayPatSyn :: Pattern dom -> MatchList dom -> PatSynRhs dom
 pattern TwoWayPatSyn pat match <- Ann _ (UBidirectionalPatSyn pat (AnnJust (Ann _ (UPatSynWhere match))))
 

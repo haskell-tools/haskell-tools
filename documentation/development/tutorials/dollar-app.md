@@ -104,7 +104,7 @@ x = f $ f $ g 2
 Handling NoImplicitPrelude
 -----------------
 
-The programmer may use the `NoImplicitPrelude` extension to explicitely select the definitions that are used from Prelude. In this case the compiler will not found the definition of `$`, so we must import it. Fortunately we can do it with Haskell-tools refactor monad support.
+The programmer may use the `NoImplicitPrelude` extension to explicitly select the definitions that are used from Prelude. In this case the compiler will not found the definition of `$`, so we must import it. Fortunately we can do it with Haskell-tools refactor monad support.
 
 ```haskell
 {-# LANGUAGE NoImplicitPrelude #-}

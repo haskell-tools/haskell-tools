@@ -8,7 +8,7 @@ Pattern matching on the Haskell-tools AST is done by pattern synonyms. The synon
 
 ## Handling of comments
 
-Handling source-code related information consist of white-spaces and comments. White spaces are implicitely attached to the nodes as the source code fragments are attached to their AST element, but comments are outside of these elements. However it is important to attach the comments to their correspondig element. For example, it would be confusing if after reordering some imports, a comment that was before an import would remain at the same place even when the import had been moved to a different line. When comments are attached to their AST elements they move with them and are deleted when the elements are removed.
+Handling source-code related information consist of white-spaces and comments. White spaces are implicitly attached to the nodes as the source code fragments are attached to their AST element, but comments are outside of these elements. However it is important to attach the comments to their correspondig element. For example, it would be confusing if after reordering some imports, a comment that was before an import would remain at the same place even when the import had been moved to a different line. When comments are attached to their AST elements they move with them and are deleted when the elements are removed.
 
 We get the position and text of comments from GHC parser phase. We attach them to the AST elements in the [PlaceComments](https://github.com/haskell-tools/haskell-tools/blob/master/src/prettyprint/Language/Haskell/Tools/Transform/PlaceComments.hs) module.
 
@@ -60,5 +60,5 @@ Common semantic information:
   - **Names** (`QualifiedName` AST element): `NameInfo`. It contains the GHC representation of a name and the names that are in scope of that AST element. It also has a flag to decide if the name was defined at that place or elsewhere. Additionally it can contain fixity information if the name is an operator.
   - **Expressions** (`Expr` AST element): `ScopeInfo`. It contains the names that are in scope for that expression.
   - **Imports** (`ImportDecl` AST element): `ImportInfo`. It contains the GHC representation of the module that is imported. All the names that could be imported, and all the names that are actually imported. It also contain some information about typeclass instances loaded.
-  - **Module** (`Module` AST element): `ModuleInfo`. Contains the module name, a flag to mark `.hs-boot` modules, and all the implicitely imported definitions. It also contain some information about typeclass instances loaded implicitely.
-  - **Record wildcards** (`FieldWildcard` AST element): `ImplicitFieldInfo`. Contains the fields that will be modified or accessed implicitely by the wildcard pattern.
+  - **Module** (`Module` AST element): `ModuleInfo`. Contains the module name, a flag to mark `.hs-boot` modules, and all the implicitly imported definitions. It also contain some information about typeclass instances loaded implicitly.
+  - **Record wildcards** (`FieldWildcard` AST element): `ImplicitFieldInfo`. Contains the fields that will be modified or accessed implicitly by the wildcard pattern.

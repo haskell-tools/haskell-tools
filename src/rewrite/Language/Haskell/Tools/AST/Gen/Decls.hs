@@ -386,7 +386,7 @@ mkSymmetricPatSyn = mkAnn ("= " <> child) . flip UBidirectionalPatSyn (mkAnnMayb
 mkOneWayPatSyn :: Pattern dom -> PatSynRhs dom
 mkOneWayPatSyn = mkAnn ("<- " <> child) . UOneDirectionalPatSyn
 
--- | Creates a pattern synonym with the other direction explicitely specified (@ <- App \"Int\" [] where Int = App \"Int\" [] @)
+-- | Creates a pattern synonym with the other direction explicitly specified (@ <- App \"Int\" [] where Int = App \"Int\" [] @)
 mkTwoWayPatSyn :: Pattern dom -> [Match dom] -> PatSynRhs dom
 mkTwoWayPatSyn pat match = mkAnn ("<- " <> child <> child) $ UBidirectionalPatSyn pat $ mkAnnMaybe (after " where " opt)
                              $ Just $ mkAnn child $ UPatSynWhere $ mkAnnList (indented list) match

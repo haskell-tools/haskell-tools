@@ -8,7 +8,7 @@ When the refactoring orders the imports it respects import blocks (list of impor
 
 If the list of explicit definitions stated in the import contains definitions that are not used they are removed. The same is done for sub-specifiers of these imported definitions (for example constructors or fields that are imported as a part of the type defining them).
 
-If an import definitions only brings to scope at most 4 definitions, they will be explicitely stated in the import definition.
+If an import definitions only brings to scope at most 4 definitions, they will be explicitly stated in the import definition.
 
 Import definitions cannot always be removed even if no definitions are used from them. They may be used to import type class instances. If the refactoring cannot prove that there are no such instances, it only states that no definition is used by putting empty parentheses after the imported module name.
 
