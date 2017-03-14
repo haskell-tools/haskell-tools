@@ -16,3 +16,4 @@
   - Inlining a binding can cause typechecking errors because of ambiguous type variables. To prevent these cases we would need to re-typecheck the AST.
   - Organize imports works with rough heuristics for removing imports, and is not always successful.
   - When checking for reserved names, we don't check for names reserved by extensions.
+  - We don't support source directories outside of package root folders.
