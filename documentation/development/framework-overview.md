@@ -4,7 +4,7 @@ Haskell-tools is backed by the [GHC API](https://downloads.haskell.org/~ghc/8.0.
 
 The ht-refact tool works in a purely AST-based way. The traditional problem with purely syntax tree based transformations is that they don't keep comments or layout (it is not part of the syntax tree). We solved this problem by annotating the syntax tree with additional information regarding the original format of the source code of a given AST element. So every transformation is basically a mapping of syntax trees. This makes writing refactorings easier, since we don't have to synchronize the token streams with the syntax trees. As it can be seen most refactorings are around a hundred lines of code or shorter.
 
-![Architecture overview](haskell_tools_architecture.png)
+![Architecture overview](../haskell_tools_architecture.png)
 
 We create our own Haskell representation based on GHC's representation. We combine the information that can be found at different stages of the compilation into a representation that contains all the necessarry information for refactoring. The resulting representation is also good for pretty-printing. If the source code is not correct, but some GHC steps can be performed, our representation can be built, but with less semantic information available.
 
