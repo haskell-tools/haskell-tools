@@ -1,4 +1,4 @@
-**TODO: how to check which files are up-to-date and which can be refactored**
+# Integrating Haskell Tools with an editor
 
 If you decided to create a binding for Haskell Tools Refact, you can use the ht-daemon server. When you run the executable, it will listen on the given port (4123 by default) and respond to client messages as it is described in [the protocol description](haskell-tools-refactoring-protocol.md).
 
@@ -11,34 +11,46 @@ While writing this guide I assume the following things about your editor. If one
 
 Create a submenu wherever you like. It should have:
  - A Start/Stop Haskell Tools Refact menu item
+ - *Optionally: A Restart Haskell Tools command*
  - One menu item for each refactoring you want to use from Haskell Tools Refact
+ - *Optionally: An undo refactoring command*
+ - *Optionally: A command to check if the Haskell Tools engine is running*
 
 Associate keybindings with the new commands as you like.
 
-Hook up listeners for the following actions:
- - A folder is added to the current project
- - A folder is removed from the current project
+We also need to be able to add and remove folders (haskell packages) from the Haskell Tools engine. Ideally we should add a context menu item to the project folders that adds or removes them from the engine.
 
-## State
+## Components
 
 The editor integration should have two main component, the server manager and the client manager. Both should be singleton objects.
 
-Server manager:
- - Starts the Haskell Tools server instance.
+**Server manager**
+ - Starts the Haskell Tools engine executable.
  - Stops the server when needed.
 
-Client manager
+**Client manager**
  - Maintains a socket connection with the server.
  - Sends messages to the server on object requests.
  - Checks if the server is still alive, otherwise restarts it.
 
-### Client manager
+**Package manager**
+  - Handles adding and removing packages to the engine.
+  - Uses the client manager to communicate with the engine.
 
-The client manager should run two extra threads. One thread is used to receive server responses. It should do an infinite loop with a socket receive operation (`recv` in most languages), and perform the correct action for the incoming messages (see below). The other is for checking the server every one or two seconds. This thread should count how many `KeepAlive` messages did it send. If the number of unresponded messages go over a given threshold, than we can conclude that the server stopped and need to be restarted. If the server don't get the messages (for example, if the editor crashes) it will stop itself.
+Other optional components that may increase the usability of your integration:
+ - Locating the engine executable at the first run.
+ - Providing information about the status of the engine.
+ - Keeping a history of the refactorings performed.
+ - Dialogs for getting input from the user when performing a given refactoring.
+ - Displaying markers in the editor when the source code is not correct.
+
+## State
+
+ - The integration should store which folders have been added to the engine. It should display this information somehow to the user.
 
 ## When to send messages?
 
- - `KeepAlive` every one or two seconds, the thread for checking the server should send this.
+ - `KeepAlive` if you need to check if the server is running.
  - `AddPackages` should be sent when the user adds a new package to the project. It should also be sent after Haskell Tool is started with each source folder in the package.
  - `RemovePackages` should be sent when the user removes a package from the project.
  - If the user wants to perform a refactoring, the corresponding `PerformRefactoring` command should be sent. The `refactoring` field should be set to the name of the refactoring. Some refactoring need additional details, for example the name of the extracted definition. These should be asked from the user via input messages. The message should also contain the file that is currently viewed and the selected region (`modulePath` and `editorSelection`).
