@@ -11,6 +11,8 @@ If you want to help us by making new tools, refactorings or improving existings 
 
 ## Write your own refactorings
 
+[Guide for writing refactorings](development/refactoring-guide.md).
+
 Check out the [Tutorials](development/tutorials.md) for the know-how of refactorings.
 
 [Limitations](development/limitations.md)
