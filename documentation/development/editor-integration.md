@@ -2,6 +2,8 @@
 
 If you decided to create a binding for Haskell Tools Refact, you can use the ht-daemon server. When you run the executable, it will listen on the given port (4123 by default) and respond to client messages as it is described in [the protocol description](haskell-tools-refactoring-protocol.md).
 
+First, you should check the implementation of the [sample editor integration](https://github.com/nboldi/haskell-tools-atom), that is developed for the [Atom editor](https://atom.io/).
+
 While writing this guide I assume the following things about your editor. If one or more statement is not true, than check the end of this guide for solutions.
  - It has the concept of projects and source folders inside the project.
  - It supports multi-threading and socket communication.
