@@ -1,6 +1,7 @@
 ![Travis](documentation/Haskelltools.png)
 
-[![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools/master.svg)](https://travis-ci.org/haskell-tools/haskell-tools) [![Hackage](https://img.shields.io/hackage/v/haskell-tools-ast.svg)](http://hackage.haskell.org/package/haskell-tools-ast)
+[![Travis](https://img.shields.io/travis/haskell-tools/haskell-tools/master.svg)](https://travis-ci.org/haskell-tools/haskell-tools) [![Hackage](https://img.shields.io/hackage/v/haskell-tools-refactor.svg)](http://hackage.haskell.org/package/haskell-tools-refactor) [![stackage LTS package](http://stackage.org/package/haskell-tools-refactor/badge/lts)](http://stackage.org/lts/package/haskell-tools-refactor)
+
 
 The goal of this project is to create developer tools for the functional programming language Haskell. Currently this project is about refactoring Haskell programs. We have a couple of refactorings working, with support for using them in your editor, or programmatically from command line.
 
