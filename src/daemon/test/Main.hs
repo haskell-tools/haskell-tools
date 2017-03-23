@@ -135,13 +135,13 @@ compProblemTests =
   , ( "reload-error"
     , [ Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\nimport No.Such.Module"
-      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] []
+      , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-source-error"
     , [ Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\naa = 3 + ()"
-      , Right $ ReLoad [testRoot </> "empty" </> "A.hs"] []
+      , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "no-such-file"
@@ -194,7 +194,7 @@ reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [
 reloadingTests =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
-    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
+    , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"]
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
@@ -217,11 +217,17 @@ reloadingTests =
               ] -> let [pA,pB] = map ((testRoot </> "changing-cabal" ++ testSuffix) </>) ["A.hs","B.hs"]
                     in pA == pathA && pA == pathA' && pA == pathA'' && pB == pathB' && pB == pathB''
             _ -> False )
+  , ( "adding-module", testRoot </> "reloading", [AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
+    , writeFile (testRoot </> "reloading" ++ testSuffix </> "D.hs") "module D where\nd = ()"
+    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "D.hs"] [] [] ]
+    , \case [ LoadingModules {}, LoadedModules {}, LoadedModules {}, LoadedModules {}, LoadingModules {}
+              , LoadingModules {}, LoadedModules {}, LoadedModules {}, LoadedModules {}, LoadedModules {}] -> True
+            _ -> False )
   , ( "reloading-remove", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , do removeFile (testRoot </> "reloading" ++ testSuffix </> "A.hs")
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
-    , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
-               [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
+    , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
+                  [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"]
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
@@ -267,7 +273,7 @@ pkgDbTests
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [ SetPackageDB AutoDB
         , AddPackages [testRoot </> "cabal-sandbox"]
-        , ReLoad [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] []]
+        , ReLoad [] [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] []]
       , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]
         , LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]

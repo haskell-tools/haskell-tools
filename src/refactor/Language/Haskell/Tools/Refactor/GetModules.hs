@@ -4,6 +4,7 @@
            , TemplateHaskell
            , FlexibleContexts
            , TypeApplications
+           , RankNTypes
            #-}
 -- | Representation and operations for module collections (libraries, executables, ...) in the framework.
 module Language.Haskell.Tools.Refactor.GetModules where
@@ -56,6 +57,9 @@ instance Eq ModuleCollection where
 instance Show ModuleCollection where
   show (ModuleCollection id root srcDirs mods _ _ deps)
     = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
+
+containingMC :: FilePath -> Simple Traversal [ModuleCollection] ModuleCollection
+containingMC fp = traversal & filtered (\mc -> _mcRoot mc `isPrefixOf` fp)
 
 -- | The state of a module.
 data ModuleRecord
