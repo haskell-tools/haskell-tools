@@ -1,47 +1,61 @@
+Refactoring tutorial: parentheses to dollar application
+=================================
 
 The task is to create a refactoring that replaces the selected function application using the dollar operator.
 
 ```haskell
-x = f (g 1)
-x2 = f (f (g 2))
+x = f (g 1) -- becomes 'x = f $ g 1'
+x2 = f (f (g 2)) -- becomes 'x2 = f $ f $ g 2'
 ```
-when the whole right-hand sides are selected will be
-```haskell
-x = f $ g 1
-x2 = f $ f $ g 2
-```
+
+First we create a simple transformation and then add check for different complications that could happen.
 
 Preparation
 -----------------
 
- - Install `haskell-tools-refactor-0.2.0.0` with cabal
- - Start from this HelloWorld example that greets all subexpressions with maximum respect:
+ - Install `haskell-tools-refactor` with cabal or from source with stack. See the [installation instructions](../../installation.md) for details.
+ - Start from this `HelloRefactor` module that greets all subexpressions with maximum respect:
 
 ```haskell
-module HelloRefactor where
+module Language.Haskell.Tools.Refactor.Predefined.HelloRefactor where
 
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.AST.Gen
-import Language.Haskell.Tools.PrettyPrint
+import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.RefactorBase
 
-import SrcLoc
+import Control.Reference
+import Debug.Trace (trace)
+import SrcLoc (RealSrcSpan)
 
-import Control.Reference hiding (element)
-import Data.Generics.Uniplate.Data
-import Debug.Trace
-
-tryOutHello moduleName sp = tryRefactor (localRefactoring $ helloRefactor (readSrcSpan (toFileName "." moduleName) sp)) moduleName
+tryItOut :: String -> String -> IO ()
+tryItOut = tryRefactor (localRefactoring . helloRefactor)
 
 helloRefactor :: Domain dom => RealSrcSpan -> LocalRefactoring dom
 helloRefactor sp = return . (nodesContained sp .- helloExpr)
 
-helloExpr :: Ann Expr dom SrcTemplateStage -> Ann Expr dom SrcTemplateStage
+helloExpr :: Expr dom -> Expr dom
 helloExpr e = trace ("\n### Hello: " ++ prettyPrint e) $ e
+
 ```
 
+Now lets see what this code actually does:
+  - It imports 2 modules from the haskell tools framework and 3 other modules.
+    - [`Language.Haskell.Tools.Refactor`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor.html) provides us with all the framework support for writing refactorings. It supplies the definition of AST elements and the operations to manipulate them.
+    - [`Language.Haskell.Tools.PrettyPrint`](https://www.stackage.org/haddock/nightly/haskell-tools-prettyprint/Language-Haskell-Tools-PrettyPrint.html) provides the `prettyPrint` function that can produce the source code of the AST of modules or their fragments. It is normally used to get the refactored source code, but in this case we use it to show a piece of the original source code.
+    - `Control.Reference` is a package that supports using references, that are an abstraction of properties. No we only use the `.-` operation. This operation is an update operation. It applies the function on the right side to the property on the left. If you want to learn more about references, check out the [reference tutorial](https://github.com/nboldi/references/wiki/References-Tutorial).
+    - [`Debug.Trace`](http://hackage.haskell.org/package/base/docs/Debug-Trace.html) is a standard library module for debugging your programs. The `trace` function shows a message when it is evaluated while returning its second parameter as a result. It can be used to print information about your program when it is running. Now we use it to show the parts of the expression.
+    - `SrcLoc` is a module from the GHC compiler. It provides use the `RealSrcSpan` type that is the representation of a range in a source file (it is file name, a starting position by row and column number and an end position by row and column number).
+  - `tryItOut` is just a simple wrapper that enables us to show how the transformation of the syntax tree works. It simply performs the `helloRefactor` refactoring on a module with a given source range. The first parameter is the name of the module, the second is the source code range in which the expressions are shown.
+    - There are two kinds of refactorings. A [`LocalRefactoring`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#t:LocalRefactoring) works on a single module, where a more general [`Refactoring`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#t:Refactoring) works on a set of modules. The function [`localRefactoring`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#v:localRefactoring) transforms a `LocalRefactoring` into a `Refactoring`.
+  - In `helloRefactor`, the function needs a range to select the expression for which the subexpressions will be shown. It also have the restriction that the `dom` type variable should have a `Domain` instance. It only says that `dom` should be a valid semantic information kind, but does not reqire it to provide any kind of information yet. Later we will need some kinds of semantic information to be present, so we will change the required domain. If you want to learn more about domains, check out the [description of semantic information](../refactoring-guide.md#how-to-check-semantic-constraints)
+  - `nodesContained` is a reference that accesses all the language elements that are inside a given source range. It is polymorphic in the type of the accessed element, so it can be used to access any type of language elements. Now we use it to access expressions inside a given range.
+  - We use the `.-` update operator to apply the `helloExpr` function to all AST elements selected by `nodesContained`.
+  - Since the `LocalRefactoring` type is monadic, but we calculated the result in a pure function (which is a bit of cheating, we use `trace` for printing the subexpressions), we need to use `return` to get a monadic result.
+  - Finally in the `helloExpr` function, we simply get the source code representation of the current expression using `prettyPrint` to produce the output.
+
+Now, test the results:
+
  - Create a simple `Test.hs` file to try out the HelloRefactor:
+
 ```haskell
 module Test where
 
@@ -85,10 +99,9 @@ x = f (f (g 2))
 Create the basic transformation
 ----------------
 
- - Create a simple helper function to use as view pattern for accessing unannotated AST elements: `e = (^. element)`
- - Match a pattern for function application on a parenthesized expression. Remember to use the `e` function to get unannotated AST elements.
- - As a result, create an unqualified `$` operator and wrap it in an `InfixApp`. Use functions from the [Expr](http://hackage.haskell.org/package/haskell-tools-ast-gen-0.2.0.0/docs/Language-Haskell-Tools-AST-Gen-Exprs.html) and [Base](http://hackage.haskell.org/package/haskell-tools-ast-gen-0.2.0.0/docs/Language-Haskell-Tools-AST-Gen-Base.html) modules from [ast-gen] package.
- - As a default case, we should return the expression unchanged.
+ - Match a pattern for function application on a parenthesized expression (for example `f (g x)`). For general information see the pattern matching related part of the [refactoring guide](../refactoring-guide.md#how-to-pattern-match-on-elements). For the needed patterns, check out the [API for pattern matching on expressions](https://www.stackage.org/haddock/nightly/haskell-tools-rewrite/Language-Haskell-Tools-AST-Match-Exprs.html).
+ - As a result, create an unqualified `$` operator and wrap it in an `InfixApp`. For general information about generating parts of expression, check out the relevant part of the [refactoring guide](../refactoring-guide.md#generating-parts-of-the-ast). For the needed generators, check out the [API for generating expressions](https://www.stackage.org/haddock/nightly/haskell-tools-rewrite/Language-Haskell-Tools-AST-Gen-Exprs.html) and the [API for generating names](https://www.stackage.org/haddock/nightly/haskell-tools-rewrite/Language-Haskell-Tools-AST-Gen-Names.html)
+ - If the expression is not a function application on a parenthesized expression, we should return the expression unchanged.
 
 Trying this out with our Test.hs should result in a transformed expression:
 ```
@@ -117,18 +130,26 @@ x = g (f (g 2))
 ```
 
 Steps to solve this:
-  - Get the unique name of the `$` operator. Since it is a wired-in name, we can get it from wiredInIds: `[dollarName] = map idName $ filter ((dollarIdKey==) . getUnique) wiredInIds`. We also need to import a few modules from GHC to do the trick:
+  - Get the unique name of the `$` operator. Since it is a wired-in name, we can get it from wiredInIds. We need to match the key from `PrelNames` with the Id of dollar from `PrelInfo`. Finally we get the `Name` from an `Id`:
 
-```haskell
-import Unique (getUnique)
-import Id (idName)
-import PrelNames (dollarIdKey)
-import PrelInfo (wiredInIds)
-```
-  - Introduce the `LocalRefactor dom` monad to the type of the transformation (`dom` is the same as the domain of the result).
-  - Now we must use the monadic update operator on the reference accessing contained nodes: `nodesContained sp !~ replaceExpr`.
-  - Add some constraints on the domain to enable auto-importing: `(HasImportInfo dom, HasModuleInfo dom)`.
-  - Use `referenceOperator` monadic function to insert an operator and make sure that it is imported.
+  ```haskell
+  [dollarName] = map idName $ filter ((dollarIdKey==) . getUnique) wiredInIds
+  ```
+
+  Check out [GHC's name related types](https://downloads.haskell.org/~ghc/8.0.2/docs/html/libraries/ghc-8.0.2/Name.html). We need to import a few modules from GHC to do the trick:
+
+  ```haskell
+  import Unique (getUnique)
+  import Id (idName)
+  import PrelNames (dollarIdKey)
+  import PrelInfo (wiredInIds)
+  ```
+
+  - Introduce the `LocalRefactor dom` monad to the type of `replaceExpr`.
+    - Replace the pure update operator `.-` with its monadic counterpart `!~` where `replaceExpr` is used.
+    - Rewrite the implementation of `replaceExpr` to produce a monadic value.
+  - Constraint the domain to have semantic information about imports and modules. This is needed to enable auto-importing. We will need the `HasImportInfo` and `HasModuleInfo` typeclasses for `replaceExpr`.
+  - Use `referenceOperator` monadic function to insert an operator and make sure that it is imported (the second parameter of the `InfixApp` constructor).
 
 Transforming part of an infix expression
 --------------------------------------------
@@ -145,9 +166,9 @@ x = f (g 2) + 3
 ```
 
 To solve this problem, we must
- - Introduce a state monad to the transformation, storing a list of source ranges (`SrcSpan`s). Use the `LocalRefactorT` monad transformer to add `State` to the monadic computation.
- - When transforming `f (g 3)`, store the location of the argument to be able to identify the generated expression later. Use `getRange` to get the source range of an annotated AST element.
- - After the transformation, run a second pass, that is not limited to the selected range: `biplateRef !~ parenExpr @dom`
+ - Introduce a state monad to the transformation, storing a list of source ranges (`SrcSpan`s). We need to store which expressions we refactored to be able to check that in a later stage. Use the `LocalRefactorT` monad transformer to add `State` to the monadic computation.
+ - When transforming `f (g 3)`, store the location of the argument to be able to identify the generated expression later. Use `getRange` to get the source range of an annotated AST element and store it in the monadic state.
+ - After the transformation, run a second pass (a monadic function), that is not limited to the selected range: `biplateRef !~ parenExpr`
  - In the `parenExpr` function we have to find infix expressions thats left or right-hand side have been transformed by the earlier pass. We can identify the transformed expressions from the ranges of their right-hand side (what was the argument of the function application before transformed).
  - We must wrap these sides into parentheses with the `Paren` element. Use the generator function as done earlier.
  - Of course if the whole expression (and not just the right side) is generated than we can leave the parens. (So `f (g (h 0))` becomes `f $ g $ h 0` rather than `f $ (g $ h 0)`)
@@ -172,10 +193,15 @@ x = f (g $$ 1)
 ```
 
   - We will match on the case when there is an infix expression inside the parentheses.
-  - First we must be sure that the expression we are checking is not generate, because semantic informaition is not present on generated AST elements.
-  - We check if the operator is really `$` (because multiple `$` operators can be used), we access the unique name of the operator using `semanticsName`. Please keep in mind that the unique name is not associated with the operator but the `QualifiedName` inside.
-  - Even if the operator is not `$`, it may have a nonzero precedence, so the transformation can continue. Use the `semanticsFixity` function to access fixity information. (The result will be of GHC's `Fixity` type). Missing fixity might mean locally defined operator, so we must also stop the refactoring in that case.
-  - If the operator is not `$` and don't have a nonzero precedence, we should return the result unchanged.
-  - We also need to add two new domain constraints: `HasFixityInfo dom, HasNameInfo dom`
+  - First we must be sure that the expression we are checking is not generated in an earlier pass, because semantic information is not present on generated AST elements.
+  - We only need to do the check if the operator is not the real `$` operator (multiple `$` operators can be used). To decide if the operator is `$` we access the unique name of the operator using `semanticsName`. Please keep in mind that the unique name is not associated with the operator but the `QualifiedName` inside.
+  - Even if the operator is not `$`, it may have a nonzero precedence, so the transformation can continue (the operator will bind stronger than `$` and the result will be correct). Use the `semanticsFixity` function to access fixity information. (The result will be of GHC's `Fixity` type). Missing fixity might mean locally defined operator, so we must also stop the refactoring in that case (we cannot be sure).
+  - If the operator is not `$` and has precedence zero, we should return the result unchanged (or maybe return an error message).
+  - We also need to add two new domain constraints: `HasFixityInfo`, `HasNameInfo`
 
-The solution source code can be found [in the repository](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp.hs).
+The solution source code can be found in the repository:
+  1. [HelloRefactor](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/HelloRefactor.hs).
+  1. [Basic transformation](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp1.hs).
+  1. [Checking `NoImplicitPrelude`](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp2.hs).
+  1. [Working with infix operators](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp3.hs).
+  1. [Final version](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp.hs).

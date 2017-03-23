@@ -72,6 +72,10 @@ library
                      , Language.Haskell.Tools.Refactor.Predefined.DollarApp
                      , Language.Haskell.Tools.Refactor.Predefined.InlineBinding
                      , Language.Haskell.Tools.Refactor.Predefined.FloatOut
+                     , Language.Haskell.Tools.Refactor.Predefined.HelloRefactor
+                     , Language.Haskell.Tools.Refactor.Predefined.DollarApp1
+                     , Language.Haskell.Tools.Refactor.Predefined.DollarApp2
+                     , Language.Haskell.Tools.Refactor.Predefined.DollarApp3
 
   build-depends:       base                      >= 4.9  && < 4.10
                      , mtl                       >= 2.2  && < 2.3
