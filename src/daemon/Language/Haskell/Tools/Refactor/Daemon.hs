@@ -146,8 +146,8 @@ updateClient resp (ReLoad added changed removed) =
                                        (\mss -> resp (LoadingModules (map getModSumOrig mss)))
                                        (\ms -> getModSumOrig ms `elem` changed)
      mcs <- gets (^. refSessMCs)
-     let modulesToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
-     addPackages resp (map (^. mcRoot) modulesToReload) -- reload packages containing added modules
+     let mcsToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
+     addPackages resp (map (^. mcRoot) mcsToReload) -- reload packages containing added modules
      liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage CompilationProblem (getProblems errs))
                                 Right _ -> return ()
      return True
@@ -224,6 +224,7 @@ addPackages resp packagePathes = do
   if (not (null nonExisting))
     then liftIO $ resp $ ErrorMessage $ "The following packages are not found: " ++ concat (intersperse ", " nonExisting)
     else do
+      -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
       let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
       needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existing))
@@ -231,6 +232,7 @@ addPackages resp packagePathes = do
       modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
       forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
       modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+      -- load new modules
       initializePackageDBIfNeeded
       res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
                               (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
