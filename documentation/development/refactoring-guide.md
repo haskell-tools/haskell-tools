@@ -60,6 +60,12 @@ Each function that generates an AST element has the  defined above to generate p
 
 ## How to check semantic constraints?
 
+We annotate our AST representation with both syntactic and semantic information to make refactoring possible. The collection of the semantic informations added to a given AST is the domain of the AST. The domain decides which AST elements have semantic annotation and what will be the type of these annotations.
+
+The domain of an AST depends on how far GHC can progress with the compilation of the module. If the module is type-correct, its domain will be `IdDom`, if it can be renamed but it is not type correct, its domain will be `Dom Name`, if the module can be parsed but cannot be renamed, the domain will be `Dom RdrName`.
+
+It is likely that you need to constraint the domain for your transformation to provide some kinds of semantic information for the refactoring. The constraints you can use and the functions to access the semantic information are listed in the [`SemaInfoClasses`](https://www.stackage.org/haddock/nightly/haskell-tools-ast/Language-Haskell-Tools-AST-SemaInfoClasses.html) module.
+
 Semantic information is stored in the AST nodes. The semantic information we currently have:
 
  - The unique name for `QualifiedName` elements.
@@ -72,8 +78,6 @@ Semantic information is stored in the AST nodes. The semantic information we cur
  - A `defIsBootModule` flag that tells if a module is a hs-boot module is available for `Module` elements.
  - A list of implicitely imported names (Prelude) is available for `Module` elements.
  - A list of fields and associated values is available for `FieldWildcard` elements.
-
-[The access functions for these semantic information](https://www.stackage.org/haddock/nightly/haskell-tools-ast/Language-Haskell-Tools-AST-SemaInfoClasses.html)
 
 ## How to run the generated refactoring?
 
