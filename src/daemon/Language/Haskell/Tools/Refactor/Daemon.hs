@@ -227,8 +227,8 @@ addPackages resp packagePathes = do
       -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
       let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
-      needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existing))
-                        <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
+      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existing))
+                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
       modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
       forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
       modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
@@ -238,7 +238,7 @@ addPackages resp packagePathes = do
                               (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
       case res of
         Right (modules, ignoredMods) -> do
-          mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
+          mapM_ (reloadModule (\_ -> return ())) (either (const []) id needToReload) -- don't report consequent reloads (not expected)
           liftIO $ when (not $ null ignoredMods)
                      $ resp $ ErrorMessage
                                 $ "The following modules are ignored: "
