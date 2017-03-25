@@ -6,6 +6,7 @@
            , TypeApplications
            , ConstraintKinds
            , TypeFamilies
+           , MultiWayIf
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
@@ -48,14 +49,21 @@ extractBinding sp selectDecl selectExpr name mod
   = let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName dom])
         exprRanges = map getRange (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
+        declPats = decl ^? valBindPat &+& funBindMatches & annList & matchLhs
+                                            & (matchLhsArgs & annList &+& matchLhsLhs &+& matchLhsRhs &+& matchLhsArgs & annList)
      in case exprRanges of
           exprRange:_ ->
-            if not (null conflicting)
-              then refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpan . getRange) conflicting))
-              else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
-                      case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
-                                 Nothing -> refactError "There is no applicable expression to extract."
+            if | not (null conflicting)
+               -> refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpan . getRange) conflicting))
+               | any (`containsRange` exprRange) $ map getRange declPats
+               -> refactError "Extract binding cannot be applied to view pattern expressions."
+               | otherwise
+               -> do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
+                     case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
+                                Nothing -> refactError "There is no applicable expression to extract."
           [] -> refactError "There is no applicable expression to extract."
+  where RealSrcSpan sp1 `containsRange` RealSrcSpan sp2 = sp1 `containsSpan` sp2
+        _ `containsRange` _ = False
 
 -- | Decides if a new name defined to be the given string will conflict with the given AST element
 isConflicting :: ExtractBindingDomain dom => String -> QualifiedName dom -> Bool

@@ -359,6 +359,7 @@ extractBindingTests =
 wrongExtractBindingTests =
   [ ("Refactor.ExtractBinding.TooSimple", "3:19-3:20", "x")
   , ("Refactor.ExtractBinding.NameConflict", "3:19-3:27", "stms")
+  , ("Refactor.ExtractBinding.ViewPattern", "4:4-4:11", "idid")
   ]
 
 inlineBindingTests =
