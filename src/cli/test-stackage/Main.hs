@@ -1,11 +1,13 @@
-{-# LANGUAGE LambdaCase
-           #-}
+{-# LANGUAGE LambdaCase #-}
 module Main where
 
 import Control.Applicative
+import Control.Exception
 import Control.Monad
 import System.Directory
+import System.IO
 import System.Process
+import System.Timeout
 import System.Environment
 import System.Exit
 import Control.Concurrent
@@ -48,11 +50,7 @@ testPackage :: String -> IO (Result, String)
 testPackage pack = do
   res <- runCommands
            [ Left ("cabal get " ++ pack, GetFailure)
-           , Right $ do threadDelay 500000
-                        createDirectoryIfMissing False testedDir
-                        removeDirectoryRecursive testedDir
-                        threadDelay 500000
-                        renameDirectory pack testedDir
+           , Right refreshDir
            , Left ("stack build --test --no-run-tests --bench --no-run-benchmarks > logs\\" ++ pack ++ "-build-log.txt 2>&1", BuildFailure)
            , Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml -- -one-shot -refactoring=ProjectOrganizeImports tested-package tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen -package base +RTS -M6G -RTS > logs\\" ++ pack ++ "-refact-log.txt 2>&1", RefactError)
            , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
@@ -62,14 +60,26 @@ testPackage pack = do
                WrongCodeError -> map (\case '\n' -> ' '; c -> c) <$> readFile ("logs\\" ++ pack ++ "-reload-log.txt")
                _ -> return ""
   return (res, problem)
-
   where testedDir = "tested-package"
         snapshotId = "ca59d0ab"
+        refreshDir = refreshDir' 3
+        refreshDir' n = do createDirectoryIfMissing False testedDir
+                           removeDirectoryRecursive testedDir
+                           renameDirectory pack testedDir
+                         `catch` \e -> if n <= 0
+                                         then throwIO (e :: IOException)
+                                         else do threadDelay 500000
+                                                 refreshDir' (n-1)
 
 runCommands :: [Either (String, Result) (IO ())] -> IO Result
 runCommands [] = return OK
 runCommands (Left (cmd,failRes) : rest) = do
-  exitCode <- waitForProcess =<< runCommand cmd
-  case exitCode of ExitSuccess -> runCommands rest
-                   ExitFailure _ -> return failRes
+  pr <- runCommand cmd
+  exitCode <- timeout timeLimit (waitForProcess pr)
+  case exitCode of Just ExitSuccess -> runCommands rest
+                   Just (ExitFailure _) -> return failRes
+                   Nothing -> do hPutStrLn stderr $ "Timeout while running '" ++ cmd ++ "'"
+                                 terminateProcess pr
+                                 return failRes
+  where timeLimit = 1 * 60 * 10^6 -- wait 10 minutes max for one step
 runCommands (Right act : rest) = act >> runCommands rest
