@@ -209,7 +209,10 @@ handleErrors wd req next io = io `catch` (next <=< handleException)
   where handleException :: SomeException -> IO ResponseMsg
         handleException e
           | Just (se :: SourceError) <- fromException e
-          = return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
+          = if isReloading
+              then do logToFile wd (show e) req
+                      return $ ErrorMessage ("The generated code cannot be compiled. The problem had been reported. Please restart the demo or correct the results manually.")
+              else return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
           | Just (ae :: AsyncException) <- fromException e = throw ae
           | Just (ge :: GhcException) <- fromException e = return $ ErrorMessage $ show ge
           | Just (re :: RefactorException) <- fromException e = return $ ErrorMessage $ displayException re
@@ -219,6 +222,8 @@ handleErrors wd req next io = io `catch` (next <=< handleException)
         showMsg msg = showSpan (errMsgSpan msg) ++ "\n" ++ show msg
         showSpan (RealSrcSpan sp) = showFileName (srcLocFile (realSrcSpanStart sp)) ++ " " ++ show (srcLocLine (realSrcSpanStart sp)) ++ ":" ++ show (srcLocCol (realSrcSpanStart sp))
         showSpan _ = ""
+
+        isReloading = case req of PerformRefactoring {} -> True; _ -> False
 
         showFileName = joinPath . drop 2 . splitPath . makeRelative wd . unpackFS
 
