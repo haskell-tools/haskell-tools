@@ -289,20 +289,22 @@ flagsFromBuildInfo bi@BuildInfo{ options } df
        return $ (flip lang_set (toGhcLang =<< defaultLanguage bi))
          $ foldl (.) id (map (\case EnableExtension ext -> setEnabled True ext
                                     DisableExtension ext -> setEnabled False ext
-                        ) (usedExtensions bi ++ map EnableExtension (languageDefault (defaultLanguage bi))))
+                        ) (usedExtensions bi))
+         $ foldr (.) id (map (setEnabled True) (languageDefault (defaultLanguage bi)))
          $ df'
   where toGhcLang Cabal.Haskell98 = Just GHC.Haskell98
         toGhcLang Cabal.Haskell2010 = Just GHC.Haskell2010
         toGhcLang _ = Nothing
 
+        -- We don't put the default settings (ImplicitPrelude, MonomorphismRestriction) here
+        -- because that overrides the opposite extensions (NoImplicitPrelude, NoMonomorphismRestriction)
+        -- enabled in modules.
         languageDefault (Just Cabal.Haskell2010)
           = [ DatatypeContexts, DoAndIfThenElse, EmptyDataDecls, ForeignFunctionInterface
-            , ImplicitPrelude, MonomorphismRestriction, PatternGuards, RelaxedPolyRec
-            , TraditionalRecordSyntax ]
+            , PatternGuards, RelaxedPolyRec, TraditionalRecordSyntax ]
         -- Haskell 98 is the default
         languageDefault _
-          = [ DatatypeContexts, ImplicitPrelude, MonomorphismRestriction
-            , NondecreasingIndentation, NPlusKPatterns, TraditionalRecordSyntax ]
+          = [ DatatypeContexts, NondecreasingIndentation, NPlusKPatterns, TraditionalRecordSyntax ]
 
         setEnabled enable ext
           = case translateExtension ext of
