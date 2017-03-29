@@ -17,35 +17,36 @@
 </head>
 <body>
 
-<a name="home"></a>
-<div class="slide" id="header">
-  <div class="slidecont">
-    <div id="headerleft">
-      <div id="home">
-        <img src="img/logo.png"/>
-      </div>
-      <div id="introduction">
-        A GHC based toolset for Haskell programming.<br/>Currently featuring Haskell-tools Refact, a refactoring framework.<br/>This presentation is just a demo and does not represent the final product.<br/>Integration for a major text editor is coming this winter.
-      </div>
-    </div>
-    <div id="headerright">
+<div class='header'>
+    <div class='demoanim'>
       <img id="demoanimation" data-demoname="Demo" src="img/demoanimation.gif" title="This example demonstrates three refactorings applied on the example taken from https://www.haskell.org/" />
     </div>
-    <div class="spacer"></div>
-  </div>
-</div>
-<div class="slide">
-  <div class="slidecont">
-    <div id="navbar">
-      <span class="navitem"><a href="#features">Features</a></span>
-      <span class="navitem"><a href="#refactorings">Refactorings</a></span>
-      <span class="navitem"><a href="#demo">Demo</a></span>
-      <span class="navitem"><a href="https://haskelltools.blogspot.hu/">Blog</a></span>
-      <span class="navitem"><a href="https://github.com/nboldi/haskell-tools">GitHub</a></span>
-      <span class="navitem"><a href="http://hackage.haskell.org/packages/search?terms=haskell-tools">Hackage</a></span>
+    <a name="home"></a>
+    <div class='headerleft'>
+      <div id="home">
+        <img class='logo' src="img/logo.png"/>
+      </div>
+      <div id="introduction">
+        A GHC based toolset for Haskell programming.<br/>Currently featuring Haskell-tools Refact, a refactoring framework.
+      </div>
+      <div id="navbar">
+        <div class='navbar-top'>
+          <span class="navitem"><a href="#features">Features</a></span>
+          <span class="navitem"><a href="#refactorings">Refactorings</a></span>
+          <span class="navitem"><a href="#demo">Demo</a></span>
+          <span class="navitem"><a href="https://atom.io/packages/haskell-tools">Use in Atom</a></span>
+        </div>
+        <div class='navbar-bottom'>
+          <span class="navitem"><a href="https://haskelltools.blogspot.hu/">Blog</a></span>
+          <span class="navitem"><a href="https://github.com/haskell-tools/haskell-tools">GitHub</a></span>
+          <span class="navitem"><a href="http://hackage.haskell.org/packages/search?terms=haskell-tools">Hackage</a></span>
+          <span class="navitem"><a href="https://www.stackage.org/nightly/hoogle?q=haskell-tools">Stackage</a></span>
+        </div>
+      </div>
     </div>
-  </div>
 </div>
+
+<div>
 <a name="features"></a>
 <div class="slide featureslide">
   <div class="slidecont">
@@ -100,21 +101,24 @@
           Rename
           <button class="featurebutton" type="button" data-demoname="Refactors.Rename">Try it out</button>
         </div>
-        <div class="featuretext">Rename is a very simple refactoring, that can be performed on any named definition, including types, bindings, constructors, pattern variables and so on. It changes the name where it is defined and all the places where it is used. The rename refactor checks if the new name is a valid name for the definition, and that the renaming does not cause name collisions.</div>
+        <div class="featuretext">Rename is a very simple refactoring, that can be performed on any named definition, including types, bindings, constructors, pattern variables and so on. It changes the name where it is defined and all the places where it is used. The rename refactor checks if the new name is a valid name for the definition, and that the renaming does not cause name collisions.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/rename.md'>Learn more</a></div>
       </div>
       <div class="featurebox">
         <div class="featurecaption">
           Generate type signature
           <button class="featurebutton" type="button" data-demoname="Refactors.GenerateTypeSig">Try it out</button>
         </div>
-        <div class="featuretext">You should always write the type signatures of top-level bindings for your Haskell program. Suppose you forgot it. Now you can just use generate type signature refactoring to generate it automatically for you. Also works on local definitions, so if a local binding's type is not trivial, you can generate it for improved readability of your code.</div>
+        <div class="featuretext">You should always write the type signatures of top-level bindings for your Haskell program. Suppose you forgot it. Now you can just use generate type signature refactoring to generate it automatically for you. Also works on local definitions, so if a local binding's type is not trivial, you can generate it for improved readability of your code.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/generate-signature.md'>Learn more</a></div>
       </div>
       <div class="featurebox">
         <div class="featurecaption">
           Generate exports
           <button class="featurebutton" type="button" data-demoname="Refactors.GenerateExports">Try it out</button>
         </div>
-        <div class="featuretext">If you want to control which definitions are exported from a module, one thing that you can do is to start from exporting all the things that are defined and narrow it to what you want to put in your interface. This refactoring generates the export list that contains everything that is defined in the module. Remember, deleting is easier and less error-prone than writing.</div>
+        <div class="featuretext">If you want to control which definitions are exported from a module, one thing that you can do is to start from exporting all the things that are defined and narrow it to what you want to put in your interface. This refactoring generates the export list that contains everything that is defined in the module. Remember, deleting is easier and less error-prone than writing.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/generate-exports.md'>Learn more</a></div>
       </div>
     </div>
     <div class="slidecontright">
@@ -123,7 +127,8 @@
           Extract binding
           <button class="featurebutton" type="button" data-demoname="Refactors.ExtractBind">Try it out</button>
         </div>
-        <div class="featuretext">With the extract binding refactoring complex expressions can be transformed into separate local bindings. With this transformation, long bindings can be shortened and the extracted functionality can be named properly. Since the generated binding is local, parts of the expressions that are in scope are implicitly passed to the generated binding.</div>
+        <div class="featuretext">With the extract binding refactoring complex expressions can be transformed into separate local bindings. With this transformation, long bindings can be shortened and the extracted functionality can be named properly. Since the generated binding is local, parts of the expressions that are in scope are implicitly passed to the generated binding.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/extract-binding.md'>Learn more</a></div>
       </div>
       <div class="featurebox">
         <div class="featurecaption">
@@ -132,14 +137,16 @@
         </div>
         <div class="featuretext">The inline binding is the inverse of the extract binding refactoring. It removes a function
         or value definition and replaces all uses with the right-hand-side of the binding. Only allows removing definitions
-        if they are not used in other modules. You need to select the definition you want to inline.</div>
+        if they are not used in other modules. You need to select the definition you want to inline.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/inline-binding.md'>Learn more</a></div>
       </div>
       <div class="featurebox">
         <div class="featurecaption">
           Organize imports
         <button class="featurebutton" type="button" data-demoname="Refactors.OrganizeImports">Try it out</button>
         </div>
-        <div class="featuretext">When you are constantly changing the code of your module import lists can quickly become very long and messy. The organize imports refactoring helps you to keep this in check by sorting your imports and narrowing them to only import the definitions you want to use. Removes imports that are redundant and marks those that might also be.</div>
+        <div class="featuretext">When you are constantly changing the code of your module import lists can quickly become very long and messy. The organize imports refactoring helps you to keep this in check by sorting your imports and narrowing them to only import the definitions you want to use. Removes imports that are redundant and marks those that might also be.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/organize-imports.md'>Learn more</a></div>
       </div>
     </div>
     <div class="spacer"></div>
@@ -184,7 +191,7 @@
 
 <div class="slide footerslide">
   <div class="slidecont footer">
-    <p class="footertext">Best viewed with latest Chrome or Firefox. This is the demo application for the Haskell-tools project and falls under the same licence. Logo is the work of <i>Rebeka Kiss</i>. The example code on the top is taken from haskell.org. The origin of other examples is mentioned in comments.</p>
+    <p class="footertext">Best viewed with latest Chrome or Firefox. This is the demo application for the Haskell-tools project and falls under the same licence. The example code on the top is taken from haskell.org. The origin of other examples is mentioned in comments.</p>
   </div>
 </div>
 
@@ -229,6 +236,8 @@
   <div id="error-dialog" title="Error">
     <p id="error-message"></p>
   </div>
+
+</div>
 
 </div>
 
