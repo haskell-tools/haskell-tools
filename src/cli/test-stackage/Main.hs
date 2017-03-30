@@ -75,11 +75,7 @@ runCommands :: [Either (String, Result) (IO ())] -> IO Result
 runCommands [] = return OK
 runCommands (Left (cmd,failRes) : rest) = do
   pr <- runCommand cmd
-  exitCode <- timeout timeLimit (waitForProcess pr)
-  case exitCode of Just ExitSuccess -> runCommands rest
-                   Just (ExitFailure _) -> return failRes
-                   Nothing -> do hPutStrLn stderr $ "Timeout while running '" ++ cmd ++ "'"
-                                 terminateProcess pr
-                                 return failRes
-  where timeLimit = 1 * 60 * 10^6 -- wait 10 minutes max for one step
+  exitCode <- waitForProcess pr
+  case exitCode of ExitSuccess -> runCommands rest
+                   ExitFailure _ -> return failRes
 runCommands (Right act : rest) = act >> runCommands rest
