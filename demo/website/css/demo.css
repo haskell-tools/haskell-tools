@@ -3,13 +3,33 @@ body {
     font-family: "Source Sans Pro",Helvetica,Arial,sans-serif;
 }
 
-#headerleft {
-    width: 450px;
-    float: left;
+.header {
+  width: 1280px;
+  height: 430px;
+  margin: auto;
+  position: relative;
+  left: 70px;
+}
+
+.headerleft {
+  width: 550px;
+  padding-top: 60px;
 }
 
 #navbar {
-    text-align: center;
+    text-align: right;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    top: 60px;
+}
+
+.navbar-top {
+  margin-bottom: 3px;
+}
+
+.halfslide {
+  width: 500px;
 }
 
 .navitem a {
@@ -41,14 +61,21 @@ body {
 #headerright {
     float: right;
     width: 530px;
-    height: 280px;
+    height: 190px;
     position: relative;
 }
 
+.side {
+  position: absolute;
+}
+
+.demoanim {
+  float: right;
+}
+
 #demoanimation {
-    position: absolute;
-    bottom: 0;
     cursor: pointer;
+    border-radius: 20px;
 }
 
 .slide {
@@ -60,7 +87,11 @@ body {
     padding-bottom: 15px;
 }
 
-.slide:nth-of-type(even) {
+.featuretext {
+    text-align: justify;
+}
+
+.slide:nth-of-type(odd) {
     background-color: lightgray;
 }
 
@@ -80,6 +111,10 @@ body {
 
 .featurebox {
     margin-top: 15px;
+}
+
+.featuretext a {
+    color: black;
 }
 
 .featurecaption {
@@ -236,14 +271,14 @@ body {
     left:       0;
     height:     100%;
     width:      100%;
-    background: rgba( 255, 255, 255, .8 ) 
-                url('../img/spinner.gif') 
-                50% 50% 
+    background: rgba( 255, 255, 255, .8 )
+                url('../img/spinner.gif')
+                50% 50%
                 no-repeat;
 }
 
 body.loading {
-    overflow: hidden;   
+    overflow: hidden;
 }
 
 body.loading .modal {
@@ -256,7 +291,7 @@ body.loading .modal {
 }
 
 .opened-dialog {
-    position: fixed;   
+    position: fixed;
 }
 
 .validate-tips {
