@@ -3,7 +3,7 @@
            , MultiParamTypeClasses
            , StandaloneDeriving
            , DeriveGeneric
-           , UndecidableInstances 
+           , UndecidableInstances
            , TypeFamilies
            #-}
 module Language.Haskell.Tools.ASTDebug.Instances where
@@ -40,7 +40,7 @@ instance {-# OVERLAPPING #-} (ASTDebug UImportDecl dom st) => ASTDebug (AnnListG
 
 instance (ASTDebug e dom st) => ASTDebug (AnnListG e) dom st where
   astDebug' (AnnListG a ls) = [TreeNode "" (TreeDebugNode "*" (DefaultInfoType (getRange (a ^. sourceInfo))) (concatMap astDebug' ls))]
-  
+
 instance (ASTDebug e dom st) => ASTDebug (AnnMaybeG e) dom st where
   astDebug' (AnnMaybeG a e) = [TreeNode "" (TreeDebugNode "?" (DefaultInfoType (getRange (a ^. sourceInfo))) (maybe [] astDebug' e))]
 
@@ -103,6 +103,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug UFieldUpdate dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UBracket dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UTopLevelPragma dom st
 instance (Domain dom, SourceInfo st) => ASTDebug URule dom st
+instance (Domain dom, SourceInfo st) => ASTDebug URuleVar dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UAnnotationSubject dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UMinimalFormula dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UExprPragma dom st
@@ -131,6 +132,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug UCmd dom st
 instance (Domain dom, SourceInfo st) => ASTDebug ULanguageExtension dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UMatchLhs dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UInlinePragma dom st
+instance (Domain dom, SourceInfo st) => ASTDebug USpecializePragma dom st
 
 -- ULiteral
 instance (Domain dom, SourceInfo st) => ASTDebug ULiteral dom st

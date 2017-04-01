@@ -1,18 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable
-           , StandaloneDeriving 
-           , TemplateHaskell 
+           , StandaloneDeriving
+           , TemplateHaskell
            , UndecidableInstances
            , FlexibleContexts
            , FlexibleInstances
            #-}
 module Language.Haskell.Tools.AST.SemaInfoTypes
-  ( -- types 
+  ( -- types
     NoSemanticInfo, ScopeInfo, NameInfo, CNameInfo, ModuleInfo, ImportInfo, ImplicitFieldInfo
   , Scope
     -- references
   , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
-  , defModuleName, defIsBootModule, implicitNames, importedModule, availableNames, importedNames
+  , defModuleName, defDynFlags, defIsBootModule, implicitNames, importedModule, availableNames, importedNames
   , implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts, prelFamInsts
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
@@ -20,6 +20,7 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   ) where
 
 import BasicTypes as GHC
+import DynFlags as GHC
 import FamInstEnv as GHC
 import Id as GHC
 import InstEnv as GHC
@@ -36,16 +37,16 @@ import Control.Reference
 
 type Scope = [[Name]]
 
--- | Semantic info type for any node not 
+-- | Semantic info type for any node not
 -- carrying additional semantic information
-data NoSemanticInfo = NoSemanticInfo 
+data NoSemanticInfo = NoSemanticInfo
   deriving (Eq, Data)
 
 mkNoSemanticInfo :: NoSemanticInfo
 mkNoSemanticInfo = NoSemanticInfo
 
 -- | Info for expressions that tells which definitions are in scope
-data ScopeInfo = ScopeInfo { _exprScopedLocals :: Scope 
+data ScopeInfo = ScopeInfo { _exprScopedLocals :: Scope
                            }
   deriving (Eq, Data)
 
@@ -57,7 +58,7 @@ mkScopeInfo = ScopeInfo
 data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                            , _nameIsDefined :: Bool
                            , _nameInfo :: n
-                           } 
+                           }
                 | AmbiguousNameInfo { _nameScopedLocals :: Scope
                                     , _nameIsDefined :: Bool
                                     , _ambiguousName :: RdrName
@@ -96,24 +97,33 @@ mkCNameInfo :: Scope -> Bool -> Id -> Maybe GHC.Fixity -> CNameInfo
 mkCNameInfo = CNameInfo
 
 -- | Info for the module element
-data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module 
+data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
+                               , _defDynFlags :: DynFlags -- ^ The compilation flags that are set up when the module was compiled
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
-                               , _implicitNames :: [n] -- ^ Implicitely imported names
-                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed from Prelude.
-                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitely passed from Prelude.
-                               } 
+                               , _implicitNames :: [n] -- ^ implicitly imported names
+                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
+                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
+                               }
   deriving Data
 
+instance Data DynFlags where
+  gunfold k z c = error "Cannot construct dyn flags"
+  toConstr _ = dynFlagsCon
+  dataTypeOf _ = dynFlagsType
+
+dynFlagsType = mkDataType "DynFlags.DynFlags" [dynFlagsCon]
+dynFlagsCon = mkConstr dynFlagsType "DynFlags" [] Prefix
+
 -- | Creates semantic information for the module element
-mkModuleInfo :: GHC.Module -> Bool -> [n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
+mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
 mkModuleInfo = ModuleInfo
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
                                , _importedNames :: [n] -- ^ Names actually imported from the module.
-                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitely passed.
-                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitely passed.
+                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed.
+                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitly passed.
                                }
   deriving Data
 
@@ -125,8 +135,8 @@ mkImportInfo :: GHC.Module -> [n] -> [n] -> [ClsInst] -> [FamInst] -> ImportInfo
 mkImportInfo = ImportInfo
 
 -- | Info corresponding to an record-wildcard
-data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitely bounded names
-                                           } 
+data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitly bounded names
+                                           }
   deriving (Eq, Data)
 
 -- | Creates semantic information for a wildcard field binding
@@ -145,13 +155,13 @@ instance Show CNameInfo where
   show (CNameInfo locals defined nameInfo fixity) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
 
 instance Outputable n => Show (ModuleInfo n) where
-  show (ModuleInfo mod isboot imp clsInsts famInsts) 
-    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ " " 
+  show (ModuleInfo mod _ isboot imp clsInsts famInsts)
+    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ " "
           ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Outputable n => Show (ImportInfo n) where
-  show (ImportInfo mod avail imported clsInsts famInsts) 
-    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ " " 
+  show (ImportInfo mod avail imported clsInsts famInsts)
+    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ " "
           ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Show ImplicitFieldInfo where
@@ -192,10 +202,9 @@ instance Traversable NameInfo where
   traverse _ (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
 
 instance Traversable ModuleInfo where
-  traverse f (ModuleInfo mod isboot imp clsInsts famInsts) 
-    = ModuleInfo mod isboot <$> traverse f imp <*> pure clsInsts <*> pure famInsts
+  traverse f (ModuleInfo mod dfs isboot imp clsInsts famInsts)
+    = ModuleInfo mod dfs isboot <$> traverse f imp <*> pure clsInsts <*> pure famInsts
 
 instance Traversable ImportInfo where
-  traverse f (ImportInfo mod avail imps clsInsts famInsts) 
+  traverse f (ImportInfo mod avail imps clsInsts famInsts)
     = ImportInfo mod <$> traverse f avail <*> traverse f imps <*> pure clsInsts <*> pure famInsts
-

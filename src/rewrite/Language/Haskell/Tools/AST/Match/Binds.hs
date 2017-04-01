@@ -5,7 +5,7 @@ module Language.Haskell.Tools.AST.Match.Binds where
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.ElementTypes
 
--- | Non-function binding (@ v = "12" @)  
+-- | Non-function binding (@ v = "12" @)
 pattern SimpleBind :: Pattern dom -> Rhs dom -> MaybeLocalBinds dom -> ValueBind dom
 pattern SimpleBind p r l <- Ann _ (USimpleBind p r l)
 
@@ -13,7 +13,7 @@ pattern SimpleBind p r l <- Ann _ (USimpleBind p r l)
 pattern FunctionBind :: MatchList dom -> ValueBind dom
 pattern FunctionBind matches <- Ann _ (UFunBind matches)
 
--- | Clause of function binding 
+-- | Clause of function binding
 pattern Match :: MatchLhs dom -> Rhs dom -> MaybeLocalBinds dom -> Match dom
 pattern Match lhs rhs locs <- Ann _ (UMatch lhs rhs locs)
 
@@ -45,8 +45,6 @@ pattern LocalFixity fixity <- Ann _ (ULocalFixity fixity)
 pattern TypeSignature :: NameList dom -> Type dom -> TypeSignature dom
 pattern TypeSignature n t <- Ann _ (UTypeSignature n t)
 
--- TODO: match precedence with maybe
-
 -- | A left-associative fixity declaration (@ infixl 5 +, - @).
 pattern InfixL :: OperatorList dom -> FixitySignature dom
 pattern InfixL op <- Ann _ (UFixitySignature (Ann _ AssocLeft) _ op)
@@ -67,7 +65,7 @@ pattern UnguardedRhs expr <- Ann _ (UUnguardedRhs expr)
 pattern GuardedRhss :: GuardedRhsList dom -> Rhs dom
 pattern GuardedRhss rhss <- Ann _ (UGuardedRhss rhss)
 
--- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)    
+-- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)
 pattern GuardedRhs :: RhsGuardList dom -> Expr dom -> GuardedRhs dom
 pattern GuardedRhs guards expr <- Ann _ (UGuardedRhs guards expr)
 

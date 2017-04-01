@@ -166,7 +166,7 @@ class ( Typeable stage
       , HasRange (SpanInfo stage)
       , HasRange (ListInfo stage)
       , HasRange (OptionalInfo stage)
-      ) 
+      )
          => SourceInfo stage where
   -- | UType of source info for normal AST elements
   data SpanInfo stage :: *
@@ -182,13 +182,13 @@ instance SourceInfo RangeStage where
   data ListInfo RangeStage = ListPos  { _listBefore :: String
                                       , _listAfter :: String
                                       , _listDefaultSep :: String
-                                      , _listIndented :: Bool
-                                      , _listPos :: SrcLoc 
+                                      , _listIndented :: Maybe [Bool]
+                                      , _listPos :: SrcLoc
                                       }
     deriving (Data)
   data OptionalInfo RangeStage = OptionalPos { _optionalBefore :: String
-                                             , _optionalAfter :: String 
-                                             , _optionalPos :: SrcLoc 
+                                             , _optionalAfter :: String
+                                             , _optionalPos :: SrcLoc
                                              }
     deriving (Data)
 
@@ -207,13 +207,13 @@ instance SourceInfo NormRangeStage where
   data ListInfo NormRangeStage = NormListInfo { _normListBefore :: String
                                               , _normListAfter :: String
                                               , _normListDefaultSep :: String
-                                              , _normListIndented :: Bool
-                                              , _normListSpan :: SrcSpan 
+                                              , _normListIndented :: Maybe [Bool]
+                                              , _normListSpan :: SrcSpan
                                               }
     deriving (Data)
   data OptionalInfo NormRangeStage = NormOptInfo { _normOptBefore :: String
-                                                 , _normOptAfter :: String 
-                                                 , _normOptSpan :: SrcSpan 
+                                                 , _normOptAfter :: String
+                                                 , _normOptSpan :: SrcSpan
                                                  }
     deriving (Data)
 
@@ -228,8 +228,8 @@ instance Show (OptionalInfo NormRangeStage) where
 
 -- | A short form of showing a range, without file name, for debugging purposes.
 shortShowSpan :: SrcSpan -> String
-shortShowSpan (UnhelpfulSpan _) = "??-??" 
-shortShowSpan sp@(RealSrcSpan _) 
+shortShowSpan (UnhelpfulSpan _) = "??-??"
+shortShowSpan sp@(RealSrcSpan _)
   = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
 
 -- | A short form of showing a range, without file name, for debugging purposes.
@@ -239,7 +239,7 @@ shortShowLoc (RealSrcLoc loc) = show (srcLocLine loc) ++ ":" ++ show (srcLocCol 
 
 -- | A class for marking a source information stage. All programs, regardless of
 -- correct Haskell programs or not, must go through these stages to be refactored.
-class SourceInfo stage 
+class SourceInfo stage
    => RangeInfo stage where
   nodeSpan :: Simple Lens (SpanInfo stage) GHC.SrcSpan
   listPos :: Simple Lens (ListInfo stage) GHC.SrcLoc
@@ -253,40 +253,40 @@ instance RangeInfo RangeStage where
 -- * Annotations
 
 -- | Semantic and source code related information for an AST node.
-data NodeInfo sema src 
+data NodeInfo sema src
   = NodeInfo { _semanticInfo :: sema
              , _sourceInfo :: src
              }
   deriving (Eq, Show, Data)
-             
+
 makeReferences ''NodeInfo
 
 -- | An element of the AST keeping extra information.
 data Ann elem dom stage
 -- The type parameters are organized this way because we want the annotation type to
--- be more flexible, but the annotation is the first parameter because it eases 
+-- be more flexible, but the annotation is the first parameter because it eases
 -- pattern matching.
   = Ann { _annotation :: NodeInfo (SemanticInfo dom elem) (SpanInfo stage) -- ^ The extra information for the AST part
         , _element    :: elem dom stage -- ^ The original AST part
         }
-        
+
 makeReferences ''Ann
 
 -- | A list of AST elements
-data AnnListG elem dom stage = AnnListG { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage) 
+data AnnListG elem dom stage = AnnListG { _annListAnnot :: NodeInfo (SemanticInfo dom (AnnListG elem)) (ListInfo stage)
                                         , _annListElems :: [Ann elem dom stage]
                                         }
 
 makeReferences ''AnnListG
-        
-annList :: Traversal (AnnListG e d s) (AnnListG e d s) (Ann e d s) (Ann e d s)                          
+
+annList :: Traversal (AnnListG e d s) (AnnListG e d s) (Ann e d s) (Ann e d s)
 annList = annListElems & traversal
 
 -- | An optional AST element
 data AnnMaybeG elem dom stage = AnnMaybeG { _annMaybeAnnot :: NodeInfo (SemanticInfo dom (AnnMaybeG elem)) (OptionalInfo stage)
                                           , _annMaybe :: Maybe (Ann elem dom stage)
                                           }
-                             
+
 makeReferences ''AnnMaybeG
 
 class HasSourceInfo e where
@@ -304,8 +304,8 @@ instance HasSourceInfo (AnnListG elem dom stage) where
 instance HasSourceInfo (AnnMaybeG elem dom stage) where
   type SourceInfoType (AnnMaybeG elem dom stage) = OptionalInfo stage
   srcInfo = annMaybeAnnot & sourceInfo
-                          
-annJust :: Partial (AnnMaybeG e d s) (AnnMaybeG e d s) (Ann e d s) (Ann e d s)                          
+
+annJust :: Partial (AnnMaybeG e d s) (AnnMaybeG e d s) (Ann e d s) (Ann e d s)
 annJust = annMaybe & just
 
 -- | An empty list of AST elements
@@ -366,7 +366,7 @@ instance SourceInfo stage => HasRange (AnnMaybeG elem dom stage) where
   setRange sp = annMaybeAnnot & sourceInfo .- setRange sp
 
 -- | A class for changing semantic information throught the AST.
-class ApplySemaChange cls where 
+class ApplySemaChange cls where
   appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
 
 instance ApplySemaChange SameInfoNameCls where appSemaChange = trfSemaNameCls
@@ -377,7 +377,7 @@ instance ApplySemaChange SameInfoWildcardCls where appSemaChange = trfSemaWildca
 instance ApplySemaChange SameInfoDefaultCls where appSemaChange = trfSemaDefault
 
 -- | A class for traversing semantic information in an AST
-class ApplySemaChange (SemaInfoClassify a) 
+class ApplySemaChange (SemaInfoClassify a)
    => SemanticTraversal a where
   semaTraverse :: Monad f => SemaTrf f dom1 dom2 -> a dom1 st -> f (a dom2 st)
 
@@ -412,26 +412,25 @@ data SourceInfoTrf f st1 st2 = SourceInfoTrf { trfSpanInfo :: SpanInfo st1 -> f 
                                              }
 
 instance SourceInfoTraversal e => SourceInfoTraversal (Ann e) where
-  sourceInfoTraverse trf (Ann (NodeInfo sema src) e) 
+  sourceInfoTraverse trf (Ann (NodeInfo sema src) e)
     = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> sourceInfoTraverse trf e
-  sourceInfoTraverseDown trf desc asc (Ann (NodeInfo sema src) e) 
+  sourceInfoTraverseDown trf desc asc (Ann (NodeInfo sema src) e)
     = Ann <$> (NodeInfo sema <$> trfSpanInfo trf src) <*> (desc *> sourceInfoTraverseDown trf desc asc e <* asc)
-  sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e) 
+  sourceInfoTraverseUp trf desc asc (Ann (NodeInfo sema src) e)
     = flip Ann <$> (desc *> sourceInfoTraverseUp trf desc asc e <* asc) <*> (NodeInfo sema <$> trfSpanInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnListG e) where
-  sourceInfoTraverse trf (AnnListG (NodeInfo sema src) e) 
+  sourceInfoTraverse trf (AnnListG (NodeInfo sema src) e)
     = AnnListG <$> (NodeInfo sema <$> trfListInfo trf src) <*> mapM (sourceInfoTraverse trf) e
-  sourceInfoTraverseDown trf desc asc (AnnListG (NodeInfo sema src) e) 
+  sourceInfoTraverseDown trf desc asc (AnnListG (NodeInfo sema src) e)
     = AnnListG <$> (NodeInfo sema <$> trfListInfo trf src) <*> (desc *> mapM (sourceInfoTraverseDown trf desc asc) e <* asc)
-  sourceInfoTraverseUp trf desc asc (AnnListG (NodeInfo sema src) e) 
+  sourceInfoTraverseUp trf desc asc (AnnListG (NodeInfo sema src) e)
     = flip AnnListG <$> (desc *> mapM (sourceInfoTraverseUp trf desc asc) e <* asc) <*> (NodeInfo sema <$> trfListInfo trf src)
 
 instance SourceInfoTraversal e => SourceInfoTraversal (AnnMaybeG e) where
-  sourceInfoTraverse trf (AnnMaybeG (NodeInfo sema src) e) 
+  sourceInfoTraverse trf (AnnMaybeG (NodeInfo sema src) e)
     = AnnMaybeG <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> sequence (fmap (sourceInfoTraverse trf) e)
-  sourceInfoTraverseDown trf desc asc (AnnMaybeG (NodeInfo sema src) e) 
+  sourceInfoTraverseDown trf desc asc (AnnMaybeG (NodeInfo sema src) e)
     = AnnMaybeG <$> (NodeInfo sema <$> trfOptionalInfo trf src) <*> (desc *> sequence (fmap (sourceInfoTraverseDown trf desc asc) e) <* asc)
-  sourceInfoTraverseUp trf desc asc (AnnMaybeG (NodeInfo sema src) e) 
+  sourceInfoTraverseUp trf desc asc (AnnMaybeG (NodeInfo sema src) e)
     = flip AnnMaybeG <$> (desc *> sequence (fmap (sourceInfoTraverseUp trf desc asc) e) <* asc) <*> (NodeInfo sema <$> trfOptionalInfo trf src)
-

@@ -1,5 +1,9 @@
-{-# LANGUAGE GADTs, KindSignatures #-}
+{-# LANGUAGE GADTs, KindSignatures, DeriveDataTypeable #-}
 module Decl.GADT where
 
-data G2 a :: * where
-  G2A :: { g2a :: a, g2b :: Int } -> G2 a
+import Data.Typeable
+
+data DMap k f where
+    Tip :: DMap k f
+    Bin :: !Int -> !(k v) -> f v -> !(DMap k f) -> !(DMap k f) -> DMap k f
+    deriving Typeable

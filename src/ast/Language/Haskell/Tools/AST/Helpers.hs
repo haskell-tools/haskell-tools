@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleContexts 
-           , LambdaCase 
-           , RankNTypes 
+{-# LANGUAGE FlexibleContexts
+           , LambdaCase
+           , RankNTypes
            , ScopedTypeVariables
            , TypeFamilies
            , FlexibleInstances
@@ -29,14 +29,18 @@ import Language.Haskell.Tools.AST.Representation.Names (UQualifiedName)
 import Language.Haskell.Tools.AST.Representation.Patterns (UPattern)
 import Language.Haskell.Tools.AST.Representation.Types (UType(..))
 import Language.Haskell.Tools.AST.SemaInfoTypes (Scope)
- 
+
 -- | Does the import declaration import only the explicitly listed elements?
 importIsExact :: Ann UImportDecl dom stage -> Bool
-importIsExact = isJust . (^? importSpec&annJust&importSpecList)  
+importIsExact = isJust . (^? importSpec&annJust&importSpecList)
+
+-- | Does the import declaration import all elements that are not excluded explicitly?
+importIsHiding :: Ann UImportDecl dom stage -> Bool
+importIsHiding = isJust . (^? importSpec&annJust&importSpecHiding)
 
 -- | Accesses the name of a function or value binding
 bindingName :: Simple Traversal (Ann UValueBind dom stage) (Ann UQualifiedName dom stage)
-bindingName = (valBindPat&patternName&simpleName 
+bindingName = (valBindPat&patternName&simpleName
                         &+& funBindMatches&annList&matchLhs
                               &(matchLhsName&simpleName &+& matchLhsOperator&operatorName))
 
@@ -62,9 +66,9 @@ semantics :: Simple Lens (Ann elem dom stage) (SemanticInfo dom elem)
 semantics = annotation&semanticInfo
 
 -- | Get all nodes that contain a given source range
-nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) 
+nodesContaining :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage))
                 => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
-nodesContaining rng = biplateRef & filtered (isInside rng) 
+nodesContaining rng = biplateRef & filtered (isInside rng)
 
 -- | Return true if the node contains a given range
 isInside :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
@@ -72,26 +76,26 @@ isInside rng nd = case getRange nd of RealSrcSpan sp -> sp `containsSpan` rng
                                       _              -> False
 
 -- | Get all nodes that are contained in a given source range
-nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage)) 
+nodesContained :: (HasRange (inner dom stage), Biplate (node dom stage) (inner dom stage))
                     => RealSrcSpan -> Simple Traversal (node dom stage) (inner dom stage)
-nodesContained rng = biplateRef & filtered (isContained rng) 
+nodesContained rng = biplateRef & filtered (isContained rng)
 
 -- | Return true if the node contains a given range
 isContained :: HasRange (inner dom stage) => RealSrcSpan -> inner dom stage -> Bool
 isContained rng nd = case getRange nd of RealSrcSpan sp -> rng `containsSpan` sp
                                          _              -> False
 
--- | Get the nodes that have exactly the given range 
-nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage) 
+-- | Get the nodes that have exactly the given range
+nodesWithRange :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage)
                => RealSrcSpan -> Simple Traversal (Ann node dom stage) (Ann inner dom stage)
-nodesWithRange rng = biplateRef & filtered (hasRange rng) 
-  where -- True, if the node has the given range                     
+nodesWithRange rng = biplateRef & filtered (hasRange rng)
+  where -- True, if the node has the given range
         hasRange :: SourceInfo stage => RealSrcSpan -> Ann inner dom stage -> Bool
         hasRange rng node = case getRange node of RealSrcSpan sp -> sp == rng
                                                   _              -> False
 
--- | Get the shortest source range that contains the given 
-getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage)) 
+-- | Get the shortest source range that contains the given
+getNodeContaining :: (Biplate (Ann node dom stage) (Ann inner dom stage), SourceInfo stage, HasRange (Ann inner dom stage))
                   => RealSrcSpan -> Ann node dom stage -> Maybe (Ann inner dom stage)
 getNodeContaining sp node = case node ^? nodesContaining sp of
   [] -> Nothing
@@ -110,22 +114,22 @@ class NamedElement elem where
   elementName :: Simple Traversal (Ann elem dom st) (Ann UQualifiedName dom st)
 
 instance NamedElement UDecl where
-  elementName = (declHead & declHeadNames) 
+  elementName = (declHead & declHeadNames)
                   &+& (declTypeFamily & tfHead & declHeadNames)
                   &+& (declValBind & bindingName)
                   &+& (declName & simpleName)
                   &+& (declPatSyn & patLhs & (patName & simpleName &+& patSynOp & operatorName))
 
 instance NamedElement ULocalBind where
-  elementName = localVal&bindingName 
-                  &+& localSig&tsName&annList&simpleName 
+  elementName = localVal&bindingName
+                  &+& localSig&tsName&annList&simpleName
                   &+& localFixity&fixityOperators&annList&operatorName
 
 inScope :: GHC.Name -> Scope -> Bool
 inScope n sc = any (n `elem`) sc
 
 -- * Pattern synonyms for annotated lists and maybes
-                        
+
 pattern AnnList :: [Ann elem dom stage] -> AnnListG elem dom stage
 pattern AnnList elems <- AnnListG _ elems
 

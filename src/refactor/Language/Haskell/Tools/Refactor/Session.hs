@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell 
+{-# LANGUAGE TemplateHaskell
            , TupleSections
            #-}
 -- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
@@ -46,17 +46,20 @@ instance IsRefactSessionState RefactorSessionState where
   initSession = RefactorSessionState []
 
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> [FilePath] -> StateT st Ghc (Either RefactorException ([a], [String]))
-loadPackagesFrom report packages =
+loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException ([a], [String]))
+loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
      allModColls <- gets (^. refSessMCs)
-     lift $ useDirs (modColls ^? traversal & mcSourceDirs & traversal)
+     st <- get
+     moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
+     lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
-     handleErrors $ withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+     handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
+       liftIO $ loadCallback modsForColls
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (not . (`elem` alreadyExistingMods) . modSumName) modsToParse
        void $ checkEvaluatedMods report modsToParse
@@ -64,7 +67,7 @@ loadPackagesFrom report packages =
        return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
-        extractDuplicates (a:rest) 
+        extractDuplicates (a:rest)
           = case extractDuplicates rest of (repl, orig) -> if a `elem` orig then (a:repl, orig) else (repl, a:orig)
         extractDuplicates [] = ([],[])
 
@@ -75,24 +78,24 @@ loadPackagesFrom report packages =
 
 -- | Handle GHC exceptions and RefactorException.
 handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
-handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action) 
+handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action)
                         `gcatch` (return . Left)
 
 keyFromMS :: ModSummary -> SourceFileKey
 keyFromMS ms = SourceFileKey (case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot) (modSumName ms)
 
-getMods :: (Monad m, IsRefactSessionState st) 
+getMods :: (Monad m, IsRefactSessionState st)
         => Maybe SourceFileKey -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
                                               , [(SourceFileKey, UnnamedModule IdDom)] )
-getMods actMod 
+getMods actMod
   = do mcs <- gets (^. refSessMCs)
        return $ ( (_2 !~ (^? typedRecModule)) =<< flip lookupModInSCs mcs =<< actMod
                 , filter ((actMod /=) . Just . fst) $ concatMap (catMaybes . map (_2 !~ (^? typedRecModule)) . Map.assocs . (^. mcModules)) mcs )
 
-getFileMods :: (GhcMonad m, IsRefactSessionState st) 
+getFileMods :: (GhcMonad m, IsRefactSessionState st)
         => FilePath -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
                                    , [(SourceFileKey, UnnamedModule IdDom)] )
-getFileMods fname 
+getFileMods fname
   = do mcs <- gets (^. refSessMCs)
        let mods = map (\(k,m) -> (fromJust $ m ^? modRecMS, k))
                       (concatMap Map.assocs $ (mcs ^? traversal & mcModules :: [Map.Map SourceFileKey ModuleRecord]))
@@ -101,17 +104,18 @@ getFileMods fname
                    [] -> getMods Nothing
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
-reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> (ModSummary -> Bool) -> StateT st Ghc (Either RefactorException [a])
-reloadChangedModules report isChanged = handleErrors $ do
-  reachable <- getReachableModules isChanged
+reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT st Ghc (Either RefactorException [a])
+reloadChangedModules report loadCallback isChanged = handleErrors $ do
+  reachable <- getReachableModules loadCallback isChanged
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
-getReachableModules :: IsRefactSessionState st => (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
-getReachableModules selected = do 
+getReachableModules :: IsRefactSessionState st => ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
+getReachableModules loadCallback selected = do
   allModColls <- gets (^. refSessMCs)
-  withAlteredDynFlags (return . enableAllPackages allModColls) $ do
+  withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
     allMods <- lift $ depanal [] True
+    liftIO $ loadCallback (filter selected allMods)
     let (allModsGraph, lookup) = moduleGraphNodes False allMods
         changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
                         $ filter selected allMods
@@ -121,19 +125,21 @@ getReachableModules selected = do
 
 -- | Reload a given module. Perform a callback.
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
-reloadModule report ms = do 
-  let modName = modSumName ms
+reloadModule report ms = do
   mcs <- gets (^. refSessMCs)
-  let mc = fromMaybe (error $ "reloadModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
+  let modName = modSumName ms
       codeGen = hasGeneratedCode (keyFromMS ms) mcs
-  let dfs = ms_hspp_opts ms 
-  dfs' <- liftIO $ compileInContext mc mcs dfs
-  let ms' = ms { ms_hspp_opts = dfs' }
-  newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $ 
-    parseTyped (if codeGen then forceCodeGen ms' else ms')
-  modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules 
-             .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
-  liftIO $ report ms
+  case lookupModuleColl modName mcs of
+    Just mc -> do
+      let dfs = ms_hspp_opts ms
+      dfs' <- liftIO $ compileInContext mc mcs dfs
+      let ms' = ms { ms_hspp_opts = dfs' }
+      newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
+        parseTyped (if codeGen then forceCodeGen ms' else ms')
+      modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules
+                 .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+      liftIO $ report ms
+    Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
 checkEvaluatedMods :: IsRefactSessionState st => (ModSummary -> IO a) -> [ModSummary] -> StateT st Ghc [a]
 checkEvaluatedMods report mods = do
@@ -141,11 +147,11 @@ checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
     res <- forM modsNeedCode $ \ms -> reloadIfNeeded ms mcs
     return $ catMaybes res
-  where reloadIfNeeded ms mcs 
+  where reloadIfNeeded ms mcs
           = let key = keyFromMS ms
               in if not (hasGeneratedCode key mcs)
                    then do modify $ refSessMCs .- codeGeneratedFor key
-                           if (isAlreadyLoaded key mcs) then 
+                           if (isAlreadyLoaded key mcs) then
                                -- The module is already loaded but code is not generated. Need to reload.
                                Just <$> lift (codeGenForModule report (codeGeneratedFor key mcs) ms)
                              else return Nothing
@@ -154,13 +160,13 @@ checkEvaluatedMods report mods = do
 -- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
 -- but code generation were not enabled by then.
 codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection] -> ModSummary -> Ghc a
-codeGenForModule report mcs ms 
+codeGenForModule report mcs ms
   = let modName = modSumName ms
         mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
      in -- TODO: don't recompile, only load?
         do withAlteredDynFlags (liftIO . compileInContext mc mcs)
              $ void $ parseTyped (forceCodeGen ms)
-           liftIO $ report ms 
+           liftIO $ report ms
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
 getEvaluatedMods :: [ModSummary] -> Ghc [GHC.ModSummary]

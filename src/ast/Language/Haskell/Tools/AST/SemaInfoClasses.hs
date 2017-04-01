@@ -33,7 +33,7 @@ instance HasNameInfo' CNameInfo where
   semanticsName = fmap idName . (^? cnameInfo)
 
 instance HasNameInfo dom => HasNameInfo' (Ann UQualifiedName dom st) where
-  semanticsName = semanticsName . (^. annotation&semanticInfo) 
+  semanticsName = semanticsName . (^. annotation&semanticInfo)
 
 -- * Information about typed names
 
@@ -47,7 +47,7 @@ instance HasIdInfo' CNameInfo where
   semanticsId = (^. cnameInfo)
 
 instance HasIdInfo dom => HasIdInfo' (Ann UQualifiedName dom st) where
-  semanticsId = semanticsId . (^. annotation&semanticInfo) 
+  semanticsId = semanticsId . (^. annotation&semanticInfo)
 
 -- * Fixity information
 
@@ -61,7 +61,7 @@ instance HasFixityInfo' CNameInfo where
   semanticsFixity = (^. cnameFixity)
 
 instance HasFixityInfo dom => HasFixityInfo' (Ann UQualifiedName dom st) where
-  semanticsFixity = semanticsFixity . (^. annotation&semanticInfo) 
+  semanticsFixity = semanticsFixity . (^. annotation&semanticInfo)
 
 -- * Scope information
 
@@ -81,10 +81,10 @@ instance HasScopeInfo' ScopeInfo where
   semanticsScope = (^. exprScopedLocals)
 
 instance HasScopeInfo dom => HasScopeInfo' (Ann UExpr dom st) where
-  semanticsScope = semanticsScope . (^. annotation&semanticInfo) 
+  semanticsScope = semanticsScope . (^. annotation&semanticInfo)
 
 instance HasScopeInfo dom => HasScopeInfo' (Ann UQualifiedName dom st) where
-  semanticsScope = semanticsScope . (^. annotation&semanticInfo) 
+  semanticsScope = semanticsScope . (^. annotation&semanticInfo)
 
 -- * Information about names being defined
 
@@ -101,7 +101,7 @@ instance HasDefiningInfo' CNameInfo where
   semanticsDefining = (^. cnameIsDefined)
 
 instance HasDefiningInfo dom => HasDefiningInfo' (Ann UQualifiedName dom st) where
-  semanticsDefining = semanticsDefining . (^. annotation&semanticInfo) 
+  semanticsDefining = semanticsDefining . (^. annotation&semanticInfo)
 
 -- * Information about source info in sema
 
@@ -117,6 +117,7 @@ type HasModuleInfo dom = (Domain dom, HasModuleInfo' (SemanticInfo dom AST.UModu
 
 class HasModuleInfo' si where
   semanticsModule :: si -> GHC.Module
+  semanticsDynFlags :: si -> GHC.DynFlags
   isBootModule :: si -> Bool
   semanticsImplicitImports :: si -> [GHC.Name]
   semanticsPrelOrphanInsts :: si -> [ClsInst]
@@ -124,6 +125,7 @@ class HasModuleInfo' si where
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
   semanticsModule = (^. defModuleName)
+  semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = (^. implicitNames)
   semanticsPrelOrphanInsts = (^. prelOrphanInsts)
@@ -131,22 +133,24 @@ instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
   semanticsModule = (^. defModuleName)
+  semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = map idName . (^. implicitNames)
   semanticsPrelOrphanInsts = (^. prelOrphanInsts)
   semanticsPrelFamInsts = (^. prelFamInsts)
 
 instance HasModuleInfo dom => HasModuleInfo' (Ann UModule dom st) where
-  semanticsModule = semanticsModule . (^. annotation&semanticInfo) 
-  isBootModule = isBootModule . (^. annotation&semanticInfo) 
-  semanticsImplicitImports = semanticsImplicitImports . (^. annotation&semanticInfo) 
-  semanticsPrelOrphanInsts = semanticsPrelOrphanInsts . (^. annotation&semanticInfo) 
-  semanticsPrelFamInsts = semanticsPrelFamInsts . (^. annotation&semanticInfo) 
+  semanticsModule = semanticsModule . (^. annotation&semanticInfo)
+  semanticsDynFlags = semanticsDynFlags . (^. annotation&semanticInfo)
+  isBootModule = isBootModule . (^. annotation&semanticInfo)
+  semanticsImplicitImports = semanticsImplicitImports . (^. annotation&semanticInfo)
+  semanticsPrelOrphanInsts = semanticsPrelOrphanInsts . (^. annotation&semanticInfo)
+  semanticsPrelFamInsts = semanticsPrelFamInsts . (^. annotation&semanticInfo)
 
 -- * Information about imports
 
 type HasImportInfo dom = (Domain dom, HasImportInfo' (SemanticInfo dom AST.UImportDecl))
-  
+
 class HasImportInfo' si where
   semanticsImportedModule :: si -> GHC.Module
   semanticsAvailable :: si -> [GHC.Name]
@@ -169,16 +173,16 @@ instance HasImportInfo' (AST.ImportInfo GHC.Id) where
   semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo dom => HasImportInfo' (Ann UImportDecl dom st) where
-  semanticsImportedModule = semanticsImportedModule . (^. annotation&semanticInfo) 
-  semanticsAvailable = semanticsAvailable . (^. annotation&semanticInfo) 
-  semanticsImported = semanticsImported . (^. annotation&semanticInfo) 
-  semanticsOrphanInsts = semanticsOrphanInsts . (^. annotation&semanticInfo) 
-  semanticsFamInsts = semanticsFamInsts . (^. annotation&semanticInfo) 
+  semanticsImportedModule = semanticsImportedModule . (^. annotation&semanticInfo)
+  semanticsAvailable = semanticsAvailable . (^. annotation&semanticInfo)
+  semanticsImported = semanticsImported . (^. annotation&semanticInfo)
+  semanticsOrphanInsts = semanticsOrphanInsts . (^. annotation&semanticInfo)
+  semanticsFamInsts = semanticsFamInsts . (^. annotation&semanticInfo)
 
--- * Information about implicitely bounded fields
+-- * Information about implicitly bounded fields
 
 type HasImplicitFieldsInfo dom = (Domain dom, HasImplicitFieldsInfo' (SemanticInfo dom AST.UFieldWildcard))
-  
+
 class HasImplicitFieldsInfo' si where
   semanticsImplicitFlds :: si -> [(GHC.Name, GHC.Name)]
 
@@ -186,7 +190,7 @@ instance HasImplicitFieldsInfo' ImplicitFieldInfo where
   semanticsImplicitFlds = (^. implicitFieldBindings)
 
 instance HasImplicitFieldsInfo dom => HasImplicitFieldsInfo' (Ann UFieldWildcard dom st) where
-  semanticsImplicitFlds = semanticsImplicitFlds . (^. annotation&semanticInfo) 
+  semanticsImplicitFlds = semanticsImplicitFlds . (^. annotation&semanticInfo)
 
 -- * AST elements with no information
 

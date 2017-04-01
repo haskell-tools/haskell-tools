@@ -3,13 +3,16 @@
            , LambdaCase
            , TemplateHaskell
            , FlexibleContexts
+           , TypeApplications
+           , RankNTypes
            #-}
 -- | Representation and operations for module collections (libraries, executables, ...) in the framework.
 module Language.Haskell.Tools.Refactor.GetModules where
 
+import Control.Monad
 import Control.Reference
 import Data.Function (on)
-import Data.List (intersperse, find, sortBy)
+import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 import Distribution.Compiler
@@ -21,11 +24,11 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
 import Distribution.System
 import Distribution.Verbosity (silent)
-import Language.Haskell.Extension
+import Language.Haskell.Extension as Cabal
 import System.Directory
 import System.FilePath.Posix
 
-import DynFlags (DynFlags, xopt_set, xopt_unset)
+import DynFlags
 import qualified DynFlags as GHC
 import GHC hiding (ModuleName)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
@@ -35,6 +38,8 @@ import RdrName as GHC (RdrName)
 import Language.Haskell.Tools.AST (Dom, IdDom)
 import Language.Haskell.Tools.Refactor.RefactorBase
 
+import Debug.Trace
+
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
 data ModuleCollection
   = ModuleCollection { _mcId :: ModuleCollectionId
@@ -42,6 +47,7 @@ data ModuleCollection
                      , _mcSourceDirs :: [FilePath]
                      , _mcModules :: Map.Map SourceFileKey ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
+                     , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
                      , _mcDependencies :: [ModuleCollectionId]
                      }
 
@@ -49,19 +55,22 @@ instance Eq ModuleCollection where
   (==) = (==) `on` _mcId
 
 instance Show ModuleCollection where
-  show (ModuleCollection id root srcDirs mods _ deps) 
+  show (ModuleCollection id root srcDirs mods _ _ deps)
     = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
 
+containingMC :: FilePath -> Simple Traversal [ModuleCollection] ModuleCollection
+containingMC fp = traversal & filtered (\mc -> _mcRoot mc `isPrefixOf` fp)
+
 -- | The state of a module.
-data ModuleRecord 
+data ModuleRecord
        = ModuleNotLoaded { _recModuleWillNeedCode :: Bool }
        | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
                       , _modRecMS :: ModSummary
                       }
        | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom Name)
-                       , _modRecMS :: ModSummary 
+                       , _modRecMS :: ModSummary
                        }
-       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom 
+       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom
                            , _modRecMS :: ModSummary
                            }
        | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom
@@ -108,11 +117,11 @@ removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
 removeModule moduleName = map (mcModules .- Map.filterWithKey (\k _ -> moduleName /= (k ^. sfkModuleName)))
 
 hasGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
-hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False) 
+hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False)
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 needsGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
-needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True) -> True; _ -> False) 
+needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True) -> True; _ -> False)
                            . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
@@ -121,7 +130,7 @@ codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mo
                                                            r -> r) key)
 
 isAlreadyLoaded :: SourceFileKey -> [ModuleCollection] -> Bool
-isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True) 
+isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True)
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 -- | Gets all ModuleCollections from a list of source directories. It also orders the source directories that are package roots so that
@@ -151,23 +160,23 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return return []]
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
 -- now recognizing only .hs files
 modulesFromDirectory root searchRoot = concat <$> (mapM goOn =<< listDirectory searchRoot)
-  where goOn fp = let path = searchRoot </> fp 
-                   in do isDir <- doesDirectoryExist path  
+  where goOn fp = let path = searchRoot </> fp
+                   in do isDir <- doesDirectoryExist path
                          if isDir
-                           then modulesFromDirectory root path 
-                           else if takeExtension path == ".hs" 
-                                  then return [concat $ intersperse "." $ splitDirectories $ dropExtension $ makeRelative root path] 
+                           then modulesFromDirectory root path
+                           else if takeExtension path == ".hs"
+                                  then return [concat $ intersperse "." $ splitDirectories $ dropExtension $ makeRelative root path]
                                   else return []
-                                  
+
 srcDirFromRoot :: FilePath -> String -> FilePath
-srcDirFromRoot fileName "" = fileName 
-srcDirFromRoot fileName moduleName 
+srcDirFromRoot fileName "" = fileName
+srcDirFromRoot fileName moduleName
   = srcDirFromRoot (takeDirectory fileName) (dropWhile (/= '.') $ dropWhile (== '.') moduleName)
 
 -- | Load the module using a cabal file. The modules described in the cabal file will be loaded.
@@ -175,29 +184,30 @@ srcDirFromRoot fileName moduleName
 modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
 modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescription silent (root </> cabal)
-  where getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg) 
-                           ++ catMaybes (map (toModuleCollection pkg) (executables pkg)) 
-                           ++ catMaybes (map (toModuleCollection pkg) (testSuites pkg)) 
+  where getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg)
+                           ++ catMaybes (map (toModuleCollection pkg) (executables pkg))
+                           ++ catMaybes (map (toModuleCollection pkg) (testSuites pkg))
                            ++ catMaybes (map (toModuleCollection pkg) (benchmarks pkg))
-           
+
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe ModuleCollection
-        toModuleCollection pkg tmc 
-          = let bi = getBuildInfo tmc 
+        toModuleCollection pkg tmc
+          = let bi = getBuildInfo tmc
              in if buildable bi
-                  then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc) 
+                  then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc)
                                 root
-                                (map (normalise . (root </>)) $ hsSourceDirs bi) 
-                                (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc)) 
+                                (map (normalise . (root </>)) $ hsSourceDirs bi)
+                                (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc))
                                 (flagsFromBuildInfo bi)
-                                (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi)) 
+                                (loadFlagsFromBuildInfo bi)
+                                (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
 
         moduleName = concat . intersperse "." . components
-        setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst 
-                       . finalizePackageDescription [] (const True) buildPlatform 
+        setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
+                       . finalizePackageDescription [] (const True) buildPlatform
                                                     (unknownCompilerInfo buildCompilerId NoAbiTag) []
 
-class ToModuleCollection t where 
+class ToModuleCollection t where
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
   getBuildInfo :: t -> BuildInfo
   getModuleNames :: t -> [ModuleName]
@@ -223,153 +233,249 @@ instance ToModuleCollection Benchmark where
   getBuildInfo = benchmarkBuildInfo
   getModuleNames = benchmarkModules
 
+isDirectoryMC :: ModuleCollection -> Bool
+isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False
 
 compileInContext :: ModuleCollection -> [ModuleCollection] -> DynFlags -> IO DynFlags
-compileInContext mc mcs dfs 
-  = (\dfs' -> applyDependencies mcs (mc ^. mcDependencies) dfs') 
+compileInContext mc mcs dfs
+  = (\dfs' -> applyDependencies mcs (mc ^. mcDependencies) (selectEnabled dfs'))
        <$> (mc ^. mcFlagSetup $ dfs)
+  where selectEnabled = if isDirectoryMC mc then id else onlyUseEnabled
 
 applyDependencies :: [ModuleCollection] -> [ModuleCollectionId] -> DynFlags -> DynFlags
-applyDependencies mcs ids dfs = dfs { GHC.packageFlags = catMaybes $ map (dependencyToPkgFlag mcs) ids }
+applyDependencies mcs ids dfs
+  = dfs { GHC.packageFlags = GHC.packageFlags dfs ++ (catMaybes $ map (dependencyToPkgFlag mcs) ids) }
+
+onlyUseEnabled :: DynFlags -> DynFlags
+onlyUseEnabled = GHC.setGeneralFlag' GHC.Opt_HideAllPackages
 
 dependencyToPkgFlag :: [ModuleCollection] -> ModuleCollectionId -> Maybe (GHC.PackageFlag)
-dependencyToPkgFlag mcs lib@(LibraryMC pkgName) 
-  = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs 
+dependencyToPkgFlag mcs lib@(LibraryMC pkgName)
+  = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs
       then Just $ GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
       else Nothing
 dependencyToPkgFlag _ _ = Nothing
 
-enableAllPackages :: [ModuleCollection] -> DynFlags -> DynFlags
-enableAllPackages mcs dfs = applyDependencies mcs allDeps dfs
+setupLoadFlags :: [ModuleCollection] -> DynFlags -> IO DynFlags
+setupLoadFlags mcs dfs = applyDependencies mcs allDeps . selectEnabled <$> useSavedFlags dfs
   where allDeps = mcs ^? traversal & mcDependencies & traversal
+        selectEnabled = if any (\(mc,rest) -> isDirectoryMC mc && isIndependentMc mc rest) (breaks mcs) then id else onlyUseEnabled
+        useSavedFlags = foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)
+        isIndependentMc mc rest = not $ any (`isPrefixOf` (mc ^. mcRoot)) (map (^. mcRoot) rest)
+
+breaks :: [a] -> [(a,[a])]
+breaks [] = []
+breaks (e:rest) = (e,rest) : map (\(x,ls) -> (x,e:ls)) (breaks rest)
+
+loadFlagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
+loadFlagsFromBuildInfo bi@BuildInfo{ cppOptions } df
+  = do (df',unused,warnings) <- parseDynamicFlags df (map (L noSrcSpan) $ cppOptions)
+       mapM_ putStrLn (map unLoc warnings ++ map (("Flag is not used: " ++) . unLoc) unused)
+       return (setupLoadExtensions df')
+  where setupLoadExtensions = foldl (.) id (map setExtensionFlag' $ catMaybes $ map translateExtension loadExtensions)
+        loadExtensions = [PatternSynonyms | patternSynonymsNeeded] ++ [ExplicitNamespaces | explicitNamespacesNeeded]
+                           ++ [PackageImports | packageImportsNeeded] ++ [CPP | cppNeeded] ++ [MagicHash | magicHashNeeded]
+        explicitNamespacesNeeded = not $ null $ map EnableExtension [ExplicitNamespaces, TypeFamilies, TypeOperators] `intersect` usedExtensions bi
+        patternSynonymsNeeded = EnableExtension PatternSynonyms `elem` usedExtensions bi
+        packageImportsNeeded = EnableExtension PackageImports `elem` usedExtensions bi
+        cppNeeded = EnableExtension CPP `elem` usedExtensions bi
+        magicHashNeeded = EnableExtension MagicHash `elem` usedExtensions bi
 
 flagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 -- the import pathes are already set globally
 flagsFromBuildInfo bi@BuildInfo{ options } df
-  = do (df,_,_) <- parseDynamicFlags df (map (L noSrcSpan) $ concatMap snd options)
-       return $ foldl (.) id (map (\case EnableExtension ext -> translateExtension ext
-                                         _                   -> id                               
-                                  ) (usedExtensions bi))
-                          $ df
-  where -- | Map the cabal extensions to the ones that GHC recognizes
-        translateExtension OverlappingInstances = flip xopt_set GHC.OverlappingInstances
-        translateExtension UndecidableInstances = flip xopt_set GHC.UndecidableInstances
-        translateExtension IncoherentInstances = flip xopt_set GHC.IncoherentInstances
-        translateExtension DoRec = flip xopt_set GHC.RecursiveDo
-        translateExtension RecursiveDo = flip xopt_set GHC.RecursiveDo
-        translateExtension ParallelListComp = flip xopt_set GHC.ParallelListComp
-        translateExtension MultiParamTypeClasses = flip xopt_set GHC.MultiParamTypeClasses
-        translateExtension MonomorphismRestriction = flip xopt_set GHC.MonomorphismRestriction
-        translateExtension FunctionalDependencies = flip xopt_set GHC.FunctionalDependencies
-        translateExtension RankNTypes = flip xopt_set GHC.RankNTypes
-        translateExtension ExistentialQuantification = flip xopt_set GHC.ExistentialQuantification
-        translateExtension ScopedTypeVariables = flip xopt_set GHC.ScopedTypeVariables
-        translateExtension PatternSignatures = flip xopt_set GHC.PatternSynonyms
-        translateExtension ImplicitParams = flip xopt_set GHC.ImplicitParams
-        translateExtension FlexibleContexts = flip xopt_set GHC.FlexibleContexts
-        translateExtension FlexibleInstances = flip xopt_set GHC.FlexibleInstances
-        translateExtension EmptyDataDecls = flip xopt_set GHC.EmptyDataDecls
-        translateExtension CPP = flip xopt_set GHC.Cpp
-        translateExtension KindSignatures = flip xopt_set GHC.KindSignatures
-        translateExtension BangPatterns = flip xopt_set GHC.BangPatterns
-        translateExtension TypeSynonymInstances = flip xopt_set GHC.TypeSynonymInstances
-        translateExtension TemplateHaskell = flip xopt_set GHC.TemplateHaskell
-        translateExtension ForeignFunctionInterface = flip xopt_set GHC.ForeignFunctionInterface
-        translateExtension Arrows = flip xopt_set GHC.Arrows
-        translateExtension ImplicitPrelude = flip xopt_set GHC.ImplicitPrelude
-        translateExtension NamedFieldPuns = flip xopt_set GHC.RecordPuns
-        translateExtension PatternGuards = flip xopt_set GHC.PatternGuards
-        translateExtension GeneralizedNewtypeDeriving = flip xopt_set GHC.GeneralizedNewtypeDeriving
-        translateExtension RestrictedTypeSynonyms = flip xopt_unset GHC.LiberalTypeSynonyms
-        translateExtension MagicHash = flip xopt_set GHC.MagicHash
-        translateExtension TypeFamilies = flip xopt_set GHC.TypeFamilies
-        translateExtension StandaloneDeriving = flip xopt_set GHC.StandaloneDeriving
-        translateExtension UnicodeSyntax = flip xopt_set GHC.UnicodeSyntax
-        translateExtension UnliftedFFITypes = flip xopt_set GHC.UnliftedFFITypes
-        translateExtension InterruptibleFFI = flip xopt_set GHC.InterruptibleFFI
-        translateExtension CApiFFI = flip xopt_set GHC.CApiFFI
-        translateExtension LiberalTypeSynonyms = flip xopt_set GHC.LiberalTypeSynonyms
-        translateExtension TypeOperators = flip xopt_set GHC.TypeOperators
-        translateExtension RecordWildCards = flip xopt_set GHC.RecordWildCards
-        translateExtension RecordPuns = flip xopt_set GHC.RecordPuns
-        translateExtension DisambiguateRecordFields = flip xopt_set GHC.DisambiguateRecordFields
-        translateExtension TraditionalRecordSyntax = flip xopt_set GHC.TraditionalRecordSyntax
-        translateExtension OverloadedStrings = flip xopt_set GHC.OverloadedStrings
-        translateExtension GADTs = flip xopt_set GHC.GADTs
-        translateExtension GADTSyntax = flip xopt_set GHC.GADTSyntax
-        translateExtension MonoPatBinds = flip xopt_set GHC.MonoPatBinds
-        translateExtension RelaxedPolyRec = flip xopt_set GHC.RelaxedPolyRec
-        translateExtension ExtendedDefaultRules = flip xopt_set GHC.ExtendedDefaultRules
-        translateExtension UnboxedTuples = flip xopt_set GHC.UnboxedTuples
-        translateExtension DeriveDataTypeable = flip xopt_set GHC.DeriveDataTypeable
-        translateExtension DeriveGeneric = flip xopt_set GHC.DeriveGeneric
-        translateExtension DefaultSignatures = flip xopt_set GHC.DefaultSignatures
-        translateExtension InstanceSigs = flip xopt_set GHC.InstanceSigs
-        translateExtension ConstrainedClassMethods = flip xopt_set GHC.ConstrainedClassMethods
-        translateExtension PackageImports = flip xopt_set GHC.PackageImports
-        translateExtension ImpredicativeTypes = flip xopt_set GHC.ImpredicativeTypes
-        translateExtension PostfixOperators = flip xopt_set GHC.PostfixOperators
-        translateExtension QuasiQuotes = flip xopt_set GHC.QuasiQuotes
-        translateExtension TransformListComp = flip xopt_set GHC.TransformListComp
-        translateExtension MonadComprehensions = flip xopt_set GHC.MonadComprehensions
-        translateExtension ViewPatterns = flip xopt_set GHC.ViewPatterns
-        translateExtension TupleSections = flip xopt_set GHC.TupleSections
-        translateExtension GHCForeignImportPrim = flip xopt_set GHC.GHCForeignImportPrim
-        translateExtension NPlusKPatterns = flip xopt_set GHC.NPlusKPatterns
-        translateExtension DoAndIfThenElse = flip xopt_set GHC.DoAndIfThenElse
-        translateExtension MultiWayIf = flip xopt_set GHC.MultiWayIf
-        translateExtension LambdaCase = flip xopt_set GHC.LambdaCase
-        translateExtension RebindableSyntax = flip xopt_set GHC.RebindableSyntax
-        translateExtension ExplicitForAll = flip xopt_set GHC.ExplicitForAll
-        translateExtension DatatypeContexts = flip xopt_set GHC.DatatypeContexts
-        translateExtension MonoLocalBinds = flip xopt_set GHC.MonoLocalBinds
-        translateExtension DeriveFunctor = flip xopt_set GHC.DeriveFunctor
-        translateExtension DeriveTraversable = flip xopt_set GHC.DeriveTraversable
-        translateExtension DeriveFoldable = flip xopt_set GHC.DeriveFoldable
-        translateExtension NondecreasingIndentation = flip xopt_set GHC.NondecreasingIndentation
-        translateExtension ConstraintKinds = flip xopt_set GHC.ConstraintKinds
-        translateExtension PolyKinds = flip xopt_set GHC.PolyKinds
-        translateExtension DataKinds = flip xopt_set GHC.DataKinds
-        translateExtension ParallelArrays = flip xopt_set GHC.ParallelArrays
-        translateExtension RoleAnnotations = flip xopt_set GHC.RoleAnnotations
-        translateExtension OverloadedLists = flip xopt_set GHC.OverloadedLists
-        translateExtension EmptyCase = flip xopt_set GHC.EmptyCase
-        translateExtension AutoDeriveTypeable = flip xopt_set GHC.AutoDeriveTypeable
-        translateExtension NegativeLiterals = flip xopt_set GHC.NegativeLiterals
-        translateExtension BinaryLiterals = flip xopt_set GHC.BinaryLiterals
-        translateExtension NumDecimals = flip xopt_set GHC.NumDecimals
-        translateExtension NullaryTypeClasses = flip xopt_set GHC.NullaryTypeClasses
-        translateExtension ExplicitNamespaces = flip xopt_set GHC.ExplicitNamespaces
-        translateExtension AllowAmbiguousTypes = flip xopt_set GHC.AllowAmbiguousTypes
-        translateExtension JavaScriptFFI = flip xopt_set GHC.JavaScriptFFI
-        translateExtension PatternSynonyms = flip xopt_set GHC.PatternSynonyms
-        translateExtension PartialTypeSignatures = flip xopt_set GHC.PartialTypeSignatures
-        translateExtension NamedWildCards = flip xopt_set GHC.NamedWildCards
-        translateExtension DeriveAnyClass = flip xopt_set GHC.DeriveAnyClass
-        translateExtension DeriveLift = flip xopt_set GHC.DeriveLift
-        translateExtension StaticPointers = flip xopt_set GHC.StaticPointers
-        translateExtension StrictData = flip xopt_set GHC.StrictData
-        translateExtension Strict = flip xopt_set GHC.Strict
-        translateExtension ApplicativeDo = flip xopt_set GHC.ApplicativeDo
-        translateExtension DuplicateRecordFields = flip xopt_set GHC.DuplicateRecordFields
-        translateExtension TypeApplications = flip xopt_set GHC.TypeApplications
-        translateExtension TypeInType = flip xopt_set GHC.TypeInType
-        translateExtension UndecidableSuperClasses = flip xopt_set GHC.UndecidableSuperClasses
-        translateExtension MonadFailDesugaring = flip xopt_set GHC.MonadFailDesugaring
-        translateExtension TemplateHaskellQuotes = flip xopt_set GHC.TemplateHaskellQuotes
-        translateExtension OverloadedLabels = flip xopt_set GHC.OverloadedLabels
+  = do (df',unused,warnings) <- parseDynamicFlags df (map (L noSrcSpan) $ concatMap snd options)
+       mapM_ putStrLn (map unLoc warnings ++ map (("Flag is not used: " ++) . unLoc) unused)
+       return $ (flip lang_set (toGhcLang =<< defaultLanguage bi))
+         $ foldl (.) id (map (\case EnableExtension ext -> setEnabled True ext
+                                    DisableExtension ext -> setEnabled False ext
+                        ) (usedExtensions bi))
+         $ foldr (.) id (map (setEnabled True) (languageDefault (defaultLanguage bi)))
+         $ df'
+  where toGhcLang Cabal.Haskell98 = Just GHC.Haskell98
+        toGhcLang Cabal.Haskell2010 = Just GHC.Haskell2010
+        toGhcLang _ = Nothing
 
-        translateExtension Safe = \df -> df { GHC.safeHaskell = GHC.Sf_Safe }
-        translateExtension SafeImports = \df -> df { GHC.safeHaskell = GHC.Sf_Safe }
-        translateExtension Trustworthy = \df -> df { GHC.safeHaskell = GHC.Sf_Trustworthy }
-        translateExtension Unsafe = \df -> df { GHC.safeHaskell = GHC.Sf_Unsafe }
+        -- We don't put the default settings (ImplicitPrelude, MonomorphismRestriction) here
+        -- because that overrides the opposite extensions (NoImplicitPrelude, NoMonomorphismRestriction)
+        -- enabled in modules.
+        languageDefault (Just Cabal.Haskell2010)
+          = [ DatatypeContexts, DoAndIfThenElse, EmptyDataDecls, ForeignFunctionInterface
+            , PatternGuards, RelaxedPolyRec, TraditionalRecordSyntax ]
+        -- Haskell 98 is the default
+        languageDefault _
+          = [ DatatypeContexts, NondecreasingIndentation, NPlusKPatterns, TraditionalRecordSyntax ]
 
-        -- Couldn't find the equivalent of these extensions
-        translateExtension Rank2Types = id
-        translateExtension PolymorphicComponents = id
-        translateExtension Generics = id
-        translateExtension ExtensibleRecords = id
-        translateExtension NewQualifiedOperators = id
-        translateExtension XmlSyntax = id
-        translateExtension HereDocuments = id
-        translateExtension RegularPatterns = id
+        setEnabled enable ext
+          = case translateExtension ext of
+              Just e -> (if enable then setExtensionFlag' else unSetExtensionFlag') e
+              Nothing -> id
+
+-- * Not imported from DynFlags.hs, so I copied it here
+setExtensionFlag', unSetExtensionFlag' :: GHC.Extension -> DynFlags -> DynFlags
+setExtensionFlag' f dflags = foldr ($) (xopt_set dflags f) deps
+  where
+    deps = [ if turn_on then setExtensionFlag'   d
+                        else unSetExtensionFlag' d
+           | (f', turn_on, d) <- impliedXFlags, f' == f ]
+unSetExtensionFlag' f dflags = xopt_unset dflags f
+
+turnOn = True
+turnOff = False
+
+impliedXFlags :: [(GHC.Extension, Bool, GHC.Extension)]
+impliedXFlags
+  = [ (GHC.RankNTypes,                turnOn, GHC.ExplicitForAll)
+    , (GHC.ScopedTypeVariables,       turnOn, GHC.ExplicitForAll)
+    , (GHC.LiberalTypeSynonyms,       turnOn, GHC.ExplicitForAll)
+    , (GHC.ExistentialQuantification, turnOn, GHC.ExplicitForAll)
+    , (GHC.FlexibleInstances,         turnOn, GHC.TypeSynonymInstances)
+    , (GHC.FunctionalDependencies,    turnOn, GHC.MultiParamTypeClasses)
+    , (GHC.MultiParamTypeClasses,     turnOn, GHC.ConstrainedClassMethods)
+    , (GHC.TypeFamilyDependencies,    turnOn, GHC.TypeFamilies)
+    , (GHC.RebindableSyntax, turnOff, GHC.ImplicitPrelude)
+    , (GHC.GADTs,            turnOn, GHC.GADTSyntax)
+    , (GHC.GADTs,            turnOn, GHC.MonoLocalBinds)
+    , (GHC.TypeFamilies,     turnOn, GHC.MonoLocalBinds)
+    , (GHC.TypeFamilies,     turnOn, GHC.KindSignatures)
+    , (GHC.PolyKinds,        turnOn, GHC.KindSignatures)
+    , (GHC.TypeInType,       turnOn, GHC.DataKinds)
+    , (GHC.TypeInType,       turnOn, GHC.PolyKinds)
+    , (GHC.TypeInType,       turnOn, GHC.KindSignatures)
+    , (GHC.AutoDeriveTypeable, turnOn, GHC.DeriveDataTypeable)
+    , (GHC.TypeFamilies,     turnOn, GHC.ExplicitNamespaces)
+    , (GHC.TypeOperators, turnOn, GHC.ExplicitNamespaces)
+    , (GHC.ImpredicativeTypes,  turnOn, GHC.RankNTypes)
+    , (GHC.RecordWildCards,     turnOn, GHC.DisambiguateRecordFields)
+    , (GHC.ParallelArrays, turnOn, GHC.ParallelListComp)
+    , (GHC.JavaScriptFFI, turnOn, GHC.InterruptibleFFI)
+    , (GHC.DeriveTraversable, turnOn, GHC.DeriveFunctor)
+    , (GHC.DeriveTraversable, turnOn, GHC.DeriveFoldable)
+    , (GHC.DuplicateRecordFields, turnOn, GHC.DisambiguateRecordFields)
+    , (GHC.TemplateHaskell, turnOn, GHC.TemplateHaskellQuotes)
+    , (GHC.Strict, turnOn, GHC.StrictData)
+  ]
+
+-- * Mapping of Cabal haskell extensions to their GHC counterpart
+
+-- | Map the cabal extensions to the ones that GHC recognizes
+translateExtension AllowAmbiguousTypes = Just GHC.AllowAmbiguousTypes
+translateExtension ApplicativeDo = Just GHC.ApplicativeDo
+translateExtension Arrows = Just GHC.Arrows
+translateExtension AutoDeriveTypeable = Just GHC.AutoDeriveTypeable
+translateExtension BangPatterns = Just GHC.BangPatterns
+translateExtension BinaryLiterals = Just GHC.BinaryLiterals
+translateExtension CApiFFI = Just GHC.CApiFFI
+translateExtension ConstrainedClassMethods = Just GHC.ConstrainedClassMethods
+translateExtension ConstraintKinds = Just GHC.ConstraintKinds
+translateExtension CPP = Just GHC.Cpp
+translateExtension DataKinds = Just GHC.DataKinds
+translateExtension DatatypeContexts = Just GHC.DatatypeContexts
+translateExtension DefaultSignatures = Just GHC.DefaultSignatures
+translateExtension DeriveAnyClass = Just GHC.DeriveAnyClass
+translateExtension DeriveDataTypeable = Just GHC.DeriveDataTypeable
+translateExtension DeriveFoldable = Just GHC.DeriveFoldable
+translateExtension DeriveFunctor = Just GHC.DeriveFunctor
+translateExtension DeriveGeneric = Just GHC.DeriveGeneric
+translateExtension DeriveLift = Just GHC.DeriveLift
+translateExtension DeriveTraversable = Just GHC.DeriveTraversable
+translateExtension DisambiguateRecordFields = Just GHC.DisambiguateRecordFields
+translateExtension DoAndIfThenElse = Just GHC.DoAndIfThenElse
+translateExtension DoRec = Just GHC.RecursiveDo
+translateExtension DuplicateRecordFields = Just GHC.DuplicateRecordFields
+translateExtension EmptyCase = Just GHC.EmptyCase
+translateExtension EmptyDataDecls = Just GHC.EmptyDataDecls
+translateExtension ExistentialQuantification = Just GHC.ExistentialQuantification
+translateExtension ExplicitForAll = Just GHC.ExplicitForAll
+translateExtension ExplicitNamespaces = Just GHC.ExplicitNamespaces
+translateExtension ExtendedDefaultRules = Just GHC.ExtendedDefaultRules
+translateExtension FlexibleContexts = Just GHC.FlexibleContexts
+translateExtension FlexibleInstances = Just GHC.FlexibleInstances
+translateExtension ForeignFunctionInterface = Just GHC.ForeignFunctionInterface
+translateExtension FunctionalDependencies = Just GHC.FunctionalDependencies
+translateExtension GADTs = Just GHC.GADTs
+translateExtension GADTSyntax = Just GHC.GADTSyntax
+translateExtension GeneralizedNewtypeDeriving = Just GHC.GeneralizedNewtypeDeriving
+translateExtension GHCForeignImportPrim = Just GHC.GHCForeignImportPrim
+translateExtension ImplicitParams = Just GHC.ImplicitParams
+translateExtension ImplicitPrelude = Just GHC.ImplicitPrelude
+translateExtension ImpredicativeTypes = Just GHC.ImpredicativeTypes
+translateExtension IncoherentInstances = Just GHC.IncoherentInstances
+translateExtension InstanceSigs = Just GHC.InstanceSigs
+translateExtension InterruptibleFFI = Just GHC.InterruptibleFFI
+translateExtension JavaScriptFFI = Just GHC.JavaScriptFFI
+translateExtension KindSignatures = Just GHC.KindSignatures
+translateExtension LambdaCase = Just GHC.LambdaCase
+translateExtension LiberalTypeSynonyms = Just GHC.LiberalTypeSynonyms
+translateExtension MagicHash = Just GHC.MagicHash
+translateExtension MonadComprehensions = Just GHC.MonadComprehensions
+translateExtension MonadFailDesugaring = Just GHC.MonadFailDesugaring
+translateExtension MonoLocalBinds = Just GHC.MonoLocalBinds
+translateExtension MonomorphismRestriction = Just GHC.MonomorphismRestriction
+translateExtension MonoPatBinds = Just GHC.MonoPatBinds
+translateExtension MultiParamTypeClasses = Just GHC.MultiParamTypeClasses
+translateExtension MultiWayIf = Just GHC.MultiWayIf
+translateExtension NamedFieldPuns = Just GHC.RecordPuns
+translateExtension NamedWildCards = Just GHC.NamedWildCards
+translateExtension NegativeLiterals = Just GHC.NegativeLiterals
+translateExtension NondecreasingIndentation = Just GHC.NondecreasingIndentation
+translateExtension NPlusKPatterns = Just GHC.NPlusKPatterns
+translateExtension NullaryTypeClasses = Just GHC.NullaryTypeClasses
+translateExtension NumDecimals = Just GHC.NumDecimals
+translateExtension OverlappingInstances = Just GHC.OverlappingInstances
+translateExtension OverloadedLabels = Just GHC.OverloadedLabels
+translateExtension OverloadedLists = Just GHC.OverloadedLists
+translateExtension OverloadedStrings = Just GHC.OverloadedStrings
+translateExtension PackageImports = Just GHC.PackageImports
+translateExtension ParallelArrays = Just GHC.ParallelArrays
+translateExtension ParallelListComp = Just GHC.ParallelListComp
+translateExtension PartialTypeSignatures = Just GHC.PartialTypeSignatures
+translateExtension PatternGuards = Just GHC.PatternGuards
+translateExtension PatternSignatures = Just GHC.PatternSynonyms
+translateExtension PatternSynonyms = Just GHC.PatternSynonyms
+translateExtension PolyKinds = Just GHC.PolyKinds
+translateExtension PostfixOperators = Just GHC.PostfixOperators
+translateExtension QuasiQuotes = Just GHC.QuasiQuotes
+translateExtension RankNTypes = Just GHC.RankNTypes
+translateExtension RebindableSyntax = Just GHC.RebindableSyntax
+translateExtension RecordPuns = Just GHC.RecordPuns
+translateExtension RecordWildCards = Just GHC.RecordWildCards
+translateExtension RecursiveDo = Just GHC.RecursiveDo
+translateExtension RelaxedPolyRec = Just GHC.RelaxedPolyRec
+translateExtension RestrictedTypeSynonyms = Nothing -- flip xopt_unset GHC.LiberalTypeSynonyms
+translateExtension RoleAnnotations = Just GHC.RoleAnnotations
+translateExtension ScopedTypeVariables = Just GHC.ScopedTypeVariables
+translateExtension StandaloneDeriving = Just GHC.StandaloneDeriving
+translateExtension StaticPointers = Just GHC.StaticPointers
+translateExtension Strict = Just GHC.Strict
+translateExtension StrictData = Just GHC.StrictData
+translateExtension TemplateHaskell = Just GHC.TemplateHaskell
+translateExtension TemplateHaskellQuotes = Just GHC.TemplateHaskellQuotes
+translateExtension TraditionalRecordSyntax = Just GHC.TraditionalRecordSyntax
+translateExtension TransformListComp = Just GHC.TransformListComp
+translateExtension TupleSections = Just GHC.TupleSections
+translateExtension TypeApplications = Just GHC.TypeApplications
+translateExtension TypeFamilies = Just GHC.TypeFamilies
+translateExtension TypeInType = Just GHC.TypeInType
+translateExtension TypeOperators = Just GHC.TypeOperators
+translateExtension TypeSynonymInstances = Just GHC.TypeSynonymInstances
+translateExtension UnboxedTuples = Just GHC.UnboxedTuples
+translateExtension UndecidableInstances = Just GHC.UndecidableInstances
+translateExtension UndecidableSuperClasses = Just GHC.UndecidableSuperClasses
+translateExtension UnicodeSyntax = Just GHC.UnicodeSyntax
+translateExtension UnliftedFFITypes = Just GHC.UnliftedFFITypes
+translateExtension ViewPatterns = Just GHC.ViewPatterns
+
+translateExtension Safe = Nothing -- \df -> df { GHC.safeHaskell = GHC.Sf_Safe }
+translateExtension SafeImports = Nothing -- \df -> df { GHC.safeHaskell = GHC.Sf_Safe }
+translateExtension Trustworthy = Nothing -- \df -> df { GHC.safeHaskell = GHC.Sf_Trustworthy }
+translateExtension Unsafe = Nothing -- \df -> df { GHC.safeHaskell = GHC.Sf_Unsafe }
+
+translateExtension Rank2Types = Just GHC.RankNTypes
+translateExtension PolymorphicComponents = Just GHC.RankNTypes
+translateExtension Generics = Nothing -- it does nothing, deprecated extension
+translateExtension NewQualifiedOperators = Nothing -- it does nothing, deprecated extension
+translateExtension ExtensibleRecords = Nothing -- not in GHC
+translateExtension XmlSyntax = Nothing -- not in GHC
+translateExtension HereDocuments = Nothing -- not in GHC
+translateExtension RegularPatterns = Nothing -- not in GHC

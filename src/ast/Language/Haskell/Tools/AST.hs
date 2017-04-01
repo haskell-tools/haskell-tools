@@ -1,7 +1,7 @@
 -- | A custom AST representation for Haskell tools.
 -- Different layers of the AST are recursive, to separate them into modules
 -- we introduced source imports.
-module Language.Haskell.Tools.AST 
+module Language.Haskell.Tools.AST
   ( module Language.Haskell.Tools.AST.References
   , module Language.Haskell.Tools.AST.Helpers
   , module Language.Haskell.Tools.AST.Representation.Modules
@@ -16,7 +16,6 @@ module Language.Haskell.Tools.AST
   , module Language.Haskell.Tools.AST.Representation.Literals
   , module Language.Haskell.Tools.AST.Representation.Names
   , module Language.Haskell.Tools.AST.Ann
-  , module Language.Haskell.Tools.AST.Utils.OrdSrcSpan
   , module Language.Haskell.Tools.AST.SemaInfoClasses
   ) where
 
@@ -37,4 +36,3 @@ import Language.Haskell.Tools.AST.Representation.Stmts
 import Language.Haskell.Tools.AST.Representation.TH
 import Language.Haskell.Tools.AST.Representation.Types
 import Language.Haskell.Tools.AST.SemaInfoClasses
-import Language.Haskell.Tools.AST.Utils.OrdSrcSpan

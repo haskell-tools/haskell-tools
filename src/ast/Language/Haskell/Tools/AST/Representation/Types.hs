@@ -65,10 +65,8 @@ data UType dom stage
 
 -- One or more assertions
 data UContext dom stage
-  = UContextOne   { _contextAssertion :: Ann UAssertion dom stage
-                  } -- ^ One assertion (@ C a => ... @)
-  | UContextMulti { _contextAssertions :: AnnListG UAssertion dom stage
-                  } -- ^ A set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
+  = UContext { _contextAssertion :: Ann UAssertion dom stage
+             } -- ^ Assertions with the fat arrow (@ C a => ... @)
 
 -- | A single assertion in the context
 data UAssertion dom stage
@@ -82,5 +80,6 @@ data UAssertion dom stage
   | UImplicitAssert { _assertImplVar :: Ann UName dom stage
                     , _assertImplType :: Ann UType dom stage
                     } -- ^ Assertion for implicit parameter binding (@ ?cmp :: a -> a -> Bool @)
-                 
-                 
+  | UTupleAssert { _innerAsserts :: AnnListG UAssertion dom stage
+                 } -- ^ Multiple assertions in one (@ (Ord a, Show a) @)
+  | UWildcardAssert -- ^ Wildcard assertion (@ _ @), enabled by @PartialTypeSignatures@

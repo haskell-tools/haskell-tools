@@ -80,6 +80,7 @@ deriving instance Domain dom => Generic (UFieldUpdate dom stage)
 deriving instance Domain dom => Generic (UBracket dom stage)
 deriving instance Domain dom => Generic (UTopLevelPragma dom stage)
 deriving instance Domain dom => Generic (URule dom stage)
+deriving instance Domain dom => Generic (URuleVar dom stage)
 deriving instance Domain dom => Generic (UAnnotationSubject dom stage)
 deriving instance Domain dom => Generic (UMinimalFormula dom stage)
 deriving instance Domain dom => Generic (UExprPragma dom stage)
@@ -108,6 +109,7 @@ deriving instance Domain dom => Generic (UCmd dom stage)
 deriving instance Domain dom => Generic (ULanguageExtension dom stage)
 deriving instance Domain dom => Generic (UMatchLhs dom stage)
 deriving instance Domain dom => Generic (UInlinePragma dom stage)
+deriving instance Domain dom => Generic (USpecializePragma dom stage)
 
 
 -- Literal

@@ -1,5 +1,5 @@
-$(function () { 
-    
+$(function () {
+
     // create the editor in a global scope
     editor = ace.edit("editor");
 
@@ -57,7 +57,7 @@ $(function () {
         }
     });
 
-    // load a feature or refactor demo into the editor 
+    // load a feature or refactor demo into the editor
     $('.featurebutton, #demoanimation').click(function(event) {
         var demoname = $(event.target).attr("data-demoname");
         $.get('res/' + demoname.replace('.','/') + '.hs', function(data) {
@@ -90,18 +90,18 @@ $(function () {
                 moduleNameDialog.dialog( "close" );
             }
         }
-    }); 
+    });
 
     // create a new tab on click
     $('#editortabs').click(function(event) {
         if (event.target == $('#editortabs')[0]) {
             moduleNameDialog.dialog('open');
         }
-    })  
+    })
 
     // create a new tab for the given module
     createTab = function(name, focus) {
-        $('#editortabs').append( $("<li><a href='#tab-" + name + "'>" + name + "</a><span class='ui-icon ui-icon-circle-close ui-closable-tab'></span></li>") );
+        $('#editortabs').append( $("<li id='tab-header-" + name + "'><a href='#tab-" + name + "'>" + name + "</a><span class='ui-icon ui-icon-circle-close ui-closable-tab'></span></li>") );
         $('#tabpanels').append( $("<div id='tab-" + name + "'></div>") );
         $('#tabs').tabs('refresh');
         tabs.push(name);
@@ -111,6 +111,12 @@ $(function () {
     // bring the given module forward
     selectTab = function(name) {
         $('#tabs').tabs( "option", "active", tabs.indexOf(name) );
+    }
+
+    deleteTab = function(name) {
+        $('#editortabs #tab-header-' + name).remove();
+        $('#tabpanels #tab-' + name).remove();
+        $('#tabs').tabs('refresh');
     }
 
     // True, if the server is up-to-date with the current editor content

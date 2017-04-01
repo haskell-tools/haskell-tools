@@ -7,11 +7,11 @@
 
 Notifies the server that the client is still up and running. Currently it have no function other than checking that the server is alive. The server should respond with KeepAliveResponse.
 
-### AddPackages: `{"tag":"AddPackages","addedPathes":[<pathes>]}` 
+### AddPackages: `{"tag":"AddPackages","addedPathes":[<pathes>]}`
 
 Add the Haskell packages found at the given pathes to the refactoring session. Packages that are part of the refactoring session can be refactored and can be affected by global refactorings. The pathes can be absolute or relative pathes. If the packages are correct, there will be no response. If this command is sent with a package that is already loaded it will be re-loaded. This must be done, for example, when the .cabal file changes. Example: `{"tag":"AddPackages","addedPathes":["C:\\haskell\\project\\package1", "C:\\haskell\\project\\package2"]}`
 
-### RemovePackages: `{"tag":"RemovePackages","removedPathes":[<pathes>]}` 
+### RemovePackages: `{"tag":"RemovePackages","removedPathes":[<pathes>]}`
 
 Removes the selected packages from the refactoring session. The packages taken out of the refactoring session will not be modified when other packages are refactored. There is no response for that operation. Example: `{"tag":"RemovePackages","removedPathes":["C:\\haskell\\project\\package1"]}`
 
@@ -45,13 +45,24 @@ A message that tells the client of some error that happened. The client should d
 
 A message that is caused when the haskell source code sent by the client is not correct. The client should display these messages as markers.
 
-### ModulesChanged: `{"tag":"ModulesChanged","moduleChanges":[<changed-files>]}`
+### ModulesChanged: `{"tag":"ModulesChanged","undoChanges":[<undo-changes>]}`
 
 A message that tells the client the list of changed modules after a refactoring. The list contains absolute file pathes to the source files.
+
+Each undo change can be:
+  - `{ "tag": "RemoveAdded", "undoRemovePath": "<path>" }`
+  - `{ "tag": "RestoreRemoved", "undoRestorePath": "<path>", "undoRestoreContents": "<file contents>" }`
+  - `{ "tag": "UndoChanges", "undoChangedPath": "<path>", "undoDiff": [<changes>] }` each changes is in the form of `[<replace-start-pos>, <replace-end-pos>, <replace string>]`
+
+### LoadingModules: `{"tag":"LoadingModules","modulesToLoad":[<file-pathes>]}`
+
+The server notifies the client that the following modules will be re-loaded. The client could use this to show the user how many modules remain to be loaded. Each file in `modulesToLoad` will occur in one of the following `LoadedModules` messages.
 
 ### LoadedModules: `{"tag":"LoadedModules","loadedModules":[<changed-files>]}`
 
 The server notifies the client that the given modules had been re-parsed and can be refactored. The client cannot perform refactoring on a file until it has been re-loaded. Global refactorings can only be performed if all modules are loaded.
+
+Each changed file is in the format of `[<file-path>, <module-name>]`.
 
 ### Disconnected: `{"tag":"Disconnected","contents":[]}`
 

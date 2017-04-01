@@ -2,7 +2,7 @@
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkTyForall@ creates the annotated version of the @TyForall@ AST constructor.
 {-# LANGUAGE OverloadedStrings
-           , TypeFamilies 
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.AST.Gen.Types where
 
@@ -56,7 +56,7 @@ mkTypeApp ft at = mkAnn (child <> " " <> child) (UTyApp ft at)
 -- | Infix type constructor (@ (a <: b) @)
 mkInfixTypeApp :: Type dom -> Operator dom -> Type dom -> Type dom
 mkInfixTypeApp left op right = mkAnn (child <> " " <> child <> " " <> child) (UTyInfix left op right)
-             
+
 -- | Type surrounded by parentheses (@ (T a) @)
 mkParenType :: Type dom -> Type dom
 mkParenType = mkAnn ("(" <> child <> ")") . UTyParen
@@ -124,27 +124,23 @@ mkPromotedConType = mkAnn child . UTyPromoted . mkAnn child . UPromotedCon
 
 -- | A list of elements as a kind.
 mkPromotedListType :: [Type dom] -> Type dom
-mkPromotedListType 
+mkPromotedListType
   = mkAnn child . UTyPromoted . mkAnn ("[" <> child <> "]") . UPromotedList . mkAnnList (separatedBy ", " list)
 
 -- | A tuple of elements as a kind.
 mkPromotedTupleType :: [Type dom] -> Type dom
-mkPromotedTupleType 
+mkPromotedTupleType
   = mkAnn child . UTyPromoted . mkAnn ("(" <> child <> ")") . UPromotedTuple . mkAnnList (separatedBy ", " list)
 
--- | Kind of the unit value @()@. 
+-- | Kind of the unit value @()@.
 mkPromotedUnitType :: Type dom
 mkPromotedUnitType = mkAnn child $ UTyPromoted $ mkAnn "()" UPromotedUnit
 
 -- * Generation of contexts
 
--- | Creates a context of one assertion (@ C a => ... @)
-mkContextOne :: Assertion dom -> Context dom
-mkContextOne = mkAnn (child <> " =>") . UContextOne
-
--- | Creates a context of a set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
-mkContextMulti :: [Assertion dom] -> Context dom
-mkContextMulti = mkAnn ("(" <> child <> ") =>") . UContextMulti . mkAnnList (separatedBy ", " list)
+-- | Creates a context of assertions (@ C a => ... @)
+mkContext :: Assertion dom -> Context dom
+mkContext = mkAnn (child <> " =>") . UContext
 
 -- * Generation of assertions
 
@@ -161,3 +157,6 @@ mkInfixAssert left op right = mkAnn (child <> " " <> child <> " " <> child) $ UI
 mkImplicitAssert :: Name dom -> Type dom -> Assertion dom
 mkImplicitAssert n t = mkAnn (child <> " :: " <> child) $ UImplicitAssert n t
 
+-- | Creates a list of assertions (@ (Eq a, Show a) @)
+mkTupleAssertion :: [Assertion dom] -> Assertion dom
+mkTupleAssertion ass = mkAnn ("(" <> child <> ")") $ UTupleAssert $ mkAnnList (separatedBy ", " list) ass

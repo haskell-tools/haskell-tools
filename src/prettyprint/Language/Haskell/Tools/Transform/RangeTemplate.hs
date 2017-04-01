@@ -15,14 +15,14 @@ import SrcLoc
 
 instance SourceInfo RngTemplateStage where
   data SpanInfo RngTemplateStage = RangeTemplateNode { _rngTemplateNodeRange :: RealSrcSpan
-                                                     , _rngTemplateNodeElems :: [RangeTemplateElem] 
+                                                     , _rngTemplateNodeElems :: [RangeTemplateElem]
                                                      }
     deriving Data
   data ListInfo RngTemplateStage = RangeTemplateList { _rngTemplateListRange :: RealSrcSpan
                                                      , _rngTmpListBefore :: String -- ^ Text that should be put before the first element if the list becomes populated
                                                      , _rngTmpListAfter :: String -- ^ Text that should be put after the last element if the list becomes populated
                                                      , _rngTmpDefaultSeparator :: String -- ^ The default separator if the list were empty
-                                                     , _rngTmpIndented :: Bool -- ^ True, if the elements need to be aligned in the same column
+                                                     , _rngTmpIndented :: Maybe [Bool] -- ^ False for elements that should be not aligned
                                                      , _rngTmpSeparators :: [RealSrcSpan] -- ^ The actual separators that were found in the source code
                                                      }
     deriving Data
@@ -51,7 +51,7 @@ rngTmpListAfter = lens _rngTmpListAfter (\v s -> s { _rngTmpListAfter = v })
 rngTmpDefaultSeparator :: Simple Lens (ListInfo RngTemplateStage) String
 rngTmpDefaultSeparator = lens _rngTmpDefaultSeparator (\v s -> s { _rngTmpDefaultSeparator = v })
 
-rngTmpIndented :: Simple Lens (ListInfo RngTemplateStage) Bool
+rngTmpIndented :: Simple Lens (ListInfo RngTemplateStage) (Maybe [Bool])
 rngTmpIndented = lens _rngTmpIndented (\v s -> s { _rngTmpIndented = v })
 
 rngTmpSeparators :: Simple Lens (ListInfo RngTemplateStage) [RealSrcSpan]
@@ -75,19 +75,19 @@ getRangeElemSpan :: RangeTemplateElem -> Maybe RealSrcSpan
 getRangeElemSpan (RangeElem sp) = Just sp
 getRangeElemSpan _ = Nothing
 
-instance HasRange (SpanInfo RngTemplateStage) where 
+instance HasRange (SpanInfo RngTemplateStage) where
   getRange = RealSrcSpan . (^. rngTemplateNodeRange)
   setRange (RealSrcSpan sp) = rngTemplateNodeRange .= sp
   setRange _ = id
 
-instance HasRange (ListInfo RngTemplateStage) where 
-  getRange = RealSrcSpan . (^. rngTemplateListRange)    
-  setRange (RealSrcSpan sp) = rngTemplateListRange .= sp  
+instance HasRange (ListInfo RngTemplateStage) where
+  getRange = RealSrcSpan . (^. rngTemplateListRange)
+  setRange (RealSrcSpan sp) = rngTemplateListRange .= sp
   setRange _ = id
 
-instance HasRange (OptionalInfo RngTemplateStage) where 
+instance HasRange (OptionalInfo RngTemplateStage) where
   getRange = RealSrcSpan . (^. rngTemplateOptRange)
-  setRange (RealSrcSpan sp) = rngTemplateOptRange .= sp  
+  setRange (RealSrcSpan sp) = rngTemplateOptRange .= sp
   setRange _ = id
 
 instance Show (SpanInfo RngTemplateStage) where
@@ -96,7 +96,7 @@ instance Show (ListInfo RngTemplateStage) where
   show RangeTemplateList{..} = "<*" ++ shortShowSpan (RealSrcSpan _rngTemplateListRange) ++ " " ++ show _rngTmpListBefore ++ " " ++ show _rngTmpDefaultSeparator ++ " " ++ show _rngTmpListAfter ++ "*>"
 instance Show (OptionalInfo RngTemplateStage) where
   show RangeTemplateOpt{..} = "<?" ++ shortShowSpan (RealSrcSpan _rngTemplateOptRange) ++ " " ++ show _rngTmpOptBefore ++ " " ++ show _rngTmpOptAfter ++ "?>"
-                       
+
 instance Show RangeTemplateElem where
   show (RangeElem sp) = shortShowSpan (RealSrcSpan sp)
   show RangeChildElem = "<.>"

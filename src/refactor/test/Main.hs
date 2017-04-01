@@ -11,6 +11,7 @@ import GHC hiding (loadModule, ParsedModule)
 import DynFlags
 import GHC.Paths ( libdir )
 import Module as GHC
+import StringBuffer
 
 import Control.Reference
 import Control.Monad.IO.Class
@@ -49,16 +50,16 @@ main :: IO ()
 main = defaultMain nightlyTests
 
 nightlyTests :: TestTree
-nightlyTests 
-  = testGroup "all tests" [ testGroup "functional tests" functionalTests 
+nightlyTests
+  = testGroup "all tests" [ testGroup "functional tests" functionalTests
                           , testGroup "CppHs tests" $ map makeCpphsTest cppHsTests
                           , testGroup "instance-control tests" $ map makeInstanceControlTest instanceControlTests
                           ]
 
 functionalTests :: [TestTree]
-functionalTests 
+functionalTests
   = [ testGroup "reprint tests" (map makeReprintTest checkTestCases)
-    , testGroup "refactor tests" 
+    , testGroup "refactor tests"
         $ map makeOrganizeImportsTest organizeImportTests
             ++ map makeGenerateSignatureTest generateSignatureTests
             ++ map makeWrongGenerateSigTest wrongGenerateSigTests
@@ -75,9 +76,9 @@ functionalTests
             ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
             ++ map makeMiscRefactorTest miscRefactorTests
     ]
-  where checkTestCases = languageTests 
-                          ++ organizeImportTests 
-                          ++ map fst generateSignatureTests 
+  where checkTestCases = languageTests
+                          ++ organizeImportTests
+                          ++ map fst generateSignatureTests
                           ++ generateExportsTests
                           ++ map (\(mod,_,_) -> mod) renameDefinitionTests
                           ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
@@ -86,19 +87,27 @@ functionalTests
                           ++ map (\(mod,_) -> mod) inlineBindingTests
 
 rootDir = "examples"
-        
+
 languageTests =
-  [ "Decl.AmbiguousFields"
+  [ "CPP.JustEnabled"
+  , "CPP.ConditionalCode"
+  , "Decl.AmbiguousFields"
   , "Decl.AnnPragma"
+  , "Decl.ClassInfix"
   , "Decl.ClosedTypeFamily"
   , "Decl.CtorOp"
   , "Decl.DataFamily"
   , "Decl.DataType"
   , "Decl.DataTypeDerivings"
+  , "Decl.DefaultDecl"
   , "Decl.FunBind"
   , "Decl.FunctionalDeps"
   , "Decl.FunGuards"
   , "Decl.GADT"
+  , "Decl.GadtConWithCtx"
+  , "Decl.InfixAssertion"
+  , "Decl.InfixInstances"
+  , "Decl.InfixPatSyn"
   , "Decl.InjectiveTypeFamily"
   , "Decl.InlinePragma"
   , "Decl.InstanceOverlaps"
@@ -131,6 +140,7 @@ languageTests =
   , "Expr.DoNotation"
   , "Expr.GeneralizedListComp"
   , "Expr.EmptyCase"
+  , "Expr.FunSection"
   , "Expr.If"
   , "Expr.ImplicitParams"
   , "Expr.LambdaCase"
@@ -140,10 +150,12 @@ languageTests =
   , "Expr.Operator"
   , "Expr.ParenName"
   , "Expr.ParListComp"
+  , "Expr.PatternAndDo"
   , "Expr.RecordPuns"
   , "Expr.RecordWildcards"
   , "Expr.RecursiveDo"
   , "Expr.Sections"
+  , "Expr.SemicolonDo"
   , "Expr.StaticPtr"
   , "Expr.TupleSections"
   , "Module.Simple"
@@ -151,12 +163,16 @@ languageTests =
   , "Module.Export"
   , "Module.NamespaceExport"
   , "Module.Import"
+  , "Module.ImportOp"
+  , "Module.LangPragmas"
   , "Module.PatternImport"
   , "Pattern.Backtick"
   , "Pattern.Constructor"
   , "Pattern.ImplicitParams"
   , "Pattern.Infix"
+  , "Pattern.NestedWildcard"
   , "Pattern.NPlusK"
+  , "Pattern.OperatorPattern"
   , "Pattern.Record"
   , "Type.Bang"
   , "Type.Builtin"
@@ -164,6 +180,7 @@ languageTests =
   , "Type.ExplicitTypeApplication"
   , "Type.Forall"
   , "Type.Primitives"
+  , "Type.TupleAssert"
   , "Type.TypeOperators"
   , "Type.Unpack"
   , "Type.Wildcard"
@@ -172,13 +189,15 @@ languageTests =
   , "TH.QuasiQuote.Use"
   , "TH.Splice.Define"
   , "TH.Splice.Use"
+  , "TH.Splice.UseQual"
+  , "TH.Splice.UseQualMulti"
   , "Refactor.CommentHandling.CommentTypes"
   , "Refactor.CommentHandling.BlockComments"
   , "Refactor.CommentHandling.Crosslinking"
   , "Refactor.CommentHandling.FunctionArgs"
   ]
 
-cppHsTests = 
+cppHsTests =
   [ "Language.Preprocessor.Cpphs"
   , "Language.Preprocessor.Unlit"
   , "Language.Preprocessor.Cpphs.CppIfdef"
@@ -192,23 +211,27 @@ cppHsTests =
   , "Language.Preprocessor.Cpphs.Tokenise"
   ]
 
-instanceControlTests = 
+instanceControlTests =
   [ "Control.Instances.Test"
   , "Control.Instances.Morph"
   , "Control.Instances.ShortestPath"
   , "Control.Instances.TypeLevelPrelude"
   ]
-        
-organizeImportTests = 
+
+organizeImportTests =
   [ "Refactor.OrganizeImports.Narrow"
   , "Refactor.OrganizeImports.Reorder"
   , "Refactor.OrganizeImports.Ctor"
   , "Refactor.OrganizeImports.Class"
+  , "Refactor.OrganizeImports.Fields"
   , "Refactor.OrganizeImports.Operator"
   , "Refactor.OrganizeImports.SameName"
   , "Refactor.OrganizeImports.Removed"
   , "Refactor.OrganizeImports.ReorderGroups"
   , "Refactor.OrganizeImports.ReorderComment"
+  , "Refactor.OrganizeImports.KeepCtorOfMarshalled"
+  , "Refactor.OrganizeImports.KeepHiding"
+  , "Refactor.OrganizeImports.KeepPrelude"
   , "Refactor.OrganizeImports.KeepReexported"
   , "Refactor.OrganizeImports.KeepRenamedReexported"
   , "Refactor.OrganizeImports.MakeExplicit.ImportOne"
@@ -221,6 +244,7 @@ organizeImportTests =
   , "Refactor.OrganizeImports.MakeExplicit.ImportFour"
   , "Refactor.OrganizeImports.MakeExplicit.ImportFunHiddenClass"
   , "Refactor.OrganizeImports.MakeExplicit.ImportFunOutOfClass"
+  , "Refactor.OrganizeImports.MakeExplicit.Renamed"
   , "Refactor.OrganizeImports.InstanceCarry.ImportOrphan"
   , "Refactor.OrganizeImports.InstanceCarry.ImportNonOrphan"
   , "Refactor.OrganizeImports.NarrowQual"
@@ -228,9 +252,10 @@ organizeImportTests =
   , "Refactor.OrganizeImports.StandaloneDeriving"
   , "Refactor.OrganizeImports.TemplateHaskell"
   , "Refactor.OrganizeImports.NarrowType"
+  , "CPP.ConditionalImport"
   ]
-  
-generateSignatureTests = 
+
+generateSignatureTests =
   [ ("Refactor.GenerateTypeSignature.Simple", "3:1-3:10")
   , ("Refactor.GenerateTypeSignature.Function", "3:1-3:15")
   , ("Refactor.GenerateTypeSignature.HigherOrder", "3:1-3:14")
@@ -248,7 +273,7 @@ generateSignatureTests =
   , ("Refactor.GenerateTypeSignature.CanCaptureVariableHasOtherDef", "8:10-8:10")
   ]
 
-wrongGenerateSigTests = 
+wrongGenerateSigTests =
   [ ("Refactor.GenerateTypeSignature.CannotCaptureVariable", "7:10-7:10")
   , ("Refactor.GenerateTypeSignature.CannotCaptureVariableNoExt", "8:10-8:10")
   , ("Refactor.GenerateTypeSignature.ComplexLhs", "3:1")
@@ -257,7 +282,7 @@ wrongGenerateSigTests =
   , ("Refactor.GenerateTypeSignature.ComplexLhs", "6:1")
   ]
 
-generateExportsTests = 
+generateExportsTests =
   [ "Refactor.GenerateExports.Normal"
   , "Refactor.GenerateExports.Operators"
   ]
@@ -289,6 +314,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.RoleAnnotation", "4:11-4:12", "AA")
   , ("Refactor.RenameDefinition.TypeBracket", "6:6-6:7", "B")
   , ("Refactor.RenameDefinition.ValBracket", "8:11-8:12", "B")
+  , ("Refactor.RenameDefinition.FunnyDo", "3:1-3:2", "aaa")
   ]
 
 wrongRenameDefinitionTests =
@@ -327,11 +353,13 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.AssocOp", "3:9-3:14", "b")
   , ("Refactor.ExtractBinding.AssocOpRightAssoc", "3:5-3:12", "g")
   , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
+  , ("Refactor.ExtractBinding.SiblingDefs", "7:9-7:10", "a")
   ]
 
-wrongExtractBindingTests = 
+wrongExtractBindingTests =
   [ ("Refactor.ExtractBinding.TooSimple", "3:19-3:20", "x")
   , ("Refactor.ExtractBinding.NameConflict", "3:19-3:27", "stms")
+  , ("Refactor.ExtractBinding.ViewPattern", "4:4-4:11", "idid")
   ]
 
 inlineBindingTests =
@@ -354,7 +382,7 @@ inlineBindingTests =
   , ("Refactor.InlineBinding.LetGuard", "3:9-3:10")
   ]
 
-wrongInlineBindingTests = 
+wrongInlineBindingTests =
   [ ("Refactor.InlineBinding.Recursive", "4:1-4:2")
   , ("Refactor.InlineBinding.InExportList", "4:1-4:2")
   , ("Refactor.InlineBinding.NotOccurring", "3:1")
@@ -400,23 +428,23 @@ miscRefactorTests =
   , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
   ]
 
-makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()) 
+makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ())
                          -> (String, String, String, [String]) -> TestTree
 makeMultiModuleTest checker test@(refact, mod, root, removed)
-  = testCase (root ++ ":" ++ mod) 
+  = testCase (root ++ ":" ++ mod)
       $ do res <- performRefactors refact (rootDir </> root) [] mod
            checker test res
-           
+
 checkMultiResults :: (String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()
 checkMultiResults _ (Left err) = assertFailure $ "The transformation failed : " ++ err
-checkMultiResults test@(_,_,root,removed) (Right ((name, Just mod):rest)) = 
+checkMultiResults test@(_,_,root,removed) (Right ((name, Just mod):rest)) =
   do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
      assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
                                                                   (standardizeLineEndings mod)
      checkMultiResults test (Right rest)
 checkMultiResults (r,m,root,removed) (Right ((name, Nothing) : rest)) = checkMultiResults (r,m,root,delete name removed) (Right rest)
 checkMultiResults (_,_,_,[]) (Right []) = return ()
-checkMultiResults (_,_,_,removed) (Right []) 
+checkMultiResults (_,_,_,removed) (Right [])
   = assertFailure $ "Modules has not been marked as removed: " ++ concat (intersperse ", " removed)
 
 checkMultiFail :: (String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()
@@ -454,40 +482,40 @@ makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, n
 
 makeWrongExtractBindingTest :: (String, String, String) -> TestTree
 makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod
-  
+
 makeInlineBindingTest :: (String, String) -> TestTree
 makeInlineBindingTest (mod, rng) = createTest "InlineBinding" [rng] mod
-  
+
 makeWrongInlineBindingTest :: (String, String) -> TestTree
 makeWrongInlineBindingTest (mod, rng) = createFailTest "InlineBinding" [rng] mod
-  
+
 makeFloatOutTest :: (String, String) -> TestTree
 makeFloatOutTest (mod, rng) = createTest "FloatOut" [rng] mod
-  
+
 makeWrongFloatOutTest :: (String, String) -> TestTree
 makeWrongFloatOutTest (mod, rng) = createFailTest "FloatOut" [rng] mod
-  
+
 checkCorrectlyTransformed :: String -> String -> String -> IO ()
 checkCorrectlyTransformed command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
-       assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
+       assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                     (mapRight standardizeLineEndings res)
 makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> TestTree
 makeMiscRefactorTest (moduleName, refact)
   = testCase moduleName $
       do expected <- loadExpected True rootDir moduleName
          res <- testRefactor refact moduleName
-         assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected)) 
+         assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                       (mapRight standardizeLineEndings res)
-        
+
 testRefactor :: (UnnamedModule IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
-testRefactor refact moduleName 
+testRefactor refact moduleName
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs [rootDir]
       mod <- loadModule rootDir moduleName >>= parseTyped
-      res <- runRefactor (SourceFileKey NormalHs moduleName, mod) [] (localRefactoring $ refact mod) 
+      res <- runRefactor (SourceFileKey NormalHs moduleName, mod) [] (localRefactoring $ refact mod)
       case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
                   Left err -> return $ Left err
 
@@ -495,26 +523,26 @@ checkTransformFails :: String -> String -> String -> IO ()
 checkTransformFails command workingDir moduleName
   = do res <- performRefactor command workingDir [] moduleName
        assertBool "The transform should fail for the given input" (isLeft res)
-       
+
 loadExpected :: Bool -> String -> String -> IO String
-loadExpected resSuffix workingDir moduleName = 
+loadExpected resSuffix workingDir moduleName =
   do -- need to use binary or line endings will be translated
      expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ (if resSuffix then "_res" else "") ++ ".hs") ReadMode
      hGetContents expectedHandle
 
 standardizeLineEndings = filter (/= '\r')
-       
-makeReprintTest :: String -> TestTree       
+
+makeReprintTest :: String -> TestTree
 makeReprintTest mod = testCase mod (checkCorrectlyPrinted rootDir mod)
 
-makeCpphsTest :: String -> TestTree       
+makeCpphsTest :: String -> TestTree
 makeCpphsTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "CppHs") mod)
 
-makeInstanceControlTest :: String -> TestTree       
+makeInstanceControlTest :: String -> TestTree
 makeInstanceControlTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "InstanceControl") mod)
 
 checkCorrectlyPrinted :: String -> String -> IO ()
-checkCorrectlyPrinted workingDir moduleName 
+checkCorrectlyPrinted workingDir moduleName
   = do -- need to use binary or line endings will be translated
        expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ ".hs") ReadMode
        expected <- hGetContents expectedHandle
@@ -524,12 +552,12 @@ checkCorrectlyPrinted workingDir moduleName
          actual' <- prettyPrint <$> parseRenamed parsed
          actual'' <- prettyPrint <$> parseTyped parsed
          return (actual, actual', actual'')
-       assertEqual "The original and the transformed source differ" expected actual
-       assertEqual "The original and the transformed source differ" expected actual'
-       assertEqual "The original and the transformed source differ" expected actual''
+       assertEqual "Parsed: The original and the transformed source differ" expected actual
+       assertEqual "Renamed: The original and the transformed source differ" expected actual'
+       assertEqual "Typechecked: The original and the transformed source differ" expected actual''
 
 performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
-performRefactors command workingDir flags target = do 
+performRefactors command workingDir flags target = do
     mods <- getAllModules [workingDir]
     runGhc (Just libdir) $ do
       initGhcFlagsForTest
@@ -539,55 +567,57 @@ performRefactors command workingDir flags target = do
       load LoadAllTargets
       allMods <- getModuleGraph
       selectedMod <- getModSummary (GHC.mkModuleName target)
-      let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods 
+      let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods
       targetMod <- parseTyped selectedMod
       otherMods <- mapM parseTyped otherModules
-      res <- performCommand (readCommand command) 
+      res <- performCommand (either error id $ readCommand command)
                             (SourceFileKey NormalHs target, targetMod) (zip (map keyFromMS otherModules) otherMods)
       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n ^. sfkModuleName, Just $ prettyPrint m)
                                                      ModuleCreated n m _ -> (n, Just $ prettyPrint m)
                                                      ModuleRemoved m -> (m, Nothing)
                                               )) r
-                      Left l -> Left l) 
+                      Left l -> Left l)
              $ res
 
 type ParsedModule = Ann AST.UModule (Dom RdrName) SrcTemplateStage
 
 parseAST :: ModSummary -> Ghc ParsedModule
 parseAST modSum = do
-  let compExts = extensionFlags $ ms_hspp_opts modSum
-      hasStaticFlags = fromEnum StaticPointers `member` compExts
+  let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
+      hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
       ms = if hasStaticFlags then forceAsmGen modSum else modSum
   p <- parseModule ms
+  sourceOrigin <- if hasCppExtension then liftIO $ hGetStringBuffer (getModSumOrig ms)
+                                     else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
   let annots = pm_annotations p
-      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  prepareAST srcBuffer . placeComments (snd annots) 
-     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms $ pm_parsed_source p)          
+  (if hasCppExtension then prepareASTCpp else prepareAST) sourceOrigin . placeComments (fst annots) (getNormalComments $ snd annots)
+     <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms $ pm_parsed_source p)
 
 type RenamedModule = Ann AST.UModule (Dom GHC.Name) SrcTemplateStage
 
 parseRenamed :: ModSummary -> Ghc RenamedModule
 parseRenamed modSum = do
-  let compExts = extensionFlags $ ms_hspp_opts modSum
-      hasStaticFlags = fromEnum StaticPointers `member` compExts
+  let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
+      hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
       ms = if hasStaticFlags then forceAsmGen modSum else modSum
   p <- parseModule ms
+  sourceOrigin <- if hasCppExtension then liftIO $ hGetStringBuffer (getModSumOrig ms)
+                                     else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
   tc <- typecheckModule p
   let annots = pm_annotations p
-      srcBuffer = fromJust $ ms_hspp_buf $ pm_mod_summary p
-  prepareAST srcBuffer . placeComments (getNormalComments $ snd annots) 
+  (if hasCppExtension then prepareASTCpp else prepareAST) sourceOrigin . placeComments (fst annots) (getNormalComments $ snd annots)
     <$> (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
             runTrf (fst annots) (getPragmaComments $ snd annots)
               $ trfModuleRename ms parseTrf
-                  (fromJust $ tm_renamed_source tc) 
+                  (fromJust $ tm_renamed_source tc)
                   (pm_parsed_source p))
 
 performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String String)
-performRefactor command workingDir flags target = 
+performRefactor command workingDir flags target =
   runGhc (Just libdir) $ do
     useFlags flags
     ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
-  where refact m = performCommand (readCommand command) (SourceFileKey NormalHs target,m) []
+  where refact m = performCommand (either error id $ readCommand command) (SourceFileKey NormalHs target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent ((ModuleCreated _ newContent _) : ress) = prettyPrint newContent
         newContent (_ : ress) = newContent ress

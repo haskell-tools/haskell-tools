@@ -6,6 +6,7 @@
            , TypeApplications
            , ConstraintKinds
            , TypeFamilies
+           , MultiWayIf
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.ExtractBinding (extractBinding', ExtractBindingDomain, tryItOut) where
 
@@ -20,7 +21,7 @@ import SrcLoc
 import Control.Monad.State
 import Control.Reference
 import Data.Generics.Uniplate.Data ()
-import Data.List (find)
+import Data.List (find, intersperse)
 import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
@@ -34,27 +35,35 @@ tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name
 
 extractBinding' :: ExtractBindingDomain dom => RealSrcSpan -> String -> LocalRefactoring dom
 extractBinding' sp name mod
-  = if isValidBindingName name then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
-                               else refactError "The given name is not a valid for the extracted binding"
+  = if isNothing (isValidBindingName name)
+      then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
+      else refactError $ "The given name is not a valid for the extracted binding: " ++ fromJust (isValidBindingName name)
 
 -- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
 -- Checks if the introduction of the name causes a name conflict.
-extractBinding :: forall dom . ExtractBindingDomain dom 
+extractBinding :: forall dom . ExtractBindingDomain dom
                => RealSrcSpan -> Simple Traversal (Module dom) (ValueBind dom)
                    -> Simple Traversal (ValueBind dom) (Expr dom)
                    -> String -> LocalRefactoring dom
 extractBinding sp selectDecl selectExpr name mod
-  = let conflicting = any (isConflicting name) (mod ^? selectDecl & biplateRef :: [QualifiedName dom])
+  = let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName dom])
         exprRanges = map getRange (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
-     in case exprRanges of 
-          exprRange:_ -> 
-            if conflicting
-              then refactError "The given name causes name conflict."
-              else do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
-                      case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
-                                 Nothing -> refactError "There is no applicable expression to extract."
+        declPats = decl ^? valBindPat &+& funBindMatches & annList & matchLhs
+                                            & (matchLhsArgs & annList &+& matchLhsLhs &+& matchLhsRhs &+& matchLhsArgs & annList)
+     in case exprRanges of
+          exprRange:_ ->
+            if | not (null conflicting)
+               -> refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpan . getRange) conflicting))
+               | any (`containsRange` exprRange) $ map getRange declPats
+               -> refactError "Extract binding cannot be applied to view pattern expressions."
+               | otherwise
+               -> do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
+                     case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
+                                Nothing -> refactError "There is no applicable expression to extract."
           [] -> refactError "There is no applicable expression to extract."
+  where RealSrcSpan sp1 `containsRange` RealSrcSpan sp2 = sp1 `containsSpan` sp2
+        _ `containsRange` _ = False
 
 -- | Decides if a new name defined to be the given string will conflict with the given AST element
 isConflicting :: ExtractBindingDomain dom => String -> QualifiedName dom -> Bool
@@ -63,11 +72,11 @@ isConflicting name used
       && (GHC.occNameString . GHC.getOccName <$> semanticsName used) == Just name
 
 -- Replaces the selected expression with a call and generates the called binding.
-extractThatBind :: ExtractBindingDomain dom 
+extractThatBind :: ExtractBindingDomain dom
                 => RealSrcSpan -> String -> Expr dom -> Expr dom -> StateT (Maybe (ValueBind dom)) (LocalRefactor dom) (Expr dom)
-extractThatBind sp name cont e 
-  = do ret <- get -- being in a state monad to only apply the 
-       if (isJust ret) then return e 
+extractThatBind sp name cont e
+  = do ret <- get -- being in a state monad to only apply the
+       if (isJust ret) then return e
           else case e of
             -- only the expression inside the parameters should be extracted
             Paren {} | hasParameter -> exprInner !~ doExtract name cont $ e
@@ -93,14 +102,14 @@ extractThatBind sp name cont e
                   && lName == rName && isKnownCommutativeOp lName
               -> do let params = getExternalBinds cont mid ++ opName rop ++ getExternalBinds cont rhs
                     put (Just (generateBind name (map mkVarPat params) (mkInfixApp mid rop rhs)))
-                    return (mkInfixApp lhs lop (generateCall name params)) 
+                    return (mkInfixApp lhs lop (generateCall name params))
             InfixApp lhs lop (InfixApp mid rop rhs) -- correction for right-associative operators
               | (Just lName, Just rName) <- (semanticsName (lop ^. operatorName), semanticsName (rop ^. operatorName))
               , (sp `encloses` lhs) && (sp `encloses` mid) && (rop `outside` sp)
                   && lName == rName && isKnownCommutativeOp lName
               -> do let params = getExternalBinds cont lhs ++ opName lop ++ getExternalBinds cont mid
                     put (Just (generateBind name (map mkVarPat params) (mkInfixApp lhs lop mid)))
-                    return (mkInfixApp (generateCall name params) rop rhs) 
+                    return (mkInfixApp (generateCall name params) rop rhs)
             -- normal case
             el | isParenLikeExpr el && hasParameter -> mkParen <$> doExtract name cont e
                | otherwise -> doExtract name cont e
@@ -109,28 +118,28 @@ extractThatBind sp name cont e
         sp `encloses` elem = case getRange elem of RealSrcSpan enc -> sp `containsSpan` enc
                                                    _               -> False
         -- True if the elem is completely outside the given range (no overlapping)
-        elem `outside` sp = case getRange elem of RealSrcSpan out -> realSrcSpanStart sp > realSrcSpanEnd out 
+        elem `outside` sp = case getRange elem of RealSrcSpan out -> realSrcSpanStart sp > realSrcSpanEnd out
                                                                        || realSrcSpanEnd sp < realSrcSpanStart out
                                                   _ -> False
-        opName op = case semanticsName (op ^. operatorName) of 
+        opName op = case semanticsName (op ^. operatorName) of
                       Nothing -> []
                       Just n -> [mkUnqualName' n | not $ n `inScope` semanticsScope cont]
         isKnownCommutativeOp :: GHC.Name -> Bool
-        isKnownCommutativeOp n = isJust $ find (maybe False (\(mn, occ) -> (nameModule_maybe n) == Just mn && occName n == occ) . isOrig_maybe) ops 
+        isKnownCommutativeOp n = isJust $ find (maybe False (\(mn, occ) -> (nameModule_maybe n) == Just mn && occName n == occ) . isOrig_maybe) ops
           where ops = [plus_RDR, times_RDR, append_RDR, and_RDR, {- or_RDR, -} compose_RDR] -- somehow or is missing... WHY?
 
 -- | Adds a local binding to the where clause of the enclosing binding
 addLocalBinding :: SrcSpan -> ValueBind dom -> ValueBind dom -> State Bool (ValueBind dom)
 -- this uses the state monad to only add the local binding to the first selected element
-addLocalBinding exprRange local bind 
+addLocalBinding exprRange local bind
   = do done <- get
        if not done then do put True
                            return $ indentBody $ doAddBinding exprRange local bind
-                   else return bind 
+                   else return bind
   where
     doAddBinding _ local sb@(SimpleBind {}) = valBindLocals .- insertLocalBind local $ sb
-    doAddBinding (RealSrcSpan rng) local fb@(FunctionBind {}) 
-      = funBindMatches & annList & filtered (isInside rng) & matchBinds 
+    doAddBinding (RealSrcSpan rng) local fb@(FunctionBind {})
+      = funBindMatches & annList & filtered (isInside rng) & matchBinds
           .- insertLocalBind local $ fb
     doAddBinding _ _ _ = error "doAddBinding: invalid expression range"
 
@@ -141,9 +150,9 @@ addLocalBinding exprRange local bind
 
 -- | Puts a value definition into a list of local binds
 insertLocalBind :: ValueBind dom -> MaybeLocalBinds dom -> MaybeLocalBinds dom
-insertLocalBind toInsert locals 
+insertLocalBind toInsert locals
   | isAnnNothing locals = mkLocalBinds [mkLocalValBind toInsert]
-  | otherwise = annJust & localBinds .- insertWhere (mkLocalValBind toInsert) (const True) isNothing $ locals
+  | otherwise = annJust & localBinds .- insertWhere True (mkLocalValBind toInsert) (const True) isNothing $ locals
 
 -- | All expressions that are bound stronger than function application.
 isParenLikeExpr :: Expr dom -> Bool
@@ -165,13 +174,13 @@ isParenLikeExpr (QuasiQuoteExpr {}) = True
 isParenLikeExpr _ = False
 
 -- | Replaces the expression with the call and stores the binding of the call in its state
-doExtract :: ExtractBindingDomain dom 
+doExtract :: ExtractBindingDomain dom
           => String -> Expr dom -> Expr dom -> StateT (Maybe (ValueBind dom)) (LocalRefactor dom) (Expr dom)
 doExtract name cont e@(Lambda (AnnList bindings) inner)
   = do let params = getExternalBinds cont e
        put (Just (generateBind name (map mkVarPat params ++ bindings) inner))
        return (generateCall name params)
-doExtract name cont e 
+doExtract name cont e
   = do let params = getExternalBinds cont e
        put (Just (generateBind name (map mkVarPat params) e))
        return (generateCall name params)
@@ -189,8 +198,8 @@ getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableNa
         exprToName :: Expr dom -> Name dom
         exprToName e | Just n <- e ^? exprName                     = n
                      | Just op <- e ^? exprOperator & operatorName = mkParenName op
-                     | otherwise                                   = error "exprToName: name not found" 
-        
+                     | otherwise                                   = error "exprToName: name not found"
+
         notInScopeForExtracted :: GHC.Name -> Bool
         notInScopeForExtracted n = not $ n `inScope` semanticsScope cont
 
@@ -217,5 +226,5 @@ generateBind :: String -> [Pattern dom] -> Expr dom -> ValueBind dom
 generateBind name [] e = mkSimpleBind (mkVarPat $ mkNormalName $ mkSimpleName name) (mkUnguardedRhs e) Nothing
 generateBind name args e = mkFunctionBind [mkMatch (mkMatchLhs (mkNormalName $ mkSimpleName name) args) (mkUnguardedRhs e) Nothing]
 
-isValidBindingName :: String -> Bool
+isValidBindingName :: String -> Maybe String
 isValidBindingName = nameValid Variable

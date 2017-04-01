@@ -15,7 +15,7 @@
 ## 0.4
 
  - Inline Binding refactoring
- - Solved various issues of other refactorings: 
+ - Solved various issues of other refactorings:
    - Renaming a module produce a new module in the original module's source dir
    - Error for GenerateSignature when bindings have complex pattern left-hand-side
    - Resolved ExtractBinding indentation conflicts with case alternatives

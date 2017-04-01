@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings
-           , DeriveGeneric 
+           , DeriveGeneric
            , TypeApplications
            , TupleSections
            , ScopedTypeVariables
@@ -75,7 +75,7 @@ runDemo args = do
   wd <- case args of dir:_ -> return dir
                      [] -> return "."
   counter <- newMVar []
-  let settings = setPort 8206 $ setTimeout 20 $ defaultSettings 
+  let settings = setPort 8206 $ setTimeout 20 $ defaultSettings
   runSettings settings (app counter wd)
 
 -- | The application that is evoked for each incoming request
@@ -96,10 +96,10 @@ app sessions wd = websocketsOr defaultConnectionOptions wsApp backupApp
         do Text msg <- receiveDataMessage conn
            respondTo wd sessId ghcSess state (sendTextData conn) msg
            currState <- readMVar state
-           if currState ^. isDisconnecting 
+           if currState ^. isDisconnecting
              then sendClose conn ("" :: ByteString)
              else serverLoop sessId ghcSess state conn
-      `catch` \(_ :: ConnectionException) -> do 
+      `catch` \(_ :: ConnectionException) -> do
                  modifyMVar_ sessions (return . delete sessId)
                  liftIO $ removeDirectoryIfPresent (userDir wd sessId)
 
@@ -131,7 +131,7 @@ updateClient dir (ModuleDeleted name) = do
     lift $ removeTarget (TargetModule (GHC.mkModuleName name))
     modify $ refSessMods .- Map.delete (dir, name, NormalHs)
     return Nothing
-updateClient dir (InitialProject modules) = do 
+updateClient dir (InitialProject modules) = do
     -- clean the workspace to remove source files from earlier sessions
     liftIO $ removeDirectoryIfPresent dir
     liftIO $ createDirectoryIfMissing True dir
@@ -148,21 +148,26 @@ updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a 
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
-    let command = analyzeCommand refact (selection:args)
-    case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules 
-                             case res of
-                               Left err -> return $ Just $ ErrorMessage err
-                               Right diff -> do applyChanges diff
-                                                return $ Just $ RefactorChanges (map trfDiff diff)
-                Nothing -> return $ Just $ ErrorMessage "The module is not found"
+    case analyzeCommand refact (selection:args) of
+      Right command ->
+        case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules
+                                 case res of
+                                   Left err -> return $ Just $ ErrorMessage err
+                                   Right diff -> do applyChanges diff
+                                                    return $ Just $ RefactorChanges (map trfDiff diff)
+                    Nothing -> return $ Just $ ErrorMessage "The module is not found"
+      Left err -> return $ Just $ ErrorMessage err
   where trfDiff (ContentChanged (key,cont)) = (key ^. sfkModuleName, Just (prettyPrint cont))
         trfDiff (ModuleCreated name mod _) = (name, Just (prettyPrint mod))
         trfDiff (ModuleRemoved name) = (name, Nothing)
 
         applyChanges diff
-          = do forM_ diff $ \case 
-                 ModuleCreated n m _ -> writeModule n m
-                 ContentChanged (n,m) -> writeModule (n ^. sfkModuleName) m
+          = do forM_ diff $ \case
+                 ModuleCreated n m _ -> do
+                   writeModule n m
+                   lift $ addTarget (Target (TargetModule (GHC.mkModuleName n)) True Nothing)
+                 ContentChanged (n,m) ->
+                   writeModule (n ^. sfkModuleName) m
                  ModuleRemoved mod -> do
                    liftIO $ removeFile (toFileName dir mod)
                    modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
@@ -183,7 +188,7 @@ createFileForModule :: FilePath -> String -> String -> IO ()
 createFileForModule dir name newContent = do
   let fname = toFileName dir name
   createDirectoryIfMissing True (takeDirectory fname)
-  withBinaryFile fname WriteMode (`hPutStr` newContent) 
+  withBinaryFile fname WriteMode (`hPutStr` newContent)
 
 removeDirectoryIfPresent :: FilePath -> IO ()
 removeDirectoryIfPresent dir = removeDirectoryRecursive dir `catch` \e -> if isDoesNotExistError e then return () else throwIO e
@@ -198,24 +203,29 @@ userDir :: FilePath -> ClientId -> FilePath
 userDir wd id = dataDirs wd </> show id
 
 initGhcSession :: FilePath -> IO Session
-initGhcSession workingDir 
+initGhcSession workingDir
   = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlagsForTest >> useDirs [workingDir] >> getSession))
 
 handleErrors :: FilePath -> ClientMessage -> (ResponseMsg -> IO ()) -> IO () -> IO ()
 handleErrors wd req next io = io `catch` (next <=< handleException)
   where handleException :: SomeException -> IO ResponseMsg
-        handleException e 
-          | Just (se :: SourceError) <- fromException e 
-          = return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
+        handleException e
+          | Just (se :: SourceError) <- fromException e
+          = if isReloading
+              then do logToFile wd (show e) req
+                      return $ ErrorMessage ("The generated code cannot be compiled. The problem had been reported. Please restart the demo or correct the results manually.")
+              else return $ CompilationProblem (concatMap (\msg -> showMsg msg ++ "\n\n") $ bagToList $ srcErrorMessages se)
           | Just (ae :: AsyncException) <- fromException e = throw ae
           | Just (ge :: GhcException) <- fromException e = return $ ErrorMessage $ show ge
           | Just (re :: RefactorException) <- fromException e = return $ ErrorMessage $ displayException re
           | otherwise = do logToFile wd (show e) req
                            return $ ErrorMessage (showInternalError e)
-        
+
         showMsg msg = showSpan (errMsgSpan msg) ++ "\n" ++ show msg
         showSpan (RealSrcSpan sp) = showFileName (srcLocFile (realSrcSpanStart sp)) ++ " " ++ show (srcLocLine (realSrcSpanStart sp)) ++ ":" ++ show (srcLocCol (realSrcSpanStart sp))
         showSpan _ = ""
+
+        isReloading = case req of PerformRefactoring {} -> True; _ -> False
 
         showFileName = joinPath . drop 2 . splitPath . makeRelative wd . unpackFS
 
@@ -228,8 +238,8 @@ logToFile wd err input = do
   withFile logFile AppendMode $ \handle -> do
       size <- hFileSize handle
       when (size < logSizeLimit) $ hPutStrLn handle ("\n### " ++ msg)
-    `catch` \e -> print ("The error message cannot be logged because: " 
-                             ++ show (e :: IOException) ++ "\nHere is the message:\n" ++ msg) 
+    `catch` \e -> print ("The error message cannot be logged because: "
+                             ++ show (e :: IOException) ++ "\nHere is the message:\n" ++ msg)
   where logFile = wd </> "error-log.txt"
         logSizeLimit = 100 * 1024 * 1024 -- 100 MB
 
@@ -248,7 +258,7 @@ data ClientMessage
   | Disconnect
   deriving (Show, Generic)
 
-instance FromJSON ClientMessage 
+instance FromJSON ClientMessage
 
 data ResponseMsg
   = RefactorChanges { moduleChanges :: [(String, Maybe String)] }

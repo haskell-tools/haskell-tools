@@ -2,8 +2,8 @@ module Language.Haskell.Tools.AST.ElementTypes where
 
 import Language.Haskell.Tools.AST
 
-type AnnList node dom = AnnListG node dom SrcTemplateStage 
-type AnnMaybe node dom = AnnMaybeG node dom SrcTemplateStage 
+type AnnList node dom = AnnListG node dom SrcTemplateStage
+type AnnMaybe node dom = AnnMaybeG node dom SrcTemplateStage
 
 -- * Modules
 
@@ -26,13 +26,13 @@ type IESpec dom = Ann UIESpec dom SrcTemplateStage
 -- | Marks how related names will be imported or exported with a given name
 type SubSpec dom = Ann USubSpec dom SrcTemplateStage
 
--- | Pragmas that must be used after the module head  
+-- | Pragmas that must be used after the module head
 type ModulePragma dom = Ann UModulePragma dom SrcTemplateStage
 
--- | Pragmas that must be used before defining the module         
+-- | Pragmas that must be used before defining the module
 type FilePragma dom = Ann UFilePragma dom SrcTemplateStage
 
--- | An import declaration: @import Module.Name@         
+-- | An import declaration: @import Module.Name@
 type ImportDecl dom = Ann UImportDecl dom SrcTemplateStage
 
 -- | Restriction on the imported names
@@ -67,7 +67,7 @@ type Decl dom = Ann UDecl dom SrcTemplateStage
 -- | The list of declarations that can appear in a typeclass
 type ClassBody dom = Ann UClassBody dom SrcTemplateStage
 
--- | Members of a class declaration 
+-- | Members of a class declaration
 type ClassElement dom = Ann UClassElement dom SrcTemplateStage
 
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
@@ -88,10 +88,10 @@ type GadtConType dom = Ann UGadtConType dom SrcTemplateStage
 -- | Marker for a field wildcard. Only needed to attach semantic information in a type-safe way.
 type FieldWildcard dom = Ann UFieldWildcard dom SrcTemplateStage
 
--- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas  
+-- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas
 type FunDeps dom = Ann UFunDeps dom SrcTemplateStage
 
--- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@         
+-- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@
 type FunDep dom = Ann UFunDep dom SrcTemplateStage
 
 -- | A constructor declaration for a datatype
@@ -112,7 +112,7 @@ type InstanceRule dom = Ann UInstanceRule dom SrcTemplateStage
 -- | The specification of the class instance declaration
 type InstanceHead dom = Ann UInstanceHead dom SrcTemplateStage
 
--- | Overlap pragmas. Can be applied to class declarations and class instance declarations.    
+-- | Overlap pragmas. Can be applied to class declarations and class instance declarations.
 type OverlapPragma dom = Ann UOverlapPragma dom SrcTemplateStage
 
 -- | Type equations as found in closed type families (@ T A = S @)
@@ -124,7 +124,10 @@ type TopLevelPragma dom = Ann UTopLevelPragma dom SrcTemplateStage
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
 type Rule dom = Ann URule dom SrcTemplateStage
 
--- | Annotation allows you to connect an expression to any declaration. 
+-- | A variable for a rewrite rule. With or without type signature.
+type RuleVar dom = Ann URuleVar dom SrcTemplateStage
+
+-- | Annotation allows you to connect an expression to any declaration.
 type AnnotationSubject dom = Ann UAnnotationSubject dom SrcTemplateStage
 
 -- | Formulas of minimal annotations declaring which functions should be defined.
@@ -177,7 +180,7 @@ type PhaseControl dom = Ann UPhaseControl dom SrcTemplateStage
 -- | Value binding for top-level and local bindings
 type ValueBind dom = Ann UValueBind dom SrcTemplateStage
 
--- | Clause of function binding   
+-- | Clause of function binding
 type Match dom = Ann UMatch dom SrcTemplateStage
 
 -- | Something on the left side of the match
@@ -186,7 +189,7 @@ type MatchLhs dom = Ann UMatchLhs dom SrcTemplateStage
 -- | Right hand side of a value binding (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
 type Rhs dom = Ann URhs dom SrcTemplateStage
 
--- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)      
+-- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)
 type GuardedRhs dom = Ann UGuardedRhs dom SrcTemplateStage
 
 -- | Guards for value bindings and pattern matches (@ Just v <- x, v > 1 @)
@@ -195,7 +198,7 @@ type RhsGuard dom = Ann URhsGuard dom SrcTemplateStage
 -- | Bindings that are enabled in local blocks (where or let).
 type LocalBind dom = Ann ULocalBind dom SrcTemplateStage
 
--- | Local bindings attached to a declaration (@ where x = 42 @)             
+-- | Local bindings attached to a declaration (@ where x = 42 @)
 type LocalBinds dom = Ann ULocalBinds dom SrcTemplateStage
 
 -- | A fixity signature (@ infixl 5 +, - @).
@@ -241,7 +244,7 @@ type Alt dom = Ann UAlt dom SrcTemplateStage
 -- | Right hand side of a match (possible with guards): (@ -> 3 @ or @ | x == 1 -> 3; | otherwise -> 4 @)
 type CaseRhs dom = Ann UCaseRhs dom SrcTemplateStage
 
--- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
+-- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)
 type GuardedCaseRhs dom = Ann UGuardedCaseRhs dom SrcTemplateStage
 
 -- | Field update expressions
@@ -289,13 +292,13 @@ type PatternField dom = Ann UPatternField dom SrcTemplateStage
 
 -- * Template Haskell
 
--- | A template haskell splice          
+-- | A template haskell splice
 type Splice dom = Ann USplice dom SrcTemplateStage
 
 -- | Template Haskell bracket expressions
 type Bracket dom = Ann UBracket dom SrcTemplateStage
 
--- | Template haskell quasi-quotation: @[quoter|str]@  
+-- | Template haskell quasi-quotation: @[quoter|str]@
 type QuasiQuote dom = Ann UQuasiQuote dom SrcTemplateStage
 
 -- * Literals
@@ -315,7 +318,7 @@ type Name dom = Ann UName dom SrcTemplateStage
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
 type QualifiedName dom = Ann UQualifiedName dom SrcTemplateStage
 
--- | Parts of a qualified name.         
+-- | Parts of a qualified name.
 type NamePart dom = Ann UNamePart dom SrcTemplateStage
 
 -- | Program elements formatted as string literals (import packages, pragma texts)
@@ -381,6 +384,7 @@ type PatternFieldList dom = AnnList UPatternField dom
 type AssertionList dom = AnnList UAssertion dom
 type CompStmtList dom = AnnList UCompStmt dom
 type RuleList dom = AnnList URule dom
+type RuleVarList dom = AnnList URuleVar dom
 type RoleList dom = AnnList URole dom
 type MinimalFormulaList dom = AnnList UMinimalFormula dom
 type FunDepList dom = AnnList UFunDep dom

@@ -27,14 +27,14 @@ data TrfInput
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
              , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
-             , declSplices :: [Located (HsSplice GHC.Name)] -- ^ Location of the TH splices for extracting declarations from the renamed AST. 
+             , declSplices :: [Located (HsSplice GHC.Name)] -- ^ Location of the TH splices for extracting declarations from the renamed AST.
                  -- ^ It is possible that multiple declarations stand in the place of the declaration splice or none at all.
-             , typeSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types). 
-             , exprSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types). 
+             , typeSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types).
+             , exprSplices :: [HsSplice GHC.Name] -- ^ Other types of splices (expressions, types).
              }
-      
+
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
-trfInit annots comments 
+trfInit annots comments
   = TrfInput { srcMap = annotationsToSrcMap annots
              , pragmaComms = comments
              , declsToInsert = []
@@ -65,17 +65,17 @@ typeVarTransform = local (\s -> s { defining = defining s || definingTypeVars s 
 
 -- | Transform a name as a type variable if it is one.
 transformingPossibleVar :: HsHasName n => n -> Trf a -> Trf a
-transformingPossibleVar n = case hsGetNames n of 
+transformingPossibleVar n = case hsGetNames n of
   [name] | isVarName name || isTyVarName name -> typeVarTransform
   _                                           -> id
 
 -- | Perform the transformation putting the given definition in a new local scope.
 addEmptyScope :: Trf a -> Trf a
-addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s }) 
+addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s })
 
 -- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
-addToScope e = local (\s -> s { localsInScope = hsGetNames e : localsInScope s }) 
+addToScope e = local (\s -> s { localsInScope = hsGetNames e : localsInScope s })
 
 -- | Perform the transformation putting the given definitions in the current scope.
 addToCurrentScope :: HsHasName e => e -> Trf a -> Trf a
@@ -96,7 +96,7 @@ getOriginalName n = do sp <- asks contRange
 
 -- | Set splices that must replace the elements that are generated into the AST representation.
 setSplices :: [Located (HsSplice GHC.Name)] -> [HsSplice GHC.Name] -> [HsSplice GHC.Name] -> Trf a -> Trf a
-setSplices declSpls typeSpls exprSpls 
+setSplices declSpls typeSpls exprSpls
   = local (\s -> s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })
 
 -- | Set the list of declarations that will be missing from AST
@@ -116,3 +116,4 @@ getSpliceLoc :: HsSplice a -> SrcSpan
 getSpliceLoc (HsTypedSplice _ e) = getLoc e
 getSpliceLoc (HsUntypedSplice _ e) = getLoc e
 getSpliceLoc (HsQuasiQuote _ _ sp _) = sp
+getSpliceLoc (HsSpliced _ _) = noSrcSpan

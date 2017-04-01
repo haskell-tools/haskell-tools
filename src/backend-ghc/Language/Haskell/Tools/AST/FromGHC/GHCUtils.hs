@@ -22,7 +22,7 @@ import RdrName (RdrName, rdrNameOcc, nameRdrName)
 import SrcLoc
 import Type (TyThing(..), mkFunTys)
 
-class OutputableBndr name => GHCName name where 
+class OutputableBndr name => GHCName name where
   rdrName :: name -> RdrName
   getFromNameUsing :: Applicative f => (Name -> Ghc (f Id)) -> Name -> Ghc (f name)
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
@@ -42,8 +42,8 @@ instance GHCName RdrName where
   gunpackPostRn a _ _ = a
 
 occName :: GHCName n => n -> OccName
-occName = rdrNameOcc . rdrName 
-    
+occName = rdrNameOcc . rdrName
+
 instance GHCName GHC.Name where
   rdrName = nameRdrName
   getFromNameUsing f n = fmap nameFromId <$> f n
@@ -64,7 +64,7 @@ getFieldOccName' (FieldOcc (L _ rdr) postRn) = unpackPostRn rdr postRn
 
 -- | Loading ids for top-level ghc names
 getTopLevelId :: GHC.Name -> Ghc (Maybe GHC.Id)
-getTopLevelId name = 
+getTopLevelId name =
     lookupName name >>= \case
       Just (AnId id) -> return (Just id)
       Just (AConLike (RealDataCon dc)) -> return $ Just $ mkVanillaGlobal name (dataConUserType dc)
@@ -78,13 +78,13 @@ class HsHasName a where
   hsGetNames :: a -> [GHC.Name]
 
 instance HsHasName RdrName where
-  hsGetNames _ = [] 
+  hsGetNames _ = []
 
 instance HsHasName Name where
-  hsGetNames n = [n] 
+  hsGetNames n = [n]
 
 instance HsHasName Id where
-  hsGetNames n = [getName n] 
+  hsGetNames n = [getName n]
 
 instance HsHasName e => HsHasName [e] where
   hsGetNames es = concatMap hsGetNames es
@@ -100,7 +100,16 @@ instance (GHCName n, HsHasName n) => HsHasName (HsDecl n) where
   hsGetNames (TyClD tycl) = hsGetNames tycl
   hsGetNames (ValD vald) = hsGetNames vald
   hsGetNames (ForD ford) = hsGetNames ford
+  hsGetNames (InstD inst) = hsGetNames inst
   hsGetNames _ = []
+
+instance (GHCName n, HsHasName n) => HsHasName (InstDecl n) where
+  hsGetNames (ClsInstD clsInst) = hsGetNames (cid_datafam_insts clsInst)
+  hsGetNames (DataFamInstD dataFamInst) = hsGetNames dataFamInst
+  hsGetNames _ = []
+
+instance (GHCName n, HsHasName n) => HsHasName (DataFamInstDecl n) where
+  hsGetNames dfid = hsGetNames (dfid_defn dfid)
 
 instance (GHCName n, HsHasName n) => HsHasName (TyClGroup n) where
   hsGetNames (TyClGroup tycls _) = hsGetNames tycls
@@ -115,7 +124,7 @@ instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
   hsGetNames (HsDataDefn {dd_cons = ctors}) = hsGetNames ctors
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
-  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))}) 
+  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))})
     = hsGetNames names ++ hsGetNames flds
   hsGetNames (ConDeclGADT {con_names = names}) = hsGetNames names
   hsGetNames (ConDeclH98 {con_name = name, con_details = details}) = hsGetNames name ++ hsGetNames details
@@ -127,7 +136,7 @@ instance (GHCName n, HsHasName n) => HsHasName (HsConDeclDetails n) where
 instance (GHCName n, HsHasName n) => HsHasName (ConDeclField n) where
   hsGetNames (ConDeclField name _ _) = hsGetNames name
 
-instance (GHCName n, HsHasName n) => HsHasName (FieldOcc n) where 
+instance (GHCName n, HsHasName n) => HsHasName (FieldOcc n) where
   hsGetNames (FieldOcc _ pr) = gunpackPostRn [] (hsGetNames :: n -> [Name]) pr
 
 instance (HsHasName n) => HsHasName (Sig n) where
@@ -187,30 +196,51 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
-  hsGetNames (HsGroup vals _ clds _ _ _ _ foreigns _ _ _ _ _) = hsGetNames vals ++ hsGetNames clds ++ hsGetNames foreigns
+  hsGetNames (HsGroup vals _ clds insts _ _ _ foreigns _ _ _ _ _) = hsGetNames vals ++ hsGetNames clds ++ hsGetNames insts ++ hsGetNames foreigns
 
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String
 rdrNameStr name = showSDocUnsafe $ ppr name
 
+
+class FromGHCName n where
+  fromGHCName :: GHC.Name -> n
+
+instance FromGHCName RdrName where
+  fromGHCName = rdrName
+
+instance FromGHCName GHC.Name where
+  fromGHCName = id
+
 -- | Tries to simplify the type that has HsAppsTy before renaming. Does not always provide the correct form.
 -- Treats each operator as if they are of equivalent precedence and always left-associative.
-cleanHsType :: OutputableBndr n => HsType n -> HsType n
+cleanHsType :: forall n . (OutputableBndr n) => HsType n -> HsType n
 -- for some reason * is considered infix
-cleanHsType (HsAppsTy [unLoc -> HsAppInfix t]) = HsTyVar t
-cleanHsType (HsAppsTy apps) = unLoc $ guessType (splitHsAppsTy apps)
-  where guessType :: OutputableBndr n => ([[LHsType n]], [Located n]) -> LHsType n
-        guessType (term@(hd:_):terms, operator:operators)  
-          = let rhs = guessType (terms,operators)
-             in L (getLoc hd `combineSrcSpans` getLoc rhs) $ HsOpTy (doApps term) operator rhs
-        guessType ([term],[]) = doApps term
-        guessType x = error ("guessType: " ++ showSDocUnsafe (ppr x))
-        doApps term = foldl1 (\core t -> L (getLoc core `combineSrcSpans` getLoc t) $ HsAppTy core t) term
+cleanHsType (HsAppsTy apps) = unLoc $ guessType apps
+  where guessType :: OutputableBndr n => [LHsAppType n] -> LHsType n
+        guessType (L l (HsAppInfix n) : rest) -- must be a prefix actually
+          = guessType' (L l (HsTyVar n)) rest
+        guessType (L _ (HsAppPrefix t) : rest) = guessType' t rest
+        guessType [] = error $ "guessType: empty: " ++ showSDocUnsafe (ppr apps)
+
+        guessType' :: LHsType n -> [LHsAppType n] -> LHsType n
+        guessType' fun (L l (HsAppPrefix t) : rest) = guessType' (hsAppTy fun t) rest
+        guessType' fun (L l (HsAppInfix n) : rest)
+          -- TODO: find a better check
+          | showSDocUnsafe (ppr n) == "*" = guessType' (hsAppTy fun (L l (HsTyVar n))) rest
+        guessType' left (L l (HsAppInfix n) : right) = hsOpTy left n (guessType right)
+        guessType' t [] = t
+
+        hsAppTy :: LHsType n -> LHsType n -> LHsType n
+        hsAppTy t1 t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsAppTy t1 t2
+
+        hsOpTy :: LHsType n -> Located n -> LHsType n -> LHsType n
+        hsOpTy t1 n t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsOpTy t1 n t2
 cleanHsType t = t
 
 mergeFixityDefs :: [Located (FixitySig n)] -> [Located (FixitySig n)]
-mergeFixityDefs (s@(L l _) : rest) 
-  = let (same, different) = partition ((== l) . getLoc) rest 
+mergeFixityDefs (s@(L l _) : rest)
+  = let (same, different) = partition ((== l) . getLoc) rest
      in foldl mergeWith s (map unLoc same) : mergeFixityDefs different
   where mergeWith (L l (FixitySig names fixity)) (FixitySig otherNames _) = L l (FixitySig (names ++ otherNames) fixity)
 mergeFixityDefs [] = []

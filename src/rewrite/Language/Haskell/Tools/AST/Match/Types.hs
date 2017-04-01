@@ -108,7 +108,7 @@ pattern PromotedListType elems <- Ann _ (UTyPromoted (Ann _ (UPromotedList elems
 pattern PromotedTupleType :: TypeList dom -> Type dom
 pattern PromotedTupleType elems <- Ann _ (UTyPromoted (Ann _ (UPromotedTuple elems)))
 
--- | Kind of the unit value @()@. 
+-- | Kind of the unit value @()@.
 pattern PromotedUnitType :: Type dom
 pattern PromotedUnitType <- Ann _ (UTyPromoted (Ann _ UPromotedUnit))
 
@@ -124,13 +124,9 @@ pattern KindedTyVarDecl n k <- Ann _ (UTyVarDecl n (AnnJust (Ann _ (UKindConstra
 
 -- * Contexts
 
--- | One assertion (@ C a => ... @)
-pattern ContextOne :: Assertion dom -> Context dom
-pattern ContextOne n <- Ann _ (UContextOne n)
-
--- | A set of assertions (@ (C1 a, C2 b) => ... @, but can be one: @ (C a) => ... @)
-pattern ContextMulti :: AssertionList dom -> Context dom
-pattern ContextMulti n <- Ann _ (UContextMulti n)
+-- | A context of assertions (@ C a => ... @)
+pattern Context :: Assertion dom -> Context dom
+pattern Context n <- Ann _ (UContext n)
 
 -- * Assertions
 
@@ -145,3 +141,7 @@ pattern InfixAssert left op right <- Ann _ (UInfixAssert left op right)
 -- | Assertion for implicit parameter binding (@ ?cmp :: a -> a -> Bool @)
 pattern ImplicitAssert :: Name dom -> Type dom -> Assertion dom
 pattern ImplicitAssert n t <- Ann _ (UImplicitAssert n t)
+
+-- | A list of assertions (@ (Eq a, Show a) @)
+pattern TupleAssert :: [Assertion dom] -> Assertion dom
+pattern TupleAssert ass <- Ann _ (UTupleAssert (AnnList ass))
