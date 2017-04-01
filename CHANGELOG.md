@@ -1,14 +1,16 @@
 # CHANGELOG
 
 ## 0.5
-
- - Organize imports is completely reworked. Now it makes explicitly stated if only a few definitions are imported, keeps import blocks and uses a heuristic to check if an import can be completely removed.
- - Created Float out refactoring.
- - Handle source errors in daemon.
- - Improvements in CLI (no reload after one-shot, only checking modules, dry-run + one shot working together)
- - Fixed whitespace modifications after a refactoring.
- - Fixed demo for renaming between modules.
- - Package DB handling in daemon.
+ - New Refactoring: Float Out
+ - Enhancements of existing refactorings:
+   - Organize imports had been extended
+     - Now recognizes import groups and does not reorder them
+     - Uses a heuristics for removing imports
+   - Extract binding now can extract operator sections, and recognizes known associative operators
+ - Daemon: support for package DBs, automatically find cabal-sandbox and stack DBs
+ - Created automatic testing for hackage and stackage, found and fixed a few problems (mostly transformation errors on edge cases)
+ - Resolved formatting failures by defaulting to relative indentation for newly generated elements
+ - Minor features for CLI
 
 ## 0.4
 
