@@ -14,6 +14,7 @@ import Control.Reference
 import Data.List
 import Data.List.Split
 import Data.Maybe
+import Data.Char
 import System.Directory
 import System.Exit
 import System.IO
@@ -124,13 +125,21 @@ data RefactorSessionCommand
   deriving Show
 
 readSessionCommand :: Handle -> String -> CLIRefactorSession RefactorSessionCommand
-readSessionCommand output cmd = case splitOn " " cmd of
+readSessionCommand output cmd = case (splitOn " " cmd) of
     ["SelectModule", mod] -> return $ LoadModule mod
     ["Exit"] -> return Exit
-    _ -> do actualMod <- gets (^. actualMod)
-            case actualMod of Just _ -> return $ RefactorCommand $ readCommand cmd
-                              Nothing -> do liftIO $ hPutStrLn output "Set the actual module first"
-                                            return Skip
+    cm | head cm `elem` refactorCommands
+       -> do actualMod <- gets (^. actualMod)
+             case readCommand cmd of
+               Right cmd ->
+                 case actualMod of Just _ -> return $ RefactorCommand cmd
+                                   Nothing -> do liftIO $ hPutStrLn output "Set the actual module first"
+                                                 return Skip
+               Left err -> do liftIO $ hPutStrLn output err
+                              return Skip
+    _ -> do liftIO $ hPutStrLn output $ "'" ++ cmd ++ "' is not a known command. Commands are: SelectModule, Exit, "
+                                            ++ intercalate ", " refactorCommands
+            return Skip
 
 performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession [SourceFileKey]
 performSessionCommand output (LoadModule modName) = do

@@ -72,7 +72,7 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
-    transformed <- performCommand (readCommand command) ((SourceFileKey NormalHs moduleName), sourced) []
+    transformed <- performCommand (either error id $ readCommand command) ((SourceFileKey NormalHs moduleName), sourced) []
     case transformed of
       Right [ContentChanged (_, correctlyTransformed)] -> do
         liftIO $ putStrLn "=========== transformed AST:"

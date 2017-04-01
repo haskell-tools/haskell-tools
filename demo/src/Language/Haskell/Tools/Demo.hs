@@ -148,13 +148,15 @@ updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a 
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
     allModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
-    let command = analyzeCommand refact (selection:args)
-    case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules
-                             case res of
-                               Left err -> return $ Just $ ErrorMessage err
-                               Right diff -> do applyChanges diff
-                                                return $ Just $ RefactorChanges (map trfDiff diff)
-                Nothing -> return $ Just $ ErrorMessage "The module is not found"
+    case analyzeCommand refact (selection:args) of
+      Right command ->
+        case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules
+                                 case res of
+                                   Left err -> return $ Just $ ErrorMessage err
+                                   Right diff -> do applyChanges diff
+                                                    return $ Just $ RefactorChanges (map trfDiff diff)
+                    Nothing -> return $ Just $ ErrorMessage "The module is not found"
+      Left err -> return $ Just $ ErrorMessage err
   where trfDiff (ContentChanged (key,cont)) = (key ^. sfkModuleName, Just (prettyPrint cont))
         trfDiff (ModuleCreated name mod _) = (name, Just (prettyPrint mod))
         trfDiff (ModuleRemoved name) = (name, Nothing)
