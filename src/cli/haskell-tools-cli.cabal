@@ -1,5 +1,5 @@
 name:                haskell-tools-cli
-version:             0.5.0.0
+version:             0.6.0.0
 synopsis:            Command-line frontend for Haskell-tools Refact
 description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -49,9 +49,9 @@ library
                      , ghc-paths                 >= 0.1 && < 0.2
                      , references                >= 0.3 && < 0.4
                      , strict                    >= 0.3 && < 0.4
-                     , haskell-tools-ast         >= 0.5 && < 0.6
-                     , haskell-tools-prettyprint >= 0.5 && < 0.6
-                     , haskell-tools-refactor    >= 0.5 && < 0.6
+                     , haskell-tools-ast         >= 0.6 && < 0.7
+                     , haskell-tools-prettyprint >= 0.6 && < 0.7
+                     , haskell-tools-refactor    >= 0.6 && < 0.7
   exposed-modules:     Language.Haskell.Tools.Refactor.CLI
   default-language:    Haskell2010
 
@@ -59,7 +59,7 @@ library
 executable ht-refact
   ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 4.10
-                     , haskell-tools-cli         >= 0.5 && < 0.6
+                     , haskell-tools-cli         >= 0.6 && < 0.7
   hs-source-dirs:      exe
   main-is:             Main.hs
   default-language:    Haskell2010
@@ -84,7 +84,7 @@ test-suite haskell-tools-cli-tests
                      , tasty-hunit               >= 0.9 && < 0.10
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
-                     , haskell-tools-cli         >= 0.5 && < 0.6
+                     , haskell-tools-cli         >= 0.6 && < 0.7
                      , knob                      >= 0.1 && < 0.2
                      , bytestring                >= 0.10 && < 0.11
   default-language:    Haskell2010
@@ -93,7 +93,7 @@ benchmark cli-benchmark
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
   build-depends:       base                      >= 4.9 && < 4.10
-                     , haskell-tools-cli         >= 0.5 && < 0.6
+                     , haskell-tools-cli         >= 0.6 && < 0.7
                      , criterion                 >= 1.1 && < 1.2
                      , time                      >= 1.6 && < 1.7
                      , aeson                     >= 1.0 && < 1.2
