@@ -1,4 +1,4 @@
-resolver: lts-8.3
+resolver: lts-8.6
 
 packages:
   - src/ast
