@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.6
+ - Fixed a number of project-related bugs discovered from stackage testing.
+ - Polished the editor support
+
 ## 0.5
  - New Refactoring: Float Out
  - Enhancements of existing refactorings:
