@@ -134,7 +134,8 @@ updateClient _ (RemovePackages packagePathes) = do
 
 updateClient resp (ReLoad added changed removed) =
   -- TODO: check for changed cabal files and reload their packages
-  do removedMods <- gets (map ms_mod . filter ((`elem` removed) . getModSumOrig) . (^? refSessMCs & traversal & mcModules & traversal & modRecMS))
+  do mcs <- gets (^. refSessMCs)
+     removedMods <- gets (map ms_mod . filter ((`elem` removed) . getModSumOrig) . (^? refSessMCs & traversal & mcModules & traversal & modRecMS))
      lift $ forM_ removedMods (\modName -> removeTarget (TargetModule (GHC.moduleName modName)))
      -- remove targets deleted
      modify $ refSessMCs & traversal & mcModules
