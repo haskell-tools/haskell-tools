@@ -27,8 +27,6 @@ import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 
-import Debug.Trace
-
 -- | The state common for refactoring tools, carrying the state of modules.
 data RefactorSessionState
   = RefactorSessionState { __refSessMCs :: [ModuleCollection]
@@ -128,7 +126,7 @@ reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary ->
 reloadModule report ms = do
   mcs <- gets (^. refSessMCs)
   let modName = modSumName ms
-      codeGen = hasGeneratedCode (keyFromMS ms) mcs
+      codeGen = needsGeneratedCode (keyFromMS ms) mcs
   case lookupModuleColl modName mcs of
     Just mc -> do
       let dfs = ms_hspp_opts ms
@@ -150,7 +148,9 @@ checkEvaluatedMods report mods = do
   where reloadIfNeeded ms mcs
           = let key = keyFromMS ms
               in if not (hasGeneratedCode key mcs)
-                   then do modify $ refSessMCs .- codeGeneratedFor key
+                   then do md <- gets (^. refSessMCs)
+                           modify $ refSessMCs .- codeGeneratedFor key
+                           md <- gets (^. refSessMCs)
                            if (isAlreadyLoaded key mcs) then
                                -- The module is already loaded but code is not generated. Need to reload.
                                Just <$> lift (codeGenForModule report (codeGeneratedFor key mcs) ms)
