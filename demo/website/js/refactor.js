@@ -3,10 +3,13 @@ $(function() {
 
     var ws;
 
+    var isConnected = false;
+
     function openSocketConnection() {
         ws = new WebSocket(serverAddress);
 
         ws.onopen = function() {
+            isConnected = true;
             // send the Connect signal to connect to the service
             var modules = [];
             for (var i = 0; i < tabs.length; i++) {
@@ -22,8 +25,8 @@ $(function() {
             responseHandler($.parseJSON(data));
         };
 
-        ws.onclose = ws.onerror = function(evt){
-            showError("The connection with the refactoring service cannot be established. Please try again later.")
+        ws.onerror = function(evt){
+            isConnected = false;
             setTimeout(function() { openSocketConnection(); }, 2000);
         }
     }
@@ -46,6 +49,12 @@ $(function() {
         }
         performRefactor(refactor, getDetails)(null);
     });
+
+    $('#tabs').click(function(event) {
+        if (!isConnected) {
+            showError("The connection with the refactoring service cannot be established. The demo cannot be used right now. Please try again later.")
+        }
+    })
 
     function responseHandler(resp) {
         $('body').removeClass("loading");
