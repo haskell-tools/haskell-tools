@@ -162,8 +162,9 @@ trfImports (filter (not . ideclImplicit . unLoc) -> imps)
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange)
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
-trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc isSafe isQual _ declAs declHiding)) =
-  do safeTok <- tokenLoc AnnSafe
+trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
+  do range <- asks contRange
+     safeTok <- tokenLoc AnnSafe
 
      let -- default positions of optional parts of an import declaration
          annBeforeQual = if isSrc then AnnClose else AnnImport
