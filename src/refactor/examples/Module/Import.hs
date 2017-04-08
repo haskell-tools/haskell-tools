@@ -1,4 +1,4 @@
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PackageImports, Safe #-}
 module Module.Import where
 
 import Data.List
@@ -8,4 +8,4 @@ import qualified Data.List
 import Data.List as List
 import Data.List(map,(++))
 import Data.Function hiding ((&))
-import Control.Monad.Writer hiding (Alt, Writer())
+import safe Control.Monad.Writer hiding (Alt, Writer())
