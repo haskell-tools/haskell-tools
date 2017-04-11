@@ -125,7 +125,7 @@ hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _
 
 needsGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
 needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True) -> True; _ -> False)
-                           . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+                           . find (((sfkIsBoot .= NormalHs $ key) ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
 codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod ms) -> ModuleCodeGenerated mod ms

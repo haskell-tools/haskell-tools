@@ -89,15 +89,15 @@ loadingTests =
   , ( "multi-packages"
     , [ AddPackages [ testRoot </> "multi-packages" </> "package1"
                     , testRoot </> "multi-packages" </> "package2" ]]
-    , [ LoadingModules [ testRoot </> "multi-packages" </> "package1" </> "A.hs"
-                       , testRoot </> "multi-packages" </> "package2" </> "B.hs" ]
+    , [ LoadingModules [ testRoot </> "multi-packages" </> "package2" </> "B.hs"
+                       , testRoot </> "multi-packages" </> "package1" </> "A.hs" ]
       , LoadedModules [ (testRoot </> "multi-packages" </> "package2" </> "B.hs", "B") ]
       , LoadedModules [ (testRoot </> "multi-packages" </> "package1" </> "A.hs", "A") ] ] )
   , ( "multi-packages-flags"
     , [ AddPackages [ testRoot </> "multi-packages-flags" </> "package1"
                     , testRoot </> "multi-packages-flags" </> "package2" ]]
-    , [ LoadingModules [ testRoot </> "multi-packages-flags" </> "package1" </> "A.hs"
-                       , testRoot </> "multi-packages-flags" </> "package2" </> "B.hs" ]
+    , [ LoadingModules [ testRoot </> "multi-packages-flags" </> "package2" </> "B.hs"
+                       , testRoot </> "multi-packages-flags" </> "package1" </> "A.hs" ]
       , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package2" </> "B.hs", "B") ]
       , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package1" </> "A.hs", "A") ] ] )
   , ( "multi-packages-dependent"
@@ -109,7 +109,7 @@ loadingTests =
       , LoadedModules [ (testRoot </> "multi-packages-dependent" </> "package2" </> "B.hs", "B") ] ] )
   , ( "has-th"
     , [AddPackages [testRoot </> "has-th"]]
-    , [ LoadingModules [ testRoot </> "has-th" </> "A.hs",  testRoot </> "has-th" </> "TH.hs" ]
+    , [ LoadingModules [ testRoot </> "has-th" </> "TH.hs", testRoot </> "has-th" </> "A.hs" ]
       , LoadedModules [ (testRoot </> "has-th" </> "TH.hs", "TH") ]
       , LoadedModules [ (testRoot </> "has-th" </> "A.hs", "A") ] ] )
   , ( "th-added-later"
@@ -118,9 +118,7 @@ loadingTests =
       ]
     , [ LoadingModules [ testRoot </> "th-added-later" </> "package1" </> "A.hs" ]
       , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
-      , LoadingModules [ testRoot </> "th-added-later" </> "package1" </> "A.hs"
-                       , testRoot </> "th-added-later" </> "package2" </> "B.hs" ]
-      , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
+      , LoadingModules [ testRoot </> "th-added-later" </> "package2" </> "B.hs" ]
       , LoadedModules [(testRoot </> "th-added-later" </> "package2" </> "B.hs", "B")] ] )
   ]
 
