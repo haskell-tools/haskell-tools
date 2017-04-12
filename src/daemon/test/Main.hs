@@ -35,12 +35,13 @@ main :: IO ()
 main = do unsetEnv "GHC_PACKAGE_PATH"
           portCounter <- newMVar pORT_NUM_START
           tr <- canonicalizePath testRoot
-          isStackRun <- isJust <$> lookupEnv "STACK_EXE"
-          defaultMain (allTests isStackRun tr portCounter)
+          hasStack <- isJust <$> findExecutable "stack"
+          hasCabal <- isJust <$> findExecutable "cabal"
+          defaultMain (allTests (hasStack && hasCabal) tr portCounter)
 
 allTests :: Bool -> FilePath -> MVar Int -> TestTree
 allTests isSource testRoot portCounter
-  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10))
+  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 20))
       $ testGroup "daemon-tests"
           [ testGroup "simple-tests"
               $ map (makeDaemonTest portCounter) simpleTests
@@ -125,19 +126,19 @@ loadingTests =
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
 compProblemTests =
   [ ( "load-error"
-    , [ Right $ AddPackages [testRoot </> "load-error"] ]
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "load-error"] ]
     , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
   , ( "source-error"
-    , [ Right $ AddPackages [testRoot </> "source-error"] ]
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "source-error"] ]
     , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-error"
-    , [ Right $ AddPackages [testRoot </> "empty"]
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\nimport No.Such.Module"
       , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-source-error"
-    , [ Right $ AddPackages [testRoot </> "empty"]
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\naa = 3 + ()"
       , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
@@ -146,7 +147,7 @@ compProblemTests =
     , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] ]
     , \case [ ErrorMessage _ ] -> True; _ -> False )
   , ( "additional-files"
-    , [ Right $ AddPackages [testRoot </> "additional-files"] ]
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "additional-files"] ]
     , \case [ LoadingModules {}, ErrorMessage _ ] -> True; _ -> False )
   ]
 
@@ -366,7 +367,6 @@ communicateWithDaemon port msgs = withSocketsDo $ do
 readSockResponsesUntil :: Socket -> ResponseMsg -> BS.ByteString -> IO [ResponseMsg]
 readSockResponsesUntil sock rsp bs
   = do resp <- recv sock 2048
-       -- putStrLn $ "###" ++ BS.unpack resp
        let fullBS = bs `BS.append` resp
        if BS.null resp
          then return []

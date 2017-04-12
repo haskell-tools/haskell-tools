@@ -32,7 +32,7 @@ matrix:
 before_install:
   # Using compiler above sets CC to an invalid value, so unset it
   - unset CC
-  
+
   # Download and unpack the stack executable
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
   - mkdir -p ~/.local/bin
@@ -49,9 +49,9 @@ install:
   - travis_wait stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
 
 script:
-  
+
   # Build Haskell-tools with all library, executable, test and benchmark
-  - travis_wait stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps 
+  - travis_wait stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps
 
   # Run tests. We record test coverage information.
   - stack --no-terminal test --coverage haskell-tools-rewrite
@@ -61,7 +61,7 @@ script:
   - stack --no-terminal test --coverage haskell-tools-demo
 
 after_script:
-  
+
   # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
   - travis_wait stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
 
