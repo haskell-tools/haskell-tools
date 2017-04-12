@@ -42,10 +42,11 @@ packageDBLoc (ExplicitDB dir) path = do
 -- | Gets the (probable) location of autogen folder depending on which type of
 -- build we are using.
 detectAutogen :: FilePath -> PackageDB -> IO (Maybe FilePath)
-detectAutogen root AutoDB = choose [ detectAutogen root DefaultDB
-                                   , detectAutogen root CabalSandboxDB
-                                   , detectAutogen root StackDB
-                                   ]
+detectAutogen root AutoDB = do
+  defDB <- detectAutogen root DefaultDB
+  sandboxDB <- detectAutogen root CabalSandboxDB
+  stackDB <- detectAutogen root StackDB
+  return $ choose [ defDB, sandboxDB, stackDB ]
 detectAutogen root DefaultDB = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root (ExplicitDB _) = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root CabalSandboxDB = ifExists (root </> "dist" </> "build" </> "autogen")
@@ -53,7 +54,7 @@ detectAutogen root StackDB = do
   distExists <- doesDirectoryExist (root </> ".stack-work" </> "dist")
   existing <- if distExists then (do
     contents <- listDirectory (root </> ".stack-work" </> "dist")
-    dirs <- filterM doesDirectoryExist contents
+    dirs <- filterM doesDirectoryExist (map ((root </> ".stack-work" </> "dist") </>) contents)
     mapM (ifExists . (</> "build" </> "autogen")) dirs) else return []
   return (choose existing)
 
