@@ -1,6 +1,6 @@
 # Using the command line refactorer
 
-  - If you are using stack to build from source: `stack exec ht-refact -- [flags] package-roots`
+  - If you are using stack to build from source: `stack exec ht-refact -- [flags] package-roots` (where `package-roots` stands for the directory containing the cabal file e.g.  `stack exec ht-refact -- .`)
   - Otherwise, install the `haskell-tools-cli` package and use `ht-refact [flags] package-roots`.
   - You can use [ghc flags](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html) to control how modules are loaded and checked.
   - By setting the `-one-shot`, `-module-name=<modulename>` and `-refactoring=<refactor-command>` flags, you can perform a refactoring without the interactive mode.
