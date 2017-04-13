@@ -31,8 +31,8 @@ packageDBLoc CabalSandboxDB path = do
                                      else return ""
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
 packageDBLoc StackDB path = withCurrentDirectory path $ do
-     (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--snapshot-pkg-db"] ""
-     (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--local-pkg-db"] ""
+     (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
+     (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
      return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs]
 packageDBLoc (ExplicitDB dir) path = do
   hasDir <- doesDirectoryExist (path </> dir)
@@ -54,8 +54,9 @@ detectAutogen root StackDB = do
   distExists <- doesDirectoryExist (root </> ".stack-work" </> "dist")
   existing <- if distExists then (do
     contents <- listDirectory (root </> ".stack-work" </> "dist")
-    dirs <- filterM doesDirectoryExist (map ((root </> ".stack-work" </> "dist") </>) contents)
-    mapM (ifExists . (</> "build" </> "autogen")) dirs) else return []
+    let dirs = map ((root </> ".stack-work" </> "dist") </>) contents
+    subDirs <- mapM (\d -> map (d </>) <$> listDirectory d) dirs
+    mapM (ifExists . (</> "build" </> "autogen")) (dirs ++ concat subDirs)) else return []
   return (choose existing)
 
 

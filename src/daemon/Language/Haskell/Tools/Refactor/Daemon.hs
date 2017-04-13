@@ -34,6 +34,7 @@ import System.Directory
 import System.Environment
 import System.IO
 import System.IO.Strict as StrictIO (hGetContents)
+import Data.Version
 
 import Bag
 import DynFlags
@@ -55,8 +56,7 @@ import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Session
-
-import Debug.Trace
+import Paths_haskell_tools_daemon
 
 runDaemonCLI :: IO ()
 runDaemonCLI = getArgs >>= runDaemon
@@ -72,7 +72,7 @@ runDaemon args = withSocketsDo $
        setSocketOption sock ReuseAddr 1
        when (not isSilent) $ putStrLn $ "Listening on port " ++ finalArgs !! 0
        bind sock (SockAddrInet (read (finalArgs !! 0)) iNADDR_ANY)
-       listen sock 1
+       listen sock 4
        clientLoop isSilent sock
 
 defaultArgs :: [String]
@@ -117,6 +117,7 @@ respondTo ghcSess state next mess
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
 updateClient :: (ResponseMsg -> IO ()) -> ClientMessage -> StateT DaemonSessionState Ghc Bool
+updateClient resp (Handshake _) = liftIO (resp $ HandshakeResponse $ versionBranch version) >> return True
 updateClient resp KeepAlive = liftIO (resp KeepAliveResponse) >> return True
 updateClient resp Disconnect = liftIO (resp Disconnected) >> return False
 updateClient _ (SetPackageDB pkgDB) = modify (packageDB .= pkgDB) >> return True
@@ -313,6 +314,7 @@ getProblems other = Left $ displayException other
 
 data ClientMessage
   = KeepAlive
+  | Handshake { clientVersion :: [Int] }
   | SetPackageDB { pkgDB :: PackageDB }
   | AddPackages { addedPathes :: [FilePath] }
   | RemovePackages { removedPathes :: [FilePath] }
@@ -333,6 +335,7 @@ instance FromJSON ClientMessage
 
 data ResponseMsg
   = KeepAliveResponse
+  | HandshakeResponse { serverVersion :: [Int] }
   | ErrorMessage { errorMsg :: String }
   | CompilationProblem { errorMarkers :: [(SrcSpan, String)] }
   | ModulesChanged { undoChanges :: [UndoRefactor] }
