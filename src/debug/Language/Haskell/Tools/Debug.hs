@@ -4,6 +4,8 @@
             #-}
 module Language.Haskell.Tools.Debug where
 
+import Control.Monad
+import Control.Reference
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Maybe (Maybe(..), fromJust)
 import GHC.Generics (Generic(..))
@@ -22,6 +24,7 @@ import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.RangeDebug (srcInfoDebug)
 import Language.Haskell.Tools.RangeDebug.Instances ()
 import Language.Haskell.Tools.Refactor.Perform (performCommand, readCommand)
+import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase (RefactorChange(..), IsBoot(..), SourceFileKey(..))
 import Language.Haskell.Tools.Transform
@@ -74,15 +77,23 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn prettyPrinted
     transformed <- performCommand (either error id $ readCommand command) ((SourceFileKey NormalHs moduleName), sourced) []
     case transformed of
-      Right [ContentChanged (_, correctlyTransformed)] -> do
-        liftIO $ putStrLn "=========== transformed AST:"
-        liftIO $ putStrLn $ srcInfoDebug correctlyTransformed
-        liftIO $ putStrLn "=========== transformed & prettyprinted:"
-        let prettyPrinted = prettyPrint correctlyTransformed
-        liftIO $ putStrLn prettyPrinted
-        liftIO $ putStrLn "==========="
-      -- TODO: implement
-      Right _ -> error "The output shoud be one module changed"
+      Right changes -> do
+        forM_ changes $ \case
+          ContentChanged (mod, correctlyTransformed) -> do
+            liftIO $ putStrLn $ "=========== transformed AST (" ++ (mod ^. sfkModuleName) ++ "):"
+            liftIO $ putStrLn $ srcInfoDebug correctlyTransformed
+            liftIO $ putStrLn $ "=========== transformed & prettyprinted (" ++ (mod ^. sfkModuleName) ++ "):"
+            let prettyPrinted = prettyPrint correctlyTransformed
+            liftIO $ putStrLn prettyPrinted
+            liftIO $ putStrLn "==========="
+          ModuleRemoved mod -> do
+            liftIO $ putStrLn $ "=========== module removed: " ++ mod
+          ModuleCreated mod cont _ -> do
+            liftIO $ putStrLn $ "=========== created AST (" ++ mod ++ "):"
+            liftIO $ putStrLn $ srcInfoDebug cont
+            liftIO $ putStrLn $ "=========== created & prettyprinted (" ++ mod ++ "):"
+            let prettyPrinted = prettyPrint cont
+            liftIO $ putStrLn prettyPrinted
       Left transformProblem -> do
         liftIO $ putStrLn "==========="
         liftIO $ putStrLn transformProblem
