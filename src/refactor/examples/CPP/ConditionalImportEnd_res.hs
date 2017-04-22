@@ -1,10 +1,9 @@
 {-# LANGUAGE CPP #-}
-module CPP.ConditionalImport where
+module CPP.ConditionalImportEnd where
 
 
 #ifndef USE_DATA_LIST
-import Control.Monad (Monad(..))
+import Control.Monad ((>>))
 #endif
-
 
 a = Nothing >> Nothing

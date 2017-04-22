@@ -16,7 +16,7 @@ type ASTOptional node dom = AnnMaybeG node dom SrcTemplateStage
 type ASTMulti node dom = AnnListG node dom SrcTemplateStage
 
 instance IsString (SpanInfo SrcTemplateStage) where
-  fromString s = SourceTemplateNode noSrcSpan [TextElem s] 0 Nothing
+  fromString s = SourceTemplateNode noSrcSpan [TextElem [NormalText s] noSrcSpan] 0 Nothing
 
 -- * Basic elements
 child :: SpanInfo SrcTemplateStage

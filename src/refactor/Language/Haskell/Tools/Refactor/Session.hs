@@ -118,8 +118,9 @@ getReachableModules loadCallback selected = do
                         $ filter selected allMods
         recompMods = map (ms_mod . getModFromNode) $ reachablesG (transposeG allModsGraph) changedMods
         sortedMods = reverse $ topologicalSortG allModsGraph
-    liftIO $ loadCallback (map getModFromNode sortedMods)
-    return $ filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
+        sortedRecompMods = filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
+    liftIO $ loadCallback sortedRecompMods
+    return sortedRecompMods
 
 -- | Reload a given module. Perform a callback.
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a

@@ -1,5 +1,5 @@
 -- | Defines the API for refactorings
-module Language.Haskell.Tools.Refactor 
+module Language.Haskell.Tools.Refactor
     ( module Language.Haskell.Tools.AST.SemaInfoClasses
     , module Language.Haskell.Tools.AST.Rewrite
     , module Language.Haskell.Tools.AST.References
@@ -17,6 +17,7 @@ module Language.Haskell.Tools.Refactor
     , sourceTemplateNodeRange, sourceTemplateNodeElems
     , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
     , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
+    , SourceTemplateTextElem(..), sourceTemplateText
     ) where
 
 -- Important: Haddock doesn't support the rename all exported modules and export them at once hack

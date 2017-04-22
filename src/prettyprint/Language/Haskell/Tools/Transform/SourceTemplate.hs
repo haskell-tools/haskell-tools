@@ -28,7 +28,7 @@ instance SourceInfo SrcTemplateStage where
                               , _srcTmpListAfter :: String -- ^ Text that should be put after the last element if the list becomes populated
                               , _srcTmpDefaultSeparator :: String -- ^ The default separator if the list were empty
                               , _srcTmpIndented :: Maybe [Bool] -- ^ False for elements that should be not aligned
-                              , _srcTmpSeparators :: [String] -- ^ The actual separators that were found in the source code
+                              , _srcTmpSeparators :: [([SourceTemplateTextElem], SrcSpan)] -- ^ The actual separators that were found in the source code
                               , _srcTmpListMinInd :: Int -- ^ Minimum indentation for the element
                               , _srcTmpListRelPos :: Maybe Int -- ^ Relative indentation for newly created elements
                               }
@@ -73,7 +73,7 @@ srcTmpDefaultSeparator = lens _srcTmpDefaultSeparator (\v s -> s { _srcTmpDefaul
 srcTmpIndented :: Simple Lens (ListInfo SrcTemplateStage) (Maybe [Bool])
 srcTmpIndented = lens _srcTmpIndented (\v s -> s { _srcTmpIndented = v })
 
-srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [String]
+srcTmpSeparators :: Simple Lens (ListInfo SrcTemplateStage) [([SourceTemplateTextElem], SrcSpan)]
 srcTmpSeparators = lens _srcTmpSeparators (\v s -> s { _srcTmpSeparators = v })
 
 srcTmpListMinimalIndent :: Simple Lens (ListInfo SrcTemplateStage) Int
@@ -102,11 +102,23 @@ srcTmpOptRelPos = lens _srcTmpOptRelPos (\v s -> s { _srcTmpOptRelPos = v })
 
 -- | An element of a source template for a singleton AST node.
 data SourceTemplateElem
-  = TextElem { _sourceTemplateText :: String } -- ^ Source text belonging to the current node
+  = TextElem { _sourceTemplateTextElem :: [SourceTemplateTextElem]
+             , _sourceTemplateTextRange :: SrcSpan
+             } -- ^ Source text belonging to the current node
   | ChildElem -- ^ Placeholder for the next children of the node
      deriving (Eq, Ord, Data)
 
+isStayingText :: SourceTemplateTextElem -> Bool
+isStayingText StayingText{} = True
+isStayingText _ = False
+
+data SourceTemplateTextElem
+  = NormalText { _sourceTemplateText :: String }
+  | StayingText { _sourceTemplateText :: String, _lineEndings :: String }
+     deriving (Eq, Ord, Data)
+
 makeReferences ''SourceTemplateElem
+makeReferences ''SourceTemplateTextElem
 
 instance HasRange (SpanInfo SrcTemplateStage) where
   getRange = (^. sourceTemplateNodeRange)
@@ -123,10 +135,14 @@ instance HasRange (OptionalInfo SrcTemplateStage) where
 instance Show (SpanInfo SrcTemplateStage) where
   show (SourceTemplateNode _ sp _ _) = concatMap show sp
 instance Show (ListInfo SrcTemplateStage) where
-  show SourceTemplateList{..} = "<*" ++ show _srcTmpListBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpListAfter ++ "*>"
+  show SourceTemplateList{..} = "<*" ++ show _srcTmpListBefore ++ " " ++ show _srcTmpDefaultSeparator ++ " " ++ show _srcTmpListAfter ++ " " ++ show _srcTmpSeparators ++ "*>"
 instance Show (OptionalInfo SrcTemplateStage) where
   show SourceTemplateOpt{..} = "<?" ++ show _srcTmpOptBefore ++ " " ++ show _srcTmpOptAfter ++ "?>"
 
 instance Show SourceTemplateElem where
-  show (TextElem s) = s
+  show (TextElem s _) = show s
   show ChildElem = "<.>"
+
+instance Show SourceTemplateTextElem where
+  show (NormalText s) = show s
+  show (StayingText s _) = "|" ++ show s ++ "|"

@@ -5,7 +5,7 @@
            #-}
 
 -- | Pretty printing the AST
-module Language.Haskell.Tools.PrettyPrint (prettyPrint) where
+module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree) where
 
 import FastString (fsLit)
 import SrcLoc
@@ -15,10 +15,12 @@ import Language.Haskell.Tools.PrettyPrint.RoseTree (RoseSourceInfo(..), RoseTree
 import Language.Haskell.Tools.Transform.SourceTemplate
 
 import Control.Monad.State
+import Control.Reference
 import Data.Foldable (Foldable(..), concat)
 import Data.List as List
 import Data.List.Split (splitOn)
 import Data.Sequence hiding (null, replicate)
+import Debug.Trace
 
 -- | Pretty prints an AST by using source templates stored as node info
 prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String
@@ -37,7 +39,8 @@ printRose' :: RealSrcLoc -> RoseTree SrcTemplateStage -> PPState (Seq Char)
 printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relInd)) children)
   = do slide <- calculateSlide rng
        let printTemplateElems :: [SourceTemplateElem] -> [RoseTree SrcTemplateStage] -> PPState (Seq Char)
-           printTemplateElems (TextElem txt : rest) children = putString slide min txt >+< printTemplateElems rest children
+           printTemplateElems (TextElem txtElems _ : rest) children = putString slide min txt >+< printTemplateElems rest children
+             where txt = concatMap (^. sourceTemplateText) txtElems
            printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child >+< printTemplateElems rest children
            printTemplateElems [] [] = return empty
            printTemplateElems _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
@@ -55,8 +58,10 @@ printRose' parent (RoseTree (RoseList (SourceTemplateList rng bef aft defSep ind
          putString slide min bef
            >+< (maybe printListWithSeps printListWithSepsIndented indented) actRng slide min actualSeps children
            >+< putString slide min aft
-  where actualSeps = case seps of [] -> repeat defSep
-                                  _  -> seps ++ repeat (last seps)
+  where stringSeps :: [String]
+        stringSeps = map (concatMap (^. sourceTemplateText)) (map fst seps)
+        actualSeps = case stringSeps of [] -> repeat defSep
+                                        _  -> stringSeps ++ repeat (last stringSeps)
 
 printRose' _ (RoseTree (RoseOptional (SourceTemplateOpt {})) []) = return empty
 printRose' parent (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd relInd)) [child])

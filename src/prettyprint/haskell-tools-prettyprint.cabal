@@ -23,7 +23,6 @@ library
                      , Language.Haskell.Tools.Transform.SourceTemplate
                      , Language.Haskell.Tools.Transform.SourceTemplateHelpers
                      , Language.Haskell.Tools.Transform.PlaceComments
-                     , Language.Haskell.Tools.Transform.FixCPPSpans
   build-depends:       base              >= 4.9  && < 4.10
                      , mtl               >= 2.2  && < 2.3
                      , containers        >= 0.5  && < 0.6

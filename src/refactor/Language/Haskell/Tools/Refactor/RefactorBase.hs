@@ -8,12 +8,14 @@
            , TypeSynonymInstances
            , MultiWayIf
            , TemplateHaskell
+           , ViewPatterns
            #-}
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.RefactorBase where
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite
+import Language.Haskell.Tools.Transform
 
 import Bag as GHC
 import DynFlags (HasDynFlags(..))
@@ -26,6 +28,7 @@ import Outputable
 import qualified PrelNames as GHC
 import qualified TyCon as GHC
 import qualified TysWiredIn as GHC
+import SrcLoc
 
 import Control.Exception
 import Control.Monad.Reader
@@ -34,6 +37,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Writer
 import Control.Reference hiding (element)
 import Data.Char
+import Data.Either
 import Data.Function (on)
 import Data.List
 import Data.List.Split
@@ -109,8 +113,77 @@ localRefactoringRes :: HasModuleInfo dom
                           -> Refactor a
 localRefactoringRes access mod trf
   = let init = RefactorCtx (semanticsModule $ mod ^. semantics) mod (mod ^? modImports&annList)
-     in flip runReaderT init $ do (mod, newNames) <- runWriterT (fromRefactorT trf)
-                                  return $ access (addGeneratedImports newNames) mod
+     in flip runReaderT init $ do (mod, recorded) <- runWriterT (fromRefactorT trf)
+                                  return $ access (insertText (rights recorded) . addGeneratedImports (lefts recorded)) mod
+
+-- | Re-inserts the elements removed from the AST that should be kept (for example preprocessor directives)
+insertText :: SourceInfoTraversal p => [(SrcSpan,String,String)] -> p dom SrcTemplateStage -> p dom SrcTemplateStage
+insertText [] p = p
+insertText inserted p
+  -- this traverses the AST and finds the positions where the removed elements can be added
+  = evalState (sourceInfoTraverseUp (SourceInfoTrf
+                (\stn -> sourceTemplateNodeElems !~ takeWhatPrecedesElem (stn ^. sourceTemplateNodeRange) $ stn)
+                (srcTmpSeparators !~ takeWhatPrecedesSep)
+                pure) (return ()) (return ()) p) (map Right $ sortOn (^. _1) inserted)
+  where
+   -- insert fragments into list separators
+   takeWhatPrecedesSep :: [([SourceTemplateTextElem], SrcSpan)] -> State [Either SrcSpan (SrcSpan,String,String)] [([SourceTemplateTextElem], SrcSpan)]
+   takeWhatPrecedesSep seps = takeWhatPrecedes Nothing (Just . (^. _2))
+                                               (\str -> _1 .- (++ [StayingText str ""]))
+                                               (\str -> _1 .- ([StayingText str ""] ++))
+                                               seps
+
+   -- insert fragments into AST elements
+   takeWhatPrecedesElem :: SrcSpan -> [SourceTemplateElem] -> State [Either SrcSpan (SrcSpan,String,String)] [SourceTemplateElem]
+   takeWhatPrecedesElem rng elems = takeWhatPrecedes (Just rng) (^? sourceTemplateTextRange)
+                                                                (\s -> sourceTemplateTextElem .- (++ [StayingText s ""]))
+                                                                (\s -> sourceTemplateTextElem .- ([StayingText s ""] ++))
+                                                                elems
+
+   -- finds the position of the fragment where there are elements in the template both before and after the fragment
+   -- puts holes into the list of inserted fragments where child elements are located
+   -- uses these holes to determine where should the fragment be added
+   takeWhatPrecedes :: Maybe SrcSpan -> (a -> Maybe SrcSpan) -> (String -> a -> a) -> (String -> a -> a) -> [a] -> State [Either SrcSpan (SrcSpan,String,String)] [a]
+   takeWhatPrecedes rng access append prepend elems
+     | ranges <- mapMaybe access elems
+     , not (null ranges)
+     = do let start = srcSpanStart $ fromMaybe (head ranges) rng
+              end = srcSpanEnd $ fromMaybe (last ranges) rng
+          toInsert <- get
+          let (prefix,rest) = break ((>= start) . srcSpanStart . either id (\(sp,_,_) -> sp)) toInsert
+              (middle,suffix) = break ((> end) . srcSpanEnd . either id (\(sp,_,_) -> sp)) rest
+          put $ prefix ++ Left (mkSrcSpan start end) : suffix
+          return $ mergeInserted access append prepend False middle elems
+     where mergeInserted :: (a -> Maybe SrcSpan) -> (String -> a -> a) -> (String -> a -> a) -> Bool -> [Either SrcSpan (SrcSpan,String,String)] -> [a] -> [a]
+           -- no fragments left
+           mergeInserted _ _ _ _ [] elems = elems
+           mergeInserted access append prepend prep insert@(Right (insertSpan,insertStr,ln):toInsert) (fstElem:elems)
+              -- insert a fragment to the end of the current element if the next elment is after the fragment
+              | Just fstElemSpace <- access fstElem -- TODO: is this needed?
+              , not prep && case mapMaybe access elems of sp:_ -> srcSpanStart sp >= srcSpanEnd insertSpan
+                                                          _ -> True
+              = mergeInserted access append prepend prep toInsert (append (ln ++ insertStr ++ ln) fstElem : elems)
+              -- insert the fragment before the current elem if we need an element before (we skipped a child)
+              -- and the current element is after the inserted fragment
+              | Just fstElemSpace <- access fstElem
+              , prep && srcSpanStart fstElemSpace >= srcSpanEnd insertSpan
+              = mergeInserted access append prepend prep toInsert (prepend (ln ++ insertStr ++ ln) fstElem : elems)
+              | isJust (access fstElem) && prep
+              = mergeInserted access append prepend False insert (fstElem : elems) -- switch back to append mode
+              | otherwise
+              = fstElem : mergeInserted access append prepend (if isJust (access fstElem) then False else prep) insert elems -- move on and switch back to append mode
+           -- when found a hole
+           mergeInserted access append prepend prep insert@(Left sp : toInsert) (fstElem:elems)
+              | Just fstElemSpace <- access fstElem
+              = if srcSpanStart fstElemSpace > srcSpanEnd sp
+                  -- switch to prepend mode
+                  then mergeInserted access append prepend True toInsert (fstElem:elems)
+                  -- skip elements that are not after the fragment
+                  else fstElem : mergeInserted access append prepend prep insert elems
+              | otherwise
+              = fstElem : mergeInserted access append prepend True toInsert elems -- switch to prepend mode and move on
+           mergeInserted _ _ _ _ _ [] = [] -- maybe error
+   takeWhatPrecedes _ _ _ _ elems = return elems
 
 -- | Adds the imports that bring names into scope that are needed by the refactoring
 addGeneratedImports :: [GHC.Name] -> Ann UModule dom SrcTemplateStage -> Ann UModule dom SrcTemplateStage
@@ -163,8 +236,8 @@ instance ExceptionMonad m => ExceptionMonad (ExceptT s m) where
 
 
 -- | Input and output information for the refactoring
-newtype LocalRefactorT dom m a = LocalRefactorT { fromRefactorT :: WriterT [GHC.Name] (ReaderT (RefactorCtx dom) m) a }
-  deriving (Functor, Applicative, Monad, MonadReader (RefactorCtx dom), MonadWriter [GHC.Name], MonadIO, HasDynFlags, ExceptionMonad, GhcMonad)
+newtype LocalRefactorT dom m a = LocalRefactorT { fromRefactorT :: WriterT [Either GHC.Name (SrcSpan, String, String)] (ReaderT (RefactorCtx dom) m) a }
+  deriving (Functor, Applicative, Monad, MonadReader (RefactorCtx dom), MonadWriter [Either GHC.Name (SrcSpan, String, String)], MonadIO, HasDynFlags, ExceptionMonad, GhcMonad)
 
 -- | The information a refactoring can use
 data RefactorCtx dom = RefactorCtx { refModuleName :: GHC.Module
@@ -232,7 +305,7 @@ referenceName' makeName name
          else let possibleImports = filter ((name `elem`) . (\imp -> semanticsImported $ imp ^. semantics)) imports
                   fromPrelude = name `elem` semanticsImplicitImports (mod ^. semantics)
                in if | fromPrelude -> return $ makeName [] name
-                     | null possibleImports -> do tell [name]
+                     | null possibleImports -> do tell [Left name]
                                                   return $ makeName [] name
                      | otherwise -> return $ referenceBy makeName name possibleImports
                                      -- use it according to the best available import

@@ -67,7 +67,7 @@ demoRefactor command workingDir args moduleName =
 
     liftIO $ putStrLn $ show $ mapLocIndices sourceOrigin (getLocIndices cutUp)
     liftIO $ putStrLn "=========== sourced:"
-    let sourced = (if hasCPP then fixCPPSpans else id) $ rangeToSource sourceOrigin cutUp
+    let sourced = (if hasCPP then extractStayingElems else id) $ rangeToSource sourceOrigin cutUp
     liftIO $ putStrLn $ srcInfoDebug sourced
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced

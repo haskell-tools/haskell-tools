@@ -22,6 +22,7 @@ import Name (NamedThing(..))
 import OccName (HasOccName(..), isSymOcc)
 import qualified PrelNames as GHC (fromStringName)
 import TyCon (TyCon(..), tyConFamInst_maybe)
+import SrcLoc
 
 import Control.Applicative ((<$>), Alternative(..))
 import Control.Monad
@@ -32,6 +33,8 @@ import Data.List
 import Data.Maybe (Maybe(..), maybe, catMaybes)
 
 import Language.Haskell.Tools.Refactor as AST
+
+import Debug.Trace
 
 type OrganizeImportsDomain dom = ( HasNameInfo dom, HasImportInfo dom, HasModuleInfo dom )
 
@@ -86,22 +89,26 @@ organizeImports mod
 
 -- | Sorts the imports in alphabetical order
 sortImports :: forall dom . ImportDeclList dom -> ImportDeclList dom
-sortImports ls = srcInfo & srcTmpSeparators .= filter (not . null) (concatMap (\(sep,elems) -> sep : map fst elems) reordered)
+sortImports ls = srcInfo & srcTmpSeparators .= filter (not . null . fst) (concatMap (\(sep,elems) -> sep : map fst elems) reordered)
                    $ annListElems .= concatMap (map snd . snd) reordered
                    $ ls
-  where reordered :: [(String, [(String, ImportDecl dom)])]
+  where reordered :: [(([SourceTemplateTextElem], SrcSpan), [(([SourceTemplateTextElem], SrcSpan), ImportDecl dom)])]
         reordered = map (_2 .- sortBy (compare `on` (^. _2 & importModule & AST.moduleNameString))) parts
 
         parts = map (_2 .- reverse) $ reverse $ breakApart [] imports
 
-        breakApart :: [(String, [(String, ImportDecl dom)])] -> [(String, ImportDecl dom)] -> [(String, [(String, ImportDecl dom)])]
+        -- break up the list of imports to import groups
+        breakApart :: [(([SourceTemplateTextElem], SrcSpan), [(([SourceTemplateTextElem], SrcSpan), ImportDecl dom)])]
+                        -> [(([SourceTemplateTextElem], SrcSpan), ImportDecl dom)]
+                        -> [(([SourceTemplateTextElem], SrcSpan), [(([SourceTemplateTextElem], SrcSpan), ImportDecl dom)])]
         breakApart res [] = res
-        breakApart res ((sep, e) : rest) | length (filter ('\n' ==) sep) > 1
-          = breakApart ((sep, [("",e)]) : res) rest
+        breakApart res ((sep, e) : rest) | length (filter ('\n' ==) (sep ^? _1 & traversal & sourceTemplateText & traversal)) > 1
+                                            || "\n#" `isInfixOf` (sep ^? _1 & traversal & sourceTemplateText & traversal)
+          = breakApart ((sep, [(([], noSrcSpan),e)]) : res) rest
         breakApart ((lastSep, lastRes) : res) (elem : rest)
           = breakApart ((lastSep, elem : lastRes) : res) rest
         breakApart [] ((sep, e) : rest)
-          = breakApart [(sep, [("",e)])] rest
+          = breakApart [(sep, [(([], noSrcSpan),e)])] rest
 
         imports = zipWithSeparators ls
 
@@ -109,8 +116,8 @@ sortImports ls = srcInfo & srcTmpSeparators .= filter (not . null) (concatMap (\
 narrowImports :: forall dom . OrganizeImportsDomain dom
               => Bool -> [String] -> [GHC.Name] -> [(GHC.Name, Bool)] -> [ClsInst] -> [FamInst] -> ImportDeclList dom -> LocalRefactor dom (ImportDeclList dom)
 narrowImports noNarrowSubspecs exportedModules usedNames exportedNames prelInsts prelFamInsts imps
-  = annListElems & traversal !~ narrowImport noNarrowSubspecs exportedModules usedNames exportedNames
-      $ filterListIndexed (\i _ -> impsNeeded !! i) imps
+  = (annListElems & traversal !~ narrowImport noNarrowSubspecs exportedModules usedNames exportedNames)
+      =<< filterListIndexedSt (\i _ -> impsNeeded !! i) imps
   where impsNeeded = neededImports exportedModules (usedNames ++ map fst exportedNames) prelInsts prelFamInsts (imps ^. annListElems)
 
 -- | Reduces the number of definitions used from an import

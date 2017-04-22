@@ -6,29 +6,33 @@
 module Language.Haskell.Tools.Refactor.Helpers where
 
 import Control.Reference
+import Control.Monad.Writer
+import Control.Monad.State
 import Data.Function (on)
-import Data.List (sortBy, nubBy)
+import Data.List (sortBy, nubBy, partition)
+import Data.Maybe
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.Rewrite as AST
 import Language.Haskell.Tools.Refactor.ListOperations (filterList)
 
-import SrcLoc (srcSpanStart)
+import SrcLoc
+import Language.Haskell.Tools.Transform
 
-replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom           
+replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom
 replaceWithJust e = annMaybe .= Just e
 
-replaceWithNothing :: AnnMaybe e dom -> AnnMaybe e dom           
+replaceWithNothing :: AnnMaybe e dom -> AnnMaybe e dom
 replaceWithNothing = annMaybe .= Nothing
 
 -- | Remove the container (where or let) when the last binding is removed.
-removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom) 
+removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom)
                      -> Simple Traversal (Module dom) (Expr dom)
                      -> AST.Module dom -> AST.Module dom
 removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- removeEmptyLetsAndStmts)
-  where removeEmptyBindsAndGuards sb@(SimpleBind _ _ _) 
+  where removeEmptyBindsAndGuards sb@(SimpleBind _ _ _)
           = (valBindLocals .- removeIfEmpty) . (valBindRhs .- removeEmptyGuards) $ sb
-        removeEmptyBindsAndGuards fb@(FunctionBind _) 
+        removeEmptyBindsAndGuards fb@(FunctionBind _)
           = (funBindMatches & annList & matchBinds .- removeIfEmpty) . (funBindMatches & annList & matchRhs .- removeEmptyGuards) $ fb
 
         removeEmptyGuards rhs = rhsGuards & annList & guardStmts .- filterList (\case GuardLet (AnnList []) -> False; _ -> True) $ rhs
@@ -39,7 +43,7 @@ removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- r
         removeEmptyLetsAndStmts (Let (AnnList []) e) = e
         removeEmptyLetsAndStmts e = exprStmts .- removeEmptyStmts $ e
 
-        removeEmptyStmts ls = (annList & cmdStmtBinds .- removeEmptyStmts) 
+        removeEmptyStmts ls = (annList & cmdStmtBinds .- removeEmptyStmts)
                                 . filterList (\case LetStmt (AnnList []) -> False; _ -> True) $ ls
 
 -- | Puts the elements in the orginal order and remove duplicates (elements with the same source range)
