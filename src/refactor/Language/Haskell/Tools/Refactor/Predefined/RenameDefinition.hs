@@ -34,16 +34,17 @@ renameDefinition' sp str mod mods
         where bindsWithSameName :: GHC.Name -> [FieldWildcard dom] -> [GHC.Name]
               bindsWithSameName name wcs = catMaybes $ map ((lookup name) . semanticsImplicitFlds) wcs
       Nothing -> case getNodeContaining sp (snd mod) of
-                   Just modName -> renameModule (modName ^. moduleNameString) str mod mods
+                   Just modName -> renameModule (any @[] (sp `isInside`) ((snd mod) ^? modImports&annList&importAs))
+                                                (modName ^. moduleNameString) str mod mods
                    Nothing -> refactError "No name is selected"
 
-renameModule :: forall dom . DomainRenameDefinition dom => String -> String -> Refactoring dom
-renameModule from to m mods
+renameModule :: forall dom . DomainRenameDefinition dom => Bool -> String -> String -> Refactoring dom
+renameModule isAlias from to m mods
     | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module"
     | isJust (validModuleName to) = refactError $ "The given name is not a valid module name: " ++ fromJust (validModuleName to)
     | otherwise = -- here it is important that the delete is the last, because rename
                   -- can still use the info about the deleted module
-                  fmap (\ls -> map (alterChange from to) ls ++ [ModuleRemoved from])
+                  (if isAlias then id else (fmap (\ls -> map (alterChange from to) ls ++ [ModuleRemoved from])))
                     $ mapM (\(name,mod) -> ContentChanged . (name,) <$> localRefactoringRes id mod (replaceModuleNames =<< alterNormalNames mod)) (m:mods)
   where alterChange from to (ContentChanged (mod,res))
           | (mod ^. sfkModuleName) == from
@@ -54,14 +55,9 @@ renameModule from to m mods
         replaceModuleNames = biplateRef @_ @(ModuleName dom) & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
 
         alterNormalNames :: LocalRefactoring dom
-        alterNormalNames mod = if from `elem` moduleQualifiers mod
-           then biplateRef @_ @(QualifiedName dom) & filtered (\e -> concat (intersperse "." (e ^? qualifiers&annList&simpleNameStr)) == from)
-                  !- (\e -> mkQualifiedName (splitOn "." to) (e ^. unqualifiedName&simpleNameStr)) $ mod
-           else return mod
-
-        moduleQualifiers :: Module dom -> [String]
-        moduleQualifiers mod = mod ^? modImports & annList & filtered (\m -> isAnnNothing (m ^. importAs))
-                                              & importModule & moduleNameString
+        alterNormalNames mod =
+           biplateRef @_ @(QualifiedName dom) & filtered (\e -> concat (intersperse "." (e ^? qualifiers&annList&simpleNameStr)) == from)
+             !- (\e -> mkQualifiedName (splitOn "." to) (e ^. unqualifiedName&simpleNameStr)) $ mod
 
         nameConflict :: String -> Module dom -> Bool
         nameConflict to mod

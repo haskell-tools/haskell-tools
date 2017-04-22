@@ -320,6 +320,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.TypeBracket", "6:6-6:7", "B")
   , ("Refactor.RenameDefinition.ValBracket", "8:11-8:12", "B")
   , ("Refactor.RenameDefinition.FunnyDo", "3:1-3:2", "aaa")
+  , ("Refactor.RenameDefinition.RenameModuleAlias", "3:21-3:23", "L")
   ]
 
 wrongRenameDefinitionTests =
