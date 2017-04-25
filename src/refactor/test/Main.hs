@@ -314,7 +314,6 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.TypeOperators", "4:13-4:15", "x1")
   , ("Refactor.RenameDefinition.NoPrelude", "4:1-4:2", "map")
   , ("Refactor.RenameDefinition.UnusedDef", "3:1-3:2", "map")
-  , ("Refactor.RenameDefinition.ImplicitParams", "8:17-8:20", "compare")
   , ("Refactor.RenameDefinition.SameCtorAndType", "3:6-3:13", "P2D")
   , ("Refactor.RenameDefinition.RoleAnnotation", "4:11-4:12", "AA")
   , ("Refactor.RenameDefinition.TypeBracket", "6:6-6:7", "B")
@@ -336,6 +335,7 @@ wrongRenameDefinitionTests =
   , ("Refactor.RenameDefinition.WrongName", "9:19-9:19", ".+++.")
   , ("Refactor.RenameDefinition.WrongName", "11:3-11:3", ":+++:")
   , ("Refactor.RenameDefinition.IllegalQualRename", "4:30-4:34", "Bl")
+  , ("Refactor.RenameDefinition.CrossRename", "4:1-4:2", "g")
   ]
 
 extractBindingTests =

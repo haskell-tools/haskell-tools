@@ -86,7 +86,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
     changeName toChangeOrig toChangeWith str name
       | maybe False (`elem` toChange) actualName
           && semanticsDefining name == False
-          && any @[] ((str ==) . occNameString . getOccName) (semanticsScope name ^? Ref.element 0 & traversal & filtered (sameNamespace toChangeOrig))
+          && any @[] ((str ==) . occNameString . getOccName) (scopeUpToDef (semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
       = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
@@ -102,6 +102,8 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
       | otherwise = return name -- not the changed name, leave as before
       where toChange = toChangeOrig : toChangeWith
             actualName = fmap getName (semanticsName name)
+            scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`)) sc
+                               in inside ++ take 1 outside
 
 conflicts :: GHC.Name -> GHC.Name -> [[GHC.Name]] -> Bool
 conflicts overwrites overwritten (scopeBlock : scope)
