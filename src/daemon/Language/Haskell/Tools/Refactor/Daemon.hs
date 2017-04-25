@@ -12,7 +12,7 @@ import Control.Applicative ((<|>))
 import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Reference
 import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))

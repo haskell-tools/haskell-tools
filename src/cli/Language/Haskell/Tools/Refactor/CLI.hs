@@ -9,7 +9,7 @@ module Language.Haskell.Tools.Refactor.CLI (refactorSession, tryOut) where
 
 import Control.Applicative ((<|>))
 import Control.Exception (displayException)
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Reference
 import Data.List
 import Data.List.Split
