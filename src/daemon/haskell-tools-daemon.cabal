@@ -87,6 +87,7 @@ library
 
 
 executable ht-daemon
+  ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-daemon      >= 0.6 && < 0.7
   hs-source-dirs:      exe
