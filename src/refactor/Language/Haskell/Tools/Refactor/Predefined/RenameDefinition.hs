@@ -10,9 +10,15 @@
            #-}
 module Language.Haskell.Tools.Refactor.Predefined.RenameDefinition (renameDefinition, renameDefinition', DomainRenameDefinition) where
 
-import qualified GHC (RealSrcSpan, NamedThing(..), Name)
+import qualified GHC
 import Name (OccName(..), NamedThing(..), occNameString)
 import SrcLoc (RealSrcSpan)
+import Id
+import IdInfo
+import Outputable
+import Type
+import TyCon
+import DataCon
 
 import Control.Monad.State
 import Control.Reference as Ref
@@ -20,6 +26,7 @@ import Data.Generics.Uniplate.Data ()
 import Data.List
 import Data.List.Split (splitOn)
 import Data.Maybe
+import Debug.Trace
 
 import Language.Haskell.Tools.Refactor
 
@@ -77,16 +84,21 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
     renameInAModule :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> ModuleDom dom -> StateT Bool Refactor (Maybe (ModuleDom dom))
     renameInAModule toChangeOrig toChangeWith newName (name, mod)
       = mapStateT (localRefactoringRes (\f (a,s) -> (fmap (\(n,r) -> (n, f r)) a,s)) mod) $
-          do (res, isChanged) <- runStateT (biplateRef !~ changeName toChangeOrig toChangeWith newName $ mod) False
+          do origTT <- GHC.lookupName toChangeOrig
+             let origId = case origTT of
+                            Just (GHC.AnId id) -> Just id
+                            _ -> Nothing
+             (res, isChanged) <- runStateT (biplateRef !~ changeName toChangeOrig origId toChangeWith newName $ mod) False
              if isChanged then return $ Just (name, res)
                           else return Nothing
 
-    changeName :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> QualifiedName dom
+    changeName :: DomainRenameDefinition dom => GHC.Name -> Maybe Id -> [GHC.Name] -> String -> QualifiedName dom
                                                          -> StateT Bool (StateT Bool (LocalRefactor dom)) (QualifiedName dom)
-    changeName toChangeOrig toChangeWith str name
+    changeName toChangeOrig origId toChangeWith str name
       | maybe False (`elem` toChange) actualName
           && semanticsDefining name == False
-          && any @[] ((str ==) . occNameString . getOccName) (scopeUpToDef (semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
+          && any @[] (\n -> str == occNameString (getOccName n) && not (mergeableFields origId n))
+                     (scopeUpToDef (semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
       = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
@@ -95,8 +107,10 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
            return $ unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)
       | let namesInScope = semanticsScope name
          in case semanticsName name of
-              Just (getName -> exprName) -> str == occNameString (getOccName exprName) && sameNamespace toChangeOrig exprName
+              Just (getName -> exprName) -> str == occNameString (getOccName exprName)
+                                              && sameNamespace toChangeOrig exprName
                                               && conflicts toChangeOrig exprName namesInScope
+                                              && not (mergeableFields origId exprName)
               Nothing -> False -- ambiguous names
       = refactError $ "The definition clashes with an existing one: " ++ shortShowSpan (getRange name) -- local name clash
       | otherwise = return name -- not the changed name, leave as before
@@ -104,6 +118,13 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
             actualName = fmap getName (semanticsName name)
             scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`)) sc
                                in inside ++ take 1 outside
+            mergeableFields (Just orig) conflict
+              | isRecordSelector orig
+              , RecSelData tc <- recordSelectorTyCon orig
+              = let selectorsWithTypes = concatMap (\dc -> map (\fld -> (flSelector fld, dataConFieldType dc (flLabel fld))) (dataConFieldLabels dc))
+                                                   (filter (\dc -> toChangeOrig `notElem` map flSelector (dataConFieldLabels dc)) (tyConDataCons tc))
+                 in maybe False (`eqType` funResultTy (idType orig)) (lookup conflict selectorsWithTypes)
+            mergeableFields _ _ = False
 
 conflicts :: GHC.Name -> GHC.Name -> [[GHC.Name]] -> Bool
 conflicts overwrites overwritten (scopeBlock : scope)

@@ -320,6 +320,8 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.ValBracket", "8:11-8:12", "B")
   , ("Refactor.RenameDefinition.FunnyDo", "3:1-3:2", "aaa")
   , ("Refactor.RenameDefinition.RenameModuleAlias", "3:21-3:23", "L")
+  , ("Refactor.RenameDefinition.MergeFields", "3:14-3:15", "y")
+  , ("Refactor.RenameDefinition.MergeFields_RenameY", "3:34-3:35", "x")
   ]
 
 wrongRenameDefinitionTests =
@@ -336,6 +338,11 @@ wrongRenameDefinitionTests =
   , ("Refactor.RenameDefinition.WrongName", "11:3-11:3", ":+++:")
   , ("Refactor.RenameDefinition.IllegalQualRename", "4:30-4:34", "Bl")
   , ("Refactor.RenameDefinition.CrossRename", "4:1-4:2", "g")
+  , ("Refactor.RenameDefinition.MergeFields", "5:16-5:18", "y2") -- fld in the same ctor
+  , ("Refactor.RenameDefinition.MergeFields", "5:30-5:32", "x2") -- fld in the same ctor
+  , ("Refactor.RenameDefinition.MergeFields", "5:16-5:18", "y") -- fld belongs to other type
+  , ("Refactor.RenameDefinition.MergeFields", "7:16-7:18", "y3") -- types does not match
+  , ("Refactor.RenameDefinition.MergeFields", "7:38-7:40", "x3") -- types does not match
   ]
 
 extractBindingTests =
