@@ -46,12 +46,12 @@ before_install:
 
 install:
   # Install all dependecies of Haskell-tools, including test requirements
-  - travis_wait stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
+  - travis_wait 30 stack --no-terminal --install-ghc build --test --no-run-tests --coverage --only-dependencies
 
 script:
 
   # Build Haskell-tools with all library, executable, test and benchmark
-  - travis_wait stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps
+  - travis_wait 30 stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps
 
   # Run tests. We record test coverage information.
   - stack --no-terminal test --coverage haskell-tools-rewrite
