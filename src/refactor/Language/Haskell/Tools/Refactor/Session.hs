@@ -5,7 +5,7 @@
 module Language.Haskell.Tools.Refactor.Session where
 
 import Control.Exception
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Reference
 import qualified Data.List as List
 import qualified Data.Map as Map

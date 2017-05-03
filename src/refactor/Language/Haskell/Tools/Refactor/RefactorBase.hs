@@ -32,7 +32,8 @@ import SrcLoc
 
 import Control.Exception
 import Control.Monad.Reader
-import Control.Monad.State
+import qualified Control.Monad.State as LazySt
+import Control.Monad.State.Strict
 import Control.Monad.Trans.Except
 import Control.Monad.Writer
 import Control.Reference hiding (element)
@@ -218,6 +219,18 @@ instance (ExceptionMonad m) => ExceptionMonad (StateT s m) where
   gcatch r c = StateT (\ctx -> runStateT r ctx `gcatch` (flip runStateT ctx . c))
   gmask m = StateT $ \ctx -> gmask (\f -> runStateT (m (\a -> StateT $ \ctx' -> f (runStateT a ctx'))) ctx)
 
+instance (Monad m, HasDynFlags m) => HasDynFlags (LazySt.StateT s m) where
+  getDynFlags = lift getDynFlags
+
+instance (GhcMonad m) => GhcMonad (LazySt.StateT s m) where
+  getSession = lift getSession
+  setSession env = lift (setSession env)
+
+instance (ExceptionMonad m) => ExceptionMonad (LazySt.StateT s m) where
+  gcatch r c = LazySt.StateT (\ctx -> LazySt.runStateT r ctx `gcatch` (flip LazySt.runStateT ctx . c))
+  gmask m = LazySt.StateT $ \ctx -> gmask (\f -> LazySt.runStateT (m (\a -> LazySt.StateT $ \ctx' -> f (LazySt.runStateT a ctx'))) ctx)
+
+
 instance GhcMonad m => GhcMonad (ReaderT s m) where
   getSession = lift getSession
   setSession env = lift (setSession env)
@@ -262,6 +275,10 @@ instance RefactorMonad (LocalRefactor dom) where
   liftGhc = lift . liftGhc
 
 instance RefactorMonad m => RefactorMonad (StateT s m) where
+  refactError = lift . refactError
+  liftGhc = lift . liftGhc
+
+instance RefactorMonad m => RefactorMonad (LazySt.StateT s m) where
   refactError = lift . refactError
   liftGhc = lift . liftGhc
 
