@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.7
+ - Implemented a complete handling of conditional compilation preprocessor pragmas.
+ - Fixed problems about the scope-checking for validity.
+ - Rename is now able to rename module aliases.
+ - Removed unnecessary changes during re-loading.
+ - Version checking between the client and the daemon.
+
 ## 0.6
  - Fixed a number of project-related bugs discovered from stackage testing.
  - Polished the editor support
