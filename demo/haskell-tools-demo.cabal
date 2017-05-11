@@ -26,7 +26,7 @@ library
                      , http-types                >= 0.9  && < 0.10
                      , warp                      >= 3.2  && < 3.3
                      , wai                       >= 3.2  && < 3.3
-                     , websockets                >= 0.10  && < 0.11
+                     , websockets                >= 0.10  && < 0.12
                      , wai-websockets            >= 3.0  && < 3.1
                      , references                >= 0.3  && < 0.4
                      , ghc                       >= 8.0.2  && < 8.1
