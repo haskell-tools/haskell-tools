@@ -53,7 +53,10 @@ testPackage pack = do
            , Right refreshDir
            , Left ("stack build --test --no-run-tests --bench --no-run-benchmarks > logs\\" ++ pack ++ "-build-log.txt 2>&1", BuildFailure)
            -- correct rts option handling (on windows) requires stack 1.4
-           , Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -one-shot -refactoring=ProjectOrganizeImports tested-package tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen -package base > logs\\" ++ pack ++ "-refact-log.txt 2>&1", RefactError)
+           , let autogenPath = "tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen"
+                 logPath = "logs\\" ++ pack ++ "-refact-log.txt 2>&1"
+                 dbPaths = ["C:\\Users\\nboldi\\AppData\\Local\\Programs\\stack\\x86_64-windows\\ghc-8.0.2\\lib\\package.conf.d", "C:\\sr\\snapshots\\c095693b\\pkgdb"]
+              in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -one-shot -refactoring=ProjectOrganizeImports tested-package " ++ autogenPath ++ " -clear-package-db" ++ concatMap (" -package-db " ++) dbPaths ++ " -package base > " ++ logPath, RefactError)
            , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
            ]
   problem <- case res of
@@ -63,7 +66,7 @@ testPackage pack = do
   return (res, problem)
   where testedDir = "tested-package"
         snapshotId = "ca59d0ab"
-        refreshDir = refreshDir' 3
+        refreshDir = refreshDir' 5
         refreshDir' n = do createDirectoryIfMissing False testedDir
                            removeDirectoryRecursive testedDir
                            renameDirectory pack testedDir
