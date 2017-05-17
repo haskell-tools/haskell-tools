@@ -320,7 +320,7 @@ mkTypeFamily :: DeclHead dom -> Maybe (TypeFamilySpec dom) -> Decl dom
 mkTypeFamily dh famSpec = mkAnn child $ UTypeFamilyDecl (mkAnn (child <> child) $ UTypeFamily dh (mkAnnMaybe (after " " opt) famSpec))
 
 -- | Creates a closed type family declaration ( @type family F x where F Int = (); F a = Int@ )
-mkClosedTypeFamily :: DeclHead dom -> Maybe (KindConstraint dom) -> [TypeEqn dom] -> Decl dom
+mkClosedTypeFamily :: DeclHead dom -> Maybe (TypeFamilySpec dom) -> [TypeEqn dom] -> Decl dom
 mkClosedTypeFamily dh kind typeqs = mkAnn (child <> child <> " where " <> child)
                                       $ UClosedTypeFamilyDecl dh (mkAnnMaybe (after " " opt) kind) (mkAnnList (indented list) typeqs)
 
@@ -333,7 +333,7 @@ mkTypeFamilyKindSpec :: KindConstraint dom -> TypeFamilySpec dom
 mkTypeFamilyKindSpec = mkAnn child . UTypeFamilyKind
 
 -- | Specifies the injectivity of a type family (@ = r | r -> a @)
-mkTypeFamilyInjectivitySpec :: Name dom -> [Name dom] -> TypeFamilySpec dom
+mkTypeFamilyInjectivitySpec :: TyVar dom -> [Name dom] -> TypeFamilySpec dom
 mkTypeFamilyInjectivitySpec res dependent
   = mkAnn child (UTypeFamilyInjectivity $ mkAnn (child <> " -> " <> child) $ UInjectivityAnn res (mkAnnList (separatedBy " " list) dependent))
 

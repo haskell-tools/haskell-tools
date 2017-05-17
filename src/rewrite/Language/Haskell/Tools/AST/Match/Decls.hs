@@ -344,7 +344,7 @@ pattern GadtDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Mayb
 pattern GadtDataInstance keyw instRule kind cons  <- Ann _ (UGDataInstDecl keyw instRule kind cons )
 
 -- | A closed type family declaration
-pattern ClosedTypeFamily :: DeclHead dom -> MaybeKindConstraint dom -> TypeEqnList dom -> Decl dom
+pattern ClosedTypeFamily :: DeclHead dom -> MaybeTypeFamilySpec dom -> TypeEqnList dom -> Decl dom
 pattern ClosedTypeFamily dh kind typeqs <- Ann _ (UClosedTypeFamilyDecl dh kind typeqs)
 
 -- | Specifies the kind of a type family (@ :: * -> * @)
@@ -352,7 +352,7 @@ pattern TypeFamilyKindSpec :: KindConstraint dom -> TypeFamilySpec dom
 pattern TypeFamilyKindSpec kind <- Ann _ (UTypeFamilyKind kind)
 
 -- | Specifies the injectivity of a type family (@ = r | r -> a @)
-pattern TypeFamilyInjectivitySpec :: Name dom -> NameList dom -> TypeFamilySpec dom
+pattern TypeFamilyInjectivitySpec :: TyVar dom -> NameList dom -> TypeFamilySpec dom
 pattern TypeFamilyInjectivitySpec res dependent <- Ann _ (UTypeFamilyInjectivity (Ann _ (UInjectivityAnn res dependent)))
 
 -- | Type equations as found in closed type families (@ T A = S @)

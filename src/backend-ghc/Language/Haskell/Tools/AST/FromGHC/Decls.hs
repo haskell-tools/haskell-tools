@@ -28,7 +28,7 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Language.Haskell.Tools.AST.FromGHC.Binds
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Kinds (trfKindSig, trfKindSig')
+import Language.Haskell.Tools.AST.FromGHC.Kinds
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
@@ -100,9 +100,9 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
 
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.UDecl (Dom r) RangeStage)
 trfDecl = trfLocNoSema $ \case
-  TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig _))
+  TyClD (FamDecl (FamilyDecl (ClosedTypeFamily typeEqs) name tyVars kindSig inj))
     -> AST.UClosedTypeFamilyDecl <$> focusAfter AnnType (createDeclHead name tyVars)
-                                <*> trfFamilyKind kindSig
+                                <*> trfFamilyResultSig kindSig inj
                                 <*> trfTypeEqs typeEqs
   TyClD (FamDecl fd) -> AST.UTypeFamilyDecl <$> annContNoSema (trfTypeFam' fd)
   TyClD (SynDecl name vars rhs _)
@@ -481,15 +481,18 @@ trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMay
 trfFamilyKind (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
-  TyVarSig {} -> error "trfFamilyKind: TyVarSig not supported yet"
+  TyVarSig tv -> error "trfFamilyKind: TyVarSig not supported"
 
 trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybeG AST.UTypeFamilySpec (Dom r) RangeStage)
 trfFamilyResultSig (L l fr) Nothing = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyKind <$> trfKindSig' k)
-  TyVarSig {} -> error "trfFamilyResultSig: TyVarSig not supported yet"
-trfFamilyResultSig _ (Just (L l (InjectivityAnn n deps)))
-  = makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity <$> (annContNoSema $ AST.UInjectivityAnn <$> trfName n <*> trfAnnList ", " trfName' deps))
+  TyVarSig {} -> error "trfFamilyResultSig: TyVarSig not supported" {- makeJust <$> (annLocNoSema (combineSrcSpans (getLoc tv) <$> (tokenBefore (srcSpanStart (getLoc tv)) AnnDcolon))
+                              (AST.UKindConstraint <$> trfKindVar tv)) -}
+trfFamilyResultSig (L _ sig) (Just (L l (InjectivityAnn n deps)))
+  = makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity <$> (annContNoSema $ AST.UInjectivityAnn <$> tv <*> trfAnnList ", " trfName' deps))
+    where tv = case sig of TyVarSig tv -> trfTyVar tv
+                           _ -> annLocNoSema (pure $ getLoc n) (AST.UTyVarDecl <$> trfName n <*> nothing "" "" (pure $ srcSpanEnd (getLoc n)))
 
 trfAnnotationSubject :: TransformName n r => SourceText -> AnnProvenance n -> SrcLoc -> Trf (Ann AST.UAnnotationSubject (Dom r) RangeStage)
 trfAnnotationSubject stxt subject payloadEnd
