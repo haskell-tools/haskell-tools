@@ -21,7 +21,7 @@ data UDecl dom stage
   | UTypeFamilyDecl       { _declTypeFamily :: Ann UTypeFamily dom stage
                           } -- ^ A type family declaration ( @type family F x@ )
   | UClosedTypeFamilyDecl { _declHead :: Ann UDeclHead dom stage
-                          , _declKind :: AnnMaybeG UKindConstraint dom stage
+                          , _declSpec :: AnnMaybeG UTypeFamilySpec dom stage
                           , _declDecl :: AnnListG UTypeEqn dom stage -- ^ cannot be empty
                           } -- ^ A closed type family declaration
   | UDataDecl             { _declNewtype :: Ann UDataOrNewtypeKeyword dom stage
@@ -222,7 +222,7 @@ data UTypeFamilySpec dom stage
 
 -- | Injectivity annotation for type families (@ = r | r -> a @)
 data UInjectivityAnn dom stage
-  = UInjectivityAnn { _injAnnRes :: Ann UName dom stage
+  = UInjectivityAnn { _injAnnRes :: Ann UTyVar dom stage
                     , _injAnnDeps :: AnnListG UName dom stage
                     }
 
