@@ -36,7 +36,7 @@ import Language.Haskell.Tools.Refactor as AST
 
 import Debug.Trace
 
-type OrganizeImportsDomain dom = ( HasNameInfo dom, HasImportInfo dom, HasModuleInfo dom )
+type OrganizeImportsDomain dom = ( HasNameInfo dom, HasImportInfo dom, HasModuleInfo dom, HasImplicitFieldsInfo dom )
 
 projectOrganizeImports :: forall dom . OrganizeImportsDomain dom => Refactoring dom
 projectOrganizeImports mod mods
@@ -62,10 +62,11 @@ organizeImports mod
   where prelInstances = semanticsPrelOrphanInsts mod
         prelFamInsts = semanticsPrelFamInsts mod
         addFromString dfs = if xopt OverloadedStrings dfs then (GHC.fromStringName :) else id
-        usedNames = map getName $ catMaybes $ map semanticsName
+        usedNames = map getName $ (catMaybes $ map semanticsName
                         -- obviously we don't want the names in the imports to be considered, but both from
                         -- the declarations (used), both from the module head (re-exported) will count as usage
-                      $ (universeBi (mod ^. modHead) ++ universeBi (mod ^. modDecl) :: [QualifiedName dom])
+                      (universeBi (mod ^. modHead) ++ universeBi (mod ^. modDecl) :: [QualifiedName dom]))
+                        ++ concatMap (map fst . semanticsImplicitFlds) (universeBi (mod ^. modDecl) :: [FieldWildcard dom])
         -- Prelude is not actually exported, but we don't want to remove it if it is explicitly there
         -- otherwise, we might add new imported elements that cause conflicts.
         exportedModules = "Prelude" : (mod ^? modHead & annJust & mhExports & annJust
