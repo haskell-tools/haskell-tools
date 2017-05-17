@@ -154,7 +154,11 @@ parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
       hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
+      hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum
+      hasOverloadedLabels = OverloadedLabels `xopt` ms_hspp_opts modSum
       ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
+  when hasApplicativeDo $ error "The ApplicativeDo extension is not supported"
+  when hasOverloadedLabels $ error "The OverloadedLabels extension is not supported"
   p <- parseModule ms
   tc <- typecheckModule p
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
