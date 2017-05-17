@@ -97,7 +97,7 @@ untilReaches s start end
   = let ls = splitOn "\n" s
      in case ls of _:_:_ -> (unlines (init ls) ++)
                               `mapFst` untilReaches' (last ls) (advanceSrcLoc start '\n') end
-                   _ -> (s, srcLocCol start)
+                   _ -> (s, srcLocCol $ foldl advanceSrcLoc start s)
   where
     untilReaches' [] curr _ = ([], srcLocCol curr)
     untilReaches' (c:rest) curr until | srcLocCol advancedLoc <= srcLocCol until
