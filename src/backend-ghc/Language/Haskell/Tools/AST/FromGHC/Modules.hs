@@ -69,7 +69,13 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ _ deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
 
-          addToScope (concat @[] (transformedImports ^? AST.annList&semantics&importedNames) ++ preludeImports)
+          let importNames impd = ( impd ^. AST.importModule & AST.moduleNameString
+                                 , impd ^? AST.importAs & AST.annJust & AST.importRename & AST.moduleNameString
+                                 , AST.isAnnJust (impd ^. AST.importQualified)
+                                 , impd ^. semantics&importedNames )
+              -- TODO: handle qualified prelude
+              importPrelude names = ( "Prelude", Nothing, False, names)
+          addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
               $ AST.UModule <$> trfFilePragmas
                             <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)

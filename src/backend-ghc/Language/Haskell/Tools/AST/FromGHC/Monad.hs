@@ -89,6 +89,11 @@ addEmptyScope :: Trf a -> Trf a
 addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s })
 
 -- | Perform the transformation putting the given definition in a new local scope.
+addToScopeImported :: [(String, Maybe String, Bool, [GHC.Name])] -> Trf a -> Trf a
+addToScopeImported ls = local (\s -> s { localsInScope = concatMap (\(mn, asName, q, e) -> map (, Just [UsageSpec q mn (fromMaybe mn asName)]) e) ls : localsInScope s })
+
+
+-- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
 addToScope e = local (\s -> s { localsInScope = map (, Nothing) (hsGetNames e) : localsInScope s })
 
