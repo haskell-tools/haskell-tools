@@ -53,11 +53,11 @@ data TreeDebugNode dom
 
 deriving instance Domain dom => Show (TreeDebugNode dom)
 
-data SemanticInfoType dom 
-  = DefaultInfoType { semaInfoTypeRng :: SrcSpan 
+data SemanticInfoType dom
+  = DefaultInfoType { semaInfoTypeRng :: SrcSpan
                     }
   | NameInfoType { semaInfoTypeName :: SemanticInfo' dom SameInfoNameCls
-                 , semaInfoTypeRng :: SrcSpan 
+                 , semaInfoTypeRng :: SrcSpan
                  }
   | ExprInfoType { semaInfoTypeExpr :: SemanticInfo' dom SameInfoExprCls
                  , semaInfoTypeRng :: SrcSpan
@@ -88,7 +88,7 @@ astDebug ast = toList (astDebugToJson (astDebug' ast))
 astDebugToJson :: AssocSema dom => [DebugNode dom] -> Seq Char
 astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
     where treeNodes = List.filter (\case TreeNode {} -> True; _ -> False) nodes
-          childrenJson = case map debugTreeNode treeNodes of 
+          childrenJson = case map debugTreeNode treeNodes of
                            first:rest -> first >< foldl (><) Seq.empty (fmap (fromList ", " ><) (fromList rest))
                            []         -> Seq.empty
           debugTreeNode (TreeNode "" s) = astDebugElemJson s
@@ -96,20 +96,20 @@ astDebugToJson nodes = fromList "[ " >< childrenJson >< fromList " ]"
           debugTreeNode (SimpleNode {}) = error "debugTreeNode: simple SimpleNode not allowed"
 
 astDebugElemJson :: AssocSema dom => TreeDebugNode dom -> Seq Char
-astDebugElemJson (TreeDebugNode name info children) 
-  = fromList "{ \"text\" : \"" >< fromList name 
-     >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \"" 
+astDebugElemJson (TreeDebugNode name info children)
+  = fromList "{ \"text\" : \"" >< fromList name
+     >< fromList "\", \"state\" : { \"opened\" : true }, \"a_attr\" : { \"data-range\" : \""
      >< fromList (shortShowSpan (semaInfoTypeRng info))
-     >< fromList "\", \"data-elems\" : \"" 
+     >< fromList "\", \"data-elems\" : \""
      >< foldl (><) Seq.empty dataElems
-     >< fromList "\", \"data-sema\" : \"" 
+     >< fromList "\", \"data-sema\" : \""
      >< fromList (showSema info)
-     >< fromList "\" }, \"children\" : " 
+     >< fromList "\" }, \"children\" : "
      >< astDebugToJson children >< fromList " }"
   where dataElems = catMaybes (map (\case SimpleNode l v -> Just (fromList (formatScalarElem l v)); _ -> Nothing) children)
         formatScalarElem l v = "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ tail (init (show v)) ++ "</div>"
-        showSema info = "<div class='semaname'>" ++ assocName info ++ "</div>" 
-                          ++ concatMap (\(l,i) -> "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ i ++ "</div>") (toAssoc info) 
+        showSema info = "<div class='semaname'>" ++ assocName info ++ "</div>"
+                          ++ concatMap (\(l,i) -> "<div class='scalarelem'><span class='astlab'>" ++ l ++ "</span>: " ++ i ++ "</div>") (toAssoc info)
 
 class AssocData a where
   assocName :: a -> String
@@ -140,15 +140,15 @@ instance HasNameInfo' (NameInfo n) => AssocData (NameInfo n) where
 
   toAssoc ni = [ ("name", maybe "<ambiguous>" inspect (semanticsName ni))
                , ("isDefined", show (semanticsDefining ni))
-               , ("namesInScope", inspectScope (semanticsScope ni)) 
+               , ("namesInScope", inspectScope (semanticsScope ni))
                ]
 
 instance AssocData CNameInfo where
   assocName _ = "CNameInfo"
   toAssoc ni = [ ("name", inspect (semanticsId ni))
                , ("isDefined", show (semanticsDefining ni))
-               , ("fixity", maybe "" (showSDocUnsafe . ppr) (semanticsFixity ni)) 
-               , ("namesInScope", inspectScope (semanticsScope ni)) 
+               , ("fixity", maybe "" (showSDocUnsafe . ppr) (semanticsFixity ni))
+               , ("namesInScope", inspectScope (semanticsScope ni))
                ]
 
 instance (HasModuleInfo' (ModuleInfo n)) => AssocData (ModuleInfo n) where
@@ -157,24 +157,27 @@ instance (HasModuleInfo' (ModuleInfo n)) => AssocData (ModuleInfo n) where
                , ("isBoot", show (isBootModule mi))
                , ("implicitImports", concat (intersperse ", " (map inspect (semanticsImplicitImports mi))))
                ]
-  
+
 instance (HasImportInfo' (ImportInfo n)) => AssocData (ImportInfo n) where
   assocName _ = "ImportInfo"
-  toAssoc ii = [ ("moduleName", showSDocUnsafe (ppr (semanticsImportedModule ii))) 
-               , ("availableNames", concat (intersperse ", " (map inspect (semanticsAvailable ii)))) 
-               , ("importedNames", concat (intersperse ", " (map inspect (semanticsImported ii)))) 
-               ]      
-  
+  toAssoc ii = [ ("moduleName", showSDocUnsafe (ppr (semanticsImportedModule ii)))
+               , ("availableNames", concat (intersperse ", " (map inspect (semanticsAvailable ii))))
+               , ("importedNames", concat (intersperse ", " (map inspect (semanticsImported ii))))
+               ]
+
 instance AssocData ImplicitFieldInfo where
   assocName _ = "ImplicitFieldInfo"
   toAssoc ifi = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") (semanticsImplicitFlds ifi))))
-                ]                                               
+                ]
 
-inspectScope :: InspectableName n => [[n]] -> String
+inspectScope :: InspectableName n => [[(n, Maybe [UsageSpec])]] -> String
 inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)
 
 class InspectableName n where
   inspect :: n -> String
+
+instance InspectableName n => InspectableName (n, Maybe [UsageSpec]) where
+  inspect (n,usage) = inspect n ++ showSDocUnsafe (ppr usage)
 
 instance InspectableName GHC.Name where
   inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "]"
@@ -193,35 +196,35 @@ getTVs t
   | Just (_, t') <- splitForAllTy_maybe t = getTVs t'
   | otherwise = []
 
-class (Domain dom, SourceInfo st) 
+class (Domain dom, SourceInfo st)
          => ASTDebug e dom st where
   astDebug' :: e dom st -> [DebugNode dom]
   default astDebug' :: (GAstDebug (Rep (e dom st)) dom, Generic (e dom st)) => e dom st -> [DebugNode dom]
   astDebug' = gAstDebug . from
 
-class GAstDebug f dom where 
+class GAstDebug f dom where
   gAstDebug :: f p -> [DebugNode dom]
-  
+
 instance GAstDebug V1 dom where
   gAstDebug _ = error "GAstDebug V1"
-  
+
 instance GAstDebug U1 dom where
-  gAstDebug U1 = []  
-  
+  gAstDebug U1 = []
+
 instance (GAstDebug f dom, GAstDebug g dom) => GAstDebug (f :+: g) dom where
   gAstDebug (L1 x) = gAstDebug x
   gAstDebug (R1 x) = gAstDebug x
-  
+
 instance (GAstDebug f dom, GAstDebug g dom) => GAstDebug (f :*: g) dom where
-  gAstDebug (x :*: y) 
+  gAstDebug (x :*: y)
     = gAstDebug x ++ gAstDebug y
 
 instance {-# OVERLAPPING #-} ASTDebug e dom st => GAstDebug (K1 i (e dom st)) dom where
   gAstDebug (K1 x) = astDebug' x
-  
+
 instance {-# OVERLAPPABLE #-} Show x => GAstDebug (K1 i x) dom where
   gAstDebug (K1 x) = [SimpleNode "" (show x)]
-        
+
 instance (GAstDebug f dom, Constructor c) => GAstDebug (M1 C c f) dom where
   gAstDebug c@(M1 x) = [TreeNode "" (TreeDebugNode (conName c) undefined (gAstDebug x))]
 

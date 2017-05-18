@@ -1,5 +1,5 @@
-{-# LANGUAGE TupleSections 
-           , LambdaCase 
+{-# LANGUAGE TupleSections
+           , LambdaCase
            , ScopedTypeVariables
            #-}
 module Language.Haskell.Tools.AST.FromGHC.AddTypeInfo (addTypeInfos) where
@@ -39,15 +39,15 @@ addTypeInfos bnds mod = do
   let getType = getType' ut
   fixities <- getFixities
   let createCName sc def id = mkCNameInfo sc def id fixity
-        where fixity = if any (any ((getOccName id ==) . getOccName)) (init sc) 
-                          then Nothing 
+        where fixity = if any (any ((getOccName id ==) . getOccName . fst)) (init sc) 
+                          then Nothing
                           else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> Just mod == (nameModule_maybe $ varName id) && occ == getOccName id) fixities
-  evalStateT (semaTraverse 
+  evalStateT (semaTraverse
     (AST.SemaTrf
-      (\ni -> case (AST.semanticsSourceInfo ni, AST.semanticsName ni) of 
+      (\ni -> case (AST.semanticsSourceInfo ni, AST.semanticsName ni) of
                 (_, Just name) -> lift $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) <$> getType name
-                (Just l@(RealSrcSpan loc), _) 
-                  -> case Map.lookup l locMapping of 
+                (Just l@(RealSrcSpan loc), _)
+                  -> case Map.lookup l locMapping of
                             Just id -> return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
                             _ -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
                                     case rest of [] -> error $ "Ambiguous or implicit name missing, at: " ++ show loc
@@ -63,7 +63,7 @@ addTypeInfos bnds mod = do
         extractTypes = concatMap universeBi . bagToList
 
         mkUnknownType :: IO Type
-        mkUnknownType = do 
+        mkUnknownType = do
           tUnique <- mkSplitUniqSupply 'x'
           return $ mkTyVarTy $ mkVanillaGlobal (mkSystemName (uniqFromSupply tUnique) (mkDataOcc "TypeNotFound")) (mkTyConTy starKindTyCon)
 

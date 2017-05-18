@@ -108,7 +108,7 @@ replaceInvocations bindingRange name replacement expr
       RealSrcSpan ownRange | bindingRange `containsSpan` ownRange
         -> lift $ refactError "Cannot inline definitions containing direct recursion."
       _ -> do put True
-              replacement (semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
+              replacement (map (map fst) $ semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
   | otherwise
   = descendM (replaceInvocations bindingRange name replacement) expr
 
