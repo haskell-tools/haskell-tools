@@ -32,7 +32,7 @@ trfType typ | RealSrcSpan loce <- getLoc typ
   = do othSplices <- asks typeSplices
        let contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
        case contSplice of Just sp -> let loc = pure $ getSpliceLoc sp
-                                      in typeSpliceInserted sp (annLocNoSema loc (AST.UTySplice <$> trfSplice sp))
+                                      in typeSpliceInserted sp (annLocNoSema loc (AST.UTySplice <$> (trfSplice =<< rdrSplice sp)))
                           Nothing -> trfLocNoSema trfType' typ
   | otherwise = trfLocNoSema trfType' typ
 

@@ -46,8 +46,10 @@ trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEn
 
 trfDeclsGroup :: forall n r . TransformName n r => HsGroup n -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreigns warns anns rules vects _)
-  = do spls <- getDeclSplices
+  = do rdrSpls <- asks declSplices -- now we don't want to rename the splices, just interested in their locations to
+                                   -- filter out the declarations that are generated from them
        let (sigs, bagToList -> binds) = getBindsAndSigs vals
+           -- collect the declarations from the group
            alldecls :: [Located (HsDecl n)]
            alldecls = (map (fmap SpliceD) splices)
                         ++ (map (fmap ValD) binds)
@@ -62,10 +64,11 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
                         ++ (map (fmap AnnD) anns)
                         ++ (map (fmap RuleD) rules)
                         ++ (map (fmap VectD) vects)
-       let actualDefinitions = removeContained $ orderElems $ replaceSpliceDecls spls alldecls
-       addToCurrentScope actualDefinitions
-         $ makeIndentedListNewlineBefore atTheEnd
-            (orderDefs <$> ((++) <$> getDeclsToInsert <*> (mapM trfDecl actualDefinitions)))
+       addToCurrentScope (filter (\d -> not $ any (\spl -> getLoc spl `containsRealSpan` getLoc d) rdrSpls) alldecls) $ do
+         spls <- getDeclSplices
+         let actualDefinitions = removeContained $ orderElems $ replaceSpliceDecls spls alldecls
+           in makeIndentedListNewlineBefore atTheEnd
+                (orderDefs <$> ((++) <$> getDeclsToInsert <*> (mapM trfDecl actualDefinitions)))
   where
     replaceSpliceDecls :: [Located (HsSplice n)] -> [Located (HsDecl n)] -> [Located (HsDecl n)]
     replaceSpliceDecls splices decls = foldl mergeSplice decls splices
@@ -74,12 +77,13 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     orderElems = sortOn (srcSpanStart . getLoc)
 
     removeContained :: [Located (HsDecl n)] -> [Located (HsDecl n)]
-    removeContained (fst:snd:rest) | RealSrcSpan fstLoc <- getLoc fst
-                                   , RealSrcSpan sndLoc <- getLoc snd
-                                   , fstLoc `containsSpan` sndLoc
+    removeContained (fst:snd:rest) | getLoc fst `containsRealSpan` getLoc snd
       = removeContained (fst:rest)
     removeContained (fst:rest) = fst : removeContained rest
     removeContained [] = []
+
+    (RealSrcSpan sp1) `containsRealSpan` (RealSrcSpan sp2) = sp1 `containsSpan` sp2
+    _ `containsRealSpan` _ = False
 
     mergeSplice :: [Located (HsDecl n)] -> Located (HsSplice n) -> [Located (HsDecl n)]
     mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)

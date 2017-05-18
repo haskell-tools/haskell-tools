@@ -28,7 +28,7 @@ import Language.Haskell.Tools.AST (Ann(..), AnnListG, RangeStage, Dom)
 import qualified Language.Haskell.Tools.AST as AST
 
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils
-import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf, getOriginalName)
+import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Utils
 
 trfOperator :: TransformName n r => Located n -> Trf (Ann AST.UOperator (Dom r) RangeStage)
@@ -79,7 +79,7 @@ instance TransformableName RdrName where
 
 instance TransformableName GHC.Name where
   correctNameString n = getOriginalName (rdrName n)
-  getDeclSplices = asks declSplices
+  getDeclSplices = asks declSplices >>= mapM (\(L l e) -> (L l) <$> rdrSplice e)
 
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC UName annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
