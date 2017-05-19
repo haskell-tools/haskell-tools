@@ -47,19 +47,20 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, implicitNames, importedNames)
 
 trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
-trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $
-                  \(HsModule name exports imports decls deprec _) ->
-                    AST.UModule <$> trfFilePragmas
-                                <*> trfModuleHead name exports deprec
-                                <*> trfImports imports
-                                <*> trfDecls decls
+trfModule mod hsMod = trfLocCorrect (createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod))
+                                    (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
+                  (\(HsModule name exports imports decls deprec _) ->
+                     AST.UModule <$> trfFilePragmas
+                                 <*> trfModuleHead name exports deprec
+                                 <*> trfImports imports
+                                 <*> trfDecls decls) $ hsMod
 
 trfModuleRename :: ModSummary -> Ann AST.UModule (Dom RdrName) RangeStage
                               -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
                               -> Located (HsModule RdrName)
                               -> Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
-    = do info <- createModuleInfo mod
+    = do info <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) imports
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod
   where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
         originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef)
@@ -73,7 +74,7 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
                                  , impd ^? AST.importAs & AST.annJust & AST.importRename & AST.moduleNameString
                                  , AST.isAnnJust (impd ^. AST.importQualified)
                                  , impd ^. semantics&importedNames )
-              -- TODO: handle qualified prelude
+              -- if there is a qualified form of the import Prelude, the names should be empty
               importPrelude names = ( "Prelude", Nothing, False, names)
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots

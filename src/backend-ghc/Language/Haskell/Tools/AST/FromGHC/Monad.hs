@@ -146,14 +146,15 @@ rdrSplice spl = do
     locals <- concat <$> asks localsInScope
     let createLocalGRE (n,imp) = [GRE n NoParent (isNothing imp) (maybe [] (map createGREImport) imp) ]
         createGREImport (UsageSpec q useQ asQ) = ImpSpec (ImpDeclSpec (mkModuleName useQ) (mkModuleName asQ) q noSrcSpan) ImpAll
-        readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2)) . map snd) $ groupBy ((==) `on` fst) $ sortOn fst
-                   $ (map (\n -> (fst n, (GHC.occName (fst n), createLocalGRE n))) locals)
+        readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst
+                   $ (map (\n -> (GHC.occName (fst n), createLocalGRE n)) locals)
     tcSpl <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
       $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv })
       $ tcHsSplice' spl
-    return $ fromMaybe (error $ "Splice expression could not be typechecked: "
-                                   ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcSpl)))
-                                                       <+> vcat (pprErrMsgBagWithLoc (snd (fst tcSpl)))))
+    let typecheckErrors = showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcSpl)))
+                                            <+> vcat (pprErrMsgBagWithLoc (snd (fst tcSpl))))
+    when (not (null typecheckErrors)) $ liftIO $ putStrLn ("Typechecking of splice expressions: " ++ typecheckErrors)
+    return $ fromMaybe (error $ "Splice expression could not be typechecked.")
                        (snd tcSpl)
   where
     tcHsSplice' (HsTypedSplice id e)
