@@ -4,7 +4,7 @@
            , TypeFamilies
            , UndecidableInstances
            #-}
-module Language.Haskell.Tools.AST.SemaInfoClasses where
+module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, UsageSpec(..)) where
 
 import GHC
 import Id as GHC (Id, idName)

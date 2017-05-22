@@ -46,9 +46,13 @@ import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.SourceMap
 import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
 
-createModuleInfo :: ModSummary -> Trf (Sema.ModuleInfo GHC.Name)
-createModuleInfo mod = do
-  let prelude = xopt ImplicitPrelude $ ms_hspp_opts mod
+import Debug.Trace
+
+createModuleInfo :: ModSummary -> SrcSpan -> [LImportDecl n] -> Trf (Sema.ModuleInfo GHC.Name)
+createModuleInfo mod nameLoc imports = do
+  let prelude = (xopt ImplicitPrelude $ ms_hspp_opts mod)
+                  && all (\idecl -> ("Prelude" /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))
+                                      || nameLoc == getLoc idecl) imports
   (_,preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
   (insts, famInsts) <- if prelude then lift $ getOrphanAndFamInstances (Module baseUnitId (GHC.mkModuleName "Prelude"))
                                   else return ([], [])

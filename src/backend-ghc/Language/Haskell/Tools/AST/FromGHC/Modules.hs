@@ -47,19 +47,20 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, implicitNames, importedNames)
 
 trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
-trfModule mod = trfLocCorrect (createModuleInfo mod) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) $
-                  \(HsModule name exports imports decls deprec _) ->
-                    AST.UModule <$> trfFilePragmas
-                                <*> trfModuleHead name exports deprec
-                                <*> trfImports imports
-                                <*> trfDecls decls
+trfModule mod hsMod = trfLocCorrect (createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod))
+                                    (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
+                  (\(HsModule name exports imports decls deprec _) ->
+                     AST.UModule <$> trfFilePragmas
+                                 <*> trfModuleHead name exports deprec
+                                 <*> trfImports imports
+                                 <*> trfDecls decls) $ hsMod
 
 trfModuleRename :: ModSummary -> Ann AST.UModule (Dom RdrName) RangeStage
                               -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
                               -> Located (HsModule RdrName)
                               -> Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
-    = do info <- createModuleInfo mod
+    = do info <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) imports
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod
   where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
         originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef)
@@ -69,7 +70,13 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ _ deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
 
-          addToScope (concat @[] (transformedImports ^? AST.annList&semantics&importedNames) ++ preludeImports)
+          let importNames impd = ( impd ^. AST.importModule & AST.moduleNameString
+                                 , impd ^? AST.importAs & AST.annJust & AST.importRename & AST.moduleNameString
+                                 , AST.isAnnJust (impd ^. AST.importQualified)
+                                 , impd ^. semantics&importedNames )
+              -- if there is a qualified form of the import Prelude, the names should be empty
+              importPrelude names = ( "Prelude", Nothing, False, names)
+          addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
               $ AST.UModule <$> trfFilePragmas
                             <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
@@ -82,31 +89,7 @@ loadSplices modSum hsMod imports preludeImports group trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
         exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
         typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
-    -- initialize reader environment
-    env <- liftGhc $ setSessionDynFlags (ms_hspp_opts modSum) >> getSession
-    importEnv <- liftIO $ hscRnImportDecls env (hsmodImports hsMod)
-    let locals = hsGetNames group
-        createLocalGRE n = [GRE n NoParent True []]
-        readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2)) . map snd) $ groupBy ((==) `on` fst) $ sortOn fst
-                   $ (map (\n -> (n, (GHC.occName n, createLocalGRE n))) (locals ++ preludeImports))
-    tcdSplices <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
-      $ updGblEnv (\gbl -> gbl { tcg_rdr_env = plusOccEnv readEnv importEnv })
-      $ (,,) <$> mapM tcHsSplice declSpls <*> mapM tcHsSplice' typeSpls <*> mapM tcHsSplice' exprSpls
-    let (declSplices, typeSplices, exprSplices)
-          = fromMaybe (error $ "Splice expression could not be typechecked: "
-                                 ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcdSplices)))
-                                                      <+> vcat (pprErrMsgBagWithLoc (snd (fst tcdSplices)))))
-                      (snd tcdSplices)
-    setSplices declSplices typeSplices exprSplices trf
-  where
-    tcHsSplice :: Located (HsSplice RdrName) -> RnM (Located (HsSplice Name))
-    tcHsSplice (L l s) = L l <$> tcHsSplice' s
-    tcHsSplice' (HsTypedSplice id e)
-      = HsTypedSplice (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
-    tcHsSplice' (HsUntypedSplice id e)
-      = HsUntypedSplice (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
-    tcHsSplice' (HsQuasiQuote id1 id2 sp fs)
-      = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
+    setSplices declSpls typeSpls exprSpls trf
 
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
 trfModuleHead (Just mn) exports modPrag

@@ -46,9 +46,14 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
 trfExpr e | RealSrcSpan loce <- getLoc e
   = do exprSpls <- asks exprSplices
        let contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) exprSpls
-       case contSplice of Just sp -> case sp of HsQuasiQuote {} -> exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.UQuasiQuoteExpr <$> annLocNoSema (pure $ getSpliceLoc sp) (trfQuasiQuotation' sp)))
-                                                _               -> exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.USplice <$> trfSplice sp))
-                          Nothing -> trfLoc trfExpr' createScopeInfo e
+       case contSplice of
+         Just spr@(HsQuasiQuote {}) -> do
+           sp <- rdrSplice spr
+           exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.UQuasiQuoteExpr <$> annLocNoSema (pure $ getSpliceLoc sp) (trfQuasiQuotation' sp)))
+         Just spr -> do
+           sp <- rdrSplice spr
+           exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.USplice <$> trfSplice sp))
+         Nothing -> trfLoc trfExpr' createScopeInfo e
   | otherwise = trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf ScopeInfo
@@ -70,6 +75,7 @@ trfExpr' (OpApp e1 (unLoc -> HsVar op) _ e2)
   = AST.UInfixApp <$> trfExpr e1 <*> trfOperator op <*> trfExpr e2
 trfExpr' (OpApp e1 (L nameLoc (HsRecFld fld)) _ e2)
   = AST.UInfixApp <$> trfExpr e1 <*> trfAmbiguousOperator' nameLoc fld <*> trfExpr e2
+trfExpr' (OpApp e1 (L _ op) _ e2) = unhandledElement "OpApp expression" op
 trfExpr' (NegApp e _) = AST.UPrefixApp <$> annLocNoSema loc (AST.UNormalOp <$> annLoc info loc (AST.nameFromList <$> trfOperatorStr False "-"))
                                        <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))

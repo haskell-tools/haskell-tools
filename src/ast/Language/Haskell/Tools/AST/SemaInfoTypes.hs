@@ -8,7 +8,7 @@
 module Language.Haskell.Tools.AST.SemaInfoTypes
   ( -- types
     NoSemanticInfo, ScopeInfo, NameInfo, CNameInfo, ModuleInfo, ImportInfo, ImplicitFieldInfo
-  , Scope
+  , Scope, UsageSpec(..)
     -- references
   , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
@@ -35,7 +35,19 @@ import Data.List
 
 import Control.Reference
 
-type Scope = [[Name]]
+type Scope = [[(Name, Maybe [UsageSpec])]]
+
+data UsageSpec = UsageSpec { usageQualified :: Bool
+                           , usageQualifier :: String
+                           , usageAs :: String
+                           }
+  deriving (Eq, Data)
+
+instance Outputable UsageSpec where
+  ppr (UsageSpec q useQ asQ)
+    = GHC.text $ (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
+  pprPrec _ (UsageSpec q useQ asQ)
+    = GHC.text $ (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
 
 -- | Semantic info type for any node not
 -- carrying additional semantic information
