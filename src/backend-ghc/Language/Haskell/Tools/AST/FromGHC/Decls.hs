@@ -40,6 +40,9 @@ import Language.Haskell.Tools.AST (Ann, AnnMaybeG, AnnListG, getRange, Dom, Rang
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo)
 
+import Outputable
+import Debug.Trace
+
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 -- TODO: filter documentation comments
 trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
@@ -446,11 +449,20 @@ trfInstDataFam = trfLocNoSema $ \case
          <*> annLocNoSema (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
                           (AST.UInstanceRule <$> nothing "" " . " atTheStart
                                              <*> trfCtx atTheStart ctx
-                                             <*> foldl (\r t -> annLocNoSema (combineSrcSpans (getLoc t) . getRange <$> r)
-                                                                             (AST.UInstanceHeadApp <$> r <*> (trfType t)))
-                                                       (copyAnnot AST.UInstanceHeadCon (trfName tc)) pats)
+                                             <*> transformNameAndPats tc pats)
          <*> trfAnnList "" trfConDecl' cons
          <*> trfMaybe " deriving " "" trfDerivings derivs
+  where transformNameAndPats tc pats
+          | all (\p -> srcSpanEnd (getLoc tc) < srcSpanStart (getLoc p)) pats -- prefix instance head application
+          = foldl (\r t -> annLocNoSema (combineSrcSpans (getLoc t) . getRange <$> r)
+                                          (AST.UInstanceHeadApp <$> r <*> (trfType t)))
+                  (copyAnnot AST.UInstanceHeadCon (trfName tc)) pats
+        transformNameAndPats tc (p:rest)
+          | otherwise -- infix instance head application
+          = foldl (\r t -> annLocNoSema (combineSrcSpans (getLoc t) . getRange <$> r)
+                                          (AST.UInstanceHeadApp <$> r <*> (trfType t)))
+                  (annLocNoSema (pure $ getLoc p `combineSrcSpans` getLoc tc)
+                          (AST.UInstanceHeadInfix <$> trfType p <*> trfOperator tc)) rest
 
 trfPatternSynonym :: forall n r . TransformName n r => PatSynBind n n -> Trf (AST.UPatternSynonym (Dom r) RangeStage)
 trfPatternSynonym (PSB id _ lhs def dir)

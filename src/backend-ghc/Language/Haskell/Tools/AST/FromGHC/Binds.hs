@@ -62,16 +62,21 @@ trfMatchLhs name fb pats
   = do implicitIdLoc <- mkSrcSpan <$> atTheStart <*> atTheStart
        parenOpLoc <- tokensLoc [AnnOpenP, AnnVal, AnnCloseP]
        nonFunOpLoc <- tokenLoc AnnVal
-       let infixLoc = parenOpLoc `mappend` nonFunOpLoc
+       let infixLoc = case (parenOpLoc, nonFunOpLoc) of
+                        (RealSrcSpan rsp1, RealSrcSpan rsp2)
+                          | srcLocCol (realSrcSpanStart rsp2) == srcLocCol (realSrcSpanStart rsp1) + 1
+                              && srcLocCol (realSrcSpanEnd rsp2) == srcLocCol (realSrcSpanEnd rsp1) - 1 -> parenOpLoc
+                        _ -> nonFunOpLoc -- sometimes parenOpLoc is not an actual operator in parentheses, it just grabs
+                                         -- a paren, so we need to check that it is actually what we seek
        closeLoc <- srcSpanStart <$> (combineSrcSpans <$> tokenLoc AnnEqual <*> tokenLoc AnnVbar)
        args <- mapM trfPattern pats
        let (n, isInfix) = case fb of NonFunBindMatch -> let token = if isSymOcc (occName name) && isGoodSrcSpan infixLoc then infixLoc else implicitIdLoc
                                                          in (L token name, length pats > 0 && srcSpanStart token >= srcSpanEnd (getLoc (pats !! 0)))
                                      FunBindMatch n inf -> (n, inf)
        annLocNoSema (mkSrcSpan <$> atTheStart <*> (pure closeLoc)) $
-         case (args, isInfix) of
-            (left:right:rest, True) -> AST.UInfixLhs left <$> define (trfOperator n) <*> pure right <*> makeList " " (pure closeLoc) (pure rest)
-            _                       -> AST.UNormalLhs <$> define (trfName n) <*> makeList " " (pure closeLoc) (pure args)
+        case (args, isInfix) of
+           (left:right:rest, True) -> AST.UInfixLhs left <$> define (trfOperator n) <*> pure right <*> makeList " " (pure closeLoc) (pure rest)
+           _                       -> AST.UNormalLhs <$> define (trfName n) <*> makeList " " (pure closeLoc) (pure args)
 
 trfRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.URhs (Dom r) RangeStage)
 -- the original location on the GRHS misleadingly contains the local bindings
