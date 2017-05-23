@@ -7,7 +7,7 @@ for PKG in ast backend-ghc cli daemon debug prettyprint refactor rewrite
 do
   cp -v `find src/${PKG}/.stack-work -name haskell-tools-${PKG}-*.tar.gz` .
   rm -v -r src/${PKG}/*
-  tar -zxf haskell-tools-${PKG}-*.tar.gz -C src/${PKG}/*
+  tar -zxf haskell-tools-${PKG}-*.tar.gz -C src/${PKG}
 done
 stack --no-terminal test --coverage haskell-tools-rewrite
 stack --no-terminal test --coverage haskell-tools-refactor
