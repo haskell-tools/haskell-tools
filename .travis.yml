@@ -59,6 +59,7 @@ script:
   - stack --no-terminal test --coverage haskell-tools-cli
   - stack --no-terminal test --coverage haskell-tools-daemon
   - stack --no-terminal test --coverage haskell-tools-demo
+  - stack sdist
 
 after_script:
 

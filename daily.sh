@@ -2,7 +2,6 @@
 #then
 # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
 #travis_wait stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
-stack sdist
 for PKG in ast backend-ghc cli daemon debug prettyprint refactor rewrite
 do
   echo "Testing distribution of ${PKG}"
