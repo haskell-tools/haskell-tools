@@ -5,13 +5,15 @@
 stack sdist
 for PKG in ast backend-ghc cli daemon debug prettyprint refactor rewrite
 do
+  echo "Testing distribution of ${PKG}"
   cp -v `find src/${PKG}/.stack-work -name haskell-tools-${PKG}-*.tar.gz` .
-  rm -v -r src/${PKG}/*
+  rm -r src/${PKG}/*
   tar -zxf haskell-tools-${PKG}-*.tar.gz -C src/${PKG}
 done
-stack --no-terminal test --coverage haskell-tools-rewrite
-stack --no-terminal test --coverage haskell-tools-refactor
-stack --no-terminal test --coverage haskell-tools-cli
-stack --no-terminal test --coverage haskell-tools-daemon
-stack --no-terminal test --coverage haskell-tools-demo
+echo "Running tests on the extracted folders"
+stack --no-terminal test haskell-tools-rewrite
+stack --no-terminal test haskell-tools-refactor
+stack --no-terminal test haskell-tools-cli
+stack --no-terminal test haskell-tools-daemon
+stack --no-terminal test haskell-tools-demo
 #fi
