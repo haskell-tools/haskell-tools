@@ -60,10 +60,13 @@ script:
   - stack --no-terminal test --coverage haskell-tools-daemon
   - stack --no-terminal test --coverage haskell-tools-demo
   - stack sdist
-
-after_script:
-
   - bash ./daily.sh
 
+after_script:
+  # Run benchmarks. Need to uninstall first to run this without coverage reporting, so the result will be more accurate.
+  - if [ "$TRAVIS_EVENT_TYPE" = "cron" ];
+    then
+      travis_wait stack --no-terminal bench haskell-tools-cli > benchmark.txt 2>&1
+    fi
   # Publish API, coverage and benchmark data to our site
   - bash ./deploy.sh
