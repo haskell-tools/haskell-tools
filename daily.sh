@@ -7,7 +7,7 @@ do
   echo "Testing distribution of ${PKG}"
   cp -v `find src/${PKG}/.stack-work -name haskell-tools-${PKG}-*.tar.gz` .
   rm -r src/${PKG}/*
-  tar -zxf haskell-tools-${PKG}-*.tar.gz -C src/${PKG}
+  tar -zvxf haskell-tools-${PKG}-*.tar.gz -C src/${PKG}
 done
 echo "Running tests on the extracted folders"
 stack --no-terminal test haskell-tools-rewrite
