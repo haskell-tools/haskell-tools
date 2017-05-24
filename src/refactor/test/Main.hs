@@ -259,6 +259,7 @@ organizeImportTests =
   , "Refactor.OrganizeImports.StandaloneDeriving"
   , "Refactor.OrganizeImports.TemplateHaskell"
   , "Refactor.OrganizeImports.NarrowType"
+  , "CPP.BetweenImports"
   , "CPP.ConditionalImport"
   , "CPP.ConditionalImportBegin"
   , "CPP.ConditionalImportEnd"

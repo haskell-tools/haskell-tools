@@ -9,7 +9,7 @@ module Language.Haskell.Tools.Transform
   , sourceTemplateNodeRange, sourceTemplateNodeElems
   , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
   , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
-  , SourceTemplateElem(..), sourceTemplateTextElem, sourceTemplateTextRange, SourceTemplateTextElem(..), sourceTemplateText, isStayingText
+  , SourceTemplateElem(..), sourceTemplateTextElem, sourceTemplateTextRange, SourceTemplateTextElem(..), sourceTemplateText, lineEndings, isStayingText
   -- parts of the transformation, used for debugging purposes
   , rangeToSource, fixRanges, cutUpRanges, getLocIndices, mapLocIndices, fixMainRange, extractStayingElems
   ) where
