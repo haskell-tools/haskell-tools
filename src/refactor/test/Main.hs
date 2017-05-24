@@ -534,7 +534,7 @@ testRefactor refact moduleName
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs [rootDir]
-      mod <- loadModule rootDir moduleName >>= parseTyped
+      mod <- loadModule rootDir moduleName >>= parseTyped rootDir
       res <- runRefactor (SourceFileKey NormalHs moduleName, mod) [] (localRefactoring $ refact mod)
       case res of Right r -> return $ Right $ prettyPrint $ snd $ fromContentChanged $ head r
                   Left err -> return $ Left err
@@ -570,7 +570,7 @@ checkCorrectlyPrinted workingDir moduleName
          parsed <- loadModule workingDir moduleName
          actual <- prettyPrint <$> parseAST parsed
          actual' <- prettyPrint <$> parseRenamed parsed
-         actual'' <- prettyPrint <$> parseTyped parsed
+         actual'' <- prettyPrint <$> parseTyped workingDir parsed
          return (actual, actual', actual'')
        assertEqual "Parsed: The original and the transformed source differ" expected actual
        assertEqual "Renamed: The original and the transformed source differ" expected actual'
@@ -588,8 +588,8 @@ performRefactors command workingDir flags target = do
       allMods <- getModuleGraph
       selectedMod <- getModSummary (GHC.mkModuleName target)
       let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods
-      targetMod <- parseTyped selectedMod
-      otherMods <- mapM parseTyped otherModules
+      targetMod <- parseTyped workingDir selectedMod
+      otherMods <- mapM (parseTyped workingDir) otherModules
       res <- performCommand (either error id $ readCommand command)
                             (SourceFileKey NormalHs target, targetMod) (zip (map keyFromMS otherModules) otherMods)
       return $ (\case Right r -> Right $ (map (\case ContentChanged (n,m) -> (n ^. sfkModuleName, Just $ prettyPrint m)
@@ -636,7 +636,7 @@ performRefactor :: String -> FilePath -> [String] -> String -> IO (Either String
 performRefactor command workingDir flags target =
   runGhc (Just libdir) $ do
     useFlags flags
-    ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
+    ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped workingDir =<< loadModule workingDir target))
   where refact m = performCommand (either error id $ readCommand command) (SourceFileKey NormalHs target,m) []
         newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
         newContent ((ModuleCreated _ newContent _) : ress) = prettyPrint newContent

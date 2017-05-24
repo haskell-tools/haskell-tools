@@ -178,10 +178,11 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
 
 reloadAllMods :: FilePath -> StateT RefactorSessionState Ghc ()
 reloadAllMods dir = do
+  wd <- liftIO getCurrentDirectory
   void $ lift $ load LoadAllTargets
   targets <- lift getTargets
   forM_ (map ((\case (TargetModule n) -> n) . targetId) targets) $ \modName -> do
-      mod <- lift $ getModSummary modName >>= parseTyped
+      mod <- lift $ getModSummary modName >>= parseTyped wd
       modify $ refSessMods .- Map.insert (dir, GHC.moduleNameString modName, NormalHs) mod
 
 createFileForModule :: FilePath -> String -> String -> IO ()

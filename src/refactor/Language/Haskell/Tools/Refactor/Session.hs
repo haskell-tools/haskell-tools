@@ -134,7 +134,7 @@ reloadModule report ms = do
       dfs' <- liftIO $ compileInContext mc mcs dfs
       let ms' = ms { ms_hspp_opts = dfs' }
       newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
-        parseTyped (if codeGen then forceCodeGen ms' else ms')
+        parseTyped (mc ^. mcRoot) (if codeGen then forceCodeGen ms' else ms')
       modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
       liftIO $ report ms
@@ -166,7 +166,7 @@ codeGenForModule report mcs ms
         mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
      in -- TODO: don't recompile, only load?
         do withAlteredDynFlags (liftIO . compileInContext mc mcs)
-             $ void $ parseTyped (forceCodeGen ms)
+             $ void $ parseTyped (mc ^. mcRoot) (forceCodeGen ms)
            liftIO $ report ms
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
