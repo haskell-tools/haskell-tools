@@ -206,12 +206,12 @@ normalizeFlags = updOptLevel 0
 -- | Sets the working directory to the source directory of the module.
 -- Important for template haskell code trying to work with files.
 changeWorkingDir :: FilePath -> Ghc a -> Ghc a
-changeWorkingDir wd action = do
-  originalWorkingDirectory <- liftIO getCurrentDirectory
-  liftIO $ setCurrentDirectory wd
-  res <- action
-  liftIO $ setCurrentDirectory originalWorkingDirectory
-  return res
+changeWorkingDir wd action
+  = gbracket (liftIO $ do originalWorkingDirectory <- liftIO getCurrentDirectory
+                          liftIO $ setCurrentDirectory wd
+                          return originalWorkingDirectory)
+             (liftIO . setCurrentDirectory)
+             (\_ -> action)
 
 -- | Read a source range from our textual format: @line:col-line:col@ or @line:col@
 readSrcSpan :: String -> RealSrcSpan
