@@ -197,6 +197,7 @@ languageTests =
   , "TH.MultiImport"
   , "TH.Quoted"
   , "TH.WithWildcards"
+  , "TH.DoubleSplice"
   , "Refactor.CommentHandling.CommentTypes"
   , "Refactor.CommentHandling.BlockComments"
   , "Refactor.CommentHandling.Crosslinking"
