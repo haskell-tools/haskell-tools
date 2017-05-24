@@ -22,7 +22,7 @@ import qualified Language.Haskell.Tools.AST as AST
 
 trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.UQuasiQuote (Dom r) RangeStage)
  -- the lexer does not provide us with tokens '[', '|' and '|]'
-trfQuasiQuotation' (HsQuasiQuote id _ l str)
+trfQuasiQuotation' (HsQuasiQuote _ id l str)
   = AST.UQuasiQuote <$> annLocNoSema quoterLoc (trfName' id)
                     <*> annLocNoSema (pure strLoc) (pure $ AST.QQString (unpackFS str))
   where -- assume that there are no white spaces ain the head and the end of the quasi quote
