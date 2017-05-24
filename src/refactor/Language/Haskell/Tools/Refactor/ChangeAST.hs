@@ -13,12 +13,13 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 import SrcLoc
 
 import Debug.Trace
+import Data.Either
 
 -- | Remove a separator from the AST while keeping the textual parts of it that should not be removed (like preprocessor pragmas).
 removeSeparator :: ([SourceTemplateTextElem], SrcSpan) -> LocalRefactor dom ()
-removeSeparator (txts, range) = tell staying
-  where staying = mapMaybe (\case StayingText str lnEnd -> Just (Right (range, str, lnEnd))
-                                  _ -> Nothing) txts
+removeSeparator (txts, range) = tell [Right (range, intercalate lineEnd staying, lineEnd)]
+  where staying = catMaybes $ map (\case StayingText str _ -> Just str; _ -> Nothing) txts
+        lineEnd = head $ (catMaybes $ map (\case StayingText _ lnEnd -> Just lnEnd; _ -> Nothing) txts) ++ [""]
 
 -- | Remove an element from the AST while keeping the textual parts of it that should not be removed (like preprocessor pragmas).
 removeChild :: (SourceInfoTraversal e) => e dom SrcTemplateStage -> LocalRefactor dom ()
