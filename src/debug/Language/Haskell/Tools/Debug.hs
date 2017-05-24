@@ -36,7 +36,8 @@ demoRefactor command workingDir args moduleName =
     initGhcFlags
     _ <- useFlags args
     useDirs [workingDir]
-    modSum <- loadModule workingDir moduleName
+    ms <- loadModule workingDir moduleName
+    let modSum = ms { ms_hspp_opts = (ms_hspp_opts ms) { hscTarget = HscAsm, ghcLink = LinkInMemory } }
     p <- parseModule modSum
     t <- typecheckModule p
 
@@ -45,6 +46,8 @@ demoRefactor command workingDir args moduleName =
 
     liftIO $ putStrLn "=========== tokens:"
     liftIO $ putStrLn $ show (fst annots)
+    liftIO $ putStrLn "=========== comments:"
+    liftIO $ putStrLn $ show (snd annots)
     liftIO $ putStrLn "=========== parsed source:"
     liftIO $ putStrLn $ show (pm_parsed_source p)
     liftIO $ putStrLn "=========== renamed source:"
