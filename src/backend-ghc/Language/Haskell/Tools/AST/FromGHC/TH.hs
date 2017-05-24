@@ -32,7 +32,8 @@ trfQuasiQuotation' (HsQuasiQuote _ id l str)
 trfQuasiQuotation' qq = unhandledElement "quasi quotation" qq
 
 trfSplice :: TransformName n r => HsSplice n -> Trf (Ann AST.USplice (Dom r) RangeStage)
-trfSplice spls = annLocNoSema (pure $ getSpliceLoc spls) (trfSplice' spls)
+trfSplice spls = do rng <- asks contRange
+                    annLocNoSema (pure $ getSpliceLoc spls `mappend` rng) (trfSplice' spls)
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.USplice (Dom r) RangeStage)
 trfSplice' (HsTypedSplice _ expr) = trfSpliceExpr expr
