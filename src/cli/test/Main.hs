@@ -46,6 +46,9 @@ cliTests
     , ( [testRoot </> "Project" </> "source-dir"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
       , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
+    , ( [testRoot </> "Project" </> "working-dir"]
+      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"OrganizeImports\""]
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\n{-# LANGUAGE TemplateHaskell #-}\nmodule A where\n\nimport Language.Haskell.TH\n\n$(runIO (readFile \"data.txt\") >> return [])\n")
     , ( [testRoot </> "Project" </> "source-dir-outside"]
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
       , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")

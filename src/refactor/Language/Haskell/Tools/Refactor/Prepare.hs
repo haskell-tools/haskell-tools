@@ -48,7 +48,7 @@ tryRefactor refact moduleName span
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs ["."]
-      mod <- loadModule "." moduleName >>= parseTyped
+      mod <- loadModule "." moduleName >>= parseTyped "."
       res <- runRefactor (SourceFileKey NormalHs moduleName, mod) []
                $ refact $ correctRefactorSpan mod $ readSrcSpan span
       case res of Right r -> liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r
@@ -150,8 +150,8 @@ loadModule workingDir moduleName
 type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 
 -- | Get the typed representation from a type-correct program.
-parseTyped :: ModSummary -> Ghc TypedModule
-parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
+parseTyped :: FilePath -> ModSummary -> Ghc TypedModule
+parseTyped wd modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
       hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
       hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum
@@ -160,7 +160,7 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   when hasApplicativeDo $ error "The ApplicativeDo extension is not supported"
   when hasOverloadedLabels $ error "The OverloadedLabels extension is not supported"
   p <- parseModule ms
-  tc <- typecheckModule p
+  tc <- changeWorkingDir wd $ typecheckModule p -- template haskell needs the correct working directory in the type check phase
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
   let annots = pm_annotations p
   srcBuffer <- if hasCppExtension
@@ -202,6 +202,16 @@ modSumNormalizeFlags ms = ms { ms_hspp_opts = normalizeFlags (ms_hspp_opts ms) }
 -- | Removes all flags that are unintelligable for refactoring
 normalizeFlags :: DynFlags -> DynFlags
 normalizeFlags = updOptLevel 0
+
+-- | Sets the working directory to the source directory of the module.
+-- Important for template haskell code trying to work with files.
+changeWorkingDir :: FilePath -> Ghc a -> Ghc a
+changeWorkingDir wd action = do
+  originalWorkingDirectory <- liftIO getCurrentDirectory
+  liftIO $ setCurrentDirectory wd
+  res <- action
+  liftIO $ setCurrentDirectory originalWorkingDirectory
+  return res
 
 -- | Read a source range from our textual format: @line:col-line:col@ or @line:col@
 readSrcSpan :: String -> RealSrcSpan
