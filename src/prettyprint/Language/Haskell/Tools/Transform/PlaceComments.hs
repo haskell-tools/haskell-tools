@@ -41,7 +41,7 @@ placeComments :: RangeInfo stage => Map ApiAnnKey [SrcSpan] -> Map.Map SrcSpan [
               -> Ann UModule dom stage -> Ann UModule dom stage
 placeComments tokens comms mod
   = resizeAnnots (Set.filter (\rng -> srcSpanStart rng /= srcSpanEnd rng) $ Set.fromList $ concat (Map.elems tokens))
-      (concatMap (map nextSrcLoc . snd) (Map.toList comms)) mod
+      (concatMap (map nextSrcLoc . snd) (Map.toList cleanedComments)) mod
   where spans = allElemSpans mod
         sortedElemStarts = Set.fromList $ map srcSpanStart spans
         sortedElemEnds = Set.fromList $ map srcSpanEnd spans
@@ -49,6 +49,12 @@ placeComments tokens comms mod
           = let after = fromMaybe noSrcLoc (Set.lookupLE (srcSpanStart sp) sortedElemEnds)
                 before = fromMaybe noSrcLoc (Set.lookupGE (srcSpanEnd sp) sortedElemStarts)
              in ((after,before),comm)
+        cleanedComments = Map.map (map cleanComment) comms
+        cleanComment (L loc (AnnLineComment txt))
+          | last txt `elem` "\n\r" = L (mkSrcSpan (srcSpanStart loc) (decreaseCol (srcSpanEnd loc))) (AnnLineComment (init txt))
+        cleanComment c = c
+        decreaseCol (RealSrcLoc l) = mkSrcLoc (srcLocFile l) (srcLocLine l) (srcLocCol l - 1)
+        decreaseCol l = l
 
 allElemSpans :: (SourceInfoTraversal node, RangeInfo stage) => Ann node dom stage -> [SrcSpan]
 allElemSpans = execWriter . sourceInfoTraverse (SourceInfoTrf (\ni -> tell [ni ^. nodeSpan] >> pure ni) pure pure)

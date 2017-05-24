@@ -88,9 +88,11 @@ extractStayingElems = runIdentity . sourceInfoTraverse (SourceInfoTrf
           breakStaying = concat . Prelude.map (\(NormalText s) -> toTxtElems s)
 
           toTxtElems :: String -> [SourceTemplateTextElem]
-          toTxtElems = extractStaying . splitOn "\n"
-          extractStaying lines = Prelude.foldr appendTxt []
-                                   $ Prelude.map (\ln -> if "#" `isPrefixOf` ln then StayingText ln "\n" else NormalText ln) lines
+          toTxtElems str = extractStaying $ splitOn "\n" $ str
+            where
+              extractStaying lines | not (any ("#" `isPrefixOf`) lines) = [NormalText str]
+              extractStaying lines = Prelude.foldr appendTxt []
+                                       $ Prelude.map (\ln -> if "#" `isPrefixOf` ln then StayingText ln "\n" else NormalText ln) lines
           -- recombines the lines if they are both normal text
           -- otherwise it moves the windows '\r' characters to the correct position
           appendTxt (NormalText n1) (NormalText n2 : rest) = NormalText (n1 ++ '\n':n2) : rest
