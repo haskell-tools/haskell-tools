@@ -18,6 +18,7 @@ import ErrUtils
 import Exception (ExceptionMonad)
 import FastString as GHC
 import GHC
+import DynFlags
 import HscTypes as GHC
 import Language.Haskell.TH.LanguageExtensions
 import Outputable
@@ -59,9 +60,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> modSumName ms `notElem` alreadyExistingMods) modsToParse
-       liftIO $ loadCallback actuallyCompiled
-       void $ checkEvaluatedMods (\_ -> return ()) modsToParse
+       void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
+       liftIO $ loadCallback actuallyCompiled
        return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
@@ -142,7 +143,12 @@ reloadModule report ms = do
 
 checkEvaluatedMods :: IsRefactSessionState st => (ModSummary -> IO a) -> [ModSummary] -> StateT st Ghc [a]
 checkEvaluatedMods report mods = do
-    modsNeedCode <- lift (getEvaluatedMods mods)
+    mcs <- gets (^. refSessMCs)
+    let lookupFlags ms = mc ^. mcFlagSetup
+          where modName = modSumName ms
+                mc = fromMaybe (error "no mc") $ lookupModuleColl modName mcs
+
+    modsNeedCode <- lift (getEvaluatedMods mods lookupFlags)
     mcs <- gets (^. refSessMCs)
     res <- forM modsNeedCode $ \ms -> reloadIfNeeded ms mcs
     return $ catMaybes res
@@ -170,13 +176,16 @@ codeGenForModule report mcs ms
            liftIO $ report ms
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
-getEvaluatedMods :: [ModSummary] -> Ghc [GHC.ModSummary]
+getEvaluatedMods :: [ModSummary] -> (ModSummary -> DynFlags -> IO DynFlags) -> Ghc [GHC.ModSummary]
 -- We cannot really get the modules that need to be linked, because we cannot rename splice content if the
 -- module is not type checked and that is impossible if the splice cannot be evaluated.
-getEvaluatedMods mods
+getEvaluatedMods mods additionalFlags
   = do allMods <- getModuleGraph
+       flags <- getSessionDynFlags
        let (allModsGraph, lookup) = moduleGraphNodes False allMods
-           modsWithTH = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms)) $ filter isTH mods
+       -- some flags are stored only in the module collection and are not recorded in the summary
+       thmods <- liftIO $ filterM (\ms -> ((|| isTH ms) . xopt TemplateHaskell) <$> additionalFlags ms flags) mods
+       let modsWithTH = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms)) thmods
            recompMods = map (moduleName . ms_mod . getModFromNode) $ reachablesG allModsGraph modsWithTH
            sortedMods = map getModFromNode $ reverse $ topologicalSortG allModsGraph
            sortedTHMods = filter ((`elem` recompMods) . moduleName . ms_mod) sortedMods
