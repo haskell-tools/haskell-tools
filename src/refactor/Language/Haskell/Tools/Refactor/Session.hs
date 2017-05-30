@@ -11,6 +11,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe
 import System.FilePath
+import System.IO
 
 import Data.IntSet (member)
 import Digraph as GHC
@@ -60,9 +61,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> modSumName ms `notElem` alreadyExistingMods) modsToParse
+       liftIO $ loadCallback actuallyCompiled
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
-       liftIO $ loadCallback actuallyCompiled
        return (mods, ignored)
 
   where extractDuplicates :: Eq a => [a] -> ([a],[a])
@@ -71,9 +72,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
         extractDuplicates [] = ([],[])
 
         loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
-        loadModule report ms = do
-          needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
-          reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
+        loadModule report ms
+          = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
+               reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
 
 -- | Handle GHC exceptions and RefactorException.
 handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
@@ -144,9 +145,9 @@ reloadModule report ms = do
 checkEvaluatedMods :: IsRefactSessionState st => (ModSummary -> IO a) -> [ModSummary] -> StateT st Ghc [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
-    let lookupFlags ms = mc ^. mcFlagSetup
+    let lookupFlags ms = maybe return (^. mcFlagSetup) mc
           where modName = modSumName ms
-                mc = fromMaybe (error "no mc") $ lookupModuleColl modName mcs
+                mc = lookupModuleColl modName mcs
 
     modsNeedCode <- lift (getEvaluatedMods mods lookupFlags)
     mcs <- gets (^. refSessMCs)
