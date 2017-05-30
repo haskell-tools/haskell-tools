@@ -36,6 +36,8 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Project/source-dir/*.cabal
                   , examples/Project/source-dir/src/*.hs
                   , examples/Project/source-dir-outside/*.cabal
+                  , examples/Project/working-dir/*.hs
+                  , examples/Project/working-dir/*.cabal
                   , examples/Project/src/*.hs
 
 library
