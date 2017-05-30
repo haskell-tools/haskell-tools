@@ -63,7 +63,9 @@ containingMC fp = traversal & filtered (\mc -> _mcRoot mc `isPrefixOf` fp)
 
 -- | The state of a module.
 data ModuleRecord
-       = ModuleNotLoaded { _recModuleWillNeedCode :: Bool }
+       = ModuleNotLoaded { _recModuleWillNeedCode :: Bool
+                         , _recModuleExposed :: Bool
+                         }
        | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
                       , _modRecMS :: ModSummary
                       }
@@ -103,7 +105,7 @@ makeReferences ''ModuleCollection
 makeReferences ''ModuleRecord
 
 instance Show ModuleRecord where
-  show (ModuleNotLoaded code) = "ModuleNotLoaded " ++ show code
+  show (ModuleNotLoaded code exposed) = "ModuleNotLoaded " ++ show code ++ " " ++ show exposed
   show mr@(ModuleParsed {}) = "ModuleParsed (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
   show mr@(ModuleRenamed {}) = "ModuleRenamed (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
   show mr@(ModuleTypeChecked {}) = "ModuleTypeChecked (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
@@ -124,12 +126,12 @@ hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 needsGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
-needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True) -> True; _ -> False)
+needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True _) -> True; _ -> False)
                            . find (((sfkIsBoot .= NormalHs $ key) ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
 codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod ms) -> ModuleCodeGenerated mod ms
-                                                           ModuleNotLoaded _ -> ModuleNotLoaded True
+                                                           ModuleNotLoaded _ exp -> ModuleNotLoaded True exp
                                                            r -> r) key)
 
 isAlreadyLoaded :: SourceFileKey -> [ModuleCollection] -> Bool
@@ -163,7 +165,7 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs) mods) return return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False True) . SourceFileKey NormalHs) mods) return return []]
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
@@ -199,7 +201,8 @@ modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescrip
                   then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
-                                (Map.fromList $ map ((, ModuleNotLoaded False) . SourceFileKey NormalHs . moduleName) (getModuleNames tmc))
+                                (Map.fromList $ map (\mn -> (SourceFileKey NormalHs (moduleName mn), ModuleNotLoaded False (needsToCompile tmc mn)))
+                                              $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
@@ -214,27 +217,32 @@ class ToModuleCollection t where
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
   getBuildInfo :: t -> BuildInfo
   getModuleNames :: t -> [ModuleName]
+  needsToCompile :: t -> ModuleName -> Bool
 
 instance ToModuleCollection Library where
   mkModuleCollKey pn _ = LibraryMC (unPackageName pn)
   getBuildInfo = libBuildInfo
   getModuleNames = libModules
+  needsToCompile l m = m `elem` exposedModules l
 
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
   getModuleNames e = {- fromString (toModuleName $ modulePath e) : -} exeModules e
     where toModuleName = map (\case c | c `elem` pathSeparators -> '.'; c -> c) . dropExtension
+  needsToCompile _ _ = False
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
   getModuleNames = testModules
+  needsToCompile _ _ = False
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
   getModuleNames = benchmarkModules
+  needsToCompile _ _ = False
 
 isDirectoryMC :: ModuleCollection -> Bool
 isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False

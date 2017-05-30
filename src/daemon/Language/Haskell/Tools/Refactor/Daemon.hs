@@ -184,7 +184,7 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
               let Just otherMS = otherMR ^? modRecMS
                   Just mc = lookupModuleColl (otherM ^. sfkModuleName) mcs
               modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                         .- Map.insert (SourceFileKey NormalHs n) (ModuleNotLoaded False)
+                         .- Map.insert (SourceFileKey NormalHs n) (ModuleNotLoaded False False)
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
               liftIO $ withBinaryFile loc WriteMode $ \handle -> do

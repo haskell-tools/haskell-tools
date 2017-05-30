@@ -52,7 +52,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
+     let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat
+                                 $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
+                                 $ modColls ^? traversal & mcModules
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
