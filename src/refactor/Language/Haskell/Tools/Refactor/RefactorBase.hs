@@ -21,7 +21,7 @@ import Bag as GHC
 import DynFlags (HasDynFlags(..))
 import ErrUtils as GHC
 import Exception (ExceptionMonad(..))
-import GHC (Ghc, GhcMonad(..), TyThing(..), lookupName)
+import GHC hiding (mkModuleName, moduleNameString)
 import qualified Module as GHC
 import qualified Name as GHC
 import Outputable
@@ -40,6 +40,7 @@ import Control.Reference hiding (element)
 import Data.Char
 import Data.Either
 import Data.Function (on)
+import qualified Data.Map as Map
 import Data.List
 import Data.List.Split
 import Data.Maybe
@@ -52,13 +53,10 @@ type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
 type ModuleDom dom = (SourceFileKey, UnnamedModule dom)
 
 -- | Module name and marker to separate .hs-boot module definitions. Specifies a source file in a working directory.
-data SourceFileKey = SourceFileKey { _sfkIsBoot :: IsBoot
+data SourceFileKey = SourceFileKey { _sfkFileName :: FilePath
                                    , _sfkModuleName :: String
                                    }
   deriving (Eq, Ord, Show)
-
--- | Decides if a module is a .hs-boot file or a normal .hs file
-data IsBoot = NormalHs | IsHsBoot deriving (Eq, Ord, Show)
 
 -- | A refactoring that only affects one module
 type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModule dom)
@@ -67,7 +65,7 @@ type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModul
 type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [RefactorChange dom]
 
 -- | Change in the project, modification or removal of a module.
-data RefactorChange dom = ContentChanged { fromContentChanged :: (ModuleDom dom) }
+data RefactorChange dom = ContentChanged { fromContentChanged :: ModuleDom dom }
                         | ModuleRemoved { removedModuleName :: String }
                         | ModuleCreated { createdModuleName :: String
                                         , createdModuleContent :: UnnamedModule dom
@@ -80,6 +78,59 @@ data RefactorException = IllegalExtensions [String]
                        | ModuleNotInPackage String
                        | UnknownException String
   deriving (Show, Typeable)
+
+moduleSourceFile :: String -> FilePath
+moduleSourceFile = undefined
+
+sourceFileModule :: FilePath -> String
+sourceFileModule = undefined
+
+
+-- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
+data ModuleCollection
+  = ModuleCollection { _mcId :: ModuleCollectionId
+                     , _mcRoot :: FilePath
+                     , _mcSourceDirs :: [FilePath]
+                     , _mcModules :: Map.Map SourceFileKey ModuleRecord
+                     , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
+                     , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
+                     , _mcDependencies :: [ModuleCollectionId]
+                     }
+
+-- | The state of a module.
+data ModuleRecord
+      = ModuleNotLoaded { _recModuleWillNeedCode :: Bool
+                        , _recModuleExposed :: Bool
+                        }
+      | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
+                     , _modRecMS :: ModSummary
+                     }
+      | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom GHC.Name)
+                      , _modRecMS :: ModSummary
+                      }
+      | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom
+                          , _modRecMS :: ModSummary
+                          }
+      | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom
+                            , _modRecMS :: ModSummary
+                            }
+
+-- | This data structure identifies a module collection.
+data ModuleCollectionId = DirectoryMC FilePath
+                       | LibraryMC String
+                       | ExecutableMC String String
+                       | TestSuiteMC String String
+                       | BenchmarkMC String String
+ deriving (Eq, Ord, Show)
+
+-- | A common class for the state of refactoring tools
+class IsRefactSessionState st where
+  refSessMCs :: Simple Lens st [ModuleCollection]
+  initSession :: st
+
+findModule :: IsRefactSessionState st => String -> StateT st m [FilePath]
+findModule = undefined
+
 
 instance Show ErrorMessages where
   show = show . bagToList

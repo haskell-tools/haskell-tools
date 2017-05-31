@@ -4,6 +4,7 @@ module Language.Haskell.Tools.Refactor.Daemon.State where
 import Control.Reference
 
 import Language.Haskell.Tools.Refactor.Daemon.PackageDB
+import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Session
 
 data DaemonSessionState

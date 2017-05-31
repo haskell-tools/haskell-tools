@@ -40,17 +40,6 @@ import Language.Haskell.Tools.Refactor.RefactorBase
 
 import Debug.Trace
 
--- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
-data ModuleCollection
-  = ModuleCollection { _mcId :: ModuleCollectionId
-                     , _mcRoot :: FilePath
-                     , _mcSourceDirs :: [FilePath]
-                     , _mcModules :: Map.Map SourceFileKey ModuleRecord
-                     , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
-                     , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
-                     , _mcDependencies :: [ModuleCollectionId]
-                     }
-
 instance Eq ModuleCollection where
   (==) = (==) `on` _mcId
 
@@ -61,31 +50,6 @@ instance Show ModuleCollection where
 containingMC :: FilePath -> Simple Traversal [ModuleCollection] ModuleCollection
 containingMC fp = traversal & filtered (\mc -> _mcRoot mc `isPrefixOf` fp)
 
--- | The state of a module.
-data ModuleRecord
-       = ModuleNotLoaded { _recModuleWillNeedCode :: Bool
-                         , _recModuleExposed :: Bool
-                         }
-       | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
-                      , _modRecMS :: ModSummary
-                      }
-       | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom Name)
-                       , _modRecMS :: ModSummary
-                       }
-       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom
-                           , _modRecMS :: ModSummary
-                           }
-       | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom
-                             , _modRecMS :: ModSummary
-                             }
-
--- | This data structure identifies a module collection.
-data ModuleCollectionId = DirectoryMC FilePath
-                        | LibraryMC String
-                        | ExecutableMC String String
-                        | TestSuiteMC String String
-                        | BenchmarkMC String String
-  deriving (Eq, Ord, Show)
 
 moduleCollectionIdString :: ModuleCollectionId -> String
 moduleCollectionIdString (DirectoryMC fp) = fp
@@ -118,16 +82,20 @@ lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) .
 lookupModInSCs :: SourceFileKey -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
 lookupModInSCs moduleName = find ((moduleName ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
+lookupSourceFileInSCs :: String -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
+lookupSourceFileInSCs moduleName = find ((moduleName ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+
 removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
 removeModule moduleName = map (mcModules .- Map.filterWithKey (\k _ -> moduleName /= (k ^. sfkModuleName)))
 
 hasGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
-hasGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; _ -> False)
-                         . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+hasGeneratedCode key = maybe False ((\case ModuleCodeGenerated {} -> True; _ -> False) . snd)
+                         . lookupModInSCs key
 
 needsGeneratedCode :: SourceFileKey -> [ModuleCollection] -> Bool
-needsGeneratedCode key = maybe False (\case (_, ModuleCodeGenerated {}) -> True; (_, ModuleNotLoaded True _) -> True; _ -> False)
-                           . find (((sfkIsBoot .= NormalHs $ key) ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+needsGeneratedCode key = maybe False ((\case ModuleCodeGenerated {} -> True; ModuleNotLoaded True _ -> True; _ -> False) . snd)
+                           . lookupModInSCs key
 
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection] -> [ModuleCollection]
 codeGeneratedFor key = map (mcModules .- Map.adjust (\case (ModuleTypeChecked mod ms) -> ModuleCodeGenerated mod ms
@@ -165,7 +133,8 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] (Map.fromList $ map ((, ModuleNotLoaded False True) . SourceFileKey NormalHs) mods) return return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] (modKeys mods) return return []]
+  where modKeys mods = Map.fromList $ map (\m -> (SourceFileKey (root </> moduleSourceFile m) m, ModuleNotLoaded False True)) mods
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
@@ -201,13 +170,13 @@ modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescrip
                   then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
-                                (Map.fromList $ map (\mn -> (SourceFileKey NormalHs (moduleName mn), ModuleNotLoaded False (needsToCompile tmc mn)))
-                                              $ getModuleNames tmc)
+                                (Map.fromList $ map modRecord $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
-
+          where modRecord mn = ( SourceFileKey (normalise (root </> (moduleSourceFile $ moduleName mn))) (moduleName mn)
+                               , ModuleNotLoaded False (needsToCompile tmc mn) )
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePackageDescription [] (const True) buildPlatform

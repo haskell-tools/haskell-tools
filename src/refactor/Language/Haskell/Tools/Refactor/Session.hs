@@ -36,11 +36,6 @@ data RefactorSessionState
 
 makeReferences ''RefactorSessionState
 
--- | A common class for the state of refactoring tools
-class IsRefactSessionState st where
-  refSessMCs :: Simple Lens st [ModuleCollection]
-  initSession :: st
-
 instance IsRefactSessionState RefactorSessionState where
   refSessMCs = _refSessMCs
   initSession = RefactorSessionState []
@@ -84,7 +79,7 @@ handleErrors action = handleSourceError (return . Left . SourceCodeProblem . src
                         `gcatch` (return . Left)
 
 keyFromMS :: ModSummary -> SourceFileKey
-keyFromMS ms = SourceFileKey (case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot) (modSumName ms)
+keyFromMS ms = SourceFileKey (getModSumOrig ms) (modSumName ms)
 
 getMods :: (Monad m, IsRefactSessionState st)
         => Maybe SourceFileKey -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
@@ -201,7 +196,7 @@ modSumName = GHC.moduleNameString . moduleName . ms_mod
 
 -- * code copied from GHC because it is not public in GhcMake module
 
-type NodeKey   = (ModuleName, IsBoot)
+type NodeKey   = (ModuleName, HscSource)
 type NodeMap a = Map.Map NodeKey a
 type SummaryNode = (ModSummary, Int, [Int])
 
@@ -215,14 +210,13 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
     numbered_summaries = zip summaries [1..]
 
     lookup_node :: HscSource -> ModuleName -> Maybe SummaryNode
-    lookup_node hs_src mod = Map.lookup (mod, hscSourceToIsBoot hs_src) node_map
+    lookup_node hs_src mod = Map.lookup (mod, hs_src) node_map
 
     lookup_key :: HscSource -> ModuleName -> Maybe Int
     lookup_key hs_src mod = fmap summaryNodeKey (lookup_node hs_src mod)
 
     node_map :: NodeMap SummaryNode
-    node_map = Map.fromList [ ((moduleName (ms_mod s),
-                                hscSourceToIsBoot (ms_hsc_src s)), node)
+    node_map = Map.fromList [ ((moduleName (ms_mod s), (ms_hsc_src s)), node)
                             | node@(s, _, _) <- nodes ]
 
     nodes :: [SummaryNode]
@@ -243,10 +237,6 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
 
     out_edge_keys :: HscSource -> [ModuleName] -> [Int]
     out_edge_keys hi_boot ms = mapMaybe (lookup_key hi_boot) ms
-
-hscSourceToIsBoot :: HscSource -> IsBoot
-hscSourceToIsBoot HsBootFile = IsHsBoot
-hscSourceToIsBoot _ = NormalHs
 
 summaryNodeKey :: SummaryNode -> Int
 summaryNodeKey (_, k, _) = k

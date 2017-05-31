@@ -183,15 +183,15 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
 
               let Just otherMS = otherMR ^? modRecMS
                   Just mc = lookupModuleColl (otherM ^. sfkModuleName) mcs
-              modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                         .- Map.insert (SourceFileKey NormalHs n) (ModuleNotLoaded False False)
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
+              modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
+                         .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
               liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                 hSetEncoding handle utf8
                 hPutStr handle (prettyPrint m)
               lift $ addTarget (Target (TargetModule (GHC.mkModuleName n)) True Nothing)
-              return $ Right (SourceFileKey NormalHs n, loc, RemoveAdded loc)
+              return $ Right (SourceFileKey loc n, loc, RemoveAdded loc)
             ContentChanged (n,m) -> do
               Just (_, mr) <- gets (lookupModInSCs n . (^. refSessMCs))
               let Just ms = mr ^? modRecMS
@@ -206,7 +206,7 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
                 hPutStr handle newCont
               return $ Right (n, file, UndoChanges file undo)
             ModuleRemoved mod -> do
-              Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
+              Just (_,m) <- gets (lookupSourceFileInSCs mod . (^. refSessMCs))
               let modName = GHC.moduleName $ fromJust $ fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule)
               ms <- getModSummary modName
               let file = getModSumOrig ms
