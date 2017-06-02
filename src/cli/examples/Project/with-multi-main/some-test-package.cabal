@@ -13,4 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable foo
+  main-is: A.hs
+
+executable bar
   main-is: Main.hs

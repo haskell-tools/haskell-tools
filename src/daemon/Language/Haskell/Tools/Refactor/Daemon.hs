@@ -244,13 +244,8 @@ addPackages resp packagePathes = do
         res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
                                 (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
         case res of
-          Right (modules, ignoredMods) -> do
+          Right modules -> do
             mapM_ (reloadModule (\_ -> return ())) (either (const []) id needToReload) -- don't report consequent reloads (not expected)
-            liftIO $ when (not $ null ignoredMods)
-                       $ resp $ ErrorMessage
-                                  $ "The following modules are ignored: "
-                                       ++ concat (intersperse ", " ignoredMods)
-                                       ++ ". Multiple modules with the same qualified name are not supported."
           Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err)
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"

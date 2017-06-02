@@ -79,10 +79,8 @@ cliTests
       , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
       )
     , ( map ((testRoot </> "Project" </> "multi-packages-same-module") </>) ["package1", "package2"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , "Compiling modules. This may take some time. Please wait.\nLoaded module: A\n"
-          ++ "The following modules are ignored: A. Multiple modules with the same qualified name are not supported.\n"
-          ++ "All modules loaded.\n"
+      , ["-dry-run", "-one-shot"], ""
+      , oneShotPrefix ["A"]
           ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
       )
     , ( map ((testRoot </> "Project" </> "multi-packages-same-module") </>) ["package1", "package2"]
@@ -92,6 +90,12 @@ cliTests
     , ( [testRoot </> "Project" </> "with-main"]
       , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
       , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
+    , ( [testRoot </> "Project" </> "with-main-renamed"]
+      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
+      , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
+    , ( [testRoot </> "Project" </> "with-multi-main"]
+      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
+      , "", oneShotPrefix ["Main"])
     ]
 
 benchTests :: IO [TestTree]

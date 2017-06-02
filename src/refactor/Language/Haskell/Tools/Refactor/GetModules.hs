@@ -16,7 +16,6 @@ import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 import Distribution.Compiler
-import Distribution.ModuleName (components)
 import Distribution.ModuleName
 import Distribution.Package (Dependency(..), PackageName(..), pkgName)
 import Distribution.PackageDescription
@@ -177,8 +176,11 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
-          where modRecord srcs mn = map (\d -> ( SourceFileKey (normalise (root </> d </> (moduleSourceFile $ moduleName mn))) (moduleName mn)
+          where modRecord srcs mn = map (\d -> ( SourceFileKey (getPath d mn) (moduleName mn)
                                                , ModuleNotLoaded False (needsToCompile tmc mn) )) srcs
+                getPath d mn = case lookup mn (getModuleSourceFiles tmc) of
+                                 Just fp -> fp
+                                 Nothing -> normalise (root </> d </> (moduleSourceFile $ moduleName mn))
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePackageDescription [] (const True) buildPlatform
@@ -188,6 +190,8 @@ class ToModuleCollection t where
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
   getBuildInfo :: t -> BuildInfo
   getModuleNames :: t -> [ModuleName]
+  getModuleSourceFiles :: t -> [(ModuleName, FilePath)]
+  getModuleSourceFiles _ = []
   needsToCompile :: t -> ModuleName -> Bool
 
 instance ToModuleCollection Library where
@@ -199,20 +203,20 @@ instance ToModuleCollection Library where
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
-  getModuleNames e = {- fromString (toModuleName $ modulePath e) : -} exeModules e
-    where toModuleName = map (\case c | c `elem` pathSeparators -> '.'; c -> c) . dropExtension
+  getModuleNames _ = [fromString "Main"]
+  getModuleSourceFiles exe = [(fromString "Main", modulePath exe)]
   needsToCompile _ _ = False
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
-  getModuleNames = testModules
+  getModuleNames _ = [fromString "Main"]
   needsToCompile _ _ = False
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
-  getModuleNames = benchmarkModules
+  getModuleNames _ = [fromString "Main"]
   needsToCompile _ _ = False
 
 isDirectoryMC :: ModuleCollection -> Bool

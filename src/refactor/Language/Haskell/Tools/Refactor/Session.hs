@@ -41,7 +41,7 @@ instance IsRefactSessionState RefactorSessionState where
   initSession = RefactorSessionState []
 
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException ([a], [String]))
+loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
@@ -49,9 +49,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat
-                                 $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
-                                 $ modColls ^? traversal & mcModules
+     let modNames = map (^. sfkModuleName) $ concat
+                      $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
+                      $ modColls ^? traversal & mcModules
          -- TODO: differentiate on file name
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
@@ -62,14 +62,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        liftIO $ loadCallback actuallyCompiled
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
-       return (mods, ignored)
+       return mods
 
-  where extractDuplicates :: Eq a => [a] -> ([a],[a])
-        extractDuplicates (a:rest)
-          = case extractDuplicates rest of (repl, orig) -> if a `elem` orig then (a:repl, orig) else (repl, a:orig)
-        extractDuplicates [] = ([],[])
-
-        loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
+  where loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)

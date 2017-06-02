@@ -74,13 +74,7 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
           liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."
           res <- loadPackagesFrom (\ms -> liftIO $ hPutStrLn output ("Loaded module: " ++ modSumName ms)) (const $ return ()) (\_ _ -> return []) workingDirs
           case res of
-            Right (_, ignoredMods) -> do
-              when (not $ null ignoredMods)
-                $ liftIO $ hPutStrLn output
-                $ "The following modules are ignored: "
-                    ++ concat (intersperse ", " $ ignoredMods)
-                    ++ ". Multiple modules with the same qualified name are not supported."
-
+            Right _ -> do
               liftIO . hPutStrLn output $ if ("-one-shot" `elem` flags)
                 then "All modules loaded."
                 else "All modules loaded. Use 'SelectModule module-name' to select a module."
