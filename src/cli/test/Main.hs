@@ -23,20 +23,21 @@ allTests :: [TestTree]
 allTests = map makeCliTest cliTests
 
 makeCliTest :: ([FilePath], [String], String, String) -> TestTree
-makeCliTest (dirs, args, input, output) = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
-                                              testdirs = map (((dir ++ "_test") </>) . makeRelative dir) dirs
-  in testCase dir $ do
-    exists <- doesDirectoryExist (dir ++ "_test")
-    when exists $ removeDirectoryRecursive (dir ++ "_test")
-    copyDir dir (dir ++ "_test")
-    inKnob <- newKnob (pack input)
-    inHandle <- newFileHandle inKnob "<input>" ReadMode
-    outKnob <- newKnob (pack [])
-    outHandle <- newFileHandle outKnob "<output>" WriteMode
-    res <- refactorSession inHandle outHandle (args ++ testdirs)
-    actualOut <- Data.Knob.getContents outKnob
-    assertEqual "" (filter (/= '\r') output) (filter (/= '\r') $ unpack actualOut)
-  `finally` removeDirectoryRecursive (dir ++ "_test")
+makeCliTest (dirs, args, input, output)
+  = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
+        testdirs = map (\d -> if d == dir then dir ++ "_test" else (dir ++ "_test" </> makeRelative dir d)) dirs
+    in testCase dir $ do
+      exists <- doesDirectoryExist (dir ++ "_test")
+      when exists $ removeDirectoryRecursive (dir ++ "_test")
+      copyDir dir (dir ++ "_test")
+      inKnob <- newKnob (pack input)
+      inHandle <- newFileHandle inKnob "<input>" ReadMode
+      outKnob <- newKnob (pack [])
+      outHandle <- newFileHandle outKnob "<output>" WriteMode
+      res <- refactorSession inHandle outHandle (args ++ testdirs)
+      actualOut <- Data.Knob.getContents outKnob
+      assertEqual "" (filter (/= '\r') output) (filter (/= '\r') $ unpack actualOut)
+    `finally` removeDirectoryRecursive (dir ++ "_test")
 
 cliTests :: [([FilePath], [String], String, String)]
 cliTests

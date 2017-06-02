@@ -9,6 +9,7 @@
            , MultiWayIf
            , TemplateHaskell
            , ViewPatterns
+           , TypeApplications
            #-}
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.RefactorBase where
@@ -45,6 +46,7 @@ import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Typeable
+import System.FilePath
 
 -- | A type for the input and result of refactoring a module
 type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
@@ -80,10 +82,10 @@ data RefactorException = IllegalExtensions [String]
   deriving (Show, Typeable)
 
 moduleSourceFile :: String -> FilePath
-moduleSourceFile = undefined
+moduleSourceFile m = (foldl1 (</>) (splitOn "." m)) <.> "hs"
 
 sourceFileModule :: FilePath -> String
-sourceFileModule = undefined
+sourceFileModule fp = intercalate "." $ splitDirectories $ dropExtension fp
 
 
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
@@ -127,10 +129,6 @@ data ModuleCollectionId = DirectoryMC FilePath
 class IsRefactSessionState st where
   refSessMCs :: Simple Lens st [ModuleCollection]
   initSession :: st
-
-findModule :: IsRefactSessionState st => String -> StateT st m [FilePath]
-findModule = undefined
-
 
 instance Show ErrorMessages where
   show = show . bagToList
@@ -448,3 +446,11 @@ isOperatorChar :: Char -> Bool
 isOperatorChar c = (isPunctuation c || isSymbol c) && isAscii c
 
 makeReferences ''SourceFileKey
+makeReferences ''ModuleCollection
+makeReferences ''ModuleRecord
+
+
+findModule :: (IsRefactSessionState st, Monad m) => String -> StateT st m [FilePath]
+findModule m = do
+  mods <- gets (^? refSessMCs & traversal & mcModules)
+  return $ concatMap @[] (map (^. sfkFileName) . filter ((== m) . (^. sfkModuleName)) . Map.keys) mods

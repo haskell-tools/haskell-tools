@@ -150,7 +150,7 @@ performSessionCommand output (LoadModule modName) = do
     [fileName] -> do
       mod <- gets (lookupModInSCs (SourceFileKey fileName modName) . (^. refSessMCs))
       modify $ actualMod .= fmap fst mod
-    _ -> liftIO $ hPutStrLn output ("Ambiguous module: " ++ modName)
+    _ -> liftIO $ hPutStrLn output ("Ambiguous module: " ++ modName ++ " found: " ++ show files)
   return []
 performSessionCommand _ Skip = return []
 performSessionCommand _ Exit = do modify $ exiting .= True

@@ -26,7 +26,7 @@ import Distribution.System
 import Distribution.Verbosity (silent)
 import Language.Haskell.Extension as Cabal
 import System.Directory
-import System.FilePath.Posix
+import System.FilePath
 
 import DynFlags
 import qualified DynFlags as GHC
@@ -64,9 +64,6 @@ moduleCollectionPkgId (LibraryMC id) = Just id
 moduleCollectionPkgId (ExecutableMC id _) = Just id
 moduleCollectionPkgId (TestSuiteMC id _) = Just id
 moduleCollectionPkgId (BenchmarkMC id _) = Just id
-
-makeReferences ''ModuleCollection
-makeReferences ''ModuleRecord
 
 instance Show ModuleRecord where
   show (ModuleNotLoaded code exposed) = "ModuleNotLoaded " ++ show code ++ " " ++ show exposed
@@ -110,7 +107,7 @@ isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> 
 -- they can be loaded in the order they are defined (no backward imports). This matters in those cases because for them there can be
 -- special compilation flags.
 getAllModules :: [FilePath] -> IO [ModuleCollection]
-getAllModules pathes = orderMCs . concat <$> mapM getModules pathes
+getAllModules pathes = orderMCs . concat <$> mapM getModules (map normalise pathes)
 
 -- | Sorts model collection in an order to remove all backward references.
 -- Works because module collections defined by directories cannot be recursive.
@@ -157,8 +154,13 @@ srcDirFromRoot fileName moduleName
 -- The flags and extensions set in the cabal file will be used by default.
 modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
-modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescription silent (root </> cabal)
-  where getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg)
+modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescription silent (root </> cabal)) >>= filterModules
+  where filterModules :: [ModuleCollection] -> IO [ModuleCollection]
+        filterModules = traversal & mcModules !~ filterKeys
+          where filterKeys :: Map.Map SourceFileKey v -> IO (Map.Map SourceFileKey v)
+                filterKeys = (Map.fromAscList <$>) . filterM (doesFileExist . (^. sfkFileName) . fst) . Map.assocs
+
+        getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg)
                            ++ catMaybes (map (toModuleCollection pkg) (executables pkg))
                            ++ catMaybes (map (toModuleCollection pkg) (testSuites pkg))
                            ++ catMaybes (map (toModuleCollection pkg) (benchmarks pkg))
@@ -170,13 +172,13 @@ modulesFromCabalFile root cabal = getModules . setupFlags <$> readPackageDescrip
                   then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
-                                (Map.fromList $ map modRecord $ getModuleNames tmc)
+                                (Map.fromList $ concatMap (modRecord (hsSourceDirs bi)) $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
-          where modRecord mn = ( SourceFileKey (normalise (root </> (moduleSourceFile $ moduleName mn))) (moduleName mn)
-                               , ModuleNotLoaded False (needsToCompile tmc mn) )
+          where modRecord srcs mn = map (\d -> ( SourceFileKey (normalise (root </> d </> (moduleSourceFile $ moduleName mn))) (moduleName mn)
+                                               , ModuleNotLoaded False (needsToCompile tmc mn) )) srcs
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePackageDescription [] (const True) buildPlatform

@@ -52,6 +52,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat
                                  $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
                                  $ modColls ^? traversal & mcModules
+         -- TODO: differentiate on file name
          alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
      lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
@@ -79,7 +80,7 @@ handleErrors action = handleSourceError (return . Left . SourceCodeProblem . src
                         `gcatch` (return . Left)
 
 keyFromMS :: ModSummary -> SourceFileKey
-keyFromMS ms = SourceFileKey (getModSumOrig ms) (modSumName ms)
+keyFromMS ms = SourceFileKey (normalise $ getModSumOrig ms) (modSumName ms)
 
 getMods :: (Monad m, IsRefactSessionState st)
         => Maybe SourceFileKey -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
