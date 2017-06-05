@@ -28,6 +28,7 @@ import System.Directory
 import System.FilePath
 
 import DynFlags
+import Module (stringToUnitId)
 import qualified DynFlags as GHC
 import GHC hiding (ModuleName)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
@@ -76,10 +77,13 @@ lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
 
 lookupModInSCs :: SourceFileKey -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
-lookupModInSCs moduleName = find ((moduleName ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+lookupModInSCs moduleName = find (((moduleName ^. sfkFileName) ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 lookupSourceFileInSCs :: String -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
-lookupSourceFileInSCs moduleName = find ((moduleName ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))
+lookupSourceFileInSCs fileName = find ((fileName ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+lookupModuleInSCs :: String -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
+lookupModuleInSCs moduleName = find ((moduleName ==) . (^. sfkModuleName) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 
 removeModule :: String -> [ModuleCollection] -> [ModuleCollection]
@@ -167,19 +171,20 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe ModuleCollection
         toModuleCollection pkg tmc
           = let bi = getBuildInfo tmc
+                packageName = pkgName $ package pkg
              in if buildable bi
-                  then Just $ ModuleCollection (mkModuleCollKey (pkgName $ package pkg) tmc)
+                  then Just $ ModuleCollection (mkModuleCollKey packageName tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
                                 (Map.fromList $ concatMap (modRecord (hsSourceDirs bi)) $ getModuleNames tmc)
-                                (flagsFromBuildInfo bi)
+                                ((\d -> return $ d { thisPackage = stringToUnitId (unPackageName packageName) }) <=< flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
           where modRecord srcs mn = map (\d -> ( SourceFileKey (getPath d mn) (moduleName mn)
                                                , ModuleNotLoaded False (needsToCompile tmc mn) )) srcs
                 getPath d mn = case lookup mn (getModuleSourceFiles tmc) of
-                                 Just fp -> fp
+                                 Just fp -> normalise (root </> d </> fp)
                                  Nothing -> normalise (root </> d </> (moduleSourceFile $ moduleName mn))
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
@@ -205,19 +210,19 @@ instance ToModuleCollection Executable where
   getBuildInfo = buildInfo
   getModuleNames _ = [fromString "Main"]
   getModuleSourceFiles exe = [(fromString "Main", modulePath exe)]
-  needsToCompile _ _ = False
+  needsToCompile _ mn = components mn == ["Main"]
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
   getModuleNames _ = [fromString "Main"]
-  needsToCompile _ _ = False
+  needsToCompile _ mn = components mn == ["Main"]
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
   getModuleNames _ = [fromString "Main"]
-  needsToCompile _ _ = False
+  needsToCompile _ mn = components mn == ["Main"]
 
 isDirectoryMC :: ModuleCollection -> Bool
 isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False

@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell
            , TupleSections
+           , TypeApplications
            #-}
 -- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
 module Language.Haskell.Tools.Refactor.Session where
@@ -49,16 +50,15 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let modNames = map (^. sfkModuleName) $ concat
+     let fileNames = map (^. sfkFileName) $ concat
                       $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
                       $ modColls ^? traversal & mcModules
-         -- TODO: differentiate on file name
-         alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
-     lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
+         alreadyLoadedFiles = concatMap (map (^. sfkFileName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
+     lift $ mapM_ addTarget $ map (\f -> (Target (TargetFile f Nothing) True Nothing)) fileNames
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-           actuallyCompiled = filter (\ms -> modSumName ms `notElem` alreadyExistingMods) modsToParse
+           actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFiles) modsToParse
        liftIO $ loadCallback actuallyCompiled
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
