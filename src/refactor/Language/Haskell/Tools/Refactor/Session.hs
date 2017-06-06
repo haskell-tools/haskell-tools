@@ -53,12 +53,16 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      let fileNames = map (^. sfkFileName) $ concat
                       $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
                       $ modColls ^? traversal & mcModules
-         alreadyLoadedFiles = concatMap (map (^. sfkFileName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
-     lift $ mapM_ addTarget $ map (\f -> (Target (TargetFile f Nothing) True Nothing)) fileNames
+         alreadyLoadedFilesInOtherPackages
+           = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
+                       (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
+     targets <- map targetId <$> (lift getTargets)
+     lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t))
+          $ map (\f -> (Target (TargetFile f Nothing) True Nothing)) fileNames
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-           actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFiles) modsToParse
+           actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
        liftIO $ loadCallback actuallyCompiled
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
