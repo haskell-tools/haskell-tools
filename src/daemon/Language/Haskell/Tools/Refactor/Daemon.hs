@@ -5,6 +5,7 @@
            , TemplateHaskell
            , FlexibleContexts
            , MultiWayIf
+           , TypeApplications
            #-}
 module Language.Haskell.Tools.Refactor.Daemon where
 
@@ -126,11 +127,11 @@ updateClient resp (AddPackages packagePathes) = do
     return True
 updateClient _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
-    let existing = map ms_mod (mcs ^? traversal & filtered isRemoved & mcModules & traversal & modRecMS)
-    lift $ forM_ existing (\modName -> removeTarget (TargetModule (GHC.moduleName modName)))
+    let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)
+    lift $ forM_ existingFiles (\fs -> removeTarget (TargetFile fs Nothing))
     lift $ deregisterDirs (mcs ^? traversal & filtered isRemoved & mcSourceDirs & traversal)
     modify $ refSessMCs .- filter (not . isRemoved)
-    modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+    modifySession (\s -> s { hsc_mod_graph = filter ((`notElem` existingFiles) . getModSumOrig) (hsc_mod_graph s) })
     mcs <- gets (^. refSessMCs)
     when (null mcs) $ modify (packageDBSet .= False)
     return True
@@ -189,7 +190,7 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
               liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                 hSetEncoding handle utf8
                 hPutStr handle (prettyPrint m)
-              lift $ addTarget (Target (TargetModule (GHC.mkModuleName n)) True Nothing)
+              lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
               return $ Right (SourceFileKey loc n, loc, RemoveAdded loc)
             ContentChanged (n,m) -> do
               Just (_, mr) <- gets (lookupModInSCs n . (^. refSessMCs))
@@ -210,7 +211,7 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
               ms <- getModSummary modName
               let file = getModSumOrig ms
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
-              lift $ removeTarget (TargetModule modName)
+              lift $ removeTarget (TargetFile file Nothing)
               modify $ (refSessMCs .- removeModule mod)
               liftIO $ removeFile file
               return $ Left $ RestoreRemoved file origCont
