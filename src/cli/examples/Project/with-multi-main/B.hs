@@ -1,5 +1,3 @@
 module B where
 
-import A
-
-y = x
+b = "Hello"

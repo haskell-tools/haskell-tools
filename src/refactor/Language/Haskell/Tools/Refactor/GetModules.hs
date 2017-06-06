@@ -177,7 +177,7 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
                                 (Map.fromList $ concatMap (modRecord (hsSourceDirs bi)) $ getModuleNames tmc)
-                                ((\d -> return $ d { thisPackage = stringToUnitId (unPackageName packageName) }) <=< flagsFromBuildInfo bi)
+                                (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
@@ -208,20 +208,20 @@ instance ToModuleCollection Library where
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
-  getModuleNames _ = [fromString "Main"]
+  getModuleNames exe = fromString "Main" : exeModules exe
   getModuleSourceFiles exe = [(fromString "Main", modulePath exe)]
   needsToCompile _ mn = components mn == ["Main"]
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
-  getModuleNames _ = [fromString "Main"]
+  getModuleNames ts = fromString "Main" : testModules ts
   needsToCompile _ mn = components mn == ["Main"]
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
-  getModuleNames _ = [fromString "Main"]
+  getModuleNames bm = fromString "Main" : benchmarkModules bm
   needsToCompile _ mn = components mn == ["Main"]
 
 isDirectoryMC :: ModuleCollection -> Bool

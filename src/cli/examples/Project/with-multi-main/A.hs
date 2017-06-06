@@ -1,3 +1,5 @@
 module Main where
 
-main = putStrLn "Hello World"
+import B
+
+main = putStrLn (b ++ " World")

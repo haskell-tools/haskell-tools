@@ -139,12 +139,13 @@ readSessionCommand output cmd = case (splitOn " " cmd) of
 performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession [SourceFileKey]
 performSessionCommand output (LoadModule modName) = do
   files <- HT.findModule modName
+  mcs <- gets (^. refSessMCs)
   case files of
     [] -> liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
     [fileName] -> do
       mod <- gets (lookupModInSCs (SourceFileKey fileName modName) . (^. refSessMCs))
       modify $ actualMod .= fmap fst mod
-    _ -> liftIO $ hPutStrLn output ("Ambiguous module: " ++ modName ++ " found: " ++ show files)
+    _ -> liftIO $ hPutStrLn output ("Ambiguous module: " ++ modName ++ " found: " ++ show files ++ " " ++ show mcs)
   return []
 performSessionCommand _ Skip = return []
 performSessionCommand _ Exit = do modify $ exiting .= True
