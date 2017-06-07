@@ -5,6 +5,7 @@
            , TemplateHaskell
            , FlexibleContexts
            , MultiWayIf
+           , TypeApplications
            #-}
 module Language.Haskell.Tools.Refactor.Daemon where
 
@@ -126,11 +127,11 @@ updateClient resp (AddPackages packagePathes) = do
     return True
 updateClient _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
-    let existing = map ms_mod (mcs ^? traversal & filtered isRemoved & mcModules & traversal & modRecMS)
-    lift $ forM_ existing (\modName -> removeTarget (TargetModule (GHC.moduleName modName)))
+    let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)
+    lift $ forM_ existingFiles (\fs -> removeTarget (TargetFile fs Nothing))
     lift $ deregisterDirs (mcs ^? traversal & filtered isRemoved & mcSourceDirs & traversal)
     modify $ refSessMCs .- filter (not . isRemoved)
-    modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+    modifySession (\s -> s { hsc_mod_graph = filter ((`notElem` existingFiles) . getModSumOrig) (hsc_mod_graph s) })
     mcs <- gets (^. refSessMCs)
     when (null mcs) $ modify (packageDBSet .= False)
     return True
@@ -139,12 +140,11 @@ updateClient _ (RemovePackages packagePathes) = do
 updateClient resp (ReLoad added changed removed) =
   -- TODO: check for changed cabal files and reload their packages
   do mcs <- gets (^. refSessMCs)
-     removedMods <- gets (map ms_mod . filter ((`elem` removed) . getModSumOrig) . (^? refSessMCs & traversal & mcModules & traversal & modRecMS))
-     lift $ forM_ removedMods (\modName -> removeTarget (TargetModule (GHC.moduleName modName)))
+     lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
      -- remove targets deleted
      modify $ refSessMCs & traversal & mcModules
-                .- Map.filter (\m -> maybe True (not . (`elem` removed) . getModSumOrig) (m ^? modRecMS))
-     modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` removedMods) . ms_mod) (hsc_mod_graph s) })
+                .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
+     modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
      -- reload changed modules
      -- TODO: filter those that are in reloaded packages
      reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
@@ -183,15 +183,15 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
 
               let Just otherMS = otherMR ^? modRecMS
                   Just mc = lookupModuleColl (otherM ^. sfkModuleName) mcs
-              modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                         .- Map.insert (SourceFileKey NormalHs n) (ModuleNotLoaded False)
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
+              modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
+                         .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
               liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                 hSetEncoding handle utf8
                 hPutStr handle (prettyPrint m)
-              lift $ addTarget (Target (TargetModule (GHC.mkModuleName n)) True Nothing)
-              return $ Right (SourceFileKey NormalHs n, loc, RemoveAdded loc)
+              lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
+              return $ Right (SourceFileKey loc n, loc, RemoveAdded loc)
             ContentChanged (n,m) -> do
               Just (_, mr) <- gets (lookupModInSCs n . (^. refSessMCs))
               let Just ms = mr ^? modRecMS
@@ -206,12 +206,12 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
                 hPutStr handle newCont
               return $ Right (n, file, UndoChanges file undo)
             ModuleRemoved mod -> do
-              Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
+              Just (_,m) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
               let modName = GHC.moduleName $ fromJust $ fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule)
               ms <- getModSummary modName
               let file = getModSumOrig ms
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
-              lift $ removeTarget (TargetModule modName)
+              lift $ removeTarget (TargetFile file Nothing)
               modify $ (refSessMCs .- removeModule mod)
               liftIO $ removeFile file
               return $ Left $ RestoreRemoved file origCont
@@ -232,25 +232,21 @@ addPackages resp packagePathes = do
     else do
       -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
-      let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
-      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existing))
-                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
+      let existing = (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
+          existingModNames = map ms_mod existing
+      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
+                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
       modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
-      forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
-      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+      forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
+      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded
       if pkgDBok then do
         res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
                                 (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
         case res of
-          Right (modules, ignoredMods) -> do
+          Right modules -> do
             mapM_ (reloadModule (\_ -> return ())) (either (const []) id needToReload) -- don't report consequent reloads (not expected)
-            liftIO $ when (not $ null ignoredMods)
-                       $ resp $ ErrorMessage
-                                  $ "The following modules are ignored: "
-                                       ++ concat (intersperse ", " ignoredMods)
-                                       ++ ". Multiple modules with the same qualified name are not supported."
           Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err)
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"

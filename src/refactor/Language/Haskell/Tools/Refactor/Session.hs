@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell
            , TupleSections
+           , TypeApplications
            #-}
 -- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
 module Language.Haskell.Tools.Refactor.Session where
@@ -36,17 +37,12 @@ data RefactorSessionState
 
 makeReferences ''RefactorSessionState
 
--- | A common class for the state of refactoring tools
-class IsRefactSessionState st where
-  refSessMCs :: Simple Lens st [ModuleCollection]
-  initSession :: st
-
 instance IsRefactSessionState RefactorSessionState where
   refSessMCs = _refSessMCs
   initSession = RefactorSessionState []
 
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException ([a], [String]))
+loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ modColls)
@@ -54,24 +50,25 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let (ignored, modNames) = extractDuplicates $ map (^. sfkModuleName) $ concat $ map Map.keys $ modColls ^? traversal & mcModules
-         alreadyExistingMods = concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) (allModColls List.\\ modColls)
-     lift $ mapM_ addTarget $ map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) modNames
+     let fileNames = map (^. sfkFileName) $ concat
+                      $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
+                      $ modColls ^? traversal & mcModules
+         alreadyLoadedFilesInOtherPackages
+           = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
+                       (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
+     targets <- map targetId <$> (lift getTargets)
+     lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t))
+          $ map (\f -> (Target (TargetFile f Nothing) True Nothing)) fileNames
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-           actuallyCompiled = filter (\ms -> modSumName ms `notElem` alreadyExistingMods) modsToParse
+           actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
        liftIO $ loadCallback actuallyCompiled
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
-       return (mods, ignored)
+       return mods
 
-  where extractDuplicates :: Eq a => [a] -> ([a],[a])
-        extractDuplicates (a:rest)
-          = case extractDuplicates rest of (repl, orig) -> if a `elem` orig then (a:repl, orig) else (repl, a:orig)
-        extractDuplicates [] = ([],[])
-
-        loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
+  where loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
@@ -82,7 +79,7 @@ handleErrors action = handleSourceError (return . Left . SourceCodeProblem . src
                         `gcatch` (return . Left)
 
 keyFromMS :: ModSummary -> SourceFileKey
-keyFromMS ms = SourceFileKey (case ms_hsc_src ms of HsSrcFile -> NormalHs; _ -> IsHsBoot) (modSumName ms)
+keyFromMS ms = SourceFileKey (normalise $ getModSumOrig ms) (modSumName ms)
 
 getMods :: (Monad m, IsRefactSessionState st)
         => Maybe SourceFileKey -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
@@ -97,7 +94,7 @@ getFileMods :: (GhcMonad m, IsRefactSessionState st)
                                    , [(SourceFileKey, UnnamedModule IdDom)] )
 getFileMods fname
   = do mcs <- gets (^. refSessMCs)
-       let mods = map (\(k,m) -> (fromJust $ m ^? modRecMS, k))
+       let mods = map (\(k,m) -> (fromMaybe (error $ "getFileMods: module not loaded: " ++ show m) $ m ^? modRecMS, k))
                       (concatMap Map.assocs $ (mcs ^? traversal & mcModules :: [Map.Map SourceFileKey ModuleRecord]))
        let sfs = catMaybes $ map (\(ms,k) -> if Just fname == fmap normalise (ml_hs_file (ms_location ms)) then Just k else Nothing) mods
        case sfs of sf:_ -> getMods (Just sf)
@@ -137,7 +134,7 @@ reloadModule report ms = do
       let ms' = ms { ms_hspp_opts = dfs' }
       newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
         parseTyped (mc ^. mcRoot) (if codeGen then forceCodeGen ms' else ms')
-      modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcRoot) == (mc ^. mcRoot)) & mcModules
+      modify $ refSessMCs & traversal & filtered (== mc) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
       liftIO $ report ms
     Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
@@ -199,7 +196,7 @@ modSumName = GHC.moduleNameString . moduleName . ms_mod
 
 -- * code copied from GHC because it is not public in GhcMake module
 
-type NodeKey   = (ModuleName, IsBoot)
+type NodeKey   = (ModuleName, HscSource)
 type NodeMap a = Map.Map NodeKey a
 type SummaryNode = (ModSummary, Int, [Int])
 
@@ -213,14 +210,13 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
     numbered_summaries = zip summaries [1..]
 
     lookup_node :: HscSource -> ModuleName -> Maybe SummaryNode
-    lookup_node hs_src mod = Map.lookup (mod, hscSourceToIsBoot hs_src) node_map
+    lookup_node hs_src mod = Map.lookup (mod, hs_src) node_map
 
     lookup_key :: HscSource -> ModuleName -> Maybe Int
     lookup_key hs_src mod = fmap summaryNodeKey (lookup_node hs_src mod)
 
     node_map :: NodeMap SummaryNode
-    node_map = Map.fromList [ ((moduleName (ms_mod s),
-                                hscSourceToIsBoot (ms_hsc_src s)), node)
+    node_map = Map.fromList [ ((moduleName (ms_mod s), (ms_hsc_src s)), node)
                             | node@(s, _, _) <- nodes ]
 
     nodes :: [SummaryNode]
@@ -241,10 +237,6 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
 
     out_edge_keys :: HscSource -> [ModuleName] -> [Int]
     out_edge_keys hi_boot ms = mapMaybe (lookup_key hi_boot) ms
-
-hscSourceToIsBoot :: HscSource -> IsBoot
-hscSourceToIsBoot HsBootFile = IsHsBoot
-hscSourceToIsBoot _ = NormalHs
 
 summaryNodeKey :: SummaryNode -> Int
 summaryNodeKey (_, k, _) = k

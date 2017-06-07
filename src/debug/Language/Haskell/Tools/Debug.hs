@@ -26,7 +26,7 @@ import Language.Haskell.Tools.RangeDebug.Instances ()
 import Language.Haskell.Tools.Refactor.Perform (performCommand, readCommand)
 import Language.Haskell.Tools.Refactor.RefactorBase
 import Language.Haskell.Tools.Refactor.Prepare
-import Language.Haskell.Tools.Refactor.RefactorBase (RefactorChange(..), IsBoot(..), SourceFileKey(..))
+import Language.Haskell.Tools.Refactor.RefactorBase (RefactorChange(..), SourceFileKey(..))
 import Language.Haskell.Tools.Transform
 
 -- | Should be only used for testing
@@ -78,7 +78,7 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
-    transformed <- performCommand (either error id $ readCommand command) ((SourceFileKey NormalHs moduleName), sourced) []
+    transformed <- performCommand (either error id $ readCommand command) ((SourceFileKey (moduleSourceFile moduleName) moduleName), sourced) []
     case transformed of
       Right changes -> do
         forM_ changes $ \case

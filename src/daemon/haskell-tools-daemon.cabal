@@ -58,6 +58,8 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/cabal-sandbox/groups-0.4.0.0/Setup.hs
                   , examples/Project/cabal-sandbox/groups-0.4.0.0/groups.cabal
                   , examples/Project/cabal-sandbox/groups-0.4.0.0/src/Data/Group.hs
+                  , examples/Project/unused-mod/*.hs
+                  , examples/Project/unused-mod/*.cabal
 
 
 library

@@ -26,10 +26,6 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Project/multi-packages-flags/package1/*.cabal
                   , examples/Project/multi-packages-flags/package2/*.hs
                   , examples/Project/multi-packages-flags/package2/*.cabal
-                  , examples/Project/multi-packages-same-module/package1/*.hs
-                  , examples/Project/multi-packages-same-module/package1/*.cabal
-                  , examples/Project/multi-packages-same-module/package2/*.hs
-                  , examples/Project/multi-packages-same-module/package2/*.cabal
                   , examples/Project/no-cabal/*.hs
                   , examples/Project/reloading/*.hs
                   , examples/Project/selection/*.hs
@@ -39,6 +35,12 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Project/working-dir/src/*.hs
                   , examples/Project/working-dir/*.cabal
                   , examples/Project/working-dir/*.txt
+                  , examples/Project/with-main/*.hs
+                  , examples/Project/with-main/*.cabal
+                  , examples/Project/with-main-renamed/*.hs
+                  , examples/Project/with-main-renamed/*.cabal
+                  , examples/Project/with-multi-main/*.hs
+                  , examples/Project/with-multi-main/*.cabal
                   , examples/Project/src/*.hs
 
 library

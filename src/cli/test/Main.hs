@@ -23,20 +23,21 @@ allTests :: [TestTree]
 allTests = map makeCliTest cliTests
 
 makeCliTest :: ([FilePath], [String], String, String) -> TestTree
-makeCliTest (dirs, args, input, output) = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
-                                              testdirs = map (((dir ++ "_test") </>) . makeRelative dir) dirs
-  in testCase dir $ do
-    exists <- doesDirectoryExist (dir ++ "_test")
-    when exists $ removeDirectoryRecursive (dir ++ "_test")
-    copyDir dir (dir ++ "_test")
-    inKnob <- newKnob (pack input)
-    inHandle <- newFileHandle inKnob "<input>" ReadMode
-    outKnob <- newKnob (pack [])
-    outHandle <- newFileHandle outKnob "<output>" WriteMode
-    res <- refactorSession inHandle outHandle (args ++ testdirs)
-    actualOut <- Data.Knob.getContents outKnob
-    assertEqual "" (filter (/= '\r') output) (filter (/= '\r') $ unpack actualOut)
-  `finally` removeDirectoryRecursive (dir ++ "_test")
+makeCliTest (dirs, args, input, output)
+  = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
+        testdirs = map (\d -> if d == dir then dir ++ "_test" else (dir ++ "_test" </> makeRelative dir d)) dirs
+    in testCase dir $ do
+      exists <- doesDirectoryExist (dir ++ "_test")
+      when exists $ removeDirectoryRecursive (dir ++ "_test")
+      copyDir dir (dir ++ "_test")
+      inKnob <- newKnob (pack input)
+      inHandle <- newFileHandle inKnob "<input>" ReadMode
+      outKnob <- newKnob (pack [])
+      outHandle <- newFileHandle outKnob "<output>" WriteMode
+      res <- refactorSession inHandle outHandle (args ++ testdirs)
+      actualOut <- Data.Knob.getContents outKnob
+      assertEqual "" (filter (/= '\r') output) (filter (/= '\r') $ unpack actualOut)
+    `finally` removeDirectoryRecursive (dir ++ "_test")
 
 cliTests :: [([FilePath], [String], String, String)]
 cliTests
@@ -77,13 +78,16 @@ cliTests
       , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
       , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
       )
-    , ( map ((testRoot </> "Project" </> "multi-packages-same-module") </>) ["package1", "package2"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , "Compiling modules. This may take some time. Please wait.\nLoaded module: A\n"
-          ++ "The following modules are ignored: A. Multiple modules with the same qualified name are not supported.\n"
-          ++ "All modules loaded.\n"
-          ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
-      )
+    , ( [testRoot </> "Project" </> "with-main"]
+      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
+      , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
+    , ( [testRoot </> "Project" </> "with-main-renamed"]
+      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
+      , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
+    , ( [testRoot </> "Project" </> "with-multi-main"], ["-dry-run", "-one-shot", "-module-name=B", "-refactoring=\"RenameDefinition 3:1 bb\""], ""
+      , oneShotPrefix ["Main", "B", "Main"]
+          ++ "### Module changed: B\n### new content:\nmodule B where\n\nbb = \"Hello\"\n"
+          ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nimport B\n\nmain = putStrLn (bb ++ \" World\")\n")
     ]
 
 benchTests :: IO [TestTree]

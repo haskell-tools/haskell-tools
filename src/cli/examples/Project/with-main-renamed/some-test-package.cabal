@@ -1,4 +1,4 @@
-name:                package1
+name:                some-test-package
 version:             1.2.3.4
 synopsis:            A package just for testing Haskell-tools support. Don't install it.
 description:         
@@ -12,7 +12,7 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 
-library
-  exposed-modules:     A
+executable foo
+  main-is:             A.hs
   build-depends:       base
   default-language:    Haskell2010

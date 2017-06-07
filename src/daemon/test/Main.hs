@@ -58,7 +58,7 @@ allTests isSource testRoot portCounter
              then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
              else testCase "IGNORED pkg-db-tests" (return ())
           -- cannot execute this when the source is not present
-          , if isSource then selfLoadingTest portCounter else testCase "IGNORED self-load" (return ())
+          -- , if isSource then selfLoadingTest portCounter else testCase "IGNORED self-load" (return ())
           ]
 
 testSuffix = "_test"
@@ -121,6 +121,10 @@ loadingTests =
       , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
       , LoadingModules [ testRoot </> "th-added-later" </> "package2" </> "B.hs" ]
       , LoadedModules [(testRoot </> "th-added-later" </> "package2" </> "B.hs", "B")] ] )
+  , ( "unused-module"
+    , [ AddPackages [testRoot </> "unused-mod"] ]
+    , [ LoadingModules [ testRoot </> "unused-mod" </> "Main.hs" ]
+      , LoadedModules [ (testRoot </> "unused-mod" </> "Main.hs", "Main") ] ] )
   ]
 
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]

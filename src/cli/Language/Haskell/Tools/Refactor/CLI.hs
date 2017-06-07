@@ -18,6 +18,7 @@ import Data.Char
 import System.Directory
 import System.Exit
 import System.IO
+import System.FilePath
 
 import DynFlags as GHC
 import ErrUtils
@@ -28,7 +29,7 @@ import Outputable
 import Packages
 
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor as HT
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Session
@@ -73,13 +74,7 @@ refactorSession input output args = runGhc (Just libdir) $ handleSourceError pri
           liftIO $ hPutStrLn output "Compiling modules. This may take some time. Please wait."
           res <- loadPackagesFrom (\ms -> liftIO $ hPutStrLn output ("Loaded module: " ++ modSumName ms)) (const $ return ()) (\_ _ -> return []) workingDirs
           case res of
-            Right (_, ignoredMods) -> do
-              when (not $ null ignoredMods)
-                $ liftIO $ hPutStrLn output
-                $ "The following modules are ignored: "
-                    ++ concat (intersperse ", " $ ignoredMods)
-                    ++ ". Multiple modules with the same qualified name are not supported."
-
+            Right _ -> do
               liftIO . hPutStrLn output $ if ("-one-shot" `elem` flags)
                 then "All modules loaded."
                 else "All modules loaded. Use 'SelectModule module-name' to select a module."
@@ -143,9 +138,14 @@ readSessionCommand output cmd = case (splitOn " " cmd) of
 
 performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession [SourceFileKey]
 performSessionCommand output (LoadModule modName) = do
-  mod <- gets (lookupModInSCs (SourceFileKey NormalHs modName) . (^. refSessMCs))
-  if isJust mod then modify $ actualMod .= fmap fst mod
-                else liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
+  files <- HT.findModule modName
+  mcs <- gets (^. refSessMCs)
+  case files of
+    [] -> liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
+    [fileName] -> do
+      mod <- gets (lookupModInSCs (SourceFileKey fileName modName) . (^. refSessMCs))
+      modify $ actualMod .= fmap fst mod
+    _ -> liftIO $ hPutStrLn output ("Ambiguous module: " ++ modName ++ " found: " ++ show files ++ " " ++ show mcs)
   return []
 performSessionCommand _ Skip = return []
 performSessionCommand _ Exit = do modify $ exiting .= True
@@ -163,17 +163,19 @@ performSessionCommand output (RefactorCommand cmd)
                                   return []
                    Right resMods -> performChanges output inDryMode resMods
 
-  where performChanges output False resMods =
+  where performChanges :: HasModuleInfo dom => Handle -> Bool -> [RefactorChange dom] -> CLIRefactorSession [SourceFileKey]
+        performChanges output False resMods =
           forM resMods $ \case
             ModuleCreated n m otherM -> do
               Just (_, otherMR) <- gets (lookupModInSCs otherM . (^. refSessMCs))
               let Just otherMS = otherMR ^? modRecMS
+
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = srcDirFromRoot otherSrcDir n
               liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                 hSetEncoding handle utf8
                 hPutStr handle (prettyPrint m)
-              return (SourceFileKey NormalHs n)
+              return (SourceFileKey n (sourceFileModule (loc `makeRelative` n)))
             ContentChanged (n,m) -> do
               let modName = semanticsModule m
               ms <- getModSummary modName (isBootModule $ m ^. semantics)
@@ -183,7 +185,7 @@ performSessionCommand output (RefactorCommand cmd)
                 hPutStr handle (prettyPrint m)
               return n
             ModuleRemoved mod -> do
-              Just (_,m) <- gets (lookupModInSCs (SourceFileKey NormalHs mod) . (^. refSessMCs))
+              Just (_,m) <- gets (lookupSourceFileInSCs mod . (^. refSessMCs))
               case ( fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule)
                    , fmap isBootModule (m ^? typedRecModule) <|> fmap isBootModule (m ^? renamedRecModule)) of
                 (Just modName, Just isBoot) -> do
@@ -191,8 +193,10 @@ performSessionCommand output (RefactorCommand cmd)
                   let file = fromJust $ ml_hs_file $ ms_location ms
                   modify $ (refSessMCs .- removeModule mod)
                   liftIO $ removeFile file
+                  return (SourceFileKey file mod)
                 _ -> do liftIO $ hPutStrLn output ("Module " ++ mod ++ " could not be removed.")
-              return (SourceFileKey NormalHs mod)
+                        return (SourceFileKey "" mod)
+
         performChanges output True resMods = do
           forM_ resMods (liftIO . \case
             ContentChanged (n,m) -> do

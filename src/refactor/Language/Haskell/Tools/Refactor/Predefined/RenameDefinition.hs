@@ -55,7 +55,7 @@ renameModule isAlias from to m mods
                     $ mapM (\(name,mod) -> ContentChanged . (name,) <$> localRefactoringRes id mod (replaceModuleNames =<< alterNormalNames mod)) (m:mods)
   where alterChange from to (ContentChanged (mod,res))
           | (mod ^. sfkModuleName) == from
-          = ModuleCreated to res (SourceFileKey NormalHs from)
+          = ModuleCreated to res mod
         alterChange _ _ c = c
 
         replaceModuleNames :: LocalRefactoring dom

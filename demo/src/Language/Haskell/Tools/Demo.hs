@@ -52,13 +52,13 @@ import Language.Haskell.Tools.ASTDebug.Instances ()
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Prepare
-import Language.Haskell.Tools.Refactor.RefactorBase
+import Language.Haskell.Tools.Refactor.RefactorBase hiding (initSession)
 
 type ClientId = Int
 
 data RefactorSessionState
-  = RefactorSessionState { _refSessMods :: Map.Map (String, String, IsBoot) (UnnamedModule IdDom)
-                         , _actualMod :: Maybe (String, String, IsBoot)
+  = RefactorSessionState { _refSessMods :: Map.Map (String, String, FilePath) (UnnamedModule IdDom)
+                         , _actualMod :: Maybe (String, String, FilePath)
                          , _isDisconnecting :: Bool
                          }
 
@@ -129,7 +129,7 @@ updateClient dir (ModuleChanged name newContent) = do
     return Nothing
 updateClient dir (ModuleDeleted name) = do
     lift $ removeTarget (TargetModule (GHC.mkModuleName name))
-    modify $ refSessMods .- Map.delete (dir, name, NormalHs)
+    modify $ refSessMods .- Map.delete (dir, name, dir </> moduleSourceFile name)
     return Nothing
 updateClient dir (InitialProject modules) = do
     -- clean the workspace to remove source files from earlier sessions
@@ -170,7 +170,7 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
                    writeModule (n ^. sfkModuleName) m
                  ModuleRemoved mod -> do
                    liftIO $ removeFile (toFileName dir mod)
-                   modify $ refSessMods .- Map.delete (dir, mod, NormalHs)
+                   modify $ refSessMods .- Map.delete (dir, mod, dir </> moduleSourceFile mod)
                    lift $ removeTarget (TargetModule (GHC.mkModuleName mod))
                reloadAllMods dir
 
@@ -183,7 +183,7 @@ reloadAllMods dir = do
   targets <- lift getTargets
   forM_ (map ((\case (TargetModule n) -> n) . targetId) targets) $ \modName -> do
       mod <- lift $ getModSummary modName >>= parseTyped wd
-      modify $ refSessMods .- Map.insert (dir, GHC.moduleNameString modName, NormalHs) mod
+      modify $ refSessMods .- Map.insert (dir, GHC.moduleNameString modName, dir </> moduleSourceFile (GHC.moduleNameString modName)) mod
 
 createFileForModule :: FilePath -> String -> String -> IO ()
 createFileForModule dir name newContent = do
@@ -194,7 +194,7 @@ createFileForModule dir name newContent = do
 removeDirectoryIfPresent :: FilePath -> IO ()
 removeDirectoryIfPresent dir = removeDirectoryRecursive dir `catch` \e -> if isDoesNotExistError e then return () else throwIO e
 
-moduleNameAndContent :: ((String,String,IsBoot), mod) -> (SourceFileKey, mod)
+moduleNameAndContent :: ((String,String,FilePath), mod) -> (SourceFileKey, mod)
 moduleNameAndContent ((_,name,isBoot), mod) = (SourceFileKey isBoot name, mod)
 
 dataDirs :: FilePath -> FilePath
