@@ -121,6 +121,10 @@ loadingTests =
       , LoadedModules [(testRoot </> "th-added-later" </> "package1" </> "A.hs", "A")]
       , LoadingModules [ testRoot </> "th-added-later" </> "package2" </> "B.hs" ]
       , LoadedModules [(testRoot </> "th-added-later" </> "package2" </> "B.hs", "B")] ] )
+  , ( "unused-module"
+    , [ AddPackages [testRoot </> "unused-mod"] ]
+    , [ LoadingModules [ testRoot </> "unused-mod" </> "Main.hs" ]
+      , LoadedModules [ (testRoot </> "unused-mod" </> "Main.hs", "Main") ] ] )
   ]
 
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
