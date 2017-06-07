@@ -232,12 +232,13 @@ addPackages resp packagePathes = do
     else do
       -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
-      let existing = map ms_mod $ (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
-      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existing))
-                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existing)
+      let existing = (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
+          existingModNames = map ms_mod existing
+      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
+                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
       modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
-      forM_ existing $ \mn -> removeTarget (TargetModule (GHC.moduleName mn))
-      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existing) . ms_mod) (hsc_mod_graph s) })
+      forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
+      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded
       if pkgDBok then do
