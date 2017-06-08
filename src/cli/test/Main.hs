@@ -88,6 +88,9 @@ cliTests
       , oneShotPrefix ["Main", "B", "Main"]
           ++ "### Module changed: B\n### new content:\nmodule B where\n\nbb = \"Hello\"\n"
           ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nimport B\n\nmain = putStrLn (bb ++ \" World\")\n")
+    , ( [testRoot </> "Project" </> "with-other-executable"]
+      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1\""]
+      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
     ]
 
 benchTests :: IO [TestTree]

@@ -41,6 +41,8 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Project/with-main-renamed/*.cabal
                   , examples/Project/with-multi-main/*.hs
                   , examples/Project/with-multi-main/*.cabal
+                  , examples/Project/with-other-executable/*.hs
+                  , examples/Project/with-other-executable/*.cabal
                   , examples/Project/src/*.hs
 
 library
