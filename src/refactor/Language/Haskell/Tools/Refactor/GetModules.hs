@@ -208,21 +208,27 @@ instance ToModuleCollection Library where
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
-  getModuleNames exe = fromString "Main" : exeModules exe
-  getModuleSourceFiles exe = [(fromString "Main", modulePath exe)]
-  needsToCompile _ mn = components mn == ["Main"]
+  getModuleNames exe = fromString (getMain (buildInfo exe)) : exeModules exe
+  needsToCompile exe mn = components mn == [getMain (buildInfo exe)]
+  getModuleSourceFiles exe = [(fromString (getMain (buildInfo exe)), modulePath exe)]
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
-  getModuleNames ts = fromString "Main" : testModules ts
-  needsToCompile _ mn = components mn == ["Main"]
+  getModuleNames exe = fromString (getMain (testBuildInfo exe)) : testModules exe
+  needsToCompile exe mn = components mn == [getMain (testBuildInfo exe)]
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
-  getModuleNames bm = fromString "Main" : benchmarkModules bm
-  needsToCompile _ mn = components mn == ["Main"]
+  getModuleNames exe = fromString (getMain (benchmarkBuildInfo exe)) : benchmarkModules exe
+  needsToCompile exe mn = components mn == [getMain (benchmarkBuildInfo exe)]
+
+getMain :: BuildInfo -> String
+getMain bi
+  = case ls of _:e:_ -> reverse $ drop 1 $ dropWhile (/='.') $ reverse e
+               _ -> "Main"
+  where ls = dropWhile (/= "-main-is") (concatMap snd (options bi))
 
 isDirectoryMC :: ModuleCollection -> Bool
 isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False
