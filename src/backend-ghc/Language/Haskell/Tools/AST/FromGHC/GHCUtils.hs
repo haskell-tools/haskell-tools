@@ -4,6 +4,7 @@
            , ScopedTypeVariables
            , ViewPatterns
            , LambdaCase
+           , RecordWildCards
            #-}
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.AST.FromGHC.GHCUtils where
@@ -244,3 +245,15 @@ mergeFixityDefs (s@(L l _) : rest)
      in foldl mergeWith s (map unLoc same) : mergeFixityDefs different
   where mergeWith (L l (FixitySig names fixity)) (FixitySig otherNames _) = L l (FixitySig (names ++ otherNames) fixity)
 mergeFixityDefs [] = []
+
+getGroupRange :: HsGroup n -> SrcSpan
+getGroupRange (HsGroup {..})
+  = foldr combineSrcSpans noSrcSpan locs
+  where locs = [getHsValRange hs_valds] ++ map getLoc hs_splcds ++ map getLoc (concatMap group_tyclds hs_tyclds) ++ map getLoc (concatMap group_roles hs_tyclds)
+                 ++ map getLoc hs_instds ++ map getLoc hs_derivds ++ map getLoc hs_fixds ++ map getLoc hs_defds
+                 ++ map getLoc hs_fords ++ map getLoc hs_warnds ++ map getLoc hs_annds ++ map getLoc hs_ruleds ++ map getLoc hs_vects
+                 ++ map getLoc hs_docs
+
+getHsValRange :: HsValBinds n -> SrcSpan
+getHsValRange (ValBindsIn vals sig) = foldr combineSrcSpans noSrcSpan $ map getLoc (bagToList vals) ++ map getLoc sig
+getHsValRange (ValBindsOut vals sig) = foldr combineSrcSpans noSrcSpan $ concatMap (map getLoc . bagToList . snd) vals ++ map getLoc sig

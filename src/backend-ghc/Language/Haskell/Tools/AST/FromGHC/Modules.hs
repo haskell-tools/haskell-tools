@@ -40,7 +40,7 @@ import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeS
 import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfText')
-import Language.Haskell.Tools.AST.FromGHC.GHCUtils (HsHasName(..))
+import Language.Haskell.Tools.AST.FromGHC.GHCUtils
 import Language.Haskell.Tools.AST.FromGHC.Monad
 import Language.Haskell.Tools.AST.FromGHC.Names (TransformName, trfName)
 import Language.Haskell.Tools.AST.FromGHC.Utils
@@ -51,7 +51,7 @@ trfModule mod hsMod = trfLocCorrect (createModuleInfo mod (maybe noSrcSpan getLo
                                     (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
                   (\(HsModule name exports imports decls deprec _) ->
                      AST.UModule <$> trfFilePragmas
-                                 <*> trfModuleHead name exports deprec
+                                 <*> trfModuleHead name (srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls))) exports deprec
                                  <*> trfImports imports
                                  <*> trfDecls decls) $ hsMod
 
@@ -78,11 +78,15 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
               importPrelude names = ( "Prelude", Nothing, False, names)
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
-              $ AST.UModule <$> trfFilePragmas
-                            <*> trfModuleHead name (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                                            _                       -> Nothing) deprec
-                            <*> return transformedImports
-                            <*> trfDeclsGroup gr
+              $ AST.UModule
+                  <$> trfFilePragmas
+                  <*> trfModuleHead name
+                       (srcSpanStart (foldLocs (getGroupRange gr : map getLoc imports)))
+                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                _                       -> Nothing)
+                       deprec
+                  <*> return transformedImports
+                  <*> trfDeclsGroup gr
 
 loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> [GHC.Name] -> HsGroup Name -> Trf a -> Trf a
 loadSplices modSum hsMod imports preludeImports group trf = do
@@ -91,16 +95,14 @@ loadSplices modSum hsMod imports preludeImports group trf = do
         typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
     setSplices declSpls typeSpls exprSpls trf
 
-trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
-trfModuleHead (Just mn) exports modPrag
+trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
+trfModuleHead (Just mn) _ exports modPrag
   = makeJust <$> (annLocNoSema (tokensLoc [AnnModule, AnnWhere])
                                (AST.UModuleHead <$> trfModuleName mn
                                                 <*> trfModulePragma (srcSpanEnd $ getLoc mn) modPrag
                                                 <*> trfExportList (before AnnWhere) exports))
-trfModuleHead _ Nothing _ = nothing "" "" moduleHeadPos
-  where moduleHeadPos = after AnnClose >>= \case loc@(RealSrcLoc _) -> return loc
-                                                 _ -> atTheStart
-trfModuleHead Nothing (Just _) _ = error "trfModuleHead: no head but has exports"
+trfModuleHead _ rng Nothing _ = nothing "" "" (pure rng)
+trfModuleHead Nothing _ (Just _) _ = error "trfModuleHead: no head but has exports"
 
 trfFilePragmas :: Trf (AnnListG AST.UFilePragma (Dom r) RangeStage)
 trfFilePragmas = do pragmas <- asks pragmaComms
