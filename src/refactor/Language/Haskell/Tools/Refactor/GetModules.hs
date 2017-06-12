@@ -166,7 +166,7 @@ modulesFromCabalFile allRoots root cabal = (getModules . setupFlags <$> readPack
   where filterModules :: [ModuleCollection] -> IO [ModuleCollection]
         filterModules = traversal & mcModules !~ filterKeys
           where filterKeys :: Show v => Map.Map SourceFileKey v -> IO (Map.Map SourceFileKey v)
-                filterKeys = (Map.fromAscList . concat . map snd
+                filterKeys = (Map.fromList . concat . map snd
                                . map (\ls -> if null (snd ls) then error ("No source file found for module: " ++ (fst ls)) else ls) <$>)
                                  . mapM (\(mn,ls) -> (mn,) <$> filterM (doesFileExist . (^. sfkFileName) . fst) ls)
                                  . map (\ls -> ((fst $ head ls) ^. sfkModuleName, ls))
