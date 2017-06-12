@@ -72,6 +72,11 @@ instance Show ModuleRecord where
   show mr@(ModuleTypeChecked {}) = "ModuleTypeChecked (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
   show mr@(ModuleCodeGenerated {}) = "ModuleCodeGenerated (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
 
+modRecLoaded :: ModuleRecord -> Bool
+modRecLoaded ModuleTypeChecked{} = True
+modRecLoaded ModuleCodeGenerated{} = True
+modRecLoaded _ = False
+
 -- | Find the module collection where the given module is.
 lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
@@ -110,7 +115,7 @@ isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> 
 -- they can be loaded in the order they are defined (no backward imports). This matters in those cases because for them there can be
 -- special compilation flags.
 getAllModules :: [FilePath] -> IO [ModuleCollection]
-getAllModules pathes = orderMCs . concat <$> mapM getModules (map normalise pathes)
+getAllModules pathes = orderMCs . concat <$> mapM (getModules pathes) (map normalise pathes)
 
 -- | Sorts model collection in an order to remove all backward references.
 -- Works because module collections defined by directories cannot be recursive.
@@ -127,11 +132,11 @@ orderMCs = sortBy compareMCs
 -- | Get modules of the project with the indicated root directory.
 -- If there is a cabal file, it uses that, otherwise it just scans the directory recursively for haskell sourcefiles.
 -- Only returns the non-boot haskell modules, the boot modules will be found during loading.
-getModules :: FilePath -> IO [ModuleCollection]
-getModules root
+getModules :: [FilePath] -> FilePath -> IO [ModuleCollection]
+getModules allRoots root
   = do files <- listDirectory root
        case find (\p -> takeExtension p == ".cabal") files of
-          Just cabalFile -> modulesFromCabalFile root cabalFile
+          Just cabalFile -> modulesFromCabalFile allRoots root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
                                return [ModuleCollection (DirectoryMC root) root [root] (modKeys mods) return return []]
   where modKeys mods = Map.fromList $ map (\m -> (SourceFileKey (root </> moduleSourceFile m) m, ModuleNotLoaded False True)) mods
@@ -155,13 +160,18 @@ srcDirFromRoot fileName moduleName
 
 -- | Load the module using a cabal file. The modules described in the cabal file will be loaded.
 -- The flags and extensions set in the cabal file will be used by default.
-modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection]
+modulesFromCabalFile :: [FilePath] -> FilePath -> FilePath -> IO [ModuleCollection]
 -- now adding all conditional entries, regardless of flags
-modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescription silent (root </> cabal)) >>= filterModules
+modulesFromCabalFile allRoots root cabal = (getModules . setupFlags <$> readPackageDescription silent (root </> cabal)) >>= filterModules
   where filterModules :: [ModuleCollection] -> IO [ModuleCollection]
         filterModules = traversal & mcModules !~ filterKeys
-          where filterKeys :: Map.Map SourceFileKey v -> IO (Map.Map SourceFileKey v)
-                filterKeys = (Map.fromAscList <$>) . filterM (doesFileExist . (^. sfkFileName) . fst) . Map.assocs
+          where filterKeys :: Show v => Map.Map SourceFileKey v -> IO (Map.Map SourceFileKey v)
+                filterKeys = (Map.fromAscList . concat . map snd
+                               . map (\ls -> if null (snd ls) then error ("No source file found for module: " ++ (fst ls)) else ls) <$>)
+                                 . mapM (\(mn,ls) -> (mn,) <$> filterM (doesFileExist . (^. sfkFileName) . fst) ls)
+                                 . map (\ls -> ((fst $ head ls) ^. sfkModuleName, ls))
+                                 . groupBy ((==) `on` (^. sfkModuleName) . fst)
+                                 . sortBy (compare `on` (^. sfkModuleName) . fst) . Map.assocs
 
         getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg)
                            ++ catMaybes (map (toModuleCollection pkg) (executables pkg))
@@ -176,16 +186,21 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
                   then Just $ ModuleCollection (mkModuleCollKey packageName tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
-                                (Map.fromList $ concatMap (modRecord (hsSourceDirs bi)) $ getModuleNames tmc)
+                                (Map.fromList $ concatMap (modRecord (hsSourceDirs bi) allRoots) $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
-          where modRecord srcs mn = map (\d -> ( SourceFileKey (getPath d mn) (moduleName mn)
-                                               , ModuleNotLoaded False (needsToCompile tmc mn) )) srcs
+          where modRecord srcs allRoots mn = map (\d -> ( SourceFileKey (getPath d mn) (moduleName mn)
+                                                        , ModuleNotLoaded False (needsToCompile tmc mn) )) srcs
+                                               ++ map (\d -> ( SourceFileKey (getOtherRootPath d mn) (moduleName mn)
+                                                             , ModuleNotLoaded False (needsToCompile tmc mn) )) allRoots
                 getPath d mn = case lookup mn (getModuleSourceFiles tmc) of
                                  Just fp -> normalise (root </> d </> fp)
                                  Nothing -> normalise (root </> d </> (moduleSourceFile $ moduleName mn))
+                getOtherRootPath d mn = case lookup mn (getModuleSourceFiles tmc) of
+                     Just fp -> normalise (d </> fp)
+                     Nothing -> normalise (d </> (moduleSourceFile $ moduleName mn))
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePackageDescription [] (const True) buildPlatform
@@ -217,12 +232,20 @@ instance ToModuleCollection TestSuite where
   getBuildInfo = testBuildInfo
   getModuleNames exe = fromString (getMain (testBuildInfo exe)) : testModules exe
   needsToCompile exe mn = components mn == [getMain (testBuildInfo exe)]
+  getModuleSourceFiles exe
+    = case testInterface exe of
+        TestSuiteExeV10 _ fp -> [(fromString (getMain (testBuildInfo exe)), fp)]
+        _ -> []
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
   getModuleNames exe = fromString (getMain (benchmarkBuildInfo exe)) : benchmarkModules exe
   needsToCompile exe mn = components mn == [getMain (benchmarkBuildInfo exe)]
+  getModuleSourceFiles exe
+    = case benchmarkInterface exe of
+        BenchmarkExeV10 _ fp -> [(fromString (getMain (benchmarkBuildInfo exe)), fp)]
+        _ -> []
 
 getMain :: BuildInfo -> String
 getMain bi
