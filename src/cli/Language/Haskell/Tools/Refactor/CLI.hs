@@ -177,9 +177,7 @@ performSessionCommand output (RefactorCommand cmd)
                 hPutStr handle (prettyPrint m)
               return (SourceFileKey n (sourceFileModule (loc `makeRelative` n)))
             ContentChanged (n,m) -> do
-              let modName = semanticsModule m
-              ms <- getModSummary modName (isBootModule $ m ^. semantics)
-              let file = fromJust $ ml_hs_file $ ms_location ms
+              let file = n ^. sfkFileName
               liftIO $ withBinaryFile file WriteMode $ \handle -> do
                 hSetEncoding handle utf8
                 hPutStr handle (prettyPrint m)
