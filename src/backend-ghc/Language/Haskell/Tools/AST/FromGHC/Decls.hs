@@ -227,14 +227,17 @@ trfConCtx Nothing = nothing "" " => " atTheStart
 trfConCtx (Just ctx) = trfCtx atTheStart ctx
 
 trfGADTConDecl :: TransformName n r => Located (ConDecl n) -> Trf (Ann AST.UGadtConDecl (Dom r) RangeStage)
-trfGADTConDecl = trfLocNoSema $ \(ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
-  -> let nameLoc = collectLocs names
-         typLoc = getLoc typ
-         (vars, ctx, t) = getTypeVarsAndCtx typ
-      in AST.UGadtConDecl <$> define (trfAnnList ", " trfName' names)
-                          <*> focusOn (mkSrcSpan (srcSpanEnd nameLoc) (srcSpanStart typLoc)) (trfBindings vars)
-                          <*> updateFocus (return . updateEnd (\_ -> srcSpanStart typLoc)) (focusAfterIfPresent AnnDot (trfCtx atTheStart ctx))
-                          <*> trfGadtConType t
+trfGADTConDecl = trfLocNoSema trfGADTConDecl'
+
+trfGADTConDecl' :: TransformName n r => ConDecl n -> Trf (AST.UGadtConDecl (Dom r) RangeStage)
+trfGADTConDecl' (ConDeclGADT { con_names = names, con_type = hsib_body -> typ })
+  = let nameLoc = collectLocs names
+        typLoc = getLoc typ
+        (vars, ctx, t) = getTypeVarsAndCtx typ
+     in AST.UGadtConDecl <$> define (trfAnnList ", " trfName' names)
+                         <*> focusOn (mkSrcSpan (srcSpanEnd nameLoc) (srcSpanStart typLoc)) (trfBindings vars)
+                         <*> updateFocus (return . updateEnd (\_ -> srcSpanStart typLoc)) (focusAfterIfPresent AnnDot (trfCtx atTheStart ctx))
+                         <*> trfGadtConType t
   where getTypeVarsAndCtx :: LHsType n -> ([LHsTyVarBndr n], LHsContext n, LHsType n)
         getTypeVarsAndCtx (L _ (HsForAllTy [] typ)) = getTypeVarsAndCtx typ
         getTypeVarsAndCtx (L _ (HsForAllTy bndrs typ)) = let (_,ctx,t) = getTypeVarsAndCtx typ in (bndrs, ctx, t)
@@ -443,7 +446,8 @@ trfInstTypeFam (unLoc -> TyFamInstDecl eqn _) = copyAnnot AST.UInstBodyTypeDecl 
 
 trfInstDataFam :: TransformName n r => Located (DataFamInstDecl n) -> Trf (Ann AST.UInstBodyDecl (Dom r) RangeStage)
 trfInstDataFam = trfLocNoSema $ \case
-  (DataFamInstDecl tc (hsib_body -> pats) (HsDataDefn dn ctx _ _ cons derivs) _)
+  (DataFamInstDecl tc (hsib_body -> pats) (HsDataDefn dn ctx _ ks cons derivs) _)
+    | all ((\case ConDeclH98{} -> True; _ -> False) . unLoc) cons
     -> AST.UInstBodyDataDecl
          <$> trfDataKeyword dn
          <*> annLocNoSema (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
@@ -452,6 +456,16 @@ trfInstDataFam = trfLocNoSema $ \case
                                              <*> transformNameAndPats tc pats)
          <*> trfAnnList "" trfConDecl' cons
          <*> trfMaybe " deriving " "" trfDerivings derivs
+    | otherwise
+    -> AST.UInstBodyGadtDataDecl
+        <$> trfDataKeyword dn
+        <*> annLocNoSema (pure $ collectLocs pats `combineSrcSpans` getLoc tc `combineSrcSpans` getLoc ctx)
+                         (AST.UInstanceRule <$> nothing "" " . " atTheStart
+                                            <*> trfCtx atTheStart ctx
+                                            <*> transformNameAndPats tc pats)
+        <*> trfKindSig ks
+        <*> trfAnnList "" trfGADTConDecl' cons
+        <*> trfMaybe " deriving " "" trfDerivings derivs
   where transformNameAndPats tc pats
           | all (\p -> srcSpanEnd (getLoc tc) < srcSpanStart (getLoc p)) pats -- prefix instance head application
           = foldl (\r t -> annLocNoSema (combineSrcSpans (getLoc t) . getRange <$> r)

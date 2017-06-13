@@ -14,6 +14,7 @@ import Control.Reference
 import Data.Function (on)
 import Data.List
 import qualified Data.Map as Map
+import Data.Char
 import Data.Maybe
 import Distribution.Compiler
 import Distribution.ModuleName
@@ -249,7 +250,7 @@ instance ToModuleCollection Benchmark where
 
 getMain :: BuildInfo -> String
 getMain bi
-  = case ls of _:e:_ -> reverse $ drop 1 $ dropWhile (/='.') $ reverse e
+  = case ls of _:e:_ -> intercalate "." $ filter (isUpper . head) $ groupBy ((==) `on` (== '.')) e
                _ -> "Main"
   where ls = dropWhile (/= "-main-is") (concatMap snd (options bi))
 
