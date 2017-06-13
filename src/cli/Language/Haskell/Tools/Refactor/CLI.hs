@@ -140,7 +140,7 @@ performSessionCommand :: Handle -> RefactorSessionCommand -> CLIRefactorSession 
 performSessionCommand output (LoadModule modName) = do
   files <- HT.findModule modName
   mcs <- gets (^. refSessMCs)
-  case files of
+  case nub files of
     [] -> liftIO $ hPutStrLn output ("Cannot find module: " ++ modName)
     [fileName] -> do
       mod <- gets (lookupModInSCs (SourceFileKey fileName modName) . (^. refSessMCs))

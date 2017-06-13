@@ -216,7 +216,7 @@ trfConDecl' (ConDeclH98 { con_name = name, con_qvars = tyVars, con_cxt = ctx, co
   = AST.URecordDecl <$> trfConTyVars tyVars <*> trfConCtx ctx <*> define (trfName name) <*> (between AnnOpenC AnnCloseC $ trfAnnList ", " trfFieldDecl' flds)
 trfConDecl' (ConDeclH98 { con_name = name, con_qvars = tyVars, con_cxt = ctx, con_details = InfixCon t1 t2 })
   = AST.UInfixConDecl <$> trfConTyVars tyVars <*> trfConCtx ctx <*> trfType t1 <*> define (trfOperator name) <*> trfType t2
-trfConDecl' (ConDeclGADT {}) = error "trfConDecl': GADT con received"
+trfConDecl' gadt@(ConDeclGADT {}) = unhandledElement "normal constructor declaration" gadt
 
 trfConTyVars :: TransformName n r => Maybe (LHsQTyVars n) -> Trf (AnnListG AST.UTyVar (Dom r) RangeStage)
 trfConTyVars Nothing = makeListAfter "." " " atTheStart (return [])
