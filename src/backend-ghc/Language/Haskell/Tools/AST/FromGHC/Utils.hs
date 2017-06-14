@@ -49,7 +49,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
 import Debug.Trace
 
 createModuleInfo :: ModSummary -> SrcSpan -> [LImportDecl n] -> Trf (Sema.ModuleInfo GHC.Name)
-createModuleInfo mod nameLoc imports = do
+createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) = do
   let prelude = (xopt ImplicitPrelude $ ms_hspp_opts mod)
                   && all (\idecl -> ("Prelude" /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))
                                       || nameLoc == getLoc idecl) imports
