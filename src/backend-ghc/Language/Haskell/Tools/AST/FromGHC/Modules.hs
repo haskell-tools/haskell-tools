@@ -78,15 +78,15 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
               importPrelude names = ( "Prelude", Nothing, False, names)
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
-              $ AST.UModule
-                  <$> trfFilePragmas
-                  <*> trfModuleHead name
-                       (srcSpanStart (foldLocs (getGroupRange gr : map getLoc imports)))
-                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                _                       -> Nothing)
-                       deprec
-                  <*> return transformedImports
-                  <*> trfDeclsGroup gr
+              $ do filePrags <- trfFilePragmas
+                   AST.UModule filePrags
+                    <$> trfModuleHead name
+                         (srcSpanEnd (AST.getRange filePrags))
+                         (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                  _                       -> Nothing)
+                         deprec
+                    <*> return transformedImports
+                    <*> trfDeclsGroup gr
 
 loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> [GHC.Name] -> HsGroup Name -> Trf a -> Trf a
 loadSplices modSum hsMod imports preludeImports group trf = do
