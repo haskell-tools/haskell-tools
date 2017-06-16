@@ -91,8 +91,8 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
 loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> [GHC.Name] -> HsGroup Name -> Trf a -> Trf a
 loadSplices modSum hsMod imports preludeImports group trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
-        typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
+        exprSpls = catMaybes $ map (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+        typeSpls = catMaybes $ map (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
     setSplices declSpls typeSpls exprSpls trf
 
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)

@@ -195,6 +195,7 @@ languageTests =
   , "TH.Splice.UseQualMulti"
   , "TH.LocalDefinition"
   , "TH.MultiImport"
+  , "TH.NestedSplices"
   , "TH.Quoted"
   , "TH.WithWildcards"
   , "TH.DoubleSplice"

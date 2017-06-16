@@ -10,6 +10,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.Map as Map (Map, lookup, empty)
 import Data.Maybe (fromMaybe)
+import qualified Data.Set as Set
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (HsHasName(..), rdrNameStr)
 import Language.Haskell.Tools.AST.FromGHC.SourceMap (SourceMap, annotationsToSrcMap)
@@ -45,8 +46,8 @@ data TrfInput
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
              , declSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Location of the TH splices for extracting declarations from the renamed AST.
                  -- ^ It is possible that multiple declarations stand in the place of the declaration splice or none at all.
-             , typeSplices :: [HsSplice GHC.RdrName] -- ^ Other types of splices (expressions, types).
-             , exprSplices :: [HsSplice GHC.RdrName] -- ^ Other types of splices (expressions, types).
+             , typeSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Type splices
+             , exprSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Expression splices
              }
 
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
@@ -116,7 +117,7 @@ getOriginalName n = do sp <- asks contRange
                        asks (rdrNameStr . fromMaybe n . (Map.lookup sp) . originalNames)
 
 -- | Set splices that must replace the elements that are generated into the AST representation.
-setSplices :: [Located (HsSplice GHC.RdrName)] -> [HsSplice GHC.RdrName] -> [HsSplice GHC.RdrName] -> Trf a -> Trf a
+setSplices :: [Located (HsSplice GHC.RdrName)] -> [Located (HsSplice GHC.RdrName)] -> [Located (HsSplice GHC.RdrName)] -> Trf a -> Trf a
 setSplices declSpls typeSpls exprSpls
   = local (\s -> s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })
 
@@ -125,26 +126,17 @@ setDeclsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -> Trf a -> Trf a
 setDeclsToInsert decls = local (\s -> s {declsToInsert = decls})
 
 -- Remove the splice that has already been added
-exprSpliceInserted :: HsSplice n -> Trf a -> Trf a
-exprSpliceInserted spl = local (\s -> s { exprSplices = Prelude.filter (\sp -> getSpliceLoc sp /= spLoc) (exprSplices s) })
-  where spLoc = getSpliceLoc spl
+exprSpliceInserted :: Located (HsSplice n) -> Trf a -> Trf a
+exprSpliceInserted spl = local (\s -> s { exprSplices = Prelude.filter (\sp -> getLoc sp /= getLoc spl) (exprSplices s) })
 
 -- Remove the splice that has already been added
-typeSpliceInserted :: HsSplice n -> Trf a -> Trf a
-typeSpliceInserted spl = local (\s -> s { typeSplices = Prelude.filter (\sp -> getSpliceLoc sp /= spLoc) (typeSplices s) })
-  where spLoc = getSpliceLoc spl
-
-
-getSpliceLoc :: HsSplice a -> SrcSpan
-getSpliceLoc (HsTypedSplice _ e) = getLoc e
-getSpliceLoc (HsUntypedSplice _ e) = getLoc e
-getSpliceLoc (HsQuasiQuote _ _ sp _) = sp
-getSpliceLoc (HsSpliced _ _) = noSrcSpan
+typeSpliceInserted :: Located (HsSplice n) -> Trf a -> Trf a
+typeSpliceInserted spl = local (\s -> s { typeSplices = Prelude.filter (\sp -> getLoc sp /= getLoc spl) (typeSplices s) })
 
 rdrSplice :: HsSplice RdrName -> Trf (HsSplice GHC.Name)
 rdrSplice spl = do
     env <- liftGhc getSession
-    locals <- concat <$> asks localsInScope
+    locals <- unifyScopes [] <$> asks localsInScope
     let createLocalGRE (n,imp) = [GRE n NoParent (isNothing imp) (maybe [] (map createGREImport) imp) ]
         createGREImport (UsageSpec q useQ asQ) = ImpSpec (ImpDeclSpec (mkModuleName useQ) (mkModuleName asQ) q noSrcSpan) ImpAll
         readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst
@@ -165,3 +157,9 @@ rdrSplice spl = do
       = HsUntypedSplice (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
     tcHsSplice' (HsQuasiQuote id1 id2 sp fs)
       = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
+
+
+    unifyScopes :: [GHC.Name] -> [[(GHC.Name, Maybe [UsageSpec])]] -> [(GHC.Name, Maybe [UsageSpec])]
+    unifyScopes _ [] = []
+    unifyScopes ex (sc:scs) = filteredSc ++ unifyScopes (ex ++ map fst filteredSc) scs
+      where filteredSc = filter ((\s -> isNothing $ find (\e -> occName e == occName s) ex) . fst) sc

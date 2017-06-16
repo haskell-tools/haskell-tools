@@ -443,6 +443,12 @@ splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) No
         splitLocated' [] _ Nothing = []
 splitLocated _ = error "splitLocated: unhelpful span given"
 
+compareSpans :: SrcSpan -> SrcSpan -> Ordering
+compareSpans (RealSrcSpan a) (RealSrcSpan b)
+  | a `containsSpan` b = GT
+  | b `containsSpan` a = LT
+compareSpans _ _ = EQ
+
 -- | Report errors when cannot convert a type of element
 unhandledElement :: (Data a, Outputable a) => String -> a -> Trf b
 unhandledElement label e = do rng <- asks contRange
