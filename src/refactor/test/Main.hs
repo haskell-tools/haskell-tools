@@ -191,6 +191,7 @@ languageTests =
   , "TH.QuasiQuote.Use"
   , "TH.Splice.Define"
   , "TH.Splice.Use"
+  , "TH.CrossDef"
   , "TH.Splice.UseQual"
   , "TH.Splice.UseQualMulti"
   , "TH.LocalDefinition"

@@ -139,7 +139,7 @@ rdrSplice spl = do
     locals <- unifyScopes [] <$> asks localsInScope
     let createLocalGRE (n,imp) = [GRE n NoParent (isNothing imp) (maybe [] (map createGREImport) imp) ]
         createGREImport (UsageSpec q useQ asQ) = ImpSpec (ImpDeclSpec (mkModuleName useQ) (mkModuleName asQ) q noSrcSpan) ImpAll
-        readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst
+    let readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst
                    $ map (\n -> (GHC.occName (fst n), createLocalGRE n))
                    $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 `mappend` snd e2))) $ groupBy ((==) `on` fst) $ sortBy (compare `on` fst) locals
     tcSpl <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }

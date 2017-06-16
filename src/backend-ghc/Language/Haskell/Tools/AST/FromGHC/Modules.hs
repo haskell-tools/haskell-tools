@@ -34,6 +34,7 @@ import RnEnv as GHC (mkUnboundNameRdr)
 import RnExpr as GHC (rnLExpr)
 import SrcLoc as GHC
 import TcRnMonad as GHC
+import Outputable
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeStage
                                   , sourceInfo, semantics, annotation, nodeSpan)
@@ -76,6 +77,7 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
                                  , impd ^. semantics&importedNames )
               -- if there is a qualified form of the import Prelude, the names should be empty
               importPrelude names = ( "Prelude", Nothing, False, names)
+
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
               $ do filePrags <- trfFilePragmas
