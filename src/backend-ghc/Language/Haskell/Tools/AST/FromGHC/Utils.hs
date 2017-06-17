@@ -49,7 +49,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes as Sema
 import Debug.Trace
 
 createModuleInfo :: ModSummary -> SrcSpan -> [LImportDecl n] -> Trf (Sema.ModuleInfo GHC.Name)
-createModuleInfo mod nameLoc imports = do
+createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) = do
   let prelude = (xopt ImplicitPrelude $ ms_hspp_opts mod)
                   && all (\idecl -> ("Prelude" /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))
                                       || nameLoc == getLoc idecl) imports
@@ -442,6 +442,12 @@ splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) No
         splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
         splitLocated' [] _ Nothing = []
 splitLocated _ = error "splitLocated: unhelpful span given"
+
+compareSpans :: SrcSpan -> SrcSpan -> Ordering
+compareSpans (RealSrcSpan a) (RealSrcSpan b)
+  | a `containsSpan` b = GT
+  | b `containsSpan` a = LT
+compareSpans _ _ = EQ
 
 -- | Report errors when cannot convert a type of element
 unhandledElement :: (Data a, Outputable a) => String -> a -> Trf b

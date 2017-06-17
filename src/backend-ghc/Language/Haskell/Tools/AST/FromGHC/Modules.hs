@@ -34,6 +34,7 @@ import RnEnv as GHC (mkUnboundNameRdr)
 import RnExpr as GHC (rnLExpr)
 import SrcLoc as GHC
 import TcRnMonad as GHC
+import Outputable
 
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeStage
                                   , sourceInfo, semantics, annotation, nodeSpan)
@@ -76,23 +77,24 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
                                  , impd ^. semantics&importedNames )
               -- if there is a qualified form of the import Prelude, the names should be empty
               importPrelude names = ( "Prelude", Nothing, False, names)
+
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
             $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
-              $ AST.UModule
-                  <$> trfFilePragmas
-                  <*> trfModuleHead name
-                       (srcSpanStart (foldLocs (getGroupRange gr : map getLoc imports)))
-                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                _                       -> Nothing)
-                       deprec
-                  <*> return transformedImports
-                  <*> trfDeclsGroup gr
+              $ do filePrags <- trfFilePragmas
+                   AST.UModule filePrags
+                    <$> trfModuleHead name
+                         (srcSpanEnd (AST.getRange filePrags))
+                         (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                  _                       -> Nothing)
+                         deprec
+                    <*> return transformedImports
+                    <*> trfDeclsGroup gr
 
 loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> [GHC.Name] -> HsGroup Name -> Trf a -> Trf a
 loadSplices modSum hsMod imports preludeImports group trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        exprSpls = catMaybes $ map (\case HsSpliceE sp -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
-        typeSpls = catMaybes $ map (\case HsSpliceTy sp _ -> Just sp; _ -> Nothing) $ hsMod ^? biplateRef :: [HsSplice RdrName]
+        exprSpls = catMaybes $ map (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+        typeSpls = catMaybes $ map (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
     setSplices declSpls typeSpls exprSpls trf
 
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)

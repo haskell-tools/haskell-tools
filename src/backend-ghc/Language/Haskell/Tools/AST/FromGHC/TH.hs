@@ -9,9 +9,12 @@ import FastString as GHC (unpackFS)
 import HsExpr as GHC (HsSplice(..), HsExpr(..), HsBracket(..))
 import SrcLoc as GHC
 
+import Outputable as GHC
+import Control.Monad.IO.Class
+
 import Language.Haskell.Tools.AST.FromGHC.Decls (trfDecls, trfDeclsGroup)
 import Language.Haskell.Tools.AST.FromGHC.Exprs (trfExpr, createScopeInfo)
-import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf, getSpliceLoc)
+import Language.Haskell.Tools.AST.FromGHC.Monad (TrfInput(..), Trf)
 import Language.Haskell.Tools.AST.FromGHC.Names
 import Language.Haskell.Tools.AST.FromGHC.Patterns (trfPattern)
 import Language.Haskell.Tools.AST.FromGHC.Types (trfType)
@@ -34,6 +37,12 @@ trfQuasiQuotation' qq = unhandledElement "quasi quotation" qq
 trfSplice :: TransformName n r => HsSplice n -> Trf (Ann AST.USplice (Dom r) RangeStage)
 trfSplice spls = do rng <- asks contRange
                     annLocNoSema (pure $ getSpliceLoc spls `mappend` rng) (trfSplice' spls)
+
+getSpliceLoc :: HsSplice a -> SrcSpan
+getSpliceLoc (HsTypedSplice _ e) = getLoc e
+getSpliceLoc (HsUntypedSplice _ e) = getLoc e
+getSpliceLoc (HsQuasiQuote _ _ sp _) = sp
+getSpliceLoc (HsSpliced _ _) = noSrcSpan
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.USplice (Dom r) RangeStage)
 trfSplice' (HsTypedSplice _ expr) = trfSpliceExpr expr

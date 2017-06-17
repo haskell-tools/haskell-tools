@@ -8,7 +8,8 @@
 module Language.Haskell.Tools.AST.FromGHC.Exprs where
 
 import Control.Monad.Reader
-import Data.List (partition, find)
+import Data.List
+import Data.Function (on)
 import Data.Maybe (Maybe(..), isJust, fromMaybe, catMaybes)
 
 import BasicTypes as GHC (Boxity(..), StringLiteral(..))
@@ -45,15 +46,16 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
        annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
 trfExpr e | RealSrcSpan loce <- getLoc e
   = do exprSpls <- asks exprSplices
-       let contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) exprSpls
+       let contSplice = filter (\sp -> case getLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) exprSpls
        case contSplice of
-         Just spr@(HsQuasiQuote {}) -> do
-           sp <- rdrSplice spr
-           exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.UQuasiQuoteExpr <$> annLocNoSema (pure $ getSpliceLoc sp) (trfQuasiQuotation' sp)))
-         Just spr -> do
-           sp <- rdrSplice spr
-           exprSpliceInserted sp (annLoc createScopeInfo (pure $ getSpliceLoc sp) (AST.USplice <$> trfSplice sp))
-         Nothing -> trfLoc trfExpr' createScopeInfo e
+         [] -> trfLoc trfExpr' createScopeInfo e
+         _ -> let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice
+               in case sp of
+                    (HsQuasiQuote {}) -> do
+                      sp' <- rdrSplice sp
+                      exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.UQuasiQuoteExpr <$> annLocNoSema (pure l) (trfQuasiQuotation' sp')))
+                    _ -> do sp' <- rdrSplice sp
+                            exprSpliceInserted lsp (annLoc createScopeInfo (pure l) (AST.USplice <$> trfSplice sp'))
   | otherwise = trfLoc trfExpr' createScopeInfo e
 
 createScopeInfo :: Trf ScopeInfo

@@ -1,7 +1,7 @@
 name:                some-test-package
 version:             1.2.3.4
 synopsis:            A package just for testing Haskell-tools support. Don't install it.
-description:         
+description:
 
 homepage:            https://github.com/nboldi/haskell-tools
 license:             BSD3
@@ -14,6 +14,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     A
-  hs-source-dirs:      src            
-  build-depends:       base, directory
+  hs-source-dirs:      src
+  build-depends:       base, directory, filepath
   default-language:    Haskell2010

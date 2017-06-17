@@ -193,10 +193,8 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
               lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
               return $ Right (SourceFileKey loc n, loc, RemoveAdded loc)
             ContentChanged (n,m) -> do
-              Just (_, mr) <- gets (lookupModInSCs n . (^. refSessMCs))
-              let Just ms = mr ^? modRecMS
               let newCont = prettyPrint m
-                  file = getModSumOrig ms
+                  file = n ^. sfkFileName
               origCont <- liftIO $ withBinaryFile file ReadMode $ \handle -> do
                 hSetEncoding handle utf8
                 StrictIO.hGetContents handle

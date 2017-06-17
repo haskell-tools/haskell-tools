@@ -12,12 +12,15 @@ import Id (mkVanillaGlobal)
 import SrcLoc as GHC
 import TyCon as GHC (TyCon(..))
 import TysWiredIn (heqTyCon)
+import Outputable
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Monad.Reader.Class (asks)
 import Control.Reference ((^.))
-import Data.List (find)
+import Data.Function (on)
+import Data.List
 import Data.Maybe (Maybe(..), fromJust)
+import Control.Monad.IO.Class
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (GHCName(..), cleanHsType)
@@ -30,10 +33,10 @@ import Language.Haskell.Tools.AST.FromGHC.Utils
 trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UType (Dom r) RangeStage)
 trfType typ | RealSrcSpan loce <- getLoc typ
   = do othSplices <- asks typeSplices
-       let contSplice = find (\sp -> case getSpliceLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
-       case contSplice of Just sp -> let loc = pure $ getSpliceLoc sp
-                                      in typeSpliceInserted sp (annLocNoSema loc (AST.UTySplice <$> (trfSplice =<< rdrSplice sp)))
-                          Nothing -> trfLocNoSema trfType' typ
+       let contSplice = filter (\sp -> case getLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
+       case contSplice of [] -> trfLocNoSema trfType' typ
+                          _ -> let lsp@(L l sp) = minimumBy (compareSpans `on` getLoc) contSplice
+                                in typeSpliceInserted lsp (annLocNoSema (pure l) (AST.UTySplice <$> (trfSplice =<< rdrSplice sp)))
   | otherwise = trfLocNoSema trfType' typ
 
 trfType' :: TransformName n r => HsType n -> Trf (AST.UType (Dom r) RangeStage)

@@ -41,24 +41,23 @@ testHackage args = do
         resultFile = "results.csv"
 
         noRetest = "-no-retest" `elem` args
+        noLoad = "-no-load" `elem` args
         testAndEvaluate p = do
-          (res, problem) <- testPackage p
+          (res, problem) <- testPackage noLoad p
           appendFile resultFile (p ++ ";" ++ show res ++ " ; " ++ problem ++ "\n")
 
 
-testPackage :: String -> IO (Result, String)
-testPackage pack = do
-  res <- runCommands
-           [ Left ("cabal get " ++ pack, GetFailure)
-           , Right refreshDir
-           , Left ("stack build --test --no-run-tests --bench --no-run-benchmarks > logs\\" ++ pack ++ "-build-log.txt 2>&1", BuildFailure)
-           -- correct rts option handling (on windows) requires stack 1.4
-           , let autogenPath = "tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen"
-                 logPath = "logs\\" ++ pack ++ "-refact-log.txt 2>&1"
-                 dbPaths = ["C:\\Users\\nboldi\\AppData\\Local\\Programs\\stack\\x86_64-windows\\ghc-8.0.2\\lib\\package.conf.d", "C:\\sr\\snapshots\\c095693b\\pkgdb"]
-              in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -one-shot -refactoring=ProjectOrganizeImports tested-package " ++ autogenPath ++ " -clear-package-db" ++ concatMap (" -package-db " ++) dbPaths ++ " -package base > " ++ logPath, RefactError)
-           , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
-           ]
+testPackage :: Bool -> String -> IO (Result, String)
+testPackage noLoad pack = do
+  res <- runCommands $ load
+          ++ [ Left ("stack build --test --no-run-tests --bench --no-run-benchmarks > logs\\" ++ pack ++ "-build-log.txt 2>&1", BuildFailure)
+             -- correct rts option handling (on windows) requires stack 1.4
+             , let autogenPath = "tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen"
+                   logPath = "logs\\" ++ pack ++ "-refact-log.txt 2>&1"
+                   dbPaths = ["C:\\Users\\nboldi\\AppData\\Local\\Programs\\stack\\x86_64-windows\\ghc-8.0.2\\lib\\package.conf.d", "C:\\sr\\snapshots\\c095693b\\pkgdb"]
+                in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -one-shot -refactoring=ProjectOrganizeImports tested-package " ++ autogenPath ++ " -clear-package-db" ++ concatMap (" -package-db " ++) dbPaths ++ " -package base > " ++ logPath, RefactError)
+             , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
+             ]
   problem <- case res of
                RefactError -> map (\case '\n' -> ' '; c -> c) <$> readFile ("logs\\" ++ pack ++ "-refact-log.txt")
                WrongCodeError -> map (\case '\n' -> ' '; c -> c) <$> readFile ("logs\\" ++ pack ++ "-reload-log.txt")
@@ -74,6 +73,7 @@ testPackage pack = do
                                          then throwIO (e :: IOException)
                                          else do threadDelay 500000
                                                  refreshDir' (n-1)
+        load = if noLoad then [] else [ Left ("cabal get " ++ pack, GetFailure), Right refreshDir ]
 
 runCommands :: [Either (String, Result) (IO ())] -> IO Result
 runCommands [] = return OK

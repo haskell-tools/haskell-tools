@@ -132,7 +132,7 @@ reloadModule report ms = do
       let dfs = ms_hspp_opts ms
       dfs' <- liftIO $ compileInContext mc mcs dfs
       let ms' = ms { ms_hspp_opts = dfs' }
-      newm <- lift $ withAlteredDynFlags (liftIO . compileInContext mc mcs) $
+      newm <- lift $ withAlteredDynFlags (\_ -> return (ms_hspp_opts ms')) $
         parseTyped (mc ^. mcRoot) (if codeGen then forceCodeGen ms' else ms')
       modify $ refSessMCs & traversal & filtered (== mc) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
