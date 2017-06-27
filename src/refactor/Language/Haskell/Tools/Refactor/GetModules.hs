@@ -180,6 +180,8 @@ modulesFromCabalFile allRoots root cabal = (getModules . setupFlags <$> readPack
                            ++ catMaybes (map (toModuleCollection pkg) (benchmarks pkg))
 
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe ModuleCollection
+        toModuleCollection PackageDescription{ buildType = Just Custom } tmc
+          = error "While parsing cabal file \"build-type: custom\" is not supported"
         toModuleCollection pkg tmc
           = let bi = getBuildInfo tmc
                 packageName = pkgName $ package pkg
