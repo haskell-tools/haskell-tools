@@ -20,9 +20,10 @@ import InstEnv (ClsInst(..))
 import Language.Haskell.TH.LanguageExtensions as GHC (Extension(..))
 import Name (NamedThing(..))
 import OccName (HasOccName(..), isSymOcc)
-import qualified PrelNames as GHC (fromStringName)
+import qualified PrelNames as GHC (fromStringName, coerceKey)
 import TyCon (TyCon(..), tyConFamInst_maybe)
 import SrcLoc
+import Unique (getUnique)
 
 import Control.Applicative ((<$>), Alternative(..))
 import Control.Monad
@@ -50,6 +51,7 @@ organizeImports mod
              = xopt TemplateHaskell dfs -- no narrowing if TH is present (we don't know what will be used)
                 || xopt QuasiQuotes dfs -- no narrowing if TH quotes are present (we don't know what will be used)
                 || (xopt FlexibleInstances dfs && noNarrowingSubspecs) -- arbitrary ctors might be needed when using imported data families
+                || hasCoerce -- the presence of coerce implicitely requires the constructors to be present
            noNarrowingSubspecs
              = -- both standalone deriving and FFI marshalling can cause constructors to be used in the generated code
                xopt GHC.StandaloneDeriving dfs || hasMarshalling
@@ -83,6 +85,7 @@ organizeImports mod
         -- Checks if the module uses foreign import/export that requires marshalling. In this case no
         -- subspecifiers could be narrowed because constructors might be needed.
         hasMarshalling = not $ null @[] (mod ^? modDecl & annList & declForeignType)
+        hasCoerce = GHC.coerceKey `elem` map getUnique usedNames
 
         -- Can this name be part of the source code?
         -- isSourceName n = ':' `notElem` occNameString (occName n)
