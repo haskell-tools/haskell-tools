@@ -125,9 +125,10 @@ getReachableModules loadCallback selected = do
 reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
 reloadModule report ms = do
   mcs <- gets (^. refSessMCs)
-  let modName = modSumName ms
+  let fp = getModSumOrig ms
+      modName = modSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
-  case lookupModuleColl modName mcs of
+  case lookupSourceFileColl fp mcs of
     Just mc -> do
       let dfs = ms_hspp_opts ms
       dfs' <- liftIO $ compileInContext mc mcs dfs
