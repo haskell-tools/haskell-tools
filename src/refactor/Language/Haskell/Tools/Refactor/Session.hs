@@ -5,6 +5,7 @@
 -- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
 module Language.Haskell.Tools.Refactor.Session where
 
+import Control.Applicative ((<|>))
 import Control.Exception
 import Control.Monad.State.Strict
 import Control.Reference
@@ -128,7 +129,7 @@ reloadModule report ms = do
   let fp = getModSumOrig ms
       modName = modSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
-  case lookupSourceFileColl fp mcs of
+  case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
     Just mc -> do
       let dfs = ms_hspp_opts ms
       dfs' <- liftIO $ compileInContext mc mcs dfs
