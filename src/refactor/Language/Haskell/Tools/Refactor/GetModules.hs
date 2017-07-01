@@ -82,6 +82,9 @@ modRecLoaded _ = False
 lookupModuleColl :: String -> [ModuleCollection] -> Maybe (ModuleCollection)
 lookupModuleColl moduleName = find (any ((moduleName ==) . (^. sfkModuleName)) . Map.keys . (^. mcModules))
 
+lookupSourceFileColl :: FilePath -> [ModuleCollection] -> Maybe (ModuleCollection)
+lookupSourceFileColl fp = find (any ((fp ==) . (^. sfkFileName)) . Map.keys . (^. mcModules))
+
 lookupModInSCs :: SourceFileKey -> [ModuleCollection] -> Maybe (SourceFileKey, ModuleRecord)
 lookupModInSCs moduleName = find (((moduleName ^. sfkFileName) ==) . (^. sfkFileName) . fst) . concatMap (Map.assocs . (^. mcModules))
 
@@ -180,6 +183,8 @@ modulesFromCabalFile allRoots root cabal = (getModules . setupFlags <$> readPack
                            ++ catMaybes (map (toModuleCollection pkg) (benchmarks pkg))
 
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe ModuleCollection
+        toModuleCollection PackageDescription{ buildType = Just Custom } tmc
+          = error "While parsing cabal file \"build-type: custom\" is not supported"
         toModuleCollection pkg tmc
           = let bi = getBuildInfo tmc
                 packageName = pkgName $ package pkg
