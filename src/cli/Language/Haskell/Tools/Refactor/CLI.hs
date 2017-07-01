@@ -19,6 +19,7 @@ import System.Directory
 import System.Exit
 import System.IO
 import System.FilePath
+import Data.Version (showVersion)
 
 import DynFlags as GHC
 import ErrUtils
@@ -33,6 +34,7 @@ import Language.Haskell.Tools.Refactor as HT
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Session
+import Paths_haskell_tools_cli (version)
 
 type CLIRefactorSession = StateT CLISessionState Ghc
 
@@ -53,6 +55,8 @@ tryOut = void $ refactorSession stdin stdout
                   , "src/ast", "src/backend-ghc", "src/prettyprint", "src/rewrite", "src/refactor"]
 
 refactorSession :: Handle -> Handle -> [String] -> IO Bool
+refactorSession _ _ args | "-v" `elem` args = do putStrLn $ showVersion version
+                                                 return True
 refactorSession input output args = runGhc (Just libdir) $ handleSourceError printSrcErrors
                                                          $ flip evalStateT initSession $
   do lift $ initGhcFlags

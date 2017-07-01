@@ -1,5 +1,5 @@
 name:                haskell-tools-prettyprint
-version:             0.7.0.0
+version:             0.8.0.0
 synopsis:            Pretty printing of Haskell-Tools AST
 description:         Converts the Haskell-Tools AST to text. Prepares the AST for this conversion. If the AST was created from the GHC AST this pretty printing will result in the original source code. Generated AST parts will get the default formatting. Works using the source annotations that are present in the AST. Creates a rose tree first to simplify the conversion.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -31,5 +31,5 @@ library
                      , split             >= 0.2  && < 0.3
                      , text              >= 1.2  && < 1.3
                      , ghc               >= 8.0  && < 8.1
-                     , haskell-tools-ast >= 0.7  && < 0.8
+                     , haskell-tools-ast >= 0.8  && < 0.9
   default-language: Haskell2010

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.8
+ - The tool now handles Main modules.
+ - Only those modules are loaded that cabal would load.
+ - Multiple improvements for the handling of Template Haskell.
+ - Some minor fixes in loading and refactoring.
+
 ## 0.7
  - Implemented a complete handling of conditional compilation preprocessor pragmas.
  - Fixed problems about the scope-checking for validity.

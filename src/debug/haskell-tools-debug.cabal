@@ -1,5 +1,5 @@
 name:                haskell-tools-debug
-version:             0.7.0.0
+version:             0.8.0.0
 synopsis:            Debugging Tools for Haskell-tools
 description:         Debugging Tools for Haskell-tools
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -22,15 +22,15 @@ library
                      , references                >= 0.3 && < 0.4
                      , ghc                       >= 8.0 && < 8.1
                      , ghc-paths                 >= 0.1 && < 0.2
-                     , haskell-tools-ast         >= 0.7 && < 0.8
-                     , haskell-tools-backend-ghc >= 0.7 && < 0.8
-                     , haskell-tools-refactor    >= 0.7 && < 0.8
-                     , haskell-tools-prettyprint >= 0.7 && < 0.8
+                     , haskell-tools-ast         >= 0.8 && < 0.9
+                     , haskell-tools-backend-ghc >= 0.8 && < 0.9
+                     , haskell-tools-refactor    >= 0.8 && < 0.9
+                     , haskell-tools-prettyprint >= 0.8 && < 0.9
   default-language:    Haskell2010
 
 executable ht-debug
   build-depends:       base                      >= 4.9 && < 5.0
-                     , haskell-tools-debug       >= 0.7 && < 0.8
+                     , haskell-tools-debug       >= 0.8 && < 0.9
   hs-source-dirs:      exe
   main-is:             Main.hs
   default-language:    Haskell2010
