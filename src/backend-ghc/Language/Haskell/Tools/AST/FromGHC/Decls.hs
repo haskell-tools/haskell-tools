@@ -139,12 +139,19 @@ trfDecl = trfLocNoSema $ \case
                     <*> trfInstanceRule (hsib_body typ)
                     <*> trfInstBody binds sigs typefam datafam
   InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd _ _ _ cons derivs) _))
+    | all ((\case ConDeclH98{} -> True; _ -> False) . unLoc) cons
     -> AST.UDataInstDecl <$> trfDataKeyword nd
                         <*> (focusAfter AnnInstance . focusBeforeIfPresent AnnEqual . focusBeforeIfPresent AnnDeriving)
                               (makeInstanceRuleTyVars con pats)
                                                        -- the location is needed when there is no = sign
                         <*> makeListBefore " = " " | " (pure $ srcSpanStart $ foldLocs $ getLoc con : map getLoc (hsib_body pats)) (mapM trfConDecl cons)
                         <*> trfMaybe "" "" trfDerivings derivs
+  InstD (DataFamInstD (DataFamInstDecl con pats (HsDataDefn nd _ _ kind cons derivs) _))
+    -> AST.UGDataInstDecl <$> trfDataKeyword nd
+                        <*> (focusAfter AnnInstance . focusBeforeIfPresent AnnWhere)
+                              (makeInstanceRuleTyVars con pats)
+                        <*> focusBefore AnnWhere (trfKindSig kind)
+                        <*> makeIndentedListBefore " where " atTheEnd (mapM trfGADTConDecl cons)
   InstD (TyFamInstD (TyFamInstDecl (L _ (TyFamEqn con pats rhs)) _))
     -> AST.UTypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> trfVal bind
