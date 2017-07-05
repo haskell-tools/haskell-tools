@@ -125,6 +125,8 @@ instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
   hsGetNames (HsDataDefn {dd_cons = ctors}) = hsGetNames ctors
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
+  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)))})
+    = hsGetNames names ++ hsGetNames flds
   hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))})
     = hsGetNames names ++ hsGetNames flds
   hsGetNames (ConDeclGADT {con_names = names}) = hsGetNames names
