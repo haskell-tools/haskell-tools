@@ -20,7 +20,7 @@ import SrcLoc as GHC
 import TyCon as GHC (Role(..))
 
 import Control.Monad.Reader
-import Control.Reference ((.-), (!~), biplateRef)
+import Control.Reference
 import Data.Generics.Uniplate.Data ()
 import Data.List
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -104,7 +104,7 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
                           allLocals <- asks localsInScope
-                          case allLocals of locals:_ -> liftGhc $ mapM (loadIdsForDecls (map fst locals)) decls
+                          case allLocals of locals:_ -> liftGhc $ mapM (loadIdsForDecls (map (^. _1) locals)) decls
                                             [] -> error "getDeclsToInsert: empty scope"
        where loadIdsForDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
              loadIdsForDecls locals = AST.semaTraverse $

@@ -79,19 +79,20 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
               importPrelude names = ( "Prelude", Nothing, False, names)
 
           addToScopeImported (map importNames (transformedImports ^? AST.annList) ++ [importPrelude preludeImports])
-            $ loadSplices mod hsMod transformedImports preludeImports gr $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
-              $ do filePrags <- trfFilePragmas
-                   AST.UModule filePrags
-                    <$> trfModuleHead name
-                         (srcSpanEnd (AST.getRange filePrags))
-                         (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
-                                                  _                       -> Nothing)
-                         deprec
-                    <*> return transformedImports
-                    <*> trfDeclsGroup gr
+            $ loadSplices mod hsMod transformedImports gr
+            $ setOriginalNames originalNames . setDeclsToInsert roleAnnots
+            $ do filePrags <- trfFilePragmas
+                 AST.UModule filePrags
+                  <$> trfModuleHead name
+                       (srcSpanEnd (AST.getRange filePrags))
+                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l ie)
+                                                _                       -> Nothing)
+                       deprec
+                  <*> return transformedImports
+                  <*> trfDeclsGroup gr
 
-loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> [GHC.Name] -> HsGroup Name -> Trf a -> Trf a
-loadSplices modSum hsMod imports preludeImports group trf = do
+loadSplices :: ModSummary -> HsModule RdrName -> AnnListG AST.UImportDecl (Dom GHC.Name) RangeStage -> HsGroup Name -> Trf a -> Trf a
+loadSplices modSum hsMod imports group trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
         exprSpls = catMaybes $ map (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
         typeSpls = catMaybes $ map (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]

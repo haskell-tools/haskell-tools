@@ -170,14 +170,14 @@ instance AssocData ImplicitFieldInfo where
   toAssoc ifi = [ ("bindings", concat (intersperse ", " (map (\(from,to) -> "(" ++ inspect from ++ " -> " ++ inspect to ++ ")") (semanticsImplicitFlds ifi))))
                 ]
 
-inspectScope :: InspectableName n => [[(n, Maybe [UsageSpec])]] -> String
+inspectScope :: InspectableName n => [[(n, Maybe [UsageSpec], Maybe n)]] -> String
 inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)
 
-class InspectableName n where
+class Outputable n => InspectableName n where
   inspect :: n -> String
 
-instance InspectableName n => InspectableName (n, Maybe [UsageSpec]) where
-  inspect (n,usage) = inspect n ++ showSDocUnsafe (ppr usage)
+instance InspectableName n => InspectableName (n, Maybe [UsageSpec], Maybe n) where
+  inspect (n,usage,parent) = inspect n ++ showSDocUnsafe (ppr usage) ++ maybe "" (\p -> "( in " ++ showSDocUnsafe (ppr p) ++ ")") parent
 
 instance InspectableName GHC.Name where
   inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "]"

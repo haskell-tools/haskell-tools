@@ -192,6 +192,7 @@ languageTests =
   , "TH.Splice.Define"
   , "TH.Splice.Use"
   , "TH.CrossDef"
+  , "TH.Splice.UseImported"
   , "TH.Splice.UseQual"
   , "TH.Splice.UseQualMulti"
   , "TH.LocalDefinition"

@@ -64,7 +64,7 @@ checkConflict :: forall dom . FloatOutDefinition dom => LocalBind dom -> ([Strin
 checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
   where bndNames = bnd ^? elementName
         getConflict bndName = filter ((== nameStr) . Just) $ map (occNameString . getOccName) outerScope
-          where outerScope = map fst $ concat $ take 1 $ drop 2 $ semanticsScope bndName
+          where outerScope = map (^. _1) $ concat $ take 1 $ drop 2 $ semanticsScope bndName
                 nameStr = fmap (occNameString . getOccName) $ semanticsName bndName
         implicits = map (occNameString . getOccName)
                         (concatMap getPossibleImplicits bndNames `intersect` getQNames (bnd ^? biplateRef))
@@ -73,4 +73,4 @@ checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
         getQNames = catMaybes . map semanticsName
 
         getPossibleImplicits :: QualifiedName dom -> [GHC.Name]
-        getPossibleImplicits qn = concat (map (map fst) $ take 2 $ semanticsScope qn) \\ catMaybes (map semanticsName bndNames)
+        getPossibleImplicits qn = concat (map (map (^. _1)) $ take 2 $ semanticsScope qn) \\ catMaybes (map semanticsName bndNames)

@@ -12,7 +12,7 @@
 module Language.Haskell.Tools.AST.FromGHC.Utils where
 
 import ApiAnnotation (AnnKeywordId)
-import Avail (availNamesWithSelectors, availNames)
+import Avail
 import BasicTypes (StringLiteral(..))
 import CoAxiom as GHC (CoAxiom(..))
 import CoreSyn as GHC (isOrphan)
@@ -32,7 +32,7 @@ import Outputable (Outputable(..), showSDocUnsafe)
 import SrcLoc
 
 import Control.Monad.Reader
-import Control.Reference ((^.), (&))
+import Control.Reference
 import Data.Char (isSpace)
 import Data.Data (Data(..))
 import Data.Either (Either(..), rights, lefts)
@@ -89,11 +89,15 @@ createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAnd
 createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
 createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
   do (mod,importedNames) <- getImportedNames (GHC.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
-     names <- liftGhc $ filterM (checkImportVisible declHiding) importedNames
-     lookedUpNames <- liftGhc $ mapM (getFromNameUsing getTopLevelId) names
-     lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId) importedNames
+     names <- liftGhc $ filterM (checkImportVisible declHiding . (^. pName)) importedNames
+     -- TODO: only use getFromNameUsing once
+     lookedUpNames <- liftGhc $ mapM translatePName $ names
+     lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId . (^. pName)) $ importedNames
      (insts,famInsts) <- lift $ getOrphanAndFamInstances mod
      return $ mkImportInfo mod (catMaybes lookedUpImported) (catMaybes lookedUpNames) insts famInsts
+  where translatePName (PName n p) = do n' <- getFromNameUsing getTopLevelId n
+                                        p' <- maybe (return Nothing) (getFromNameUsing getTopLevelId) p
+                                        return (PName <$> n' <*> Just p')
 
 getOrphanAndFamInstances :: Module -> Ghc ([ClsInst], [FamInst])
 getOrphanAndFamInstances mod = do
@@ -117,18 +121,19 @@ getOrphanAndFamInstances mod = do
 
 
 -- | Get names that are imported from a given import
-getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [GHC.Name])
+getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [PName GHC.Name])
 getImportedNames name pkg = liftGhc $ do
   hpt <- hsc_HPT <$> getSession
   eps <- getSession >>= liftIO . readIORef . hsc_EPS
   mod <- findModule (mkModuleName name) (fmap mkFastString pkg)
   -- load exported names from interface file
-  let ifaceNames = concatMap availNames $ maybe [] mi_exports
-                                        $ flip lookupModuleEnv mod
-                                        $ eps_PIT eps
+  let ifaceNames = maybe [] mi_exports $ flip lookupModuleEnv mod
+                                       $ eps_PIT eps
   let homeExports = maybe [] (md_exports . hm_details) (lookupHptByModule hpt mod)
   mi <- getModuleInfo mod
-  return (mod, ifaceNames ++ concatMap availNamesWithSelectors homeExports)
+  -- TODO: Why selectors are added in one case and not added in the other?
+  return (mod, concatMap (availToPName availNames) ifaceNames ++ concatMap (availToPName availNamesWithSelectors) homeExports)
+    where availToPName f a = map (\n -> if n == availName a then PName n Nothing else PName n (Just (availName a))) (f a)
 
 -- | Check is a given name is imported from an import with given import specification.
 checkImportVisible :: (HsHasName name, GhcMonad m) => Maybe (Bool, Located [LIE name]) -> GHC.Name -> m Bool

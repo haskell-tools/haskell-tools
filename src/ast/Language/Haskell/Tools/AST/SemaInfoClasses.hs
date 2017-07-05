@@ -9,7 +9,7 @@ module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools
 import GHC
 import Id as GHC (Id, idName)
 
-import Control.Reference ((^?), (^.), (&))
+import Control.Reference
 
 import Language.Haskell.Tools.AST.Ann as AST
 import Language.Haskell.Tools.AST.Representation.Exprs as AST (UFieldWildcard, UExpr)
@@ -127,7 +127,7 @@ instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
   semanticsModule = (^. defModuleName)
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
-  semanticsImplicitImports = (^. implicitNames)
+  semanticsImplicitImports = (^? implicitNames&traversal&pName)
   semanticsPrelOrphanInsts = (^. prelOrphanInsts)
   semanticsPrelFamInsts = (^. prelFamInsts)
 
@@ -135,7 +135,7 @@ instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
   semanticsModule = (^. defModuleName)
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
-  semanticsImplicitImports = map idName . (^. implicitNames)
+  semanticsImplicitImports = map idName . (^? implicitNames&traversal&pName)
   semanticsPrelOrphanInsts = (^. prelOrphanInsts)
   semanticsPrelFamInsts = (^. prelFamInsts)
 
@@ -161,14 +161,14 @@ class HasImportInfo' si where
 instance HasImportInfo' (AST.ImportInfo GHC.Name) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = (^. availableNames)
-  semanticsImported = (^. importedNames)
+  semanticsImported = (^? importedNames&traversal&pName)
   semanticsOrphanInsts = (^. importedOrphanInsts)
   semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo' (AST.ImportInfo GHC.Id) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = map idName . (^. availableNames)
-  semanticsImported = map idName . (^. importedNames)
+  semanticsImported = map idName . (^? importedNames&traversal&pName)
   semanticsOrphanInsts = (^. importedOrphanInsts)
   semanticsFamInsts = (^. importedFamInsts)
 

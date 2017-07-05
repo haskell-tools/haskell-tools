@@ -98,14 +98,14 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
       | maybe False (`elem` toChange) actualName
           && semanticsDefining name == False
           && any @[] (\n -> str == occNameString (getOccName n) && not (mergeableFields origId n))
-                     (scopeUpToDef (map (map fst) $ semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
+                     (scopeUpToDef (map (map (^. _1)) $ semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
       = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
            when (actualName == Just toChangeOrig)
              $ lift $ modify (|| semanticsDefining name) -- state that the definition is renamed in the global state
            return $ unqualifiedName .= mkNamePart str $ name -- found the changed name (or a name that have to be changed too)
-      | let namesInScope = map (map fst) $ semanticsScope name
+      | let namesInScope = map (map (^. _1)) $ semanticsScope name
          in case semanticsName name of
               Just (getName -> exprName) -> str == occNameString (getOccName exprName)
                                               && sameNamespace toChangeOrig exprName

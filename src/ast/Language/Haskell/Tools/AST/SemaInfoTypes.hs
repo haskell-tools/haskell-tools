@@ -17,6 +17,8 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
+  -- utils
+  , PName(..), pName, pNameParent
   ) where
 
 import BasicTypes as GHC
@@ -35,7 +37,7 @@ import Data.List
 
 import Control.Reference
 
-type Scope = [[(Name, Maybe [UsageSpec])]]
+type Scope = [[(Name, Maybe [UsageSpec], Maybe Name)]]
 
 data UsageSpec = UsageSpec { usageQualified :: Bool
                            , usageQualifier :: String
@@ -108,11 +110,17 @@ data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
 mkCNameInfo :: Scope -> Bool -> Id -> Maybe GHC.Fixity -> CNameInfo
 mkCNameInfo = CNameInfo
 
+data PName n
+  = PName { _pName :: n
+          , _pNameParent :: Maybe n
+          }
+  deriving Data
+
 -- | Info for the module element
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
                                , _defDynFlags :: DynFlags -- ^ The compilation flags that are set up when the module was compiled
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
-                               , _implicitNames :: [n] -- ^ implicitly imported names
+                               , _implicitNames :: [PName n] -- ^ implicitly imported names
                                , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
                                , _prelFamInsts :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
                                }
@@ -127,13 +135,13 @@ dynFlagsType = mkDataType "DynFlags.DynFlags" [dynFlagsCon]
 dynFlagsCon = mkConstr dynFlagsType "DynFlags" [] Prefix
 
 -- | Creates semantic information for the module element
-mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
+mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [PName n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
 mkModuleInfo = ModuleInfo
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
-                               , _importedNames :: [n] -- ^ Names actually imported from the module.
+                               , _importedNames :: [PName n] -- ^ Names actually imported from the module.
                                , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed.
                                , _importedFamInsts :: [FamInst] -- ^ Family instances implicitly passed.
                                }
@@ -143,7 +151,7 @@ deriving instance Data FamInst
 deriving instance Data FamFlavor
 
 -- | Creates semantic information for an import declaration
-mkImportInfo :: GHC.Module -> [n] -> [n] -> [ClsInst] -> [FamInst] -> ImportInfo n
+mkImportInfo :: GHC.Module -> [n] -> [PName n] -> [ClsInst] -> [FamInst] -> ImportInfo n
 mkImportInfo = ImportInfo
 
 -- | Info corresponding to an record-wildcard
@@ -166,14 +174,18 @@ instance Outputable n => Show (NameInfo n) where
 instance Show CNameInfo where
   show (CNameInfo locals defined nameInfo fixity) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
 
+instance Outputable n => Show (PName n) where
+  show (PName n (Just parent)) = showSDocUnsafe (ppr n) ++ "[in " ++ showSDocUnsafe (ppr parent) ++ "]"
+  show (PName n Nothing) = showSDocUnsafe (ppr n)
+
 instance Outputable n => Show (ModuleInfo n) where
   show (ModuleInfo mod _ isboot imp clsInsts famInsts)
-    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ showSDocUnsafe (ppr imp) ++ " "
+    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ show imp ++ " "
           ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Outputable n => Show (ImportInfo n) where
   show (ImportInfo mod avail imported clsInsts famInsts)
-    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ showSDocUnsafe (ppr imported) ++ " "
+    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ show imported ++ " "
           ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Show ImplicitFieldInfo where
@@ -182,6 +194,7 @@ instance Show ImplicitFieldInfo where
 instance Show NoSemanticInfo where
   show NoSemanticInfo = "NoSemanticInfo"
 
+makeReferences ''PName
 makeReferences ''NoSemanticInfo
 makeReferences ''ScopeInfo
 makeReferences ''NameInfo
@@ -193,20 +206,29 @@ makeReferences ''ImplicitFieldInfo
 instance Functor NameInfo where
   fmap f = nameInfo .- f
 
+instance Functor PName where
+  fmap f (PName n p) = PName (f n) (fmap f p)
+
 instance Functor ModuleInfo where
-  fmap f = implicitNames .- map f
+  fmap f = implicitNames .- fmap (fmap f)
 
 instance Functor ImportInfo where
-  fmap f (ImportInfo mod avail imps clsInsts famInsts) = ImportInfo mod (map f avail) (map f imps) clsInsts famInsts
+  fmap f (ImportInfo mod avail imps clsInsts famInsts) = ImportInfo mod (fmap f avail) (fmap (fmap f) imps) clsInsts famInsts
 
 instance Foldable NameInfo where
   foldMap f si = maybe mempty f (si ^? nameInfo)
 
 instance Foldable ModuleInfo where
-  foldMap f si = foldMap f (si ^. implicitNames)
+  foldMap f si = foldMap (foldMap f) (si ^. implicitNames)
 
 instance Foldable ImportInfo where
-  foldMap f si = foldMap f ((si ^. availableNames) ++ (si ^. importedNames))
+  foldMap f si = foldMap f (((si ^. availableNames) ++ (si ^? importedNames & traversal & (pName &+& pNameParent & just) )))
+
+instance Foldable PName where
+  foldMap f (PName n p) = f n `mappend` foldMap f p
+
+instance Traversable PName where
+  traverse f (PName n p) = PName <$> f n <*> traverse f p
 
 instance Traversable NameInfo where
   traverse f (NameInfo locals defined nameInfo) = NameInfo locals defined <$> f nameInfo
@@ -215,8 +237,8 @@ instance Traversable NameInfo where
 
 instance Traversable ModuleInfo where
   traverse f (ModuleInfo mod dfs isboot imp clsInsts famInsts)
-    = ModuleInfo mod dfs isboot <$> traverse f imp <*> pure clsInsts <*> pure famInsts
+    = ModuleInfo mod dfs isboot <$> traverse (traverse f) imp <*> pure clsInsts <*> pure famInsts
 
 instance Traversable ImportInfo where
   traverse f (ImportInfo mod avail imps clsInsts famInsts)
-    = ImportInfo mod <$> traverse f avail <*> traverse f imps <*> pure clsInsts <*> pure famInsts
+    = ImportInfo mod <$> traverse f avail <*> traverse (traverse f) imps <*> pure clsInsts <*> pure famInsts

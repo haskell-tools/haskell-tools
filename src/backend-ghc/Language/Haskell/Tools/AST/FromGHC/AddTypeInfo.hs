@@ -23,6 +23,7 @@ import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.State
 import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Reference
 import Data.Generics.Uniplate.Data ()
 import Data.Generics.Uniplate.Operations (universeBi)
 import Data.List as List
@@ -39,7 +40,7 @@ addTypeInfos bnds mod = do
   let getType = getType' ut
   fixities <- getFixities
   let createCName sc def id = mkCNameInfo sc def id fixity
-        where fixity = if any (any ((getOccName id ==) . getOccName . fst)) (init sc) 
+        where fixity = if any (any ((getOccName id ==) . getOccName . (^. _1))) (init sc)
                           then Nothing
                           else fmap (snd . snd) $ List.find (\(mod,(occ,_)) -> Just mod == (nameModule_maybe $ varName id) && occ == getOccName id) fixities
   evalStateT (semaTraverse

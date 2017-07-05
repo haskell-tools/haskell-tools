@@ -4,6 +4,8 @@
 module Language.Haskell.Tools.AST.FromGHC.Monad where
 
 import Control.Monad.Reader
+import Control.Reference
+import Control.Applicative ((<|>))
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -12,6 +14,7 @@ import Data.Map as Map (Map, lookup, empty)
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.FromGHC.GHCUtils (HsHasName(..), rdrNameStr)
 import Language.Haskell.Tools.AST.FromGHC.SourceMap (SourceMap, annotationsToSrcMap)
 
@@ -40,7 +43,7 @@ data TrfInput
              , pragmaComms :: Map String [Located String] -- ^ Pragma comments
              , declsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -- ^ Declarations that are from the parsed AST
              , contRange :: SrcSpan -- ^ The focus of the transformation
-             , localsInScope :: [[(GHC.Name, Maybe [UsageSpec])]] -- ^ Local names visible
+             , localsInScope :: [[(GHC.Name, Maybe [UsageSpec], Maybe Name)]] -- ^ Local names visible
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
              , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
@@ -91,18 +94,18 @@ addEmptyScope :: Trf a -> Trf a
 addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s })
 
 -- | Perform the transformation putting the given definition in a new local scope.
-addToScopeImported :: [(String, Maybe String, Bool, [GHC.Name])] -> Trf a -> Trf a
-addToScopeImported ls = local (\s -> s { localsInScope = concatMap (\(mn, asName, q, e) -> map (, Just [UsageSpec q mn (fromMaybe mn asName)]) e) ls : localsInScope s })
+addToScopeImported :: [(String, Maybe String, Bool, [PName GHC.Name])] -> Trf a -> Trf a
+addToScopeImported ls = local (\s -> s { localsInScope = concatMap (\(mn, asName, q, e) -> map (\(PName n p) -> (n, Just [UsageSpec q mn (fromMaybe mn asName)], p)) e) ls : localsInScope s })
 
 
 -- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
-addToScope e = local (\s -> s { localsInScope = map (, Nothing) (hsGetNames e) : localsInScope s })
+addToScope e = local (\s -> s { localsInScope = map (, Nothing, Nothing) (hsGetNames e) : localsInScope s })
 
 -- | Perform the transformation putting the given definitions in the current scope.
 addToCurrentScope :: HsHasName e => e -> Trf a -> Trf a
-addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (map (, Nothing) (hsGetNames e) ++ lastScope):rest
-                                                                               []             -> [map (, Nothing) (hsGetNames e)] })
+addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (map (, Nothing, Nothing) (hsGetNames e) ++ lastScope):rest
+                                                                               []             -> [map (, Nothing, Nothing) (hsGetNames e)] })
 
 -- | Performs the transformation given the tokens of the source file
 runTrf :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> Trf a -> Ghc a
@@ -137,11 +140,13 @@ rdrSplice :: HsSplice RdrName -> Trf (HsSplice GHC.Name)
 rdrSplice spl = do
     env <- liftGhc getSession
     locals <- unifyScopes [] <$> asks localsInScope
-    let createLocalGRE (n,imp) = [GRE n NoParent (isNothing imp) (maybe [] (map createGREImport) imp) ]
+    let createLocalGRE (n,imp,p) = [GRE n (maybe NoParent ParentIs p) (isNothing imp) (maybe [] (map createGREImport) imp) ]
         createGREImport (UsageSpec q useQ asQ) = ImpSpec (ImpDeclSpec (mkModuleName useQ) (mkModuleName asQ) q noSrcSpan) ImpAll
     let readEnv = mkOccEnv $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 ++ snd e2))) $ groupBy ((==) `on` fst) $ sortOn fst
-                   $ map (\n -> (GHC.occName (fst n), createLocalGRE n))
-                   $ map (foldl1 (\e1 e2 -> (fst e1, snd e1 `mappend` snd e2))) $ groupBy ((==) `on` fst) $ sortBy (compare `on` fst) locals
+                   $ map (\n -> (GHC.occName ((^. _1) n), createLocalGRE n))
+                   -- group up locals by name
+                   $ map (foldl1 (\e1 e2 -> ((^. _1) e1, (^. _2) e1 `mappend` (^. _2) e2, (^. _3) e1 <|> (^. _3) e2)))
+                   $ groupBy ((==) `on` (^. _1)) $ sortBy (compare `on` (^. _1)) locals
     tcSpl <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
       $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv })
       $ tcHsSplice' spl
@@ -159,7 +164,7 @@ rdrSplice spl = do
       = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
 
 
-    unifyScopes :: [GHC.Name] -> [[(GHC.Name, Maybe [UsageSpec])]] -> [(GHC.Name, Maybe [UsageSpec])]
+    unifyScopes :: [GHC.Name] -> [[(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]] -> [(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]
     unifyScopes _ [] = []
-    unifyScopes ex (sc:scs) = filteredSc ++ unifyScopes (ex ++ map fst filteredSc) scs
-      where filteredSc = filter ((\s -> isNothing $ find (\e -> occName e == occName s) ex) . fst) sc
+    unifyScopes ex (sc:scs) = filteredSc ++ unifyScopes (ex ++ map (^. _1) filteredSc) scs
+      where filteredSc = filter ((\s -> isNothing $ find (\e -> occName e == occName s) ex) . (^. _1)) sc

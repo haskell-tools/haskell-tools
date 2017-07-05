@@ -126,7 +126,7 @@ instance NamedElement ULocalBind where
                   &+& localFixity&fixityOperators&annList&operatorName
 
 inScope :: GHC.Name -> Scope -> Bool
-inScope n sc = any ((n `elem`) . map fst) sc
+inScope n sc = any ((n `elem`) . map (^. _1)) sc
 
 -- * Pattern synonyms for annotated lists and maybes
 
