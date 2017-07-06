@@ -33,7 +33,7 @@ gTrfDoStmt' :: (TransformName n r, Data (ge n), Outputable (ge n))
             => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Stmt n (Located (ge n)) -> Trf (AST.UStmt' ae (Dom r) RangeStage)
 gTrfDoStmt' et (BindStmt pat expr _ _ _) = AST.UBindStmt <$> trfPattern pat <*> et expr
 gTrfDoStmt' et (BodyStmt expr _ _ _) = AST.UExprStmt <$> et expr
-gTrfDoStmt' _ (LetStmt (unLoc -> binds)) = AST.ULetStmt <$> addToScope binds (trfLocalBinds AnnLet binds)
+gTrfDoStmt' _ (LetStmt (unLoc -> binds)) = AST.ULetStmt . orderAnnList <$> addToScope binds (trfLocalBinds AnnLet binds)
 gTrfDoStmt' et (LastStmt body _ _) = AST.UExprStmt <$> et body
 gTrfDoStmt' et (RecStmt { recS_stmts = stmts }) = AST.URecStmt <$> trfAnnList "," (gTrfDoStmt' et) stmts
 gTrfDoStmt' _ stmt = unhandledElement "simple statement" stmt
