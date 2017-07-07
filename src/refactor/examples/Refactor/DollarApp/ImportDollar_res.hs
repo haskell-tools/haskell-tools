@@ -2,6 +2,6 @@
 module Refactor.DollarApp.ImportDollar where
 
 import Refactor.DollarApp.Defs
-import GHC.Base(($))
+import qualified GHC.Base(($))
 
-x = f $ g x
+x = f GHC.Base.$ g x
