@@ -219,6 +219,8 @@ class ToModuleCollection t where
   getModuleSourceFiles :: t -> [(ModuleName, FilePath)]
   getModuleSourceFiles _ = []
   needsToCompile :: t -> ModuleName -> Bool
+  getMain :: t -> String
+  getMain l = getMain' (getBuildInfo l)
 
 instance ToModuleCollection Library where
   mkModuleCollKey pn _ = LibraryMC (unPackageName pn)
@@ -229,32 +231,35 @@ instance ToModuleCollection Library where
 instance ToModuleCollection Executable where
   mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
   getBuildInfo = buildInfo
-  getModuleNames exe = fromString (getMain (buildInfo exe)) : exeModules exe
-  needsToCompile exe mn = components mn == [getMain (buildInfo exe)]
-  getModuleSourceFiles exe = [(fromString (getMain (buildInfo exe)), modulePath exe)]
+  getModuleNames exe = fromString (getMain exe) : exeModules exe
+  needsToCompile exe mn = components mn == [getMain exe]
+  getModuleSourceFiles exe = [(fromString (getMain exe), modulePath exe)]
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
   getBuildInfo = testBuildInfo
-  getModuleNames exe = fromString (getMain (testBuildInfo exe)) : testModules exe
-  needsToCompile exe mn = components mn == [getMain (testBuildInfo exe)]
+  getModuleNames exe = fromString (getMain exe) : testModules exe
+  needsToCompile exe mn = components mn == [getMain exe]
   getModuleSourceFiles exe
     = case testInterface exe of
-        TestSuiteExeV10 _ fp -> [(fromString (getMain (testBuildInfo exe)), fp)]
+        TestSuiteExeV10 _ fp -> [(fromString (getMain exe), fp)]
         _ -> []
+  getMain t = case testInterface t of
+        TestSuiteLibV09 _ mod -> intercalate "." $ components mod
+        _ -> getMain' (getBuildInfo t)
 
 instance ToModuleCollection Benchmark where
   mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
-  getModuleNames exe = fromString (getMain (benchmarkBuildInfo exe)) : benchmarkModules exe
-  needsToCompile exe mn = components mn == [getMain (benchmarkBuildInfo exe)]
+  getModuleNames exe = fromString (getMain exe) : benchmarkModules exe
+  needsToCompile exe mn = components mn == [getMain exe]
   getModuleSourceFiles exe
     = case benchmarkInterface exe of
-        BenchmarkExeV10 _ fp -> [(fromString (getMain (benchmarkBuildInfo exe)), fp)]
+        BenchmarkExeV10 _ fp -> [(fromString (getMain exe), fp)]
         _ -> []
 
-getMain :: BuildInfo -> String
-getMain bi
+getMain' :: BuildInfo -> String
+getMain' bi
   = case ls of _:e:_ -> intercalate "." $ filter (isUpper . head) $ groupBy ((==) `on` (== '.')) e
                _ -> "Main"
   where ls = dropWhile (/= "-main-is") (concatMap snd (options bi))
