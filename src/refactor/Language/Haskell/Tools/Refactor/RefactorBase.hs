@@ -244,7 +244,7 @@ addGeneratedImports names m = modImports&annListElems .- (++ addImports names) $
         -- TODO: group names like constructors into correct IESpecs
         createImport :: [GHC.Name] -> Ann UImportDecl dom SrcTemplateStage
         -- works on groupby result, so list is nonempty
-        createImport names = mkImportDecl False False False Nothing (mkModuleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
+        createImport names = mkImportDecl False True False Nothing (mkModuleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
                                           Nothing (Just $ mkImportSpecList (map (\n -> mkIESpec (mkUnqualName' n) Nothing) names))
 
 -- some instances missing from GHC
@@ -372,9 +372,10 @@ referenceName' makeName name
                   fromPrelude = name `elem` semanticsImplicitImports (mod ^. semantics)
                in if | fromPrelude -> return $ makeName [] name
                      | null possibleImports -> do tell [Left name]
-                                                  return $ makeName [] name
+                                                  return $ makeName (moduleParts name) name
                      | otherwise -> return $ referenceBy makeName name possibleImports
                                      -- use it according to the best available import
+  where moduleParts = maybe [] (splitOn "." . GHC.moduleNameString . GHC.moduleName) . GHC.nameModule_maybe
 
 -- | Reference the name by the shortest suitable import
 referenceBy :: ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> [Ann UImportDecl dom SrcTemplateStage] -> Ann nt dom SrcTemplateStage
