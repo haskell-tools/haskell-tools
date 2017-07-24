@@ -26,6 +26,7 @@ import SrcLoc
 import FastString
 
 import Language.Haskell.Tools.Refactor.Daemon
+import Language.Haskell.Tools.Refactor.Daemon.Protocol
 import Language.Haskell.Tools.Refactor.Daemon.PackageDB
 
 pORT_NUM_START = 4100
@@ -353,13 +354,12 @@ communicateWithDaemon port msgs = withSocketsDo $ do
                                  ((>> return []) . sendAll sock . (`BS.snoc` '\n') . encode)) msgs)
     sendAll sock $ encode Disconnect
     resps <- readSockResponsesUntil sock Disconnected BS.empty
-    sendAll sock $ encode Stop
     close sock
     return (concat intermedRes ++ resps)
   where waitToConnect sock addr
-          = connect sock addr `catch` \(e :: SomeException) -> waitToConnect sock addr
+          = connect sock addr `catch` \(e :: SomeException) -> threadDelay 10000 >> waitToConnect sock addr
         retryConnect port = do portNum <- readMVar port
-                               forkIO $ runDaemon [show portNum, "True"]
+                               forkIO $ runDaemon' [show portNum, "True"]
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END

@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell
            , TupleSections
            , TypeApplications
+           , MultiWayIf
            #-}
 -- | Common operations for managing refactoring sessions, for example loading packages, re-loading modules.
 module Language.Haskell.Tools.Refactor.Session where
@@ -91,15 +92,17 @@ getMods actMod
                 , filter ((actMod /=) . Just . fst) $ concatMap (catMaybes . map (_2 !~ (^? typedRecModule)) . Map.assocs . (^. mcModules)) mcs )
 
 getFileMods :: (GhcMonad m, IsRefactSessionState st)
-        => FilePath -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
+        => String -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
                                    , [(SourceFileKey, UnnamedModule IdDom)] )
 getFileMods fname
   = do mcs <- gets (^. refSessMCs)
-       let mods = map (\(k,m) -> (fromMaybe (error $ "getFileMods: module not loaded: " ++ show m) $ m ^? modRecMS, k))
-                      (concatMap Map.assocs $ (mcs ^? traversal & mcModules :: [Map.Map SourceFileKey ModuleRecord]))
-       let sfs = catMaybes $ map (\(ms,k) -> if Just fname == fmap normalise (ml_hs_file (ms_location ms)) then Just k else Nothing) mods
-       case sfs of sf:_ -> getMods (Just sf)
-                   [] -> getMods Nothing
+       let mods = mapMaybe (\(k,m) -> fmap (,k) (m ^? modRecMS))
+                           (concatMap @[] Map.assocs $ (mcs ^? traversal & mcModules))
+       let sfs = catMaybes $ map (\(ms,k) -> if | Just fname == fmap normalise (ml_hs_file (ms_location ms)) -> Just (False, k)
+                                                | fname == getModSumName ms -> Just (True, k)
+                                                | otherwise -> Nothing) mods
+       case List.sort sfs of (_,sf):_ -> getMods (Just sf)
+                             []       -> getMods Nothing
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
 reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT st Ghc (Either RefactorException [a])

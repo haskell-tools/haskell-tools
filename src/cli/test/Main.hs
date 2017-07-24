@@ -12,147 +12,47 @@ import qualified Data.List as List
 import Data.Knob
 import Data.ByteString.Char8 (pack, unpack)
 import System.IO
+import Control.Concurrent
 
 import Language.Haskell.Tools.Refactor.CLI
 
 main :: IO ()
-main = do nightlyTests <- benchTests
-          defaultMain $ testGroup "cli tests" (allTests ++ nightlyTests)
+main = defaultMain allTests
 
-allTests :: [TestTree]
-allTests = map makeCliTest cliTests
+allTests :: TestTree
+allTests
+  = testGroup "cli-tests" [
+      makeCliTest ( "batch", ["examples"</>"example-project"]
+                  , \s -> ["-exec=RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b"]
+                  , \_ -> ""
+                  , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
+                                             ("b = ()" `List.isInfixOf`))
+    , makeCliTest ( "session", ["examples"</>"example-project"], \_ -> []
+                  , \s -> "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b\nExit\n"
+                  , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
+                                             ("b = ()" `List.isInfixOf`))
+    ]
 
-makeCliTest :: ([FilePath], [String], String, String) -> TestTree
-makeCliTest (dirs, args, input, output)
+makeCliTest :: (String, [FilePath], String -> [String], String -> String, String -> String -> IO Bool) -> TestTree
+makeCliTest (name, dirs, args, input, outputCheck)
   = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
-        testdirs = map (\d -> if d == dir then dir ++ "_test" else (dir ++ "_test" </> makeRelative dir d)) dirs
-    in testCase dir $ do
-      exists <- doesDirectoryExist (dir ++ "_test")
-      when exists $ removeDirectoryRecursive (dir ++ "_test")
-      copyDir dir (dir ++ "_test")
-      inKnob <- newKnob (pack input)
+        testdirs = map (\d -> if d == dir then dir ++ suffix else (dir ++ suffix </> makeRelative dir d)) dirs
+    in testCase name $ do
+      copyDir dir (dir ++ suffix)
+      inKnob <- newKnob (pack (input suffix))
       inHandle <- newFileHandle inKnob "<input>" ReadMode
       outKnob <- newKnob (pack [])
       outHandle <- newFileHandle outKnob "<output>" WriteMode
-      res <- refactorSession inHandle outHandle (args ++ testdirs)
+      res <- normalRefactorSession inHandle outHandle (args suffix ++ testdirs)
       actualOut <- Data.Knob.getContents outKnob
-      assertEqual "" (filter (/= '\r') output) (filter (/= '\r') $ unpack actualOut)
-    `finally` removeDirectoryRecursive (dir ++ "_test")
+      assertBool ("The result is not what is expected. Output: " ++ (unpack actualOut))
+        =<< outputCheck suffix (unpack actualOut)
+  where suffix = "_test_" ++ name
 
-cliTests :: [([FilePath], [String], String, String)]
-cliTests
-  = [ ( [testRoot </> "Project" </> "cpp-opt"]
-      , ["-dry-run", "-one-shot", "-module-name=A"]
-      , "", oneShotPrefix ["A"] ++ "-module-name or -refactoring flag not specified correctly. Not doing any refactoring.\n")
-    , ( [testRoot </> "Project" </> "source-dir"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
-    , ( [testRoot </> "Project" </> "working-dir"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"OrganizeImports\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\n{-# LANGUAGE TemplateHaskell #-}\nmodule A where\n\nimport Language.Haskell.TH\nimport System.FilePath\n\n$(location >>= \\loc -> runIO (readFile (takeDirectory (takeDirectory (loc_filename loc)) </> \"data.txt\")) >> return [])\n\n")
-    , ( [testRoot </> "Project" </> "source-dir-outside"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
-    , ( [testRoot </> "Project" </> "no-cabal"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
-    , ( [testRoot </> "Project" </> "has-cabal"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1-3:1\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nx :: ()\nx = ()\n")
-    , ( [testRoot </> "Project" </> "selection"], []
-      , "SelectModule C\nSelectModule B\nRenameDefinition 5:1-5:2 bb\nSelectModule C\nRenameDefinition 3:1-3:2 cc\nExit"
-      , prefixText ["C","B"] ++ "no-module-selected> C> B> "
-          ++ reloads ["B"] ++ "B> C> "
-          ++ reloads ["C", "B"] ++ "C> "
-          )
-    , ( [testRoot </> "Project" </> "reloading"], []
-      , "SelectModule C\nRenameDefinition 3:1-3:2 cc\nSelectModule B\nRenameDefinition 5:1-5:2 bb\nExit"
-      , prefixText ["C","B","A"] ++ "no-module-selected> C> "
-          ++ reloads ["C", "B", "A"] ++ "C> B> "
-          ++ reloads ["B", "A"] ++ "B> ")
-    , ( map ((testRoot </> "Project" </> "multi-packages") </>) ["package1", "package2"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = ()\n"
-      )
-    , ( map ((testRoot </> "Project" </> "multi-packages-flags") </>) ["package1", "package2"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"RenameDefinition 3:1-3:2 xx\""], ""
-      , oneShotPrefix ["B", "A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nxx = \\case () -> ()\n"
-      )
-    , ( [testRoot </> "Project" </> "with-main"]
-      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
-      , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
-    , ( [testRoot </> "Project" </> "with-main-renamed"]
-      , ["-dry-run", "-one-shot", "-module-name=Main", "-refactoring=\"GenerateSignature 3:1\""]
-      , "", oneShotPrefix ["Main"] ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
-    , ( [testRoot </> "Project" </> "with-multi-main"], ["-dry-run", "-one-shot", "-module-name=B", "-refactoring=\"RenameDefinition 3:1 bb\""], ""
-      , oneShotPrefix ["Main", "B", "Main"]
-          ++ "### Module changed: B\n### new content:\nmodule B where\n\nbb = \"Hello\"\n"
-          ++ "### Module changed: Main\n### new content:\nmodule Main where\n\nimport B\n\nmain = putStrLn (bb ++ \" World\")\n")
-    , ( [testRoot </> "Project" </> "with-other-executable"]
-      , ["-dry-run", "-one-shot", "-module-name=A", "-refactoring=\"GenerateSignature 3:1\""]
-      , "", oneShotPrefix ["A"] ++ "### Module changed: A\n### new content:\nmodule A where\n\nmain :: IO ()\nmain = putStrLn \"Hello World\"\n")
-    ]
+checkFileContent :: FilePath -> (String -> Bool) -> IO Bool
+checkFileContent fp check = check <$> readFile fp
 
-benchTests :: IO [TestTree]
-benchTests
-  = forM ["full-1", "full-2", "full-3"] $ \id -> do
-      commands <- readFile ("bench-tests" </> id <.> "txt")
-      return $ makeCliTest (["examples" </> "CppHs"], [], filter (/='\r') commands, expectedOut id)
-
-expectedOut "full-1"
-  = prefixText cppHsMods ++ "no-module-selected> Language.Preprocessor.Cpphs.CppIfdef> "
-      ++ concat (replicate 8 (reloads cppIfDefReloads ++ "Language.Preprocessor.Cpphs.CppIfdef> "))
-expectedOut "full-2"
-  = prefixText cppHsMods ++ "no-module-selected> Language.Preprocessor.Cpphs.MacroPass> "
-      ++ concat (replicate 3 (reloads macroPassReloads ++ "Language.Preprocessor.Cpphs.MacroPass> "))
-expectedOut "full-3"
-  = prefixText cppHsMods ++ "no-module-selected> Language.Preprocessor.Cpphs.CppIfdef> "
-      ++ concat (replicate 2 (reloads cppIfDefReloads ++ "Language.Preprocessor.Cpphs.CppIfdef> "))
-      ++ "Language.Preprocessor.Cpphs.MacroPass> "
-      ++ reloads macroPassReloads ++ "Language.Preprocessor.Cpphs.MacroPass> "
-      ++ "Language.Preprocessor.Cpphs.CppIfdef> "
-      ++ concat (replicate 3 (reloads cppIfDefReloads ++ "Language.Preprocessor.Cpphs.CppIfdef> "))
-      ++ "Language.Preprocessor.Cpphs.MacroPass> "
-      ++ reloads macroPassReloads ++ "Language.Preprocessor.Cpphs.MacroPass> "
-      ++ "Language.Preprocessor.Cpphs.CppIfdef> "
-      ++ concat (replicate 3 (reloads cppIfDefReloads ++ "Language.Preprocessor.Cpphs.CppIfdef> "))
-
-cppIfDefReloads = [ "Language.Preprocessor.Cpphs.CppIfdef"
-                  , "Language.Preprocessor.Cpphs.RunCpphs"
-                  , "Language.Preprocessor.Cpphs" ]
-macroPassReloads = "Language.Preprocessor.Cpphs.MacroPass" : cppIfDefReloads
-
-cppHsMods = [ "Language.Preprocessor.Unlit"
-            , "Language.Preprocessor.Cpphs.SymTab"
-            , "Language.Preprocessor.Cpphs.Position"
-            , "Language.Preprocessor.Cpphs.ReadFirst"
-            , "Language.Preprocessor.Cpphs.Options"
-            , "Language.Preprocessor.Cpphs.HashDefine"
-            , "Language.Preprocessor.Cpphs.Tokenise"
-            , "Language.Preprocessor.Cpphs.MacroPass"
-            , "Language.Preprocessor.Cpphs.CppIfdef"
-            , "Language.Preprocessor.Cpphs.RunCpphs"
-            , "Language.Preprocessor.Cpphs" ]
-
-testRoot = "examples"
-
-prefixText :: [String] -> String
-prefixText mods
-  = "Compiling modules. This may take some time. Please wait.\n"
-      ++ concatMap (\m -> "Loaded module: " ++ m ++ "\n") mods
-      ++ "All modules loaded. Use 'SelectModule module-name' to select a module.\n"
-
-oneShotPrefix :: [String] -> String
-oneShotPrefix mods
-  = "Compiling modules. This may take some time. Please wait.\n"
-      ++ concatMap (\m -> "Loaded module: " ++ m ++ "\n") mods
-      ++ "All modules loaded.\n"
-
-
-reloads :: [String] -> String
-reloads mods = concatMap (\m -> "Re-loaded module: " ++ m ++ "\n") mods
-
-copyDir ::  FilePath -> FilePath -> IO ()
+copyDir :: FilePath -> FilePath -> IO ()
 copyDir src dst = do
   exists <- doesDirectoryExist dst
   -- clear the target directory from possible earlier test runs
@@ -168,12 +68,12 @@ copyDir src dst = do
       then copyDir srcPath dstPath
       else copyFile srcPath dstPath
 
+longestCommonPrefix :: (Eq a) => [[a]] -> [a]
+longestCommonPrefix = foldl1 commonPrefix
+
 commonPrefix :: (Eq e) => [e] -> [e] -> [e]
 commonPrefix _ [] = []
 commonPrefix [] _ = []
 commonPrefix (x:xs) (y:ys)
   | x == y    = x : commonPrefix xs ys
   | otherwise = []
-
-longestCommonPrefix :: (Eq a) => [[a]] -> [a]
-longestCommonPrefix = foldl1 commonPrefix

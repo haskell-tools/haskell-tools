@@ -6,11 +6,13 @@
            , FlexibleContexts
            , MultiWayIf
            , TypeApplications
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor.Daemon where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent.MVar
+import Control.Concurrent.Chan
 import Control.Exception
 import Control.Monad
 import Control.Monad.State.Strict
@@ -34,6 +36,7 @@ import Network.Socket.ByteString.Lazy
 import System.Directory
 import System.Environment
 import System.IO
+import System.IO.Error
 import System.IO.Strict as StrictIO (hGetContents)
 import Data.Version
 
@@ -52,6 +55,8 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.Daemon.PackageDB
 import Language.Haskell.Tools.Refactor.Daemon.State
+import Language.Haskell.Tools.Refactor.Daemon.Mode
+import Language.Haskell.Tools.Refactor.Daemon.Protocol
 import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Perform
 import Language.Haskell.Tools.Refactor.Prepare
@@ -60,61 +65,51 @@ import Language.Haskell.Tools.Refactor.Session
 import Paths_haskell_tools_daemon
 
 runDaemonCLI :: IO ()
-runDaemonCLI = getArgs >>= runDaemon
+runDaemonCLI = do store <- newEmptyMVar
+                  getArgs >>= runDaemon socketMode store
 
-runDaemon :: [String] -> IO ()
-runDaemon args = withSocketsDo $
+runDaemon' :: [String] -> IO ()
+runDaemon' args = do store <- newEmptyMVar
+                     runDaemon socketMode store args
+
+runDaemon :: WorkingMode a -> MVar a -> [String] -> IO ()
+runDaemon mode connStore args = withSocketsDo $
     do let finalArgs = args ++ drop (length args) defaultArgs
            isSilent = read (finalArgs !! 1)
        hSetBuffering stdout LineBuffering
        hSetBuffering stderr LineBuffering
        when (not isSilent) $ putStrLn $ "Starting Haskell Tools daemon"
-       sock <- socket AF_INET Stream 0
-       setSocketOption sock ReuseAddr 1
+       conn <- daemonConnect mode finalArgs
+       putMVar connStore conn
        when (not isSilent) $ putStrLn $ "Listening on port " ++ finalArgs !! 0
-       bind sock (SockAddrInet (read (finalArgs !! 0)) iNADDR_ANY)
-       listen sock 4
-       clientLoop isSilent sock
+       ghcSess <- initGhcSession
+       state <- newMVar initSession
+       serverLoop mode conn isSilent ghcSess state
+       daemonDisconnect mode conn
 
 defaultArgs :: [String]
 defaultArgs = ["4123", "True"]
 
-clientLoop :: Bool -> Socket -> IO ()
-clientLoop isSilent sock
-  = do when (not isSilent) $ putStrLn $ "Starting client loop"
-       (conn,_) <- accept sock
-       ghcSess <- initGhcSession
-       state <- newMVar initSession
-       serverLoop isSilent ghcSess state conn
+serverLoop :: WorkingMode a -> a -> Bool -> Session -> MVar DaemonSessionState -> IO ()
+serverLoop mode conn isSilent ghcSess state =
+  ( do msgs <- daemonReceive mode conn
+       continue <- forM msgs $ \case Right req -> respondTo ghcSess state (daemonSend mode conn) req
+                                     Left msg -> do daemonSend mode conn $ ErrorMessage $ "MALFORMED MESSAGE: " ++ msg
+                                                    return True
        sessionData <- readMVar state
-       when (not (sessionData ^. exiting))
-         $ clientLoop isSilent sock
+       when (not (sessionData ^. exiting) && all (== True) continue)
+         $ serverLoop mode conn isSilent ghcSess state
+  `catchIOError` handleIOError )
+  `catch` (\e -> handleException e >> serverLoop mode conn isSilent ghcSess state)
+  where handleIOError err = hPutStrLn stderr $ "IO Exception caught: " ++ show err
+        handleException ex = do
+          let err = show (ex :: SomeException)
+          hPutStrLn stderr $ "Exception caught: " ++ err
+          daemonSend mode conn $ ErrorMessage $ "Internal error: " ++ err
 
-serverLoop :: Bool -> Session -> MVar DaemonSessionState -> Socket -> IO ()
-serverLoop isSilent ghcSess state sock =
-    do msg <- recv sock 2048
-       when (not $ BS.null msg) $ do -- null on TCP means closed connection
-         when (not isSilent) $ putStrLn $ "message received: " ++ show (unpack msg)
-         let msgs = BS.split '\n' msg
-         continue <- forM msgs $ \msg -> respondTo ghcSess state (sendAll sock . (`BS.snoc` '\n')) msg
-         sessionData <- readMVar state
-         when (not (sessionData ^. exiting) && all (== True) continue)
-           $ serverLoop isSilent ghcSess state sock
-  `catch` interrupted
-  where interrupted = \ex -> do
-                        let err = show (ex :: IOException)
-                        when (not isSilent) $ do
-                          putStrLn "Closing down socket"
-                          hPutStrLn stderr $ "Some exception caught: " ++ err
-
-respondTo :: Session -> MVar DaemonSessionState -> (ByteString -> IO ()) -> ByteString -> IO Bool
-respondTo ghcSess state next mess
-  | BS.null mess = return True
-  | otherwise
-  = case decode mess of
-      Nothing -> do next $ encode $ ErrorMessage $ "MALFORMED MESSAGE: " ++ unpack mess
-                    return True
-      Just req -> modifyMVar state (\st -> swap <$> reflectGhc (runStateT (updateClient (next . encode) req) st) ghcSess)
+respondTo :: Session -> MVar DaemonSessionState -> (ResponseMsg -> IO ()) -> ClientMessage -> IO Bool
+respondTo ghcSess state next req
+  = modifyMVar state (\st -> swap <$> reflectGhc (runStateT (updateClient next req) st) ghcSess)
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
 updateClient :: (ResponseMsg -> IO ()) -> ClientMessage -> StateT DaemonSessionState Ghc Bool
@@ -125,6 +120,8 @@ updateClient _ (SetPackageDB pkgDB) = modify (packageDB .= pkgDB) >> return True
 updateClient resp (AddPackages packagePathes) = do
     addPackages resp packagePathes
     return True
+updateClient _ (SetWorkingDir fp) = liftIO (setCurrentDirectory fp) >> return True
+updateClient resp (SetGHCFlags flags) = lift (useFlags flags) >>= liftIO . resp . UnusedFlags >> return True
 updateClient _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
     let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)
@@ -159,23 +156,28 @@ updateClient resp (ReLoad added changed removed) =
 
 updateClient _ Stop = modify (exiting .= True) >> return False
 
+-- TODO: perform refactorings without selected modules
 updateClient resp (PerformRefactoring refact modPath selection args) = do
     (selectedMod, otherMods) <- getFileMods modPath
-    case selectedMod of
-      Just actualMod -> do
-        case analyzeCommand refact (selection:args) of
-           Right cmd -> do res <- lift $ performCommand cmd actualMod otherMods
-                           case res of
-                             Left err -> liftIO $ resp $ ErrorMessage err
-                             Right diff -> do changedMods <- applyChanges diff
-                                              liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
-                                              void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
-           Left err -> liftIO $ resp $ ErrorMessage err
-      Nothing -> liftIO $ resp $ ErrorMessage $ "The following file is not loaded to Haskell-tools: "
-                                                   ++ modPath ++ ". Please add the containing package."
+    case (selectedMod, analyzeCommand refact (selection:args)) of
+      (Just actualMod, Right cmd) -> performRefactoring cmd actualMod otherMods
+      (Nothing, Right cmd)
+        -> case modPath of
+             "" -> case otherMods of -- empty module path is no module selected (example: ProjectOrganizeImports)
+                     mod:rest -> performRefactoring cmd mod rest
+                     [] -> return ()
+             _ -> liftIO $ resp $ ErrorMessage $ "The following file is not loaded to Haskell-tools: "
+                                                        ++ modPath ++ ". Please add the containing package."
+      (_, Left err) -> liftIO $ resp $ ErrorMessage err
     return True
-
-  where applyChanges changes = do
+  where performRefactoring cmd actualMod otherMods = do
+          res <- lift $ performCommand cmd actualMod otherMods
+          case res of
+            Left err -> liftIO $ resp $ ErrorMessage err
+            Right diff -> do changedMods <- applyChanges diff
+                             liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
+                             void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
+        applyChanges changes = do
           forM changes $ \case
             ModuleCreated n m otherM -> do
               mcs <- gets (^. refSessMCs)
@@ -266,20 +268,6 @@ addPackages resp packagePathes = do
                      return True
             [] -> return True
 
-
-data UndoRefactor = RemoveAdded { undoRemovePath :: FilePath }
-                  | RestoreRemoved { undoRestorePath :: FilePath
-                                   , undoRestoreContents :: String
-                                   }
-                  | UndoChanges { undoChangedPath :: FilePath
-                                , undoDiff :: FileDiff
-                                }
-  deriving (Show, Generic)
-
-instance ToJSON UndoRefactor
-
-type FileDiff = [(Int, Int, String)]
-
 createUndo :: Eq a => Int -> [Diff [a]] -> [(Int, Int, [a])]
 createUndo i (Both str _ : rest) = createUndo (i + length str) rest
 createUndo i (First rem : Second add : rest)
@@ -305,46 +293,3 @@ usePackageDB pkgDbLocs
 getProblems :: RefactorException -> Either String [(SrcSpan, String)]
 getProblems (SourceCodeProblem errs) = Right $ map (\err -> (errMsgSpan err, show err)) $ bagToList errs
 getProblems other = Left $ displayException other
-
-data ClientMessage
-  = KeepAlive
-  | Handshake { clientVersion :: [Int] }
-  | SetPackageDB { pkgDB :: PackageDB }
-  | AddPackages { addedPathes :: [FilePath] }
-  | RemovePackages { removedPathes :: [FilePath] }
-  | PerformRefactoring { refactoring :: String
-                       , modulePath :: FilePath
-                       , editorSelection :: String
-                       , details :: [String]
-                       }
-  | Stop
-  | Disconnect
-  | ReLoad { addedModules :: [FilePath]
-           , changedModules :: [FilePath]
-           , removedModules :: [FilePath]
-           }
-  deriving (Show, Generic)
-
-instance FromJSON ClientMessage
-
-data ResponseMsg
-  = KeepAliveResponse
-  | HandshakeResponse { serverVersion :: [Int] }
-  | ErrorMessage { errorMsg :: String }
-  | CompilationProblem { errorMarkers :: [(SrcSpan, String)] }
-  | ModulesChanged { undoChanges :: [UndoRefactor] }
-  | LoadedModules { loadedModules :: [(FilePath, String)] }
-  | LoadingModules { modulesToLoad :: [FilePath] }
-  | Disconnected
-  deriving (Show, Generic)
-
-instance ToJSON ResponseMsg
-
-instance ToJSON SrcSpan where
-  toJSON (RealSrcSpan sp) = object [ "file" A..= unpackFS (srcSpanFile sp)
-                                   , "startRow" A..= srcLocLine (realSrcSpanStart sp)
-                                   , "startCol" A..= srcLocCol (realSrcSpanStart sp)
-                                   , "endRow" A..= srcLocLine (realSrcSpanEnd sp)
-                                   , "endCol" A..= srcLocCol (realSrcSpanEnd sp)
-                                   ]
-  toJSON _ = Null

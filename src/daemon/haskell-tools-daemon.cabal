@@ -84,6 +84,8 @@ library
   exposed-modules:     Language.Haskell.Tools.Refactor.Daemon
                      , Language.Haskell.Tools.Refactor.Daemon.State
                      , Language.Haskell.Tools.Refactor.Daemon.PackageDB
+                     , Language.Haskell.Tools.Refactor.Daemon.Mode
+                     , Language.Haskell.Tools.Refactor.Daemon.Protocol
                      , Paths_haskell_tools_daemon
   default-language:    Haskell2010
 

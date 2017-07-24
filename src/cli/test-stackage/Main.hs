@@ -55,7 +55,7 @@ testPackage noLoad pack = do
              , let autogenPath = "tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen"
                    logPath = "logs\\" ++ pack ++ "-refact-log.txt 2>&1"
                    dbPaths = ["C:\\Users\\nboldi\\AppData\\Local\\Programs\\stack\\x86_64-windows\\ghc-8.0.2\\lib\\package.conf.d", "C:\\sr\\snapshots\\c095693b\\pkgdb"]
-                in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -one-shot -refactoring=ProjectOrganizeImports tested-package " ++ autogenPath ++ " -clear-package-db" ++ concatMap (" -package-db " ++) dbPaths ++ " -package base > " ++ logPath, RefactError)
+                in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -exec=\"ProjectOrganizeImports\" tested-package " ++ autogenPath ++ " > " ++ logPath, RefactError)
              , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
              ]
   problem <- case res of

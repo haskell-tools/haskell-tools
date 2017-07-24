@@ -11,39 +11,7 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 
-extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
-                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
-                  , bench-tests/*.txt
-                  , examples/Project/cpp-opt/*.hs
-                  , examples/Project/cpp-opt/*.cabal
-                  , examples/Project/has-cabal/*.hs
-                  , examples/Project/has-cabal/*.cabal
-                  , examples/Project/multi-packages/package1/*.hs
-                  , examples/Project/multi-packages/package1/*.cabal
-                  , examples/Project/multi-packages/package2/*.hs
-                  , examples/Project/multi-packages/package2/*.cabal
-                  , examples/Project/multi-packages-flags/package1/*.hs
-                  , examples/Project/multi-packages-flags/package1/*.cabal
-                  , examples/Project/multi-packages-flags/package2/*.hs
-                  , examples/Project/multi-packages-flags/package2/*.cabal
-                  , examples/Project/no-cabal/*.hs
-                  , examples/Project/reloading/*.hs
-                  , examples/Project/selection/*.hs
-                  , examples/Project/source-dir/*.cabal
-                  , examples/Project/source-dir/src/*.hs
-                  , examples/Project/source-dir-outside/*.cabal
-                  , examples/Project/working-dir/src/*.hs
-                  , examples/Project/working-dir/*.cabal
-                  , examples/Project/working-dir/*.txt
-                  , examples/Project/with-main/*.hs
-                  , examples/Project/with-main/*.cabal
-                  , examples/Project/with-main-renamed/*.hs
-                  , examples/Project/with-main-renamed/*.cabal
-                  , examples/Project/with-multi-main/*.hs
-                  , examples/Project/with-multi-main/*.cabal
-                  , examples/Project/with-other-executable/*.hs
-                  , examples/Project/with-other-executable/*.cabal
-                  , examples/Project/src/*.hs
+extra-source-files: examples/example-project/*.hs
 
 library
   build-depends:       base                      >= 4.9 && < 4.10
@@ -59,6 +27,7 @@ library
                      , haskell-tools-ast         >= 0.8 && < 0.9
                      , haskell-tools-prettyprint >= 0.8 && < 0.9
                      , haskell-tools-refactor    >= 0.8 && < 0.9
+                     , haskell-tools-daemon      >= 0.8 && < 0.9
   exposed-modules:     Language.Haskell.Tools.Refactor.CLI
                      , Paths_haskell_tools_cli
   default-language:    Haskell2010
@@ -69,16 +38,6 @@ executable ht-refact
   build-depends:       base                      >= 4.9 && < 4.10
                      , haskell-tools-cli         >= 0.8 && < 0.9
   hs-source-dirs:      exe
-  main-is:             Main.hs
-  default-language:    Haskell2010
-
-executable ht-test-stackage
-  build-depends:       base                      >= 4.9 && < 4.10
-                     , directory                 >= 1.2 && < 1.4
-                     , process                   >= 1.4 && < 1.5
-                     , split                     >= 0.2 && < 0.3
-  ghc-options:         -threaded -with-rtsopts=-M4g
-  hs-source-dirs:      test-stackage
   main-is:             Main.hs
   default-language:    Haskell2010
 
@@ -95,6 +54,16 @@ test-suite haskell-tools-cli-tests
                      , haskell-tools-cli         >= 0.8 && < 0.9
                      , knob                      >= 0.1 && < 0.2
                      , bytestring                >= 0.10 && < 0.11
+  default-language:    Haskell2010
+
+executable ht-test-stackage
+  build-depends:       base                      >= 4.9 && < 4.10
+                     , directory                 >= 1.2 && < 1.4
+                     , process                   >= 1.4 && < 1.5
+                     , split                     >= 0.2 && < 0.3
+  ghc-options:         -threaded -with-rtsopts=-M4g
+  hs-source-dirs:      test-stackage
+  main-is:             Main.hs
   default-language:    Haskell2010
 
 benchmark cli-benchmark

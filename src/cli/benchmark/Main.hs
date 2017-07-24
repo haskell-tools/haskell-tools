@@ -35,7 +35,7 @@ main = do
   args <- getArgs
   (year, month, day) <- date
   cases <- bms2Mcases (Date {..}) bms
-  case args of 
+  case args of
     [file] -> writeFile file (show $ encode cases)
     _ -> putStrLn $ LazyBS.unpack $ encode cases
   putStrLn "Execution times (cycles):"
@@ -72,59 +72,39 @@ instance ToJSON BMCase
 
 bms :: [BM]
 bms = [ BM { bmId = "full-1", workingDir = rootDir </> "CppHs", refactors = [
-          "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "ExtractBinding 182:8-182:36 parseResult"
-        , "RenameDefinition 181:1 gDefined"
-        , "GenerateSignature 51:5-51:5"
-        , "GenerateSignature 50:5-50:5"
-        , "GenerateSignature 49:5-49:5"
-        , "ExtractBinding 47:46-47:64 linesFixed"
-        , "RenameDefinition 46:1 cppIfDef"
-        , "OrganizeImports"
+        "ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult"
+        , "RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5"
+        , "ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed"
+        , "RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef"
+        , "OrganizeImports Language.Preprocessor.Cpphs.CppIfdef"
         , "Exit"
         ]  }
       , BM { bmId = "full-2", workingDir = rootDir </> "CppHs", refactors = [
-          "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "ExtractBinding 96:29-96:47 tokenizeTT"
-        , "ExtractBinding 90:11-90:67 fun"
-        , "OrganizeImports"
+        "ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT"
+        , "ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun"
+        , "OrganizeImports Language.Preprocessor.Cpphs.MacroPass"
         , "Exit"
         ]  }
       , BM { bmId = "full-3", workingDir = rootDir </> "CppHs", refactors = [
-          "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "ExtractBinding 182:8-182:36 parseResult"
-        , "RenameDefinition 181:1 gDefined"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "ExtractBinding 96:29-96:47 tokenizeTT"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "GenerateSignature 51:5-51:5"
-        , "GenerateSignature 50:5-50:5"
-        , "GenerateSignature 49:5-49:5"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "ExtractBinding 90:11-90:67 fun"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "ExtractBinding 47:46-47:64 linesFixed"
-        , "RenameDefinition 46:1 cppIfDef"
-        , "OrganizeImports"
+        "ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 182:8-182:36 parseResult"
+        , "RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 181:1 gDefined"
+        , "ExtractBinding Language.Preprocessor.Cpphs.MacroPass 96:29-96:47 tokenizeTT"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5"
+        , "ExtractBinding Language.Preprocessor.Cpphs.MacroPass 90:11-90:67 fun"
+        , "ExtractBinding Language.Preprocessor.Cpphs.CppIfdef 47:46-47:64 linesFixed"
+        , "RenameDefinition Language.Preprocessor.Cpphs.CppIfdef 46:1 cppIfDef"
+        , "OrganizeImports Language.Preprocessor.Cpphs.CppIfdef"
         , "Exit"
         ]  }
       , BM { bmId = "3xGenerateTypeSignature", workingDir = rootDir </> "CppHs", refactors = [
-          "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "GenerateSignature 51:5-51:5"
-        , "GenerateSignature 50:5-50:5"
-        , "GenerateSignature 49:5-49:5"
-        , "Exit"
-        ]  }
-      , BM { bmId ="selects", workingDir = rootDir </> "CppHs", refactors = [
-          "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
-        , "SelectModule Language.Preprocessor.Cpphs.MacroPass"
-        , "SelectModule Language.Preprocessor.Cpphs.CppIfdef"
+        "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 51:5-51:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 50:5-50:5"
+        , "GenerateSignature Language.Preprocessor.Cpphs.CppIfdef 49:5-49:5"
         , "Exit"
         ]  }
       , BM { bmId ="empty", workingDir = rootDir </> "CppHs", refactors = [ "Exit" ] }
@@ -149,13 +129,13 @@ benchmakable wd rfs = Benchmarkable $ \ _ -> do
   makeCliTest wd rfs
 
 makeCliTest :: String -> [String] -> IO ()
-makeCliTest wd rfs = do   
+makeCliTest wd rfs = do
     copyDir wd (wd ++ "_orig")
     inKnob <- newKnob (BS.pack $ unlines rfs)
     inHandle <- newFileHandle inKnob "<input>" ReadMode
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
-    void $ refactorSession inHandle outHandle [wd]
+    void $ normalRefactorSession inHandle outHandle [wd]
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 
