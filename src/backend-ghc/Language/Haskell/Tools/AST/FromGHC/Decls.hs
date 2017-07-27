@@ -507,12 +507,12 @@ trfPatternSynonym (PSB id _ lhs def dir)
 
   where trfPatSynLhs :: Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
         trfPatSynLhs id (PrefixPatSyn args)
-          = annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn <$> trfName id <*> trfAnnList " " trfName' args
+          = annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn <$> define (trfName id) <*> trfAnnList " " trfName' args
         trfPatSynLhs op (InfixPatSyn lhs rhs)
-          = annLocNoSema (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.UInfixPatSyn <$> trfName lhs <*> trfOperator op <*> trfName rhs
+          = annLocNoSema (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.UInfixPatSyn <$> define (trfName lhs) <*> trfOperator op <*> trfName rhs
         trfPatSynLhs id (RecordPatSyn flds)
           = annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) <$> before AnnEqual)
-              $ AST.URecordPatSyn <$> trfName id <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
+              $ AST.URecordPatSyn <$> define (trfName id) <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
 
         trfPatSynRhs :: HsPatSynDir n -> Located (Pat n) -> Trf (AST.UPatSynRhs (Dom r) RangeStage)
         trfPatSynRhs ImplicitBidirectional pat = AST.UBidirectionalPatSyn <$> trfPattern pat <*> nothing " where " "" atTheEnd
