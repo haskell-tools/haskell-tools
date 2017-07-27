@@ -337,6 +337,8 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.RenameModuleAlias", "3:21-3:23", "L")
   , ("Refactor.RenameDefinition.MergeFields", "3:14-3:15", "y")
   , ("Refactor.RenameDefinition.MergeFields_RenameY", "3:34-3:35", "x")
+  , ("Refactor.RenameDefinition.PatternSynonym", "6:9", "ArrowAppl")
+  , ("Refactor.RenameDefinition.PatternSynonymTypeSig", "6:9", "ArrowAppl")
   ]
 
 wrongRenameDefinitionTests =
