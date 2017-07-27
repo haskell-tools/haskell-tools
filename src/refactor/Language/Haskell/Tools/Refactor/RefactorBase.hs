@@ -10,6 +10,7 @@
            , TemplateHaskell
            , ViewPatterns
            , TypeApplications
+           , RecordWildCards
            #-}
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.RefactorBase where
@@ -89,15 +90,21 @@ sourceFileModule fp = intercalate "." $ splitDirectories $ dropExtension fp
 
 
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
-data ModuleCollection
+data ModuleCollection k
   = ModuleCollection { _mcId :: ModuleCollectionId
                      , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
-                     , _mcModules :: Map.Map SourceFileKey ModuleRecord
+                     , _mcModules :: Map.Map k ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
                      , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
                      , _mcDependencies :: [ModuleCollectionId]
                      }
+
+modCollToSfk :: ModuleCollection ModuleNameStr -> ModuleCollection SourceFileKey
+modCollToSfk ModuleCollection{..} = ModuleCollection{ _mcModules = Map.mapKeys (SourceFileKey "") _mcModules, ..}
+
+-- | An alias for module names
+type ModuleNameStr = String
 
 -- | The state of a module.
 data ModuleRecord
@@ -127,7 +134,7 @@ data ModuleCollectionId = DirectoryMC FilePath
 
 -- | A common class for the state of refactoring tools
 class IsRefactSessionState st where
-  refSessMCs :: Simple Lens st [ModuleCollection]
+  refSessMCs :: Simple Lens st [ModuleCollection SourceFileKey]
   initSession :: st
 
 instance Show ErrorMessages where

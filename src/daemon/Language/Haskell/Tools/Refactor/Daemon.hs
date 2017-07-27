@@ -206,10 +206,8 @@ updateClient resp (PerformRefactoring refact modPath selection args) = do
                 hPutStr handle newCont
               return $ Right (n, file, UndoChanges file undo)
             ModuleRemoved mod -> do
-              Just (_,m) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
-              let modName = GHC.moduleName $ fromJust $ fmap semanticsModule (m ^? typedRecModule) <|> fmap semanticsModule (m ^? renamedRecModule)
-              ms <- getModSummary modName
-              let file = getModSumOrig ms
+              Just (sfk,_) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
+              let file = sfk ^. sfkFileName
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
               lift $ removeTarget (TargetFile file Nothing)
               modify $ (refSessMCs .- removeModule mod)

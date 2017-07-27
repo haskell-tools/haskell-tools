@@ -591,7 +591,7 @@ performRefactors command workingDir flags target = do
       initGhcFlagsForTest
       useFlags flags
       useDirs [workingDir]
-      setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap (map (^. sfkModuleName) . Map.keys . (^. mcModules)) mods))
+      setTargets (map (\mod -> (Target (TargetModule (GHC.mkModuleName mod)) True Nothing)) (concatMap (Map.keys . (^. mcModules)) mods))
       load LoadAllTargets
       allMods <- getModuleGraph
       selectedMod <- getModSummary (GHC.mkModuleName target)

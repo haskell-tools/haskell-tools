@@ -11,10 +11,12 @@ import Control.Exception
 import Control.Monad.State.Strict
 import Control.Reference
 import qualified Data.List as List
+import Data.List.Split
 import qualified Data.Map as Map
 import Data.Maybe
 import System.FilePath
 import System.IO
+import System.Directory
 
 import Data.IntSet (member)
 import Digraph as GHC
@@ -32,9 +34,10 @@ import Language.Haskell.Tools.Refactor.GetModules
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.RefactorBase
 
+
 -- | The state common for refactoring tools, carrying the state of modules.
 data RefactorSessionState
-  = RefactorSessionState { __refSessMCs :: [ModuleCollection]
+  = RefactorSessionState { __refSessMCs :: [ModuleCollection SourceFileKey]
                          }
 
 makeReferences ''RefactorSessionState
@@ -47,20 +50,18 @@ instance IsRefactSessionState RefactorSessionState where
 loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
-     modify $ refSessMCs .- (++ modColls)
+     modify $ refSessMCs .- (++ map modCollToSfk modColls)
      allModColls <- gets (^. refSessMCs)
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let fileNames = map (^. sfkFileName) $ concat
-                      $ map (Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)))
-                      $ modColls ^? traversal & mcModules
+     let dirsMods = map (\mc -> (mc ^. mcSourceDirs, getExposedModules mc)) modColls
          alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
      targets <- map targetId <$> (lift getTargets)
-     lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t))
-          $ map (\f -> (Target (TargetFile f Nothing) True Nothing)) fileNames
+     lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t)) . concat
+             =<< liftIO (mapM (\(dirs,mods) -> mapM (createTarget dirs) mods) dirsMods)
      handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
@@ -74,6 +75,20 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
+
+        -- | Creates a target from a module name. If possible, finds the
+        -- corresponding source file to distinguish between modules of the same name.
+        createTarget :: [FilePath] -> String -> IO Target
+        createTarget srcFolders modName
+          = makeTarget <$> filterM doesFileExist
+                             (map (</> toFileName modName) srcFolders)
+          where toFileName = (<.> "hs") . List.intercalate [pathSeparator] . splitOn "."
+                makeTarget [] = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
+                makeTarget (fn:_) = Target (TargetFile fn Nothing) True Nothing
+
+        getExposedModules :: ModuleCollection ModuleNameStr -> [ModuleNameStr]
+        getExposedModules
+          = Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)) . (^. mcModules)
 
 -- | Handle GHC exceptions and RefactorException.
 handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
@@ -141,6 +156,7 @@ reloadModule report ms = do
         parseTyped (mc ^. mcRoot) (if codeGen then forceCodeGen ms' else ms')
       modify $ refSessMCs & traversal & filtered (== mc) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+                      . Map.delete (SourceFileKey "" modName)
       liftIO $ report ms
     Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
@@ -169,7 +185,7 @@ checkEvaluatedMods report mods = do
 
 -- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
 -- but code generation were not enabled by then.
-codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection] -> ModSummary -> Ghc a
+codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection SourceFileKey] -> ModSummary -> Ghc a
 codeGenForModule report mcs ms
   = let modName = modSumName ms
         mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs

@@ -21,6 +21,7 @@ import Data.List (sort)
 import Data.Aeson
 import Data.Maybe
 import System.IO
+import System.IO.Error
 
 import SrcLoc
 import FastString
@@ -352,7 +353,8 @@ communicateWithDaemon port msgs = withSocketsDo $ do
                                                     io
                                                     return r)
                                  ((>> return []) . sendAll sock . (`BS.snoc` '\n') . encode)) msgs)
-    sendAll sock $ encode Disconnect
+    sendAll sock (encode Disconnect)
+      `catchIOError` \e -> hPutStrLn stderr $ "Cannot send Disconnect: " ++ show e
     resps <- readSockResponsesUntil sock Disconnected BS.empty
     close sock
     return (concat intermedRes ++ resps)

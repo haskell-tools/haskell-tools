@@ -51,14 +51,12 @@ detectAutogen root DefaultDB = ifExists (root </> "dist" </> "build" </> "autoge
 detectAutogen root (ExplicitDB _) = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root CabalSandboxDB = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root StackDB = do
-  distExists <- doesDirectoryExist (root </> ".stack-work" </> "dist")
-  existing <- if distExists then (do
-    contents <- listDirectory (root </> ".stack-work" </> "dist")
-    let dirs = map ((root </> ".stack-work" </> "dist") </>) contents
-    subDirs <- mapM (\d -> map (d </>) <$> listDirectory d) dirs
-    mapM (ifExists . (</> "build" </> "autogen")) (dirs ++ concat subDirs)) else return []
-  return (choose existing)
-
+  dir <- withCurrentDirectory root $ do
+    (_, distDir, distDirErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--dist-dir"] ""
+    when (not $ null distDirErrs)  -- print errors if they occurred
+      $ putStrLn $ "Errors while checking dist directory with stack: " ++ distDirErrs
+    return $ trim distDir
+  ifExists $ root </> dir </> "build" </> "autogen"
 
 trim :: String -> String
 trim = f . f
