@@ -72,8 +72,8 @@ library
                      , mtl                       >= 2.2   && < 2.3
                      , split                     >= 0.2   && < 1.0
                      , directory                 >= 1.2   && < 1.4
-                     , process                   >= 1.4   && < 1.5
-                     , ghc                       >= 8.0   && < 8.1
+                     , process                   >= 1.4   && < 1.7
+                     , ghc                       >= 8.0   && < 8.3
                      , ghc-paths                 >= 0.1   && < 0.2
                      , references                >= 0.3.2 && < 1.0
                      , network                   >= 2.6   && < 3.0
@@ -107,7 +107,7 @@ test-suite haskell-tools-daemon-tests
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9  && < 0.10
                      , directory                 >= 1.2  && < 1.4
-                     , process                   >= 1.4  && < 1.5
+                     , process                   >= 1.4  && < 1.7
                      , filepath                  >= 1.4  && < 2.0
                      , bytestring                >= 0.10 && < 0.11
                      , network                   >= 2.6  && < 2.7

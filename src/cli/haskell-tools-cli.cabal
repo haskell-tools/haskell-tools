@@ -52,7 +52,7 @@ library
                      , split                     >= 0.2 && < 0.3
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2
-                     , ghc                       >= 8.0 && < 8.1
+                     , ghc                       >= 8.0 && < 8.3
                      , ghc-paths                 >= 0.1 && < 0.2
                      , references                >= 0.3 && < 0.4
                      , strict                    >= 0.3 && < 0.4
@@ -75,7 +75,7 @@ executable ht-refact
 executable ht-test-stackage
   build-depends:       base                      >= 4.9 && < 4.10
                      , directory                 >= 1.2 && < 1.4
-                     , process                   >= 1.4 && < 1.5
+                     , process                   >= 1.4 && < 1.7
                      , split                     >= 0.2 && < 0.3
   ghc-options:         -threaded -with-rtsopts=-M4g
   hs-source-dirs:      test-stackage
@@ -103,7 +103,7 @@ benchmark cli-benchmark
   build-depends:       base                      >= 4.9 && < 4.10
                      , haskell-tools-cli         >= 0.8 && < 0.9
                      , criterion                 >= 1.1 && < 1.3
-                     , time                      >= 1.6 && < 1.7
+                     , time                      >= 1.6 && < 1.9
                      , aeson                     >= 1.0 && < 1.3
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
