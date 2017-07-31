@@ -94,6 +94,7 @@ data ModuleCollection k
   = ModuleCollection { _mcId :: ModuleCollectionId
                      , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
+                     , _mcModSourceFiles :: [(String, FilePath)]
                      , _mcModules :: Map.Map k ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
                      , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis

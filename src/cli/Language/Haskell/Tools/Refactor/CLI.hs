@@ -58,6 +58,7 @@ refactorSession _ _ output args
     hPutStrLn output $ showVersion version
     return True
 refactorSession init input output args = do
+  let strict = "-strict" `elem` args
   connStore <- newEmptyMVar
   isInteractive <- newEmptyMVar
   init connStore
@@ -68,7 +69,7 @@ refactorSession init input output args = do
   writeChan send (SetGHCFlags args)
   forkIO $ forever $ do interactive <- takeMVar isInteractive
                         when interactive (processUserInput input output send)
-  readFromSocket output isInteractive recv send
+  readFromSocket strict output isInteractive recv send
 
 processUserInput :: Handle -> Handle -> Chan ClientMessage -> IO ()
 processUserInput input output chan = do
@@ -87,24 +88,26 @@ processCommand output chan cmd = do
                                             ++ intercalate ", " refactorCommands
             return True
 
-readFromSocket :: Handle -> MVar Bool -> Chan ResponseMsg -> Chan ClientMessage -> IO Bool
-readFromSocket output isInteractive recv send = do
-  continue <- readChan recv >>= processMessage output isInteractive send
-  maybe (readFromSocket output isInteractive recv send) return continue
+readFromSocket :: Bool -> Handle -> MVar Bool -> Chan ResponseMsg -> Chan ClientMessage -> IO Bool
+readFromSocket strict output isInteractive recv send = do
+  continue <- readChan recv >>= processMessage strict output isInteractive send
+  maybe (readFromSocket strict output isInteractive recv send) return continue
 
 -- | Returns Nothing if the execution should continue, Just False on erronous termination
 -- and Just True on normal termination.
-processMessage :: Handle -> MVar Bool -> Chan ClientMessage -> ResponseMsg -> IO (Maybe Bool)
-processMessage output _ _ (ErrorMessage msg) = hPutStrLn output msg >> return (Just False)
-processMessage output _ _ (CompilationProblem marks) = hPutStrLn output (show marks) >> return Nothing
-processMessage output _ _ (LoadedModules mods)
+processMessage :: Bool -> Handle -> MVar Bool -> Chan ClientMessage -> ResponseMsg -> IO (Maybe Bool)
+processMessage strict output _ _ (ErrorMessage msg)
+  = hPutStrLn output msg >> return (if strict then Just False else Nothing)
+processMessage strict output _ _ (CompilationProblem marks)
+  = hPutStrLn output (show marks) >> return (if strict then Just False else Nothing)
+processMessage _ output _ _ (LoadedModules mods)
   = mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods >> return Nothing
-processMessage output isInteractive chan (UnusedFlags flags)
+processMessage _ output isInteractive chan (UnusedFlags flags)
   = do loadModules chan flags
        performCmdOptions output isInteractive chan flags
        return Nothing
-processMessage _ _ _ Disconnected = return (Just True)
-processMessage _ _ _ _ = return Nothing
+processMessage _ _ _ _ Disconnected = return (Just True)
+processMessage _ _ _ _ _ = return Nothing
 
 loadModules :: Chan ClientMessage -> [String] -> IO ()
 loadModules chan flags = writeChan chan (AddPackages roots)

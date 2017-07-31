@@ -46,8 +46,9 @@ instance Eq (ModuleCollection k) where
   (==) = (==) `on` _mcId
 
 instance Show k => Show (ModuleCollection k) where
-  show (ModuleCollection id root srcDirs mods _ _ deps)
-    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
+  show (ModuleCollection id root srcDirs renames mods _ _ deps)
+    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs
+        ++ " " ++ show renames ++ " (" ++ show mods ++ ") " ++ show deps
 
 containingMC :: FilePath -> Simple Traversal [ModuleCollection k] (ModuleCollection k)
 containingMC fp = traversal & filtered (\mc -> _mcRoot mc `isPrefixOf` fp)
@@ -143,7 +144,7 @@ getModules allRoots root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile allRoots root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] (modKeys mods) return return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] [] (modKeys mods) return return []]
   where modKeys mods = Map.fromList $ map (, ModuleNotLoaded False True) mods
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
@@ -183,6 +184,7 @@ modulesFromCabalFile allRoots root cabal = (getModules . setupFlags <$> readPack
                   then Just $ ModuleCollection (mkModuleCollKey packageName tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
+                                (getModuleSourceFiles tmc)
                                 (Map.fromList $ map modRecord $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)
@@ -198,7 +200,7 @@ class ToModuleCollection t where
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
   getBuildInfo :: t -> BuildInfo
   getModuleNames :: t -> [ModuleName]
-  getModuleSourceFiles :: t -> [(ModuleName, FilePath)]
+  getModuleSourceFiles :: t -> [(String, FilePath)]
   getModuleSourceFiles _ = []
   needsToCompile :: t -> ModuleName -> Bool
   getMain :: t -> String
@@ -215,7 +217,7 @@ instance ToModuleCollection Executable where
   getBuildInfo = buildInfo
   getModuleNames exe = fromString (getMain exe) : exeModules exe
   needsToCompile exe mn = components mn == [getMain exe]
-  getModuleSourceFiles exe = [(fromString (getMain exe), modulePath exe)]
+  getModuleSourceFiles exe = [(getMain exe, modulePath exe)]
 
 instance ToModuleCollection TestSuite where
   mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
@@ -224,7 +226,7 @@ instance ToModuleCollection TestSuite where
   needsToCompile exe mn = components mn == [getMain exe]
   getModuleSourceFiles exe
     = case testInterface exe of
-        TestSuiteExeV10 _ fp -> [(fromString (getMain exe), fp)]
+        TestSuiteExeV10 _ fp -> [(getMain exe, fp)]
         _ -> []
   getMain t = case testInterface t of
         TestSuiteLibV09 _ mod -> intercalate "." $ components mod
@@ -237,7 +239,7 @@ instance ToModuleCollection Benchmark where
   needsToCompile exe mn = components mn == [getMain exe]
   getModuleSourceFiles exe
     = case benchmarkInterface exe of
-        BenchmarkExeV10 _ fp -> [(fromString (getMain exe), fp)]
+        BenchmarkExeV10 _ fp -> [(getMain exe, fp)]
         _ -> []
 
 getMain' :: BuildInfo -> String

@@ -55,7 +55,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let dirsMods = map (\mc -> (mc ^. mcSourceDirs, getExposedModules mc)) modColls
+     let dirsMods = map (\mc -> ((mc ^. mcSourceDirs, mc ^. mcModSourceFiles), getExposedModules mc)) modColls
          alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
@@ -78,11 +78,13 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
 
         -- | Creates a target from a module name. If possible, finds the
         -- corresponding source file to distinguish between modules of the same name.
-        createTarget :: [FilePath] -> String -> IO Target
-        createTarget srcFolders modName
+        createTarget :: ([FilePath], [(String, FilePath)]) -> String -> IO Target
+        createTarget (srcFolders, mapping) modName
           = makeTarget <$> filterM doesFileExist
                              (map (</> toFileName modName) srcFolders)
-          where toFileName = (<.> "hs") . List.intercalate [pathSeparator] . splitOn "."
+          where toFileName mn = case mn `lookup` mapping of
+                                 Just fn -> fn
+                                 Nothing -> (<.> "hs") $ List.intercalate [pathSeparator] $ splitOn "." $ mn
                 makeTarget [] = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
                 makeTarget (fn:_) = Target (TargetFile fn Nothing) True Nothing
 
