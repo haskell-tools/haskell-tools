@@ -22,6 +22,7 @@ import Data.Aeson
 import Data.Maybe
 import System.IO
 import System.IO.Error
+import System.FilePath.Glob
 
 import SrcLoc
 import FastString
@@ -55,6 +56,8 @@ allTests isSource testRoot portCounter
               $ map (makeReloadTest portCounter) reloadingTests
           , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
+          , testGroup "watch-tests"
+              $ map (makeWatchTest portCounter) watchTests
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
              then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
@@ -161,7 +164,7 @@ sourceRoot = ".." </> ".." </> "src"
 
 selfLoadingTest :: MVar Int -> TestTree
 selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do
-    actual <- communicateWithDaemon port
+    actual <- communicateWithDaemon False port
                 [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor"]) ]
     assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual)
                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
@@ -287,6 +290,22 @@ pkgDbTests
           execute "stack" ["clean"]
           execute "stack" ["build"]
 
+watchTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+watchTests
+  = [ ("simple-modification", testRoot </> "reloading"
+    , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
+        -- TODO: be able to wait for some messages before doing IO
+      , Left $ do threadDelay 2000000 -- wait for 2s so the packages are loaded
+                  writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
+                  threadDelay 2000000
+      ]
+    , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
+              , LoadingModules{}, LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
+              ] -> let allPathes = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
+                    in [pathC,pathB,pathA] == allPathes && [pathC',pathB',pathA'] == allPathes
+            _ -> False )
+    ]
+
 
 execute :: String -> [String] -> IO ()
 execute cmd args
@@ -306,7 +325,7 @@ tryToExecute cmd args
 
 makeDaemonTest :: MVar Int -> (String, [ClientMessage], [ResponseMsg]) -> TestTree
 makeDaemonTest port (label, input, expected) = testCase label $ do
-    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
+    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
 
 makeRefactorTest :: MVar Int -> (String, FilePath, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
@@ -315,7 +334,7 @@ makeRefactorTest port (label, dir, input, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input))
+    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input))
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -325,7 +344,7 @@ makeReloadTest port (label, dir, input1, io, input2, validator) = testCase label
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon port (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
+    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -333,16 +352,26 @@ makePkgDbTest :: MVar Int -> (String, IO (), [ClientMessage], [ResponseMsg]) -> 
 makePkgDbTest port (label, prepare, inputs, expected)
   = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
       $ testCase label $ do
-          actual <- communicateWithDaemon port ([Left prepare] ++ map Right inputs)
+          actual <- communicateWithDaemon False port ([Left prepare] ++ map Right inputs)
           assertEqual "" expected actual
 
 makeCompProblemTest :: MVar Int -> (String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
 makeCompProblemTest port (label, actions, validator) = testCase label $ do
-  actual <- communicateWithDaemon port actions
+  actual <- communicateWithDaemon False port actions
   assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
 
-communicateWithDaemon :: MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
-communicateWithDaemon port msgs = withSocketsDo $ do
+makeWatchTest :: MVar Int -> (String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeWatchTest port (label, dir, actions, validator) = testCase label $ do
+    exists <- doesDirectoryExist (dir ++ testSuffix)
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
+    actual <- communicateWithDaemon True port (Right (SetPackageDB DefaultDB) : actions)
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
+
+communicateWithDaemon :: Bool -> MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
+communicateWithDaemon watch port msgs = withSocketsDo $ do
     portNum <- retryConnect port
     addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just (show portNum))
     let serverAddr = head addrInfo
@@ -361,7 +390,11 @@ communicateWithDaemon port msgs = withSocketsDo $ do
   where waitToConnect sock addr
           = connect sock addr `catch` \(e :: SomeException) -> threadDelay 10000 >> waitToConnect sock addr
         retryConnect port = do portNum <- readMVar port
-                               forkIO $ runDaemon' [show portNum, "True"]
+                               watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
+                               case (watch, watchDir) of
+                                 (True, []) -> error "The watch executable is not found."
+                                 (True, [w]) -> forkIO $ runDaemon' [show portNum, "True", w </> "watch"]
+                                 (False, _) -> forkIO $ runDaemon' [show portNum, "True"]
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END
@@ -369,6 +402,9 @@ communicateWithDaemon port msgs = withSocketsDo $ do
                                                                         else error "The port number reached the maximum")
                                               retryConnect port
 
+-- this must be changed once watch is in stackage
+watchPath = "../../.stack-work/downloaded/*/watch-master/.stack-work/dist/*/build/watch"
+linuxWatchPath = "../../.stack-work/downloaded/*/watch-master/.stack-work/dist/*/*/build/watch"
 
 readSockResponsesUntil :: Socket -> ResponseMsg -> BS.ByteString -> IO [ResponseMsg]
 readSockResponsesUntil sock rsp bs
