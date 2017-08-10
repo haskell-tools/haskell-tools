@@ -1,20 +1,18 @@
 module Main where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty (TestTree, testGroup, defaultMain)
+import Test.Tasty.HUnit (assertBool, testCase)
 
-import System.Exit
+import Control.Monad ((=<<), when, forM_)
+import Data.ByteString.Char8 (pack, unpack)
+import Data.Knob (newKnob, newFileHandle, getContents)
+import qualified Data.List as List
 import System.Directory
 import System.FilePath
-import Control.Monad
-import Control.Exception
-import qualified Data.List as List
-import Data.Knob
-import Data.ByteString.Char8 (pack, unpack)
 import System.IO
-import Control.Concurrent
 
-import Language.Haskell.Tools.Refactor.CLI
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession)
 
 main :: IO ()
 main = defaultMain allTests
@@ -43,7 +41,7 @@ makeCliTest (name, dirs, args, input, outputCheck)
       inHandle <- newFileHandle inKnob "<input>" ReadMode
       outKnob <- newKnob (pack [])
       outHandle <- newFileHandle outKnob "<output>" WriteMode
-      res <- normalRefactorSession inHandle outHandle (args suffix ++ testdirs)
+      res <- normalRefactorSession builtinRefactorings inHandle outHandle (args suffix ++ testdirs)
       actualOut <- Data.Knob.getContents outKnob
       assertBool ("The result is not what is expected. Output: " ++ (unpack actualOut))
         =<< outputCheck suffix (unpack actualOut)

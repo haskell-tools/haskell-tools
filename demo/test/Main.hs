@@ -1,26 +1,18 @@
 {-# LANGUAGE StandaloneDeriving, LambdaCase #-}
 module Main where
 
-import Test.Tasty
-import Test.Tasty.HUnit
-import System.Exit
-import System.Directory
-import System.FilePath
-import Control.Monad
-import Control.Exception
-import Control.Concurrent
-import Control.Concurrent.MVar
-import Network.WebSockets
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.List as List
+import Control.Concurrent (killThread, forkIO)
+import Control.Monad (Monad(..), mapM)
 import Data.Aeson
-import Data.Maybe
-import System.IO
-import System.Directory
+import qualified Data.ByteString.Lazy.Char8 as BS (unpack)
+import qualified Data.List as List ((++), map)
+import Data.Maybe (Maybe(..))
+import Network.WebSockets
+import System.IO (IO(..))
+import Test.Tasty
+import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
 
-import Debug.Trace
-
-import Language.Haskell.Tools.Demo
+import Language.Haskell.Tools.Demo (ResponseMsg(..), ClientMessage(..), runDemo)
 
 main :: IO ()
 main = do -- create one daemon process for the whole testing session

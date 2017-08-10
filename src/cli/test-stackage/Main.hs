@@ -1,18 +1,16 @@
 {-# LANGUAGE LambdaCase #-}
 module Main where
 
-import Control.Applicative
-import Control.Exception
-import Control.Monad
-import System.Directory
-import System.IO
-import System.Process
-import System.Timeout
-import System.Environment
-import System.Exit
-import Control.Concurrent
+import Control.Applicative ((<$>))
+import Control.Concurrent (threadDelay)
+import Control.Exception (IOException, throwIO, catch)
+import Control.Monad (Monad(..), mapM_)
 import Data.List
-import Data.List.Split
+import Data.List.Split (splitOn)
+import System.Directory
+import System.Environment (getArgs)
+import System.Exit (ExitCode(..))
+import System.Process (waitForProcess, runCommand)
 
 data Result = GetFailure
             | BuildFailure
@@ -54,8 +52,7 @@ testPackage noLoad pack = do
              -- correct rts option handling (on windows) requires stack 1.4
              , let autogenPath = "tested-package\\.stack-work\\dist\\" ++ snapshotId ++ "\\build\\autogen"
                    logPath = "logs\\" ++ pack ++ "-refact-log.txt 2>&1"
-                   dbPaths = ["C:\\Users\\nboldi\\AppData\\Local\\Programs\\stack\\x86_64-windows\\ghc-8.0.2\\lib\\package.conf.d", "C:\\sr\\snapshots\\c095693b\\pkgdb"]
-                in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -strict -exec=\"ProjectOrganizeImports\" tested-package " ++ autogenPath ++ " > " ++ logPath, RefactError)
+                in Left ("stack exec ht-refact --stack-yaml=..\\stack.yaml --rts-options -M4G -- -exec=\"ProjectOrganizeImports\" tested-package " ++ autogenPath ++ " > " ++ logPath, RefactError)
              , Left ("stack build > logs\\" ++ pack ++ "-reload-log.txt 2>&1", WrongCodeError)
              ]
   problem <- case res of

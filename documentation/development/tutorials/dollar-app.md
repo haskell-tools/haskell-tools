@@ -17,7 +17,7 @@ Preparation
  - Start from this `HelloRefactor` module that greets all subexpressions with maximum respect:
 
 ```haskell
-module Language.Haskell.Tools.Refactor.Predefined.HelloRefactor where
+module Language.Haskell.Tools.Refactor.Builtin.HelloRefactor where
 
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor

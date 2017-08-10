@@ -1,7 +1,7 @@
 module Main where
 
-import Language.Haskell.Tools.Debug
-import System.Environment
+import Language.Haskell.Tools.Debug (demoRefactor)
+import System.Environment (getProgName, getArgs)
 
 main :: IO ()
 main = do args <- getArgs

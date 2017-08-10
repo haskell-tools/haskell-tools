@@ -14,15 +14,14 @@ cabal-version:       >=1.10
 library
   ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.PrettyPrint
-                     , Language.Haskell.Tools.Transform
-                     , Language.Haskell.Tools.IndentationUtils
+                     , Language.Haskell.Tools.PrettyPrint.Prepare
   other-modules:       Language.Haskell.Tools.PrettyPrint.RoseTree
-                     , Language.Haskell.Tools.Transform.RangeToRangeTemplate
-                     , Language.Haskell.Tools.Transform.RangeTemplateToSourceTemplate
-                     , Language.Haskell.Tools.Transform.RangeTemplate
-                     , Language.Haskell.Tools.Transform.SourceTemplate
-                     , Language.Haskell.Tools.Transform.SourceTemplateHelpers
-                     , Language.Haskell.Tools.Transform.PlaceComments
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers
+                     , Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments
   build-depends:       base              >= 4.9  && < 4.10
                      , mtl               >= 2.2  && < 2.3
                      , containers        >= 0.5  && < 0.6

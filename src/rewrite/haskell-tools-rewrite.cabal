@@ -12,33 +12,33 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Language.Haskell.Tools.AST.Rewrite
-                     , Language.Haskell.Tools.AST.ElementTypes
-                     , Language.Haskell.Tools.AST.Gen
-                     , Language.Haskell.Tools.AST.Match
-                     , Language.Haskell.Tools.AST.Gen.Modules
-                     , Language.Haskell.Tools.AST.Gen.Decls
-                     , Language.Haskell.Tools.AST.Gen.Binds
-                     , Language.Haskell.Tools.AST.Gen.Types
-                     , Language.Haskell.Tools.AST.Gen.Kinds
-                     , Language.Haskell.Tools.AST.Gen.Exprs
-                     , Language.Haskell.Tools.AST.Gen.Literals
-                     , Language.Haskell.Tools.AST.Gen.Stmts
-                     , Language.Haskell.Tools.AST.Gen.Patterns
-                     , Language.Haskell.Tools.AST.Gen.Names
-                     , Language.Haskell.Tools.AST.Gen.TH
-                     , Language.Haskell.Tools.AST.Match.Modules
-                     , Language.Haskell.Tools.AST.Match.Decls
-                     , Language.Haskell.Tools.AST.Match.Binds
-                     , Language.Haskell.Tools.AST.Match.Types
-                     , Language.Haskell.Tools.AST.Match.Kinds
-                     , Language.Haskell.Tools.AST.Match.Exprs
-                     , Language.Haskell.Tools.AST.Match.Literals
-                     , Language.Haskell.Tools.AST.Match.Stmts
-                     , Language.Haskell.Tools.AST.Match.Patterns
-                     , Language.Haskell.Tools.AST.Match.Names
-                     , Language.Haskell.Tools.AST.Match.TH
-  other-modules:       Language.Haskell.Tools.AST.Gen.Utils
+  exposed-modules:     Language.Haskell.Tools.Rewrite
+                     , Language.Haskell.Tools.Rewrite.ElementTypes
+                     , Language.Haskell.Tools.Rewrite.Create
+                     , Language.Haskell.Tools.Rewrite.Match
+                     , Language.Haskell.Tools.Rewrite.Create.Modules
+                     , Language.Haskell.Tools.Rewrite.Create.Decls
+                     , Language.Haskell.Tools.Rewrite.Create.Binds
+                     , Language.Haskell.Tools.Rewrite.Create.Types
+                     , Language.Haskell.Tools.Rewrite.Create.Kinds
+                     , Language.Haskell.Tools.Rewrite.Create.Exprs
+                     , Language.Haskell.Tools.Rewrite.Create.Literals
+                     , Language.Haskell.Tools.Rewrite.Create.Stmts
+                     , Language.Haskell.Tools.Rewrite.Create.Patterns
+                     , Language.Haskell.Tools.Rewrite.Create.Names
+                     , Language.Haskell.Tools.Rewrite.Create.TH
+                     , Language.Haskell.Tools.Rewrite.Match.Modules
+                     , Language.Haskell.Tools.Rewrite.Match.Decls
+                     , Language.Haskell.Tools.Rewrite.Match.Binds
+                     , Language.Haskell.Tools.Rewrite.Match.Types
+                     , Language.Haskell.Tools.Rewrite.Match.Kinds
+                     , Language.Haskell.Tools.Rewrite.Match.Exprs
+                     , Language.Haskell.Tools.Rewrite.Match.Literals
+                     , Language.Haskell.Tools.Rewrite.Match.Stmts
+                     , Language.Haskell.Tools.Rewrite.Match.Patterns
+                     , Language.Haskell.Tools.Rewrite.Match.Names
+                     , Language.Haskell.Tools.Rewrite.Match.TH
+  other-modules:       Language.Haskell.Tools.Rewrite.Create.Utils
   build-depends:       base                      >= 4.9  && < 4.10
                      , mtl                       >= 2.2  && < 2.3
                      , containers                >= 0.5  && < 0.6

@@ -4,9 +4,10 @@
             #-}
 module Language.Haskell.Tools.Debug where
 
-import Control.Monad
-import Control.Reference
+import Control.Monad (Monad(..), (=<<), forM_)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Reference ((^.))
+import Data.List.Split (splitOn)
 import Data.Maybe (Maybe(..), fromJust)
 import GHC.Generics (Generic(..))
 import System.FilePath (pathSeparator, (</>), (<.>))
@@ -18,16 +19,14 @@ import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import StringBuffer (hGetStringBuffer)
 
 import Language.Haskell.Tools.AST (NodeInfo(..))
-import Language.Haskell.Tools.AST.FromGHC
-import Language.Haskell.Tools.DebugGhcAST ()
+import Language.Haskell.Tools.BackendGHC
+import Language.Haskell.Tools.Debug.DebugGhcAST ()
+import Language.Haskell.Tools.Debug.RangeDebug (srcInfoDebug)
+import Language.Haskell.Tools.Debug.RangeDebugInstances ()
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
-import Language.Haskell.Tools.RangeDebug (srcInfoDebug)
-import Language.Haskell.Tools.RangeDebug.Instances ()
-import Language.Haskell.Tools.Refactor.Perform (performCommand, readCommand)
-import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Refactor.Prepare
-import Language.Haskell.Tools.Refactor.RefactorBase (RefactorChange(..), SourceFileKey(..))
-import Language.Haskell.Tools.Transform
+import Language.Haskell.Tools.PrettyPrint.Prepare
+import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
 -- | Should be only used for testing
 demoRefactor :: String -> String -> [String] -> String -> IO ()
@@ -78,7 +77,9 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== pretty printed:"
     let prettyPrinted = prettyPrint sourced
     liftIO $ putStrLn prettyPrinted
-    transformed <- performCommand (either error id $ readCommand command) ((SourceFileKey (moduleSourceFile moduleName) moduleName), sourced) []
+    transformed <- performCommand builtinRefactorings (splitOn " " command)
+                                  (Right ((SourceFileKey (moduleSourceFile moduleName) moduleName), sourced))
+                                  []
     case transformed of
       Right changes -> do
         forM_ changes $ \case

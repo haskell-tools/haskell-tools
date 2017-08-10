@@ -12,8 +12,9 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
     -- references
   , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
-  , defModuleName, defDynFlags, defIsBootModule, implicitNames, importedModule, availableNames, importedNames
-  , implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts, prelFamInsts
+  , defModuleName, defDynFlags, defIsBootModule, implicitNames, importedModule, availableNames
+  , importedNames, implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts
+  , prelFamInsts
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
@@ -47,9 +48,11 @@ data UsageSpec = UsageSpec { usageQualified :: Bool
 
 instance Outputable UsageSpec where
   ppr (UsageSpec q useQ asQ)
-    = GHC.text $ (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
+    = GHC.text $ (if q then "qualified " else "") ++ "as "
+        ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
   pprPrec _ (UsageSpec q useQ asQ)
-    = GHC.text $ (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
+    = GHC.text $ (if q then "qualified " else "") ++ "as "
+        ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
 
 -- | Semantic info type for any node not
 -- carrying additional semantic information
@@ -127,7 +130,7 @@ data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
   deriving Data
 
 instance Data DynFlags where
-  gunfold k z c = error "Cannot construct dyn flags"
+  gunfold _ _ _ = error "Cannot construct dyn flags"
   toConstr _ = dynFlagsCon
   dataTypeOf _ = dynFlagsType
 
@@ -167,15 +170,24 @@ instance Show ScopeInfo where
   show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
 
 instance Outputable n => Show (NameInfo n) where
-  show (NameInfo locals defined nameInfo) = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ ")"
-  show (AmbiguousNameInfo locals defined nameInfo span) = "(AmbiguousNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
-  show (ImplicitNameInfo locals defined nameInfo span) = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
+  show (NameInfo locals defined nameInfo)
+    = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
+        ++ showSDocUnsafe (ppr nameInfo) ++ ")"
+  show (AmbiguousNameInfo locals defined nameInfo span)
+    = "(AmbiguousNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
+        ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
+  show (ImplicitNameInfo locals defined nameInfo span)
+    = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
+        ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
 
 instance Show CNameInfo where
-  show (CNameInfo locals defined nameInfo fixity) = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " " ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
+  show (CNameInfo locals defined nameInfo fixity)
+    = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
+        ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
 
 instance Outputable n => Show (PName n) where
-  show (PName n (Just parent)) = showSDocUnsafe (ppr n) ++ "[in " ++ showSDocUnsafe (ppr parent) ++ "]"
+  show (PName n (Just parent))
+    = showSDocUnsafe (ppr n) ++ "[in " ++ showSDocUnsafe (ppr parent) ++ "]"
   show (PName n Nothing) = showSDocUnsafe (ppr n)
 
 instance Outputable n => Show (ModuleInfo n) where
@@ -185,11 +197,14 @@ instance Outputable n => Show (ModuleInfo n) where
 
 instance Outputable n => Show (ImportInfo n) where
   show (ImportInfo mod avail imported clsInsts famInsts)
-    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " " ++ show imported ++ " "
-          ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
+    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " "
+        ++ show imported ++ " " ++ showSDocUnsafe (ppr clsInsts) ++ " "
+        ++ showSDocUnsafe (ppr famInsts) ++ ")"
 
 instance Show ImplicitFieldInfo where
-  show (ImplicitFieldInfo bnds) = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map (\(from,to) -> showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)) bnds)) ++ "])"
+  show (ImplicitFieldInfo bnds)
+    = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map showImplicitFld bnds)) ++ "])"
+    where showImplicitFld (from, to) = showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)
 
 instance Show NoSemanticInfo where
   show NoSemanticInfo = "NoSemanticInfo"
@@ -213,7 +228,8 @@ instance Functor ModuleInfo where
   fmap f = implicitNames .- fmap (fmap f)
 
 instance Functor ImportInfo where
-  fmap f (ImportInfo mod avail imps clsInsts famInsts) = ImportInfo mod (fmap f avail) (fmap (fmap f) imps) clsInsts famInsts
+  fmap f (ImportInfo mod avail imps clsInsts famInsts)
+    = ImportInfo mod (fmap f avail) (fmap (fmap f) imps) clsInsts famInsts
 
 instance Foldable NameInfo where
   foldMap f si = maybe mempty f (si ^? nameInfo)
@@ -222,7 +238,8 @@ instance Foldable ModuleInfo where
   foldMap f si = foldMap (foldMap f) (si ^. implicitNames)
 
 instance Foldable ImportInfo where
-  foldMap f si = foldMap f (((si ^. availableNames) ++ (si ^? importedNames & traversal & (pName &+& pNameParent & just) )))
+  foldMap f si = foldMap f (((si ^. availableNames)
+                   ++ (si ^? importedNames & traversal & (pName &+& pNameParent & just) )))
 
 instance Foldable PName where
   foldMap f (PName n p) = f n `mappend` foldMap f p
@@ -232,8 +249,10 @@ instance Traversable PName where
 
 instance Traversable NameInfo where
   traverse f (NameInfo locals defined nameInfo) = NameInfo locals defined <$> f nameInfo
-  traverse _ (AmbiguousNameInfo locals defined nameInfo span) = pure $ AmbiguousNameInfo locals defined nameInfo span
-  traverse _ (ImplicitNameInfo locals defined nameInfo span) = pure $ ImplicitNameInfo locals defined nameInfo span
+  traverse _ (AmbiguousNameInfo locals defined nameInfo span)
+    = pure $ AmbiguousNameInfo locals defined nameInfo span
+  traverse _ (ImplicitNameInfo locals defined nameInfo span)
+    = pure $ ImplicitNameInfo locals defined nameInfo span
 
 instance Traversable ModuleInfo where
   traverse f (ModuleInfo mod dfs isboot imp clsInsts famInsts)
@@ -241,4 +260,5 @@ instance Traversable ModuleInfo where
 
 instance Traversable ImportInfo where
   traverse f (ImportInfo mod avail imps clsInsts famInsts)
-    = ImportInfo mod <$> traverse f avail <*> traverse (traverse f) imps <*> pure clsInsts <*> pure famInsts
+    = ImportInfo mod <$> traverse f avail <*> traverse (traverse f) imps <*> pure clsInsts
+                     <*> pure famInsts

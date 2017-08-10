@@ -10,23 +10,24 @@ module Main where
 import Criterion.Measurement hiding (runBenchmark)
 import Criterion.Types hiding(measure)
 
-import qualified Data.ByteString.Lazy.Char8 as LazyBS (pack, unpack)
-import qualified Data.ByteString.Char8 as BS (pack, unpack)
-import Data.Aeson
-import Data.Knob
-import GHC.Generics
-import System.FilePath
-import System.Directory
-import System.IO
+import Control.Exception (finally)
 import Control.Monad
-import Control.Exception
-import System.Environment
+import Data.Aeson (ToJSON, FromJSON, encode)
+import qualified Data.ByteString.Char8 as BS (pack)
+import qualified Data.ByteString.Lazy.Char8 as LazyBS (unpack)
+import Data.Knob (newKnob, newFileHandle)
 import Data.List
-import Data.List.Split
-import Data.Time.Clock
-import Data.Time.Calendar
+import Data.List.Split (chunksOf)
+import Data.Time.Calendar (toGregorian)
+import Data.Time.Clock (UTCTime(..), getCurrentTime)
+import GHC.Generics (Generic)
+import System.Directory
+import System.Environment (getArgs)
+import System.FilePath (FilePath, (</>))
+import System.IO
 
-import Language.Haskell.Tools.Refactor.CLI
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession)
 
 rootDir = "examples"
 
@@ -135,7 +136,7 @@ makeCliTest wd rfs = do
     inHandle <- newFileHandle inKnob "<input>" ReadMode
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
-    void $ normalRefactorSession inHandle outHandle [wd]
+    void $ normalRefactorSession builtinRefactorings inHandle outHandle [wd]
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

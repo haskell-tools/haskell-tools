@@ -13,23 +13,23 @@ cabal-version:       >=1.10
 
 library
   ghc-options: -O2
-  exposed-modules:     Language.Haskell.Tools.AST.FromGHC
-                     , Language.Haskell.Tools.AST.FromGHC.Modules
-                     , Language.Haskell.Tools.AST.FromGHC.TH
-                     , Language.Haskell.Tools.AST.FromGHC.Decls
-                     , Language.Haskell.Tools.AST.FromGHC.Binds
-                     , Language.Haskell.Tools.AST.FromGHC.Exprs
-                     , Language.Haskell.Tools.AST.FromGHC.Stmts
-                     , Language.Haskell.Tools.AST.FromGHC.Patterns
-                     , Language.Haskell.Tools.AST.FromGHC.Types
-                     , Language.Haskell.Tools.AST.FromGHC.Kinds
-                     , Language.Haskell.Tools.AST.FromGHC.Literals
-                     , Language.Haskell.Tools.AST.FromGHC.Names
-                     , Language.Haskell.Tools.AST.FromGHC.GHCUtils
-  other-modules:       Language.Haskell.Tools.AST.FromGHC.Monad
-                     , Language.Haskell.Tools.AST.FromGHC.Utils
-                     , Language.Haskell.Tools.AST.FromGHC.SourceMap
-                     , Language.Haskell.Tools.AST.FromGHC.AddTypeInfo
+  exposed-modules:     Language.Haskell.Tools.BackendGHC
+                     , Language.Haskell.Tools.BackendGHC.Modules
+                     , Language.Haskell.Tools.BackendGHC.TH
+                     , Language.Haskell.Tools.BackendGHC.Decls
+                     , Language.Haskell.Tools.BackendGHC.Binds
+                     , Language.Haskell.Tools.BackendGHC.Exprs
+                     , Language.Haskell.Tools.BackendGHC.Stmts
+                     , Language.Haskell.Tools.BackendGHC.Patterns
+                     , Language.Haskell.Tools.BackendGHC.Types
+                     , Language.Haskell.Tools.BackendGHC.Kinds
+                     , Language.Haskell.Tools.BackendGHC.Literals
+                     , Language.Haskell.Tools.BackendGHC.Names
+                     , Language.Haskell.Tools.BackendGHC.GHCUtils
+  other-modules:       Language.Haskell.Tools.BackendGHC.Monad
+                     , Language.Haskell.Tools.BackendGHC.Utils
+                     , Language.Haskell.Tools.BackendGHC.SourceMap
+                     , Language.Haskell.Tools.BackendGHC.AddTypeInfo
 
   build-depends:       base              >= 4.9  && < 4.10
                      , transformers      >= 0.5  && < 0.6

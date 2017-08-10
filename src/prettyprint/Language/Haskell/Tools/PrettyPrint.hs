@@ -11,16 +11,15 @@ import FastString (fsLit)
 import SrcLoc
 
 import Language.Haskell.Tools.AST (SrcTemplateStage, SourceInfoTraversal(..))
+import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint.RoseTree (RoseSourceInfo(..), RoseTree(..), toRoseTree)
-import Language.Haskell.Tools.Transform.SourceTemplate
 
 import Control.Monad.State
-import Control.Reference
+import Control.Reference ((^.))
 import Data.Foldable (Foldable(..), concat)
 import Data.List as List
 import Data.List.Split (splitOn)
 import Data.Sequence hiding (null, replicate)
-import Debug.Trace
 
 -- | Pretty prints an AST by using source templates stored as node info
 prettyPrint :: (SourceInfoTraversal node) => node dom SrcTemplateStage -> String

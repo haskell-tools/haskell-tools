@@ -1,6 +1,6 @@
 module Main where
 
-import Language.Haskell.Tools.Refactor.Daemon
+import Language.Haskell.Tools.Daemon (runDaemonCLI)
 
 main :: IO ()
 main = runDaemonCLI

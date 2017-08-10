@@ -1,0 +1,122 @@
+name:                haskell-tools-builtin-refactorings
+version:             0.8.0.0
+synopsis:            Refactoring Tool for Haskell
+description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
+homepage:            https://github.com/haskell-tools/haskell-tools
+license:             BSD3
+license-file:        LICENSE
+author:              Boldizsar Nemeth
+maintainer:          nboldi@elte.hu
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+extra-source-files: examples/CPP/*.hs
+                  , examples/CppHs/Language/Preprocessor/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
+                  , examples/Decl/*.hs
+                  , examples/Expr/*.hs
+                  , examples/InstanceControl/Control/Instances/*.hs
+                  , examples/Module/*.hs
+                  , examples/Pattern/*.hs
+                  , examples/Refactor/CommentHandling/*.hs
+                  , examples/Refactor/DataToNewtype/*.hs
+                  , examples/Refactor/DollarApp/*.hs
+                  , examples/Refactor/ExtractBinding/*.hs
+                  , examples/Refactor/GenerateExports/*.hs
+                  , examples/Refactor/GenerateTypeSignature/*.hs
+                  , examples/Refactor/GenerateTypeSignature/BringToScope/*.hs
+                  , examples/Refactor/IfToGuards/*.hs
+                  , examples/Refactor/InlineBinding/*.hs
+                  , examples/Refactor/InlineBinding/AppearsInAnother/*.hs
+                  , examples/Refactor/OrganizeImports/*.hs
+                  , examples/Refactor/OrganizeImports/MakeExplicit/*.hs
+                  , examples/Refactor/OrganizeImports/InstanceCarry/*.hs
+                  , examples/Refactor/RenameDefinition/*.hs
+                  , examples/Refactor/RenameDefinition/MultiModule/*.hs
+                  , examples/Refactor/RenameDefinition/MultiModule_res/*.hs
+                  , examples/Refactor/RenameDefinition/RenameModule/*.hs
+                  , examples/Refactor/RenameDefinition/RenameModule_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceDecls/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceDecls_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceExpr/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceExpr_res/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceType/*.hs
+                  , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
+                  , examples/Refactor/FloatOut/*.hs
+                  , examples/TH/*.hs
+                  , examples/TH/QuasiQuote/*.hs
+                  , examples/TH/Splice/*.hs
+                  , examples/Type/*.hs
+
+library
+  ghc-options: -O2
+  exposed-modules:     Language.Haskell.Tools.Refactor.Builtin
+                     , Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature
+                     , Language.Haskell.Tools.Refactor.Builtin.OrganizeImports
+                     , Language.Haskell.Tools.Refactor.Builtin.GenerateExports
+                     , Language.Haskell.Tools.Refactor.Builtin.RenameDefinition
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
+                     , Language.Haskell.Tools.Refactor.Builtin.DataToNewtype
+                     , Language.Haskell.Tools.Refactor.Builtin.IfToGuards
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp
+                     , Language.Haskell.Tools.Refactor.Builtin.InlineBinding
+                     , Language.Haskell.Tools.Refactor.Builtin.FloatOut
+                     , Language.Haskell.Tools.Refactor.Builtin.HelloRefactor
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp1
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp2
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
+
+  build-depends:       base                      >= 4.9  && < 4.10
+                     , mtl                       >= 2.2  && < 2.3
+                     , uniplate                  >= 1.6  && < 1.7
+                     , ghc-paths                 >= 0.1  && < 0.2
+                     , containers                >= 0.5  && < 0.6
+                     , directory                 >= 1.2  && < 1.4
+                     , transformers              >= 0.5  && < 0.6
+                     , references                >= 0.3  && < 0.4
+                     , split                     >= 0.2  && < 0.3
+                     , filepath                  >= 1.4  && < 1.5
+                     , template-haskell          >= 2.11 && < 2.12
+                     , ghc                       >= 8.0  && < 8.1
+                     , Cabal                     >= 1.24 && < 1.25
+                     , haskell-tools-ast         >= 0.8  && < 0.9
+                     , haskell-tools-backend-ghc >= 0.8  && < 0.9
+                     , haskell-tools-rewrite     >= 0.8  && < 0.9
+                     , haskell-tools-prettyprint >= 0.8  && < 0.9
+                     , haskell-tools-refactor    >= 0.8  && < 0.9
+  default-language:    Haskell2010
+
+test-suite haskell-tools-builtin-refactorings-test
+  type:                exitcode-stdio-1.0
+  ghc-options:         -with-rtsopts=-M2g
+  hs-source-dirs:      test
+  main-is:             Main.hs
+  build-depends:       base                      >= 4.9  && < 4.10
+                     , tasty                     >= 0.11 && < 0.12
+                     , tasty-hunit               >= 0.9 && < 0.10
+                     , transformers              >= 0.5  && < 0.6
+                     , either                    >= 4.4  && < 4.5
+                     , filepath                  >= 1.4  && < 1.5
+                     , mtl                       >= 2.2  && < 2.3
+                     , uniplate                  >= 1.6  && < 1.7
+                     , containers                >= 0.5  && < 0.6
+                     , directory                 >= 1.2  && < 1.4
+                     , references                >= 0.3  && < 0.4
+                     , split                     >= 0.2  && < 0.3
+                     , time                      >= 1.6  && < 1.7
+                     , template-haskell          >= 2.11 && < 2.12
+                     , ghc                       >= 8.0  && < 8.1
+                     , ghc-paths                 >= 0.1  && < 0.2
+                     , Cabal                     >= 1.24 && < 1.25
+                     , haskell-tools-ast         >= 0.8  && < 0.9
+                     , haskell-tools-backend-ghc >= 0.8  && < 0.9
+                     , haskell-tools-rewrite     >= 0.8  && < 0.9
+                     , haskell-tools-prettyprint >= 0.8  && < 0.9
+                     , haskell-tools-refactor    >= 0.8  && < 0.9
+                     , haskell-tools-builtin-refactorings >= 0.8  && < 0.9
+                     -- libraries used by the examples
+                     , old-time                  >= 1.1  && < 1.2
+                     , polyparse                 >= 1.12 && < 1.13
+  default-language:    Haskell2010

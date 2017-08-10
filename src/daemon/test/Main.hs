@@ -1,35 +1,36 @@
 {-# LANGUAGE StandaloneDeriving, LambdaCase, ScopedTypeVariables, OverloadedStrings #-}
 module Main where
 
-import Test.Tasty
-import Test.Tasty.HUnit
-import System.Exit
-import System.Directory
-import System.FilePath
-import System.Process
-import System.Environment
-import System.Exit
-import Control.Monad
-import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.MVar
-import Network.Socket hiding (KeepAlive, send, recv)
-import Network.Socket.ByteString.Lazy as Sock
+import Control.Exception (SomeException(..), finally, catch)
+import Control.Monad
+import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List as List
 import Data.List (sort)
-import Data.Aeson
-import Data.Maybe
+import Data.Maybe (Maybe(..), isJust, catMaybes)
+import Network.Socket hiding (KeepAlive, send, recv)
+import Network.Socket.ByteString.Lazy as Sock (sendAll, recv)
+import System.Directory
+import System.Environment (unsetEnv)
+import System.Exit (ExitCode(..))
+import System.Exit (ExitCode(..))
+import System.FilePath (FilePath(..), (</>))
 import System.IO
-import System.IO.Error
+import System.IO.Error (catchIOError)
+import System.Process
+import Test.Tasty
+import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
 import System.FilePath.Glob
 
-import SrcLoc
-import FastString
+import FastString (mkFastString)
+import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 
-import Language.Haskell.Tools.Refactor.Daemon
-import Language.Haskell.Tools.Refactor.Daemon.Protocol
-import Language.Haskell.Tools.Refactor.Daemon.PackageDB
+import Language.Haskell.Tools.Daemon (runDaemon')
+import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
+import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
 pORT_NUM_START = 4100
 pORT_NUM_END = 4200
@@ -56,8 +57,6 @@ allTests isSource testRoot portCounter
               $ map (makeReloadTest portCounter) reloadingTests
           , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
-          , testGroup "watch-tests"
-              $ map (makeWatchTest portCounter) watchTests
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
              then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
@@ -290,23 +289,6 @@ pkgDbTests
           execute "stack" ["clean"]
           execute "stack" ["build"]
 
-watchTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
-watchTests
-  = [ ("simple-modification", testRoot </> "reloading"
-    , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
-        -- TODO: be able to wait for some messages before doing IO
-      , Left $ do threadDelay 2000000 -- wait for 2s so the packages are loaded
-                  writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
-                  threadDelay 2000000
-      ]
-    , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
-              , LoadingModules{}, LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
-              ] -> let allPathes = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
-                    in [pathC,pathB,pathA] == allPathes && [pathC',pathB',pathA'] == allPathes
-            _ -> False )
-    ]
-
-
 execute :: String -> [String] -> IO ()
 execute cmd args
   = do let command = (cmd ++ concat (map (" " ++) args))
@@ -393,8 +375,8 @@ communicateWithDaemon watch port msgs = withSocketsDo $ do
                                watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
                                case (watch, watchDir) of
                                  (True, []) -> error "The watch executable is not found."
-                                 (True, [w]) -> forkIO $ runDaemon' [show portNum, "True", w </> "watch"]
-                                 (False, _) -> forkIO $ runDaemon' [show portNum, "True"]
+                                 (True, [w]) -> forkIO $ runDaemon' builtinRefactorings [show portNum, "True", w </> "watch"]
+                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings [show portNum, "True"]
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END

@@ -50,9 +50,8 @@ import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.ASTDebug
 import Language.Haskell.Tools.ASTDebug.Instances ()
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Refactor.Perform
-import Language.Haskell.Tools.Refactor.Prepare
-import Language.Haskell.Tools.Refactor.RefactorBase hiding (initSession)
+import Language.Haskell.Tools.Refactor hiding (initSession)
+import Language.Haskell.Tools.Refactor.Builtin
 
 type ClientId = Int
 
@@ -147,16 +146,18 @@ updateClient _ (PerformRefactoring "UpdateAST" modName _ _) = do
 updateClient _ (PerformRefactoring "TestErrorLogging" _ _ _) = error "This is a test"
 updateClient dir (PerformRefactoring refact modName selection args) = do
     mod <- gets (find ((modName ==) . (\(_,m,_) -> m) . fst) . Map.assocs . (^. refSessMods))
-    allModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
-    case analyzeCommand refact (selection:args) of
-      Right command ->
-        case mod of Just m -> do res <- lift $ performCommand command (moduleNameAndContent m) allModules
-                                 case res of
-                                   Left err -> return $ Just $ ErrorMessage err
-                                   Right diff -> do applyChanges diff
-                                                    return $ Just $ RefactorChanges (map trfDiff diff)
-                    Nothing -> return $ Just $ ErrorMessage "The module is not found"
-      Left err -> return $ Just $ ErrorMessage err
+    otherModules <- gets (filter ((modName /=) . (^. sfkModuleName) . fst) . map moduleNameAndContent . Map.assocs . (^. refSessMods))
+
+    case mod of
+      Just m ->
+        do res <- lift $ performCommand builtinRefactorings
+                                        ([refact,selection] ++ args)
+                                        (Right $ moduleNameAndContent m) otherModules
+           case res of
+             Right diff -> do applyChanges diff
+                              return $ Just $ RefactorChanges (map trfDiff diff)
+             Left err -> return $ Just $ ErrorMessage err
+      Nothing -> return $ Just $ ErrorMessage "The module is not found"
   where trfDiff (ContentChanged (key,cont)) = (key ^. sfkModuleName, Just (prettyPrint cont))
         trfDiff (ModuleCreated name mod _) = (name, Just (prettyPrint mod))
         trfDiff (ModuleRemoved name) = (name, Nothing)
@@ -178,11 +179,10 @@ updateClient dir (PerformRefactoring refact modName selection args) = do
 
 reloadAllMods :: FilePath -> StateT RefactorSessionState Ghc ()
 reloadAllMods dir = do
-  wd <- liftIO getCurrentDirectory
   void $ lift $ load LoadAllTargets
   targets <- lift getTargets
   forM_ (map ((\case (TargetModule n) -> n) . targetId) targets) $ \modName -> do
-      mod <- lift $ getModSummary modName >>= parseTyped wd
+      mod <- lift $ getModSummary modName >>= parseTyped
       modify $ refSessMods .- Map.insert (dir, GHC.moduleNameString modName, dir </> moduleSourceFile (GHC.moduleNameString modName)) mod
 
 createFileForModule :: FilePath -> String -> String -> IO ()

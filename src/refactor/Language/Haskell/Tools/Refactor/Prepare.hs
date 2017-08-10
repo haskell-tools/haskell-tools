@@ -7,11 +7,19 @@
            , FlexibleContexts
            , TypeFamilies
            , TupleSections
-           , TemplateHaskell
            , ViewPatterns
            #-}
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
+
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.List ((\\), isSuffixOf)
+import Data.List.Split (splitOn)
+import Data.Maybe
+import Language.Haskell.TH.LanguageExtensions
+import System.Directory
+import System.FilePath
 
 import CmdLineParser
 import DynFlags
@@ -23,23 +31,13 @@ import Packages
 import SrcLoc
 import StringBuffer
 
-import Control.Exception
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Trans
-import Data.IntSet (member)
-import Data.List ((\\), intersperse, isSuffixOf)
-import Data.List.Split
-import Data.Maybe
-import Language.Haskell.TH.LanguageExtensions
-import System.Directory
-import System.FilePath
-
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.FromGHC
+import Language.Haskell.Tools.BackendGHC
 import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Refactor.RefactorBase
-import Language.Haskell.Tools.Transform
+import Language.Haskell.Tools.PrettyPrint.Prepare
+import Language.Haskell.Tools.Refactor.Monad
+import Language.Haskell.Tools.Refactor.Representation
+import Language.Haskell.Tools.Refactor.Utils.Monadic
 
 
 -- | A quick function to try the refactorings
@@ -48,7 +46,7 @@ tryRefactor refact moduleName span
   = runGhc (Just libdir) $ do
       initGhcFlags
       useDirs ["."]
-      mod <- loadModule "." moduleName >>= parseTyped "."
+      mod <- loadModule "." moduleName >>= parseTyped
       res <- runRefactor (SourceFileKey (moduleSourceFile moduleName) moduleName, mod) []
                $ refact $ correctRefactorSpan mod $ readSrcSpan span
       case res of Right r -> liftIO $ mapM_ (putStrLn . prettyPrint . snd . fromContentChanged) r
@@ -132,6 +130,9 @@ getSourceDir ms
 getModSumOrig :: ModSummary -> FilePath
 getModSumOrig = normalise . fromMaybe (error "getModSumOrig: The given module doesn't have haskell source file.") . ml_hs_file . ms_location
 
+keyFromMS :: ModSummary -> SourceFileKey
+keyFromMS ms = SourceFileKey (normalise $ getModSumOrig ms) (getModSumName ms)
+
 -- | Gets the module name
 getModSumName :: ModSummary -> String
 getModSumName = GHC.moduleNameString . moduleName . ms_mod
@@ -150,8 +151,8 @@ loadModule workingDir moduleName
 type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 
 -- | Get the typed representation from a type-correct program.
-parseTyped :: FilePath -> ModSummary -> Ghc TypedModule
-parseTyped wd modSum = withAlteredDynFlags (return . normalizeFlags) $ do
+parseTyped :: ModSummary -> Ghc TypedModule
+parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
       hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
       hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum

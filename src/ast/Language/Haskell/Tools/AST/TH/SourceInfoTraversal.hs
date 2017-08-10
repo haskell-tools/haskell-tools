@@ -13,15 +13,15 @@ import Language.Haskell.Tools.AST.Ann
 deriveSourceInfoTraversal :: Name -> Q [Dec]
 deriveSourceInfoTraversal nm = reify nm >>= \case
   TyConI dt -> case dt of
-    DataD _ tyConName typArgs _ dataCons _ -> 
-      createInstance tyConName typArgs dataCons  
-    NewtypeD _ tyConName typArgs _ dataCon _ -> 
-      createInstance tyConName typArgs [dataCon]  
+    DataD _ tyConName typArgs _ dataCons _ ->
+      createInstance tyConName typArgs dataCons
+    NewtypeD _ tyConName typArgs _ dataCon _ ->
+      createInstance tyConName typArgs [dataCon]
     _ -> fail "Unsupported data type"
   _ -> fail "Expected the name of a data type or newtype"
-  
+
 createInstance :: Name -> [TyVarBndr] -> [Con] -> Q [Dec]
-createInstance tyConName typArgs dataCons   
+createInstance tyConName typArgs dataCons
     = do simpleClauses <- mapM (createClause simpleFunName False) dataCons
          upClauses <- mapM (createClause upFunName True) dataCons
          downClauses <- mapM (createClause downFunName True) dataCons
@@ -48,14 +48,14 @@ createInstance tyConName typArgs dataCons
         createExpr ctrName []
           = AppE applPure $ ConE ctrName
         createExpr ctrName (param1:params)
-          = foldl (\coll new -> InfixE (Just coll) applStar (Just new)) 
+          = foldl (\coll new -> InfixE (Just coll) applStar (Just new))
                   (InfixE (Just $ ConE ctrName) applDollar (Just param1))
                   params
-        
+
         applStar = VarE (mkName "Control.Applicative.<*>")
         applDollar = VarE (mkName "Control.Applicative.<$>")
         applPure = VarE (mkName "Control.Applicative.pure")
-        
+
         className = ''SourceInfoTraversal
         simpleFunName = 'sourceInfoTraverse
         upFunName = 'sourceInfoTraverseUp
@@ -63,7 +63,7 @@ createInstance tyConName typArgs dataCons
         trf = mkName "trf"
         desc = mkName "desc"
         asc = mkName "asc"
-       
+
         -- | Creates the expression and the predicate for a parameter
         processParam :: Name -> Bool -> Name -> Type -> Exp
         processParam funName updown arg (AppT (AppT _ (VarT dom)) (VarT stage)) | dom == tdom && stage == tstage

@@ -1,11 +1,15 @@
 resolver: lts-8.20
 
+ghc-options:
+  "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
+
 packages:
   - src/ast
   - src/backend-ghc
   - src/rewrite
   - src/prettyprint
   - src/refactor
+  - src/builtin-refactorings
   - demo
   - src/cli
   - src/debug

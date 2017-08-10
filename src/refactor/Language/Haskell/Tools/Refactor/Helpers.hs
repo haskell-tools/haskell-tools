@@ -5,19 +5,17 @@
 -- | Helper functions for defining refactorings.
 module Language.Haskell.Tools.Refactor.Helpers where
 
+import Control.Monad.State ()
 import Control.Reference
-import Control.Monad.Writer
-import Control.Monad.State
 import Data.Function (on)
-import Data.List (sortBy, nubBy, partition)
-import Data.Maybe
+import Data.List (sortBy, nubBy)
+import Data.Maybe (Maybe(..))
 
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.Rewrite as AST
-import Language.Haskell.Tools.Refactor.ListOperations (filterList)
+import Language.Haskell.Tools.Refactor.Utils.Lists (filterList)
+import Language.Haskell.Tools.Rewrite as AST
 
-import SrcLoc
-import Language.Haskell.Tools.Transform
+import SrcLoc (srcSpanStart)
 
 replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom
 replaceWithJust e = annMaybe .= Just e
