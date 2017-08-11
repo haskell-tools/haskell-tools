@@ -2,7 +2,6 @@
 module Main where
 
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Exception (SomeException(..), finally, catch)
 import Control.Monad
 import Data.Aeson
@@ -15,14 +14,13 @@ import Network.Socket.ByteString.Lazy as Sock (sendAll, recv)
 import System.Directory
 import System.Environment (unsetEnv)
 import System.Exit (ExitCode(..))
-import System.Exit (ExitCode(..))
 import System.FilePath (FilePath(..), (</>))
+import System.FilePath.Glob (glob)
 import System.IO
 import System.IO.Error (catchIOError)
 import System.Process
 import Test.Tasty
 import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
-import System.FilePath.Glob
 
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
@@ -152,7 +150,7 @@ compProblemTests =
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "no-such-file"
-    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] ]
+    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False ]
     , \case [ ErrorMessage _ ] -> True; _ -> False )
   , ( "additional-files"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "additional-files"] ]
@@ -173,13 +171,13 @@ refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] 
 refactorTests testRoot =
   [ ( "simple-refactor", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False
       ]
     , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
   , ( "hs-boots", testRoot </> "hs-boots"
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False
       ]
     , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _, ModulesChanged _
               , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
@@ -189,7 +187,7 @@ refactorTests testRoot =
             _ -> False )
   , ( "remove-module", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False
       ]
     , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{},LoadedModules [ (aaPath, _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
@@ -202,7 +200,7 @@ reloadingTests =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
               , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
@@ -216,7 +214,7 @@ reloadingTests =
     , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
     , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
     , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
               , LoadedModules [(pathB',_)], ModulesChanged _
@@ -235,7 +233,7 @@ reloadingTests =
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
                   [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
               , LoadingModules{}, LoadedModules [(pathC',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathC'',_)] ]
@@ -248,7 +246,7 @@ reloadingTests =
     , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
     , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"]
       , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
-                                              "3:1-3:2" ["d"]
+                                              "3:1-3:2" ["d"] False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathA,_)] ]
               -> let [pA,pB] = map ((testRoot </> "multi-packages-dependent" ++ testSuffix) </>) [ "package1" </> "A.hs", "package2" </> "B.hs"]
@@ -285,9 +283,6 @@ pkgDbTests
           withCurrentDirectory ("groups-0.4.0.0") $ do
             execute "cabal" ["sandbox", "init", "--sandbox", ".." </> ".cabal-sandbox"]
             execute "cabal" ["install"]
-        initStack = do
-          execute "stack" ["clean"]
-          execute "stack" ["build"]
 
 execute :: String -> [String] -> IO ()
 execute cmd args
@@ -370,7 +365,7 @@ communicateWithDaemon watch port msgs = withSocketsDo $ do
     close sock
     return (concat intermedRes ++ resps)
   where waitToConnect sock addr
-          = connect sock addr `catch` \(e :: SomeException) -> threadDelay 10000 >> waitToConnect sock addr
+          = connect sock addr `catch` \(_ :: SomeException) -> threadDelay 10000 >> waitToConnect sock addr
         retryConnect port = do portNum <- readMVar port
                                watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
                                case (watch, watchDir) of
@@ -398,7 +393,7 @@ readSockResponsesUntil sock rsp bs
            let splitted = BS.split '\n' fullBS
                recognized = catMaybes $ map decode splitted
             in if rsp `elem` recognized
-                 then return $ List.delete rsp recognized
+                 then return $ takeWhile (/= rsp) recognized
                  else readSockResponsesUntil sock rsp fullBS
 
 testRoot = "examples" </> "Project"

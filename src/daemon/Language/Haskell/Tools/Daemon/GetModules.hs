@@ -34,8 +34,8 @@ import qualified DynFlags as GHC
 import GHC hiding (ModuleName)
 import qualified Language.Haskell.TH.LanguageExtensions as GHC
 
-import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.MapExtensions
+import Language.Haskell.Tools.Daemon.Representation
 
 -- | Gets all ModuleCollections from a list of source directories. It also orders the source directories that are package roots so that
 -- they can be loaded in the order they are defined (no backward imports). This matters in those cases because for them there can be

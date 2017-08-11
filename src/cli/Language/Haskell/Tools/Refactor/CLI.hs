@@ -55,16 +55,16 @@ refactorSession refactorings init input output args = do
 processUserInput :: [RefactoringChoice IdDom] -> Handle -> Handle -> Chan ClientMessage -> IO ()
 processUserInput refactorings input output chan = do
   cmd <- hGetLine input
-  continue <- processCommand refactorings output chan cmd
+  continue <- processCommand False refactorings output chan cmd
   when continue $ processUserInput refactorings input output chan
 
-processCommand :: [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> String -> IO Bool
-processCommand refactorings output chan cmd = do
+processCommand :: Bool -> [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> String -> IO Bool
+processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
     ["Exit"] -> writeChan chan Disconnect >> return False
     ref : rest | let modPath:selection:details = rest ++ (replicate (2 - length rest) "")
                , ref `elem` refactorCommands refactorings
-       -> writeChan chan (PerformRefactoring ref modPath selection details) >> return True
+       -> writeChan chan (PerformRefactoring ref modPath selection details shutdown) >> return (not shutdown)
     _ -> do liftIO $ hPutStrLn output $ "'" ++ cmd ++ "' is not a known command. Commands are: Exit, "
                                             ++ intercalate ", " (refactorCommands refactorings)
             return True
@@ -94,8 +94,8 @@ loadModules chan flags = writeChan chan (AddPackages roots)
 
 performCmdOptions :: [RefactoringChoice IdDom] -> Handle -> MVar Bool -> Chan ClientMessage -> [String] -> IO Bool
 performCmdOptions refactorings output isInteractive chan flags = do
-  mapM_ (processCommand refactorings output chan) cmds
+  continue <- mapM (processCommand True refactorings output chan) cmds
   putMVar isInteractive (null cmds)
-  when (not $ null cmds) $ writeChan chan Disconnect
-  return True
+  when (not (null cmds) && and continue) $ writeChan chan Disconnect
+  return True -- wait for disconnect
   where cmds = catMaybes $ map (\f -> case splitOn "=" f of ["-exec", mod] -> Just mod; _ -> Nothing) flags

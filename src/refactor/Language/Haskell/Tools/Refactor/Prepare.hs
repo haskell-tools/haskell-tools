@@ -13,31 +13,31 @@
 module Language.Haskell.Tools.Refactor.Prepare where
 
 import Control.Monad
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO(..))
 import Data.List ((\\), isSuffixOf)
 import Data.List.Split (splitOn)
-import Data.Maybe
-import Language.Haskell.TH.LanguageExtensions
-import System.Directory
+import Data.Maybe (Maybe(..), fromMaybe, fromJust)
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
+import System.Directory (canonicalizePath)
 import System.FilePath
 
-import CmdLineParser
+import CmdLineParser (CmdLineP(..), processArgs)
 import DynFlags
-import FastString
+import FastString (mkFastString)
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
-import Packages
+import Packages (initPackages)
 import SrcLoc
-import StringBuffer
+import StringBuffer (hGetStringBuffer)
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.BackendGHC
-import Language.Haskell.Tools.PrettyPrint
+import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.PrettyPrint.Prepare
-import Language.Haskell.Tools.Refactor.Monad
+import Language.Haskell.Tools.Refactor.Monad (Refactoring(..))
 import Language.Haskell.Tools.Refactor.Representation
-import Language.Haskell.Tools.Refactor.Utils.Monadic
+import Language.Haskell.Tools.Refactor.Utils.Monadic (runRefactor)
 
 
 -- | A quick function to try the refactorings

@@ -1,8 +1,8 @@
 module Language.Haskell.Tools.Daemon.MapExtensions where
 
-import DynFlags
-import Language.Haskell.Extension
-import qualified Language.Haskell.TH.LanguageExtensions as GHC
+import DynFlags (DynFlags, xopt_unset, xopt_set)
+import Language.Haskell.Extension (KnownExtension(..))
+import qualified Language.Haskell.TH.LanguageExtensions as GHC (Extension(..))
 
 -- * Not imported from DynFlags.hs, so I copied it here
 setExtensionFlag', unSetExtensionFlag' :: GHC.Extension -> DynFlags -> DynFlags

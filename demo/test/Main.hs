@@ -23,8 +23,8 @@ main = do -- create one daemon process for the whole testing session
 
 allTests :: TestTree
 allTests
-  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10)) 
-      $ testGroup "daemon-tests" 
+  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 10))
+      $ testGroup "daemon-tests"
           [ testGroup "simple-tests" $ map makeDemoTest simpleTests
           , testGroup "loading-tests" $ map makeDemoTest loadingTests
           , testGroup "refactor-tests" $ map makeDemoTest refactorTests
@@ -32,7 +32,7 @@ allTests
           ]
 
 simpleTests :: [(String, [ClientMessage], [ResponseMsg])]
-simpleTests = 
+simpleTests =
   [ ( "empty-test", [], [] )
   , ( "keep-alive", [KeepAlive], [] )
   ]
@@ -95,15 +95,15 @@ refactorTests =
   ]
 
 makeDemoTest :: (String, [ClientMessage], [ResponseMsg]) -> TestTree
-makeDemoTest (label, input, expected) = testCase label $ do  
+makeDemoTest (label, input, expected) = testCase label $ do
     actual <- communicateWithDemo input
     assertEqual "" expected actual
 
 astViewTest :: TestTree
-astViewTest = testCase "ast-view-test" $ do  
+astViewTest = testCase "ast-view-test" $ do
     actual <- communicateWithDemo [ InitialProject [("A", "module A where\n\na = ()")]
                                   , PerformRefactoring "UpdateAST" "A" "1:1" [] ]
-    assertBool "The response must be a simple ASTViewContent message" 
+    assertBool "The response must be a simple ASTViewContent message"
       $ case actual of [ ASTViewContent _ ] -> True
                        _                    -> False
 

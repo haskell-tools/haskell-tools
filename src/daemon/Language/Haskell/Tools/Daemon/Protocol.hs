@@ -38,11 +38,12 @@ data ClientMessage
                        , modulePath :: FilePath
                        , editorSelection :: String
                        , details :: [String]
+                       , shutdownAfter :: Bool
                        }
     -- ^ Orders the engine to perform the refactoring on the module given
     -- with the selection and details. Successful refactorings respond with
-    -- ModulesChanged. After the refactoring, modules are re-loaded,
-    -- LoadingModules, LoadedModules responses are sent.
+    -- ModulesChanged. If shutdownAfter is not specified, after the refactoring,
+    -- modules are re-loaded, LoadingModules, LoadedModules responses are sent.
   | Disconnect
     -- ^ Stops the engine. It replies with Disconnected.
   | ReLoad { addedModules :: [FilePath]

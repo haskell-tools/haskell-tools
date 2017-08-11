@@ -46,8 +46,8 @@ import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
-import Language.Haskell.Tools.Daemon.Utils
 import Language.Haskell.Tools.Daemon.Update
+import Language.Haskell.Tools.Daemon.Utils
 import Language.Haskell.Tools.Daemon.Watch
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor

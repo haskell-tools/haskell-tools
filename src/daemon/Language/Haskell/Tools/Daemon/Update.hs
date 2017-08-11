@@ -6,40 +6,40 @@
            #-}
 module Language.Haskell.Tools.Daemon.Update where
 
-import Control.Exception
+import Control.Exception (Exception(..))
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
-import Data.Algorithm.Diff
-import qualified Data.ByteString.Char8 as StrictBS
-import Data.Either
-import Data.IORef
+import Data.Algorithm.Diff (Diff(..), getGroupedDiff)
+import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
+import Data.Either (Either(..), either, rights)
+import Data.IORef (newIORef)
 import Data.List hiding (insert)
-import qualified Data.Map as Map
+import qualified Data.Map as Map (insert, keys, filter)
 import Data.Maybe
-import Data.Version
-import System.Directory
+import Data.Version (Version(..))
+import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
 import System.IO
 import System.IO.Strict as StrictIO (hGetContents)
 
-import Bag
-import DynFlags
-import ErrUtils
+import Bag (bagToList)
+import DynFlags (DynFlags(..), PkgConfRef(..))
+import ErrUtils (ErrMsg(..))
 import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), modifySession)
 import HscTypes (hsc_mod_graph)
-import Packages
+import Packages (Version(..), initPackages)
 
-import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.Daemon.Session
+import Language.Haskell.Tools.Daemon.PackageDB (packageDBLoc, detectAutogen)
+import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Daemon.Representation
-import Language.Haskell.Tools.Daemon.Utils
-import Language.Haskell.Tools.Daemon.PackageDB
-import Language.Haskell.Tools.Daemon.Protocol
+import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
+import Language.Haskell.Tools.Daemon.Utils
+import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
-import Paths_haskell_tools_daemon
+import Paths_haskell_tools_daemon (version)
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
 updateClient :: [RefactoringChoice IdDom] ->  (ResponseMsg -> IO ()) -> ClientMessage -> StateT DaemonSessionState Ghc Bool
@@ -86,11 +86,12 @@ updateClient _ resp (ReLoad added changed removed) =
 updateClient _ _ Stop = modify (exiting .= True) >> return False
 
 -- TODO: perform refactorings without selected modules
-updateClient refactorings resp (PerformRefactoring refact modPath selection args) = do
+updateClient refactorings resp (PerformRefactoring refact modPath selection args shutdown) = do
     (selectedMod, otherMods) <- getFileMods modPath
     performRefactoring (refact:selection:args)
                        (maybe (Left modPath) Right selectedMod) otherMods
-    return True
+    when shutdown $ liftIO $ resp Disconnected
+    return (not shutdown)
   where performRefactoring cmd actualMod otherMods = do
           res <- lift $ performCommand refactorings cmd actualMod otherMods
           case res of
@@ -98,8 +99,9 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
             Right diff -> do changedMods <- applyChanges diff
                              liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
-                             when (not isWatching) -- if watch is on, then it will automatically
-                                                   -- reload changed files, otherwise we do it manually
+                             when (not isWatching && not shutdown)
+                                 -- if watch is on, then it will automatically
+                                 -- reload changed files, otherwise we do it manually
                                $ void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
         applyChanges changes = do
           forM changes $ \case
