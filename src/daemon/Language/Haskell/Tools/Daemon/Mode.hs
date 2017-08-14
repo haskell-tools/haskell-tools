@@ -12,7 +12,7 @@ import Network.Socket.ByteString.Lazy (sendAll, recv)
 
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage)
 
-data WorkingMode a = WorkingMode { daemonConnect :: [String] -> IO a
+data WorkingMode a = WorkingMode { daemonConnect :: Int -> IO a -- TODO: could we generalize this Int parameter nicely?
                                  , daemonDisconnect :: a -> IO ()
                                  , daemonSend :: a -> ResponseMsg -> IO ()
                                  , daemonReceive :: a -> IO [Either String ClientMessage]
@@ -21,10 +21,10 @@ data WorkingMode a = WorkingMode { daemonConnect :: [String] -> IO a
 socketMode :: WorkingMode (Socket,Socket)
 socketMode = WorkingMode sockConn sockDisconnect sockSend sockReceive
   where
-    sockConn finalArgs = do
+    sockConn portNumber = do
       sock <- socket AF_INET Stream 0
       setSocketOption sock ReuseAddr 1
-      bind sock (SockAddrInet (read (finalArgs !! 0)) iNADDR_ANY)
+      bind sock (SockAddrInet (read $ show portNumber) iNADDR_ANY)
       listen sock 1
       (conn, _) <- accept sock
       return (sock,conn)

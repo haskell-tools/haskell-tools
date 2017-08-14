@@ -27,7 +27,7 @@ import System.FilePath (FilePath, (</>))
 import System.IO
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession)
+import Language.Haskell.Tools.Refactor.CLI
 
 rootDir = "examples"
 
@@ -136,7 +136,8 @@ makeCliTest wd rfs = do
     inHandle <- newFileHandle inKnob "<input>" ReadMode
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
-    void $ normalRefactorSession builtinRefactorings inHandle outHandle [wd]
+    void $ normalRefactorSession builtinRefactorings inHandle outHandle
+             (CLIOptions False Nothing True Nothing Nothing [wd])
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

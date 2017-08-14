@@ -6,7 +6,6 @@ import Control.Exception (SomeException(..), finally, catch)
 import Control.Monad
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.List as List
 import Data.List (sort)
 import Data.Maybe (Maybe(..), isJust, catMaybes)
 import Network.Socket hiding (KeepAlive, send, recv)
@@ -25,7 +24,7 @@ import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 
-import Language.Haskell.Tools.Daemon (runDaemon')
+import Language.Haskell.Tools.Daemon
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
@@ -370,14 +369,20 @@ communicateWithDaemon watch port msgs = withSocketsDo $ do
                                watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
                                case (watch, watchDir) of
                                  (True, []) -> error "The watch executable is not found."
-                                 (True, [w]) -> forkIO $ runDaemon' builtinRefactorings [show portNum, "True", w </> "watch"]
-                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings [show portNum, "True"]
+                                 (True, [w]) -> forkIO $ runDaemon' builtinRefactorings (daemonOpts portNum){noWatch=False, watchExe=Just w}
+                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings (daemonOpts portNum)
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END
                                                                         then return (i+1)
                                                                         else error "The port number reached the maximum")
                                               retryConnect port
+        daemonOpts n = DaemonOptions { daemonVersion = False
+                                     , portNumber = n
+                                     , silentMode = True
+                                     , noWatch = True
+                                     , watchExe = Nothing
+                                     }
 
 -- this must be changed once watch is in stackage
 watchPath = "../../.stack-work/downloaded/*/watch-master/.stack-work/dist/*/build/watch"

@@ -110,6 +110,10 @@ executable ht-daemon
   ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-daemon      >= 0.8 && < 0.9
+                     , optparse-applicative      >= 0.13 && < 0.14
+                     , directory                 >= 1.2  && < 1.4
+                     , filepath                  >= 1.4  && < 2.0
+                     , haskell-tools-builtin-refactorings >= 0.8 && < 0.9
   hs-source-dirs:      exe
   main-is:             Main.hs
   default-language:    Haskell2010

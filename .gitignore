@@ -13,3 +13,4 @@ error-log.txt
 *.sublime-workspace
 hackage-test
 stackage-test
+stackage-test-logs

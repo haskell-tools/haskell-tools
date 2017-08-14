@@ -12,7 +12,7 @@ import System.FilePath
 import System.IO
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession)
+import Language.Haskell.Tools.Refactor.CLI
 
 main :: IO ()
 main = defaultMain allTests
@@ -21,17 +21,18 @@ allTests :: TestTree
 allTests
   = testGroup "cli-tests" [
       makeCliTest ( "batch", ["examples"</>"example-project"]
-                  , \s -> ["-exec=RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b"]
+                  , \s -> CLIOptions False (Just $ "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b")
+                             True Nothing Nothing
                   , \_ -> ""
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))
-    , makeCliTest ( "session", ["examples"</>"example-project"], \_ -> []
+    , makeCliTest ( "session", ["examples"</>"example-project"], \_ -> CLIOptions False Nothing True Nothing Nothing
                   , \s -> "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b\nExit\n"
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))
     ]
 
-makeCliTest :: (String, [FilePath], String -> [String], String -> String, String -> String -> IO Bool) -> TestTree
+makeCliTest :: (String, [FilePath], String -> [FilePath] -> CLIOptions, String -> String, String -> String -> IO Bool) -> TestTree
 makeCliTest (name, dirs, args, input, outputCheck)
   = let dir = joinPath $ longestCommonPrefix $ map splitDirectories dirs
         testdirs = map (\d -> if d == dir then dir ++ suffix else (dir ++ suffix </> makeRelative dir d)) dirs
@@ -41,7 +42,7 @@ makeCliTest (name, dirs, args, input, outputCheck)
       inHandle <- newFileHandle inKnob "<input>" ReadMode
       outKnob <- newKnob (pack [])
       outHandle <- newFileHandle outKnob "<output>" WriteMode
-      res <- normalRefactorSession builtinRefactorings inHandle outHandle (args suffix ++ testdirs)
+      res <- normalRefactorSession builtinRefactorings inHandle outHandle (args suffix testdirs)
       actualOut <- Data.Knob.getContents outKnob
       assertBool ("The result is not what is expected. Output: " ++ (unpack actualOut))
         =<< outputCheck suffix (unpack actualOut)
