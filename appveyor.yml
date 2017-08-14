@@ -19,6 +19,6 @@ test_script:
 - echo "" | stack --no-terminal --install-ghc install --test --no-run-tests > nul
 - echo "" | stack --no-terminal test haskell-tools-rewrite
 - echo "" | stack --no-terminal test haskell-tools-builtin-refactorings
-# - echo "" | stack --no-terminal test haskell-tools-cli # disabled test, TODO: make it work
+- echo "" | stack --no-terminal test haskell-tools-cli
 - echo "" | stack --no-terminal test haskell-tools-daemon
 - echo "" | stack --no-terminal test haskell-tools-demo
