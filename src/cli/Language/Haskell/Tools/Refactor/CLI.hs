@@ -27,7 +27,8 @@ type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
 
 normalRefactorSession :: [RefactoringChoice IdDom] -> Handle -> Handle -> CLIOptions -> IO Bool
 normalRefactorSession refactorings input output options@CLIOptions{..}
-  = do hSetBuffering stdout NoBuffering -- to synch our output with GHC's
+  = do hSetBuffering stdout LineBuffering -- to synch our output with GHC's
+       hSetBuffering stderr LineBuffering -- to synch our output with GHC's
        refactorSession refactorings
          (\st -> void $ forkIO $ runDaemon refactorings channelMode st (DaemonOptions False 0 True cliNoWatch cliWatchExe))
          input output options
@@ -90,7 +91,8 @@ processMessage pedantic output (CompilationProblem marks)
   = do hPutStrLn output (show marks)
        return (if pedantic then Just False else Nothing)
 processMessage _ output (LoadedModules mods)
-  = mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods >> return Nothing
+  = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods
+       return Nothing
 processMessage _ output (UnusedFlags flags)
   = if not $ null flags
       then do hPutStrLn output $ "Error: The following ghc-flags are not recognized: "
