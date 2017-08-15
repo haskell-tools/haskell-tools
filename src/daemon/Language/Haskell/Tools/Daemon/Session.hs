@@ -28,24 +28,18 @@ import HscTypes as GHC
 import Language.Haskell.TH.LanguageExtensions
 
 import Language.Haskell.Tools.Daemon.GetModules
+import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.ModuleGraph
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Utils
 import Language.Haskell.Tools.Refactor hiding (ModuleName)
 
--- | The state common for refactoring tools, carrying the state of modules.
-data RefactorSessionState
-  = RefactorSessionState { __refSessMCs :: [ModuleCollection SourceFileKey]
-                         }
-
-makeReferences ''RefactorSessionState
-
-instance IsRefactSessionState RefactorSessionState where
-  refSessMCs = _refSessMCs
-  initSession = RefactorSessionState []
-
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
-loadPackagesFrom :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (st -> FilePath -> IO [FilePath]) -> [FilePath] -> StateT st Ghc (Either RefactorException [a])
+loadPackagesFrom :: (ModSummary -> IO a)
+                      -> ([ModSummary] -> IO ())
+                      -> (DaemonSessionState -> FilePath -> IO [FilePath])
+                      -> [FilePath]
+                      -> StateT DaemonSessionState Ghc (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ map modCollToSfk modColls)
@@ -60,7 +54,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      targets <- map targetId <$> (lift getTargets)
      lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t)) . concat
              =<< liftIO (mapM (\(dirs,mods) -> mapM (createTarget dirs) mods) dirsMods)
-     handleErrors $ withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
+     handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
@@ -69,7 +63,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        mods <- mapM (loadModule report) actuallyCompiled
        return mods
 
-  where loadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
+  where loadModule :: (ModSummary -> IO a) -> ModSummary -> StateT DaemonSessionState Ghc a
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
@@ -115,13 +109,13 @@ getFileMods fname
                              []       -> getMods Nothing
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
-reloadChangedModules :: IsRefactSessionState st => (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT st Ghc (Either RefactorException [a])
+reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT DaemonSessionState Ghc (Either RefactorException [a])
 reloadChangedModules report loadCallback isChanged = handleErrors $ do
   reachable <- getReachableModules loadCallback isChanged
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
-getReachableModules :: IsRefactSessionState st => ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT st Ghc [ModSummary]
+getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT DaemonSessionState Ghc [ModSummary]
 getReachableModules loadCallback selected = do
   allModColls <- gets (^. refSessMCs)
   withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
@@ -136,8 +130,9 @@ getReachableModules loadCallback selected = do
     return sortedRecompMods
 
 -- | Reload a given module. Perform a callback.
-reloadModule :: IsRefactSessionState st => (ModSummary -> IO a) -> ModSummary -> StateT st Ghc a
+reloadModule :: (ModSummary -> IO a) -> ModSummary -> StateT DaemonSessionState Ghc a
 reloadModule report ms = do
+  ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
   let fp = getModSumOrig ms
       modName = getModSumName ms
@@ -145,9 +140,9 @@ reloadModule report ms = do
   case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
     Just mc -> do
       let dfs = ms_hspp_opts ms
-      dfs' <- liftIO $ compileInContext mc mcs dfs
+      dfs' <- liftIO $ fmap ghcfl $ compileInContext mc mcs dfs
       let ms' = ms { ms_hspp_opts = dfs' }
-      newm <- lift $ withAlteredDynFlags (\_ -> return (ms_hspp_opts ms')) $
+      newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       modify $ refSessMCs & traversal & filtered (== mc) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
@@ -155,7 +150,7 @@ reloadModule report ms = do
       liftIO $ report ms
     Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
-checkEvaluatedMods :: IsRefactSessionState st => (ModSummary -> IO a) -> [ModSummary] -> StateT st Ghc [a]
+checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> StateT DaemonSessionState Ghc [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc

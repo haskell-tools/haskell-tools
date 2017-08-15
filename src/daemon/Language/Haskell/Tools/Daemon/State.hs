@@ -5,14 +5,16 @@ import Control.Concurrent
 import Control.Reference
 import System.IO
 import System.Process
+import GHC
 
+import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB
 import Language.Haskell.Tools.Daemon.Representation
-import Language.Haskell.Tools.Daemon.Session
 
 data DaemonSessionState
   = DaemonSessionState { _refactorSession :: RefactorSessionState
                        , _packageDB :: PackageDB
+                       , _ghcFlagsSet :: DynFlags -> DynFlags
                        , _packageDBSet :: Bool
                        , _packageDBLocs :: [FilePath]
                        , _exiting :: Bool
@@ -26,8 +28,19 @@ data WatchProcess
                  , _watchThreads :: [ThreadId]
                  }
 
+
+-- | The state common for refactoring tools, carrying the state of modules.
+data RefactorSessionState
+  = RefactorSessionState { __refSessMCs :: [ModuleCollection SourceFileKey]
+                         }
+
+makeReferences ''RefactorSessionState
 makeReferences ''DaemonSessionState
+
+instance IsRefactSessionState RefactorSessionState where
+  refSessMCs = _refSessMCs
+  initSession = RefactorSessionState []
 
 instance IsRefactSessionState DaemonSessionState where
   refSessMCs = refactorSession & refSessMCs
-  initSession = DaemonSessionState initSession AutoDB False [] False Nothing
+  initSession = DaemonSessionState initSession AutoDB id False [] False Nothing
