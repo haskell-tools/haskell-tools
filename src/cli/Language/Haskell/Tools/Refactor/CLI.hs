@@ -27,9 +27,10 @@ type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
 
 normalRefactorSession :: [RefactoringChoice IdDom] -> Handle -> Handle -> CLIOptions -> IO Bool
 normalRefactorSession refactorings input output options@CLIOptions{..}
-  = refactorSession refactorings
-      (\st -> void $ forkIO $ runDaemon refactorings channelMode st (DaemonOptions False 0 True cliNoWatch cliWatchExe))
-      input output options
+  = do hSetBuffering stdout NoBuffering -- to synch our output with GHC's
+       refactorSession refactorings
+         (\st -> void $ forkIO $ runDaemon refactorings channelMode st (DaemonOptions False 0 True cliNoWatch cliWatchExe))
+         input output options
 
 data CLIOptions = CLIOptions { displayVersion :: Bool
                              , executeCommands :: Maybe String

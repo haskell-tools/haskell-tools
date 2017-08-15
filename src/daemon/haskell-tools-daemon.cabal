@@ -83,7 +83,6 @@ library
                      , Diff                      >= 0.3   && < 0.4
                      , Cabal                     >= 1.24  && < 1.25
                      , template-haskell          >= 2.11  && < 2.12
---                     , haskell-tools-ast         >= 0.8   && < 0.9
                      , haskell-tools-prettyprint >= 0.8   && < 0.9
                      , haskell-tools-refactor    >= 0.8   && < 0.9
                      , haskell-tools-builtin-refactorings >= 0.8   && < 0.9

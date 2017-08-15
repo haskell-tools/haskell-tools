@@ -51,7 +51,10 @@ updateClient _ resp (AddPackages packagePathes) = do
     addPackages resp packagePathes
     return True
 updateClient _ _ (SetWorkingDir fp) = liftIO (setCurrentDirectory fp) >> return True
-updateClient _ resp (SetGHCFlags flags) = lift (useFlags flags) >>= liftIO . resp . UnusedFlags >> return True
+updateClient _ resp (SetGHCFlags flags) = do (unused, change) <- lift (useFlags flags)
+                                             liftIO $ resp $ UnusedFlags unused
+                                             modify $ ghcFlagsSet .= change 
+                                             return True
 updateClient _ _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
     let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)

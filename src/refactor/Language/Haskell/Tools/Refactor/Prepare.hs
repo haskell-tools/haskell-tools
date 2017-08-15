@@ -61,15 +61,16 @@ correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpan
         updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc)
 
 -- | Set the given flags for the GHC session
-useFlags :: [String] -> Ghc [String]
+useFlags :: [String] -> Ghc ([String], DynFlags -> DynFlags)
 useFlags args = do
   let lArgs = map (L noSrcSpan) args
   dynflags <- getSessionDynFlags
+  let change = runCmdLine $ processArgs flagsAll lArgs
   -- TODO: print errors and warnings?
-  let ((leftovers, _, _), newDynFlags) = (runCmdLine $ processArgs flagsAll lArgs) dynflags
+  let ((leftovers, _, _), newDynFlags) = change dynflags
   void $ setSessionDynFlags newDynFlags
   when (any ("-package-db" `isSuffixOf`) args) reloadPkgDb
-  return $ map unLoc leftovers
+  return $ (map unLoc leftovers, snd . change)
 
 -- | Reloads the package database based on the session flags
 reloadPkgDb :: Ghc ()
