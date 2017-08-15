@@ -26,6 +26,7 @@ import Exception (ExceptionMonad)
 import GHC
 import HscTypes as GHC
 import Language.Haskell.TH.LanguageExtensions
+import Outputable
 
 import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.State
@@ -153,21 +154,21 @@ reloadModule report ms = do
       liftIO $ report ms
     Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
+-- | Finds out if a newly added module forces us to generate code for another one.
+-- If the other is already loaded it will be reloaded.
 checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> StateT DaemonSessionState Ghc [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc
           where modName = getModSumName ms
                 mc = lookupModuleColl modName mcs
-
     modsNeedCode <- lift (getEvaluatedMods mods lookupFlags)
-    mcs <- gets (^. refSessMCs)
-    res <- forM modsNeedCode $ \ms -> reloadIfNeeded ms mcs
-    return $ catMaybes res
-  where reloadIfNeeded ms mcs
+    catMaybes <$> forM modsNeedCode (reloadIfNeeded mcs)
+  where reloadIfNeeded mcs ms
           = let key = keyFromMS ms
               in if not (hasGeneratedCode key mcs)
-                   then do modify $ refSessMCs .- codeGeneratedFor key
+                   then do -- mark the module for code generation
+                           modify $ refSessMCs .- codeGeneratedFor key
                            if (isAlreadyLoaded key mcs) then
                                -- The module is already loaded but code is not generated. Need to reload.
                                Just <$> lift (codeGenForModule report (codeGeneratedFor key mcs) ms)
@@ -186,6 +187,8 @@ codeGenForModule report mcs ms
            liftIO $ report ms
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
+-- A definition that needs code generation can be inside a module that does not uses the
+-- TemplateHaskell extension.
 getEvaluatedMods :: [ModSummary] -> (ModSummary -> DynFlags -> IO DynFlags) -> Ghc [GHC.ModSummary]
 -- We cannot really get the modules that need to be linked, because we cannot rename splice content if the
 -- module is not type checked and that is impossible if the splice cannot be evaluated.

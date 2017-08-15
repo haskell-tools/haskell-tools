@@ -53,7 +53,7 @@ updateClient _ resp (AddPackages packagePathes) = do
 updateClient _ _ (SetWorkingDir fp) = liftIO (setCurrentDirectory fp) >> return True
 updateClient _ resp (SetGHCFlags flags) = do (unused, change) <- lift (useFlags flags)
                                              liftIO $ resp $ UnusedFlags unused
-                                             modify $ ghcFlagsSet .= change 
+                                             modify $ ghcFlagsSet .= change
                                              return True
 updateClient _ _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
@@ -171,8 +171,11 @@ addPackages resp packagePathes = do
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded
       if pkgDBok then do
-        res <- loadPackagesFrom (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]) >> return (getModSumOrig ms))
-                                (resp . LoadingModules . map getModSumOrig) (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
+        res <- loadPackagesFrom
+                 (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)])
+                           >> return (getModSumOrig ms))
+                 (resp . LoadingModules . map getModSumOrig)
+                 (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
         case res of
           Right _ -> do
             mapM_ (reloadModule (\_ -> return ())) (either (const []) id needToReload) -- don't report consequent reloads (not expected)
