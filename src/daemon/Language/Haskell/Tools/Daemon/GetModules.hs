@@ -32,7 +32,6 @@ import System.FilePath
 import DynFlags
 import qualified DynFlags as GHC
 import GHC hiding (ModuleName)
-import qualified Language.Haskell.TH.LanguageExtensions as GHC
 
 import Language.Haskell.Tools.Daemon.MapExtensions
 import Language.Haskell.Tools.Daemon.Representation
@@ -64,7 +63,7 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] (modKeys mods) return return []]
+                               return [ModuleCollection (DirectoryMC root) root [root] [] (modKeys mods) return return []]
   where modKeys mods = Map.fromList $ map (, ModuleNotLoaded False True) mods
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
@@ -104,6 +103,7 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
                   then Just $ ModuleCollection (mkModuleCollKey packageName tmc)
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
+                                (map (\(mn, fs) -> (moduleName mn, fs)) $ getModuleSourceFiles tmc)
                                 (Map.fromList $ map modRecord $ getModuleNames tmc)
                                 (flagsFromBuildInfo bi)
                                 (loadFlagsFromBuildInfo bi)

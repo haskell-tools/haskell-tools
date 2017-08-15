@@ -47,13 +47,13 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let dirsMods = map (\mc -> (mc ^. mcSourceDirs, getExposedModules mc)) modColls
+     let dirsMods = map (\mc -> (mc ^. mcSourceDirs, mc ^. mcModuleFiles, getExposedModules mc)) modColls
          alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
      targets <- map targetId <$> (lift getTargets)
      lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t)) . concat
-             =<< liftIO (mapM (\(dirs,mods) -> mapM (createTarget dirs) mods) dirsMods)
+             =<< liftIO (mapM (\(dirs,mapping,mods) -> mapM (createTarget dirs mapping) mods) dirsMods)
      handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
@@ -70,11 +70,14 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
 
         -- | Creates a target from a module name. If possible, finds the
         -- corresponding source file to distinguish between modules of the same name.
-        createTarget :: [FilePath] -> String -> IO Target
-        createTarget srcFolders modName
+        createTarget :: [FilePath] -> [(ModuleNameStr, FilePath)] -> ModuleNameStr -> IO Target
+        createTarget srcFolders mapping modName
           = makeTarget <$> filterM doesFileExist
                              (map (</> toFileName modName) srcFolders)
-          where toFileName = (<.> "hs") . List.intercalate [pathSeparator] . splitOn "."
+          where toFileName modName
+                  = case lookup modName mapping of
+                      Just fileName -> fileName
+                      Nothing -> List.intercalate [pathSeparator] (splitOn "." modName) <.> "hs"
                 makeTarget [] = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
                 makeTarget (fn:_) = Target (TargetFile fn Nothing) True Nothing
 

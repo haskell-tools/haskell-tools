@@ -19,6 +19,7 @@ data ModuleCollection k
   = ModuleCollection { _mcId :: ModuleCollectionId
                      , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
+                     , _mcModuleFiles :: [(ModuleNameStr, FilePath)]
                      , _mcModules :: Map.Map k ModuleRecord
                      , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
                      , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
@@ -67,8 +68,9 @@ instance Eq (ModuleCollection k) where
   (==) = (==) `on` _mcId
 
 instance Show k => Show (ModuleCollection k) where
-  show (ModuleCollection id root srcDirs mods _ _ deps)
-    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " (" ++ show mods ++ ") " ++ show deps
+  show (ModuleCollection id root srcDirs mapping mods _ _ deps)
+    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " " ++ show mapping
+        ++ " (" ++ show mods ++ ") " ++ show deps
 
 makeReferences ''ModuleCollection
 makeReferences ''ModuleRecord
