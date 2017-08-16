@@ -58,6 +58,7 @@ data ClientMessage
 
 instance FromJSON ClientMessage
 
+-- | The possible responses that the server can give.
 data ResponseMsg
   = KeepAliveResponse -- ^ A response to KeepAlive
   | HandshakeResponse { serverVersion :: [Int] }

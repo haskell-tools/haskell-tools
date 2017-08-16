@@ -5,6 +5,7 @@
            , RecordWildCards
            , FlexibleContexts
            #-}
+-- | Resolves how the daemon should react to individual requests from the client.
 module Language.Haskell.Tools.Daemon.Update where
 
 import Control.Exception (Exception(..))
@@ -43,7 +44,7 @@ import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_daemon (version)
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a client
-updateClient :: [RefactoringChoice IdDom] ->  (ResponseMsg -> IO ()) -> ClientMessage -> StateT DaemonSessionState Ghc Bool
+updateClient :: [RefactoringChoice IdDom] ->  (ResponseMsg -> IO ()) -> ClientMessage -> DaemonSession Bool
 updateClient _ resp (Handshake _) = liftIO (resp $ HandshakeResponse $ versionBranch version) >> return True
 updateClient _ resp KeepAlive = liftIO (resp KeepAliveResponse) >> return True
 updateClient _ resp Disconnect = liftIO (resp Disconnected) >> return False
@@ -151,7 +152,7 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
                liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage (ErrorMessage . ("The result of the refactoring contains errors: " ++) . show) (getProblems errs))
                                           Right _ -> return ()
 
-addPackages :: (ResponseMsg -> IO ()) -> [FilePath] -> StateT DaemonSessionState Ghc ()
+addPackages :: (ResponseMsg -> IO ()) -> [FilePath] -> DaemonSession ()
 addPackages _ [] = return ()
 addPackages resp packagePathes = do
   nonExisting <- filterM ((return . not) <=< liftIO . doesDirectoryExist) packagePathes
@@ -227,7 +228,7 @@ getProblems :: RefactorException -> Either String [(SrcSpan, String)]
 getProblems (SourceCodeProblem errs) = Right $ map (\err -> (errMsgSpan err, show err)) $ bagToList errs
 getProblems other = Left $ displayException other
 
-watchNew :: FilePath -> StateT DaemonSessionState Ghc ()
+watchNew :: FilePath -> DaemonSession ()
 watchNew fp = do
     watch <- gets (^. watchProc)
     case watch of Just w -> void $ liftIO $ hPutStrLn (_watchStdIn w) $ "watch " ++ fp

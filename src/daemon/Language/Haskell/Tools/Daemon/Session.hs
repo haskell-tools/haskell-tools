@@ -94,6 +94,9 @@ handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
 handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action)
                         `gcatch` (return . Left)
 
+-- TODO: make getMods and getFileMods clearer
+
+-- | Get the module that is selected for refactoring and all the other modules.
 getMods :: Maybe SourceFileKey -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
                                                 , [(SourceFileKey, UnnamedModule IdDom)] )
 getMods actMod
@@ -101,6 +104,7 @@ getMods actMod
        return $ ( (_2 !~ (^? typedRecModule)) =<< flip lookupModInSCs mcs =<< actMod
                 , filter ((actMod /=) . Just . fst) $ concatMap (catMaybes . map (_2 !~ (^? typedRecModule)) . Map.assocs . (^. mcModules)) mcs )
 
+-- | Get the module that is selected for refactoring and all the other modules.
 getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
                                        , [(SourceFileKey, UnnamedModule IdDom)] )
 getFileMods fname
@@ -121,6 +125,8 @@ reloadChangedModules report loadCallback isChanged = handleErrors $ do
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
+-- | Get all modules that can be accessed from a given set of modules. Can be used to select which
+-- modules need to be reloaded after a change.
 getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
   allModColls <- gets (^. refSessMCs)

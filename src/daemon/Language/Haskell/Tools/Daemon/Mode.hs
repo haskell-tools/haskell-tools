@@ -1,3 +1,6 @@
+-- | Defines different working modes for the daemon. It can work by using a socket connection
+-- or channels to communicate with the client. When the daemon is used by CLI, it uses channel if
+-- it communicates with an editor plugin it uses the socket connection.
 module Language.Haskell.Tools.Daemon.Mode where
 
 import Control.Concurrent.Chan
@@ -12,12 +15,14 @@ import Network.Socket.ByteString.Lazy (sendAll, recv)
 
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage)
 
+-- | An abstraction over the connection to the client.
 data WorkingMode a = WorkingMode { daemonConnect :: Int -> IO a -- TODO: could we generalize this Int parameter nicely?
                                  , daemonDisconnect :: a -> IO ()
                                  , daemonSend :: a -> ResponseMsg -> IO ()
                                  , daemonReceive :: a -> IO [Either String ClientMessage]
                                  }
 
+-- | Connect to the client running in a separate process using socket connection
 socketMode :: WorkingMode (Socket,Socket)
 socketMode = WorkingMode sockConn sockDisconnect sockSend sockReceive
   where
@@ -44,6 +49,7 @@ socketMode = WorkingMode sockConn sockDisconnect sockSend sockReceive
                 Nothing -> Just $ Left $ "MALFORMED MESSAGE: " ++ unpack mess
                 Just req -> Just $ Right req
 
+-- | Connect to the client running in the same process using a channel
 channelMode :: WorkingMode (Chan ResponseMsg, Chan ClientMessage)
 channelMode = WorkingMode chanConn chanDisconnect chanSend chanReceive
   where

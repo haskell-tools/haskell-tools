@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards
            , ScopedTypeVariables
            #-}
+-- | Controls the file system watching in the daemon. The file system watching must run in a
+-- separate process to prevent blocking because of file operations interfering with watch.
 module Language.Haskell.Tools.Daemon.Watch where
 
 import Control.Concurrent
@@ -22,7 +24,10 @@ import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage(..))
 import Language.Haskell.Tools.Daemon.State (WatchProcess(..), DaemonSessionState)
 import Language.Haskell.Tools.Daemon.Update (updateClient)
 
-createWatchProcess :: Maybe FilePath -> Session -> MVar DaemonSessionState -> (ResponseMsg -> IO ()) -> IO (Maybe WatchProcess)
+-- | Starts the watch process and a thread that receives notifications from it. The notification
+-- thread will invoke updates on the daemon state to re-load files.
+createWatchProcess :: Maybe FilePath -> Session -> MVar DaemonSessionState -> (ResponseMsg -> IO ())
+                        -> IO (Maybe WatchProcess)
 createWatchProcess watchExePath ghcSess daemonSess upClient = do
     exePath <- case watchExePath of Just exe -> return exe
                                     Nothing -> guessExePath
@@ -41,6 +46,8 @@ createWatchProcess watchExePath ghcSess daemonSess upClient = do
       hSetNewlineMode _watchStdOut (NewlineMode LF LF)
       -- collects changes that appear in a given timeframe
       store <- newEmptyMVar
+      -- TODO: currently this module collects subsequent notifications into one. This functionality
+      -- will be part of the watch release and will be removed then.
       collectorThread <- forkIO $ forever $ void $ do
           str <- hGetLine _watchStdOut
           put <- tryPutMVar store [str] -- when the mvar is empty (this is the first change since last reload)
@@ -70,6 +77,7 @@ createWatchProcess watchExePath ghcSess daemonSess upClient = do
     guessExePath = do exePath <- getExecutablePath
                       return $ takeDirectory exePath </> "watch"
 
+-- | Stops the watch process and all threads associated with it.
 stopWatch :: WatchProcess -> IO ()
 stopWatch WatchProcess{..}
   = do hPutStrLn _watchStdIn $ "exit"

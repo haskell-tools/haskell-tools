@@ -1,3 +1,4 @@
+-- | Mapping between Cabal's and GHC's representation of language extensions.
 module Language.Haskell.Tools.Daemon.MapExtensions where
 
 import DynFlags (DynFlags, xopt_unset, xopt_set)

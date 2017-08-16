@@ -115,13 +115,23 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
                        . finalizePackageDescription [] (const True) buildPlatform
                                                     (unknownCompilerInfo buildCompilerId NoAbiTag) []
 
+-- | Extract module-related information from different kind of package components (library,
+-- executable, test-suite or benchmark).
 class ToModuleCollection t where
+  -- | Creates a key for registering this package component.
   mkModuleCollKey :: PackageName -> t -> ModuleCollectionId
+  -- | Gets the build info field from a package component.
   getBuildInfo :: t -> BuildInfo
+  -- | Get the names of all the modules used by this package component.
   getModuleNames :: t -> [ModuleName]
+  -- | Gets if some of the modules are defined is source files that are not in the expected
+  -- location or named as expected.
   getModuleSourceFiles :: t -> [(ModuleName, FilePath)]
   getModuleSourceFiles _ = []
+  -- | Checks if a module is exposed by the package component, so it is necessary to compile.
+  -- Some of the components may have modules that are only conditionally imported by other modules.
   needsToCompile :: t -> ModuleName -> Bool
+  -- | Gets the Main module in the case of executables, benchmarks and test suites.
   getMain :: t -> String
   getMain l = getMain' (getBuildInfo l)
 
@@ -161,28 +171,36 @@ instance ToModuleCollection Benchmark where
         BenchmarkExeV10 _ fp -> [(fromString (getMain exe), fp)]
         _ -> []
 
+-- | A default method of getting the main module using the ghc-options field, checking for the
+-- option -main-is.
 getMain' :: BuildInfo -> String
 getMain' bi
   = case ls of _:e:_ -> intercalate "." $ filter (isUpper . head) $ groupBy ((==) `on` (== '.')) e
                _ -> "Main"
   where ls = dropWhile (/= "-main-is") (concatMap snd (options bi))
 
+-- | Checks if the module collection created from a folder without .cabal file.
 isDirectoryMC :: ModuleCollection k -> Bool
 isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False
 
+-- | Modify the dynamic flags to match the ghc-options and dependencies requested in the .cabal
+-- file.
 compileInContext :: ModuleCollection k -> [ModuleCollection k] -> DynFlags -> IO DynFlags
 compileInContext mc mcs dfs
   = (\dfs' -> applyDependencies mcs (mc ^. mcDependencies) (selectEnabled dfs'))
        <$> (mc ^. mcFlagSetup $ dfs)
   where selectEnabled = if isDirectoryMC mc then id else onlyUseEnabled
 
+-- | Modify the dynamic flags to match the dependencies requested in the .cabal file.
 applyDependencies :: [ModuleCollection k] -> [ModuleCollectionId] -> DynFlags -> DynFlags
 applyDependencies mcs ids dfs
   = dfs { GHC.packageFlags = GHC.packageFlags dfs ++ (catMaybes $ map (dependencyToPkgFlag mcs) ids) }
 
+-- | Only use the dependencies that are explicitely enabled. (As cabal does opposed to as ghc does.)
 onlyUseEnabled :: DynFlags -> DynFlags
 onlyUseEnabled = GHC.setGeneralFlag' GHC.Opt_HideAllPackages
 
+-- | Transform dependencies of a module collection into the package flags of the GHC API
 dependencyToPkgFlag :: [ModuleCollection k] -> ModuleCollectionId -> Maybe (GHC.PackageFlag)
 dependencyToPkgFlag mcs lib@(LibraryMC pkgName)
   = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs
@@ -190,17 +208,21 @@ dependencyToPkgFlag mcs lib@(LibraryMC pkgName)
       else Nothing
 dependencyToPkgFlag _ _ = Nothing
 
+-- | Sets the configuration for loading all the modules from the whole project. Combines the
+-- configuration of all package fragments. This solution is not perfect (it would be better to load
+-- all package fragments separately), but it is how it works. See 'loadFlagsFromBuildInfo'.
 setupLoadFlags :: [ModuleCollection k] -> DynFlags -> IO DynFlags
 setupLoadFlags mcs dfs = applyDependencies mcs allDeps . selectEnabled <$> useSavedFlags dfs
   where allDeps = mcs ^? traversal & mcDependencies & traversal
         selectEnabled = if any (\(mc,rest) -> isDirectoryMC mc && isIndependentMc mc rest) (breaks mcs) then id else onlyUseEnabled
+          where breaks :: [a] -> [(a,[a])]
+                breaks [] = []
+                breaks (e:rest) = (e,rest) : map (\(x,ls) -> (x,e:ls)) (breaks rest)
         useSavedFlags = foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)
         isIndependentMc mc rest = not $ any (`isPrefixOf` (mc ^. mcRoot)) (map (^. mcRoot) rest)
 
-breaks :: [a] -> [(a,[a])]
-breaks [] = []
-breaks (e:rest) = (e,rest) : map (\(x,ls) -> (x,e:ls)) (breaks rest)
-
+-- | Collects the compilation options and enabled extensions from Cabal's build info representation.
+-- This setup will be used when loading all packages in the project. See 'setupLoadFlags'.
 loadFlagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 loadFlagsFromBuildInfo bi@BuildInfo{ cppOptions } df
   = do (df',unused,warnings) <- parseDynamicFlags df (map (L noSrcSpan) $ cppOptions)
@@ -215,6 +237,8 @@ loadFlagsFromBuildInfo bi@BuildInfo{ cppOptions } df
         cppNeeded = EnableExtension CPP `elem` usedExtensions bi
         magicHashNeeded = EnableExtension MagicHash `elem` usedExtensions bi
 
+-- | Collects the compilation options and enabled extensions from Cabal's build info representation
+-- for a single module. See 'compileInContext'.
 flagsFromBuildInfo :: BuildInfo -> DynFlags -> IO DynFlags
 -- the import pathes are already set globally
 flagsFromBuildInfo bi@BuildInfo{ options } df

@@ -11,7 +11,8 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB
 import Language.Haskell.Tools.Daemon.Representation
 
--- | A state for carrying sessions in the daemon
+-- | The actual state of the daemon process. Contains loaded modules and user settings.
+-- The GHC state is handled separately.
 data DaemonSessionState
   = DaemonSessionState { _refSessMCs :: [ModuleCollection SourceFileKey]
                            -- ^ The package components loaded into the session.
