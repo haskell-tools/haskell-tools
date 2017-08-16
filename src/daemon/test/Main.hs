@@ -76,6 +76,16 @@ loadingTests =
     , [AddPackages [testRoot </> "has-cabal"]]
     , [ LoadingModules [testRoot </> "has-cabal" </> "A.hs"]
       , LoadedModules [(testRoot </> "has-cabal" </> "A.hs", "A")]] )
+  , ( "same-module-in-two-mod-coll"
+    , [AddPackages [testRoot </> "same-module-in-two-mod-coll"]]
+    , [ LoadingModules [testRoot </> "same-module-in-two-mod-coll" </> "A.hs"
+      , testRoot </> "same-module-in-two-mod-coll" </> "Main.hs"]
+      , LoadedModules [(testRoot </> "same-module-in-two-mod-coll" </> "A.hs", "A")]
+      , LoadedModules [(testRoot </> "same-module-in-two-mod-coll" </> "Main.hs", "Main")] ] )
+  , ( "exposed-mod-as-main"
+    , [AddPackages [testRoot </> "exposed-mod-as-main"]]
+    , [ LoadingModules [testRoot </> "exposed-mod-as-main" </> "A.hs"]
+      , LoadedModules [(testRoot </> "exposed-mod-as-main" </> "A.hs", "A")] ] )
   , ( "no-cabal"
     , [AddPackages [testRoot </> "no-cabal"]]
     , [ LoadingModules [testRoot </> "no-cabal" </> "A.hs"]
