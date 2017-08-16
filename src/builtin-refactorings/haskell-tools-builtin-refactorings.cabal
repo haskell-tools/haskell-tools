@@ -21,13 +21,10 @@ extra-source-files: examples/CPP/*.hs
                   , examples/Module/*.hs
                   , examples/Pattern/*.hs
                   , examples/Refactor/CommentHandling/*.hs
-                  , examples/Refactor/DataToNewtype/*.hs
-                  , examples/Refactor/DollarApp/*.hs
                   , examples/Refactor/ExtractBinding/*.hs
                   , examples/Refactor/GenerateExports/*.hs
                   , examples/Refactor/GenerateTypeSignature/*.hs
                   , examples/Refactor/GenerateTypeSignature/BringToScope/*.hs
-                  , examples/Refactor/IfToGuards/*.hs
                   , examples/Refactor/InlineBinding/*.hs
                   , examples/Refactor/InlineBinding/AppearsInAnother/*.hs
                   , examples/Refactor/OrganizeImports/*.hs
@@ -58,15 +55,8 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.GenerateExports
                      , Language.Haskell.Tools.Refactor.Builtin.RenameDefinition
                      , Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
-                     , Language.Haskell.Tools.Refactor.Builtin.DataToNewtype
-                     , Language.Haskell.Tools.Refactor.Builtin.IfToGuards
-                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp
                      , Language.Haskell.Tools.Refactor.Builtin.InlineBinding
                      , Language.Haskell.Tools.Refactor.Builtin.FloatOut
-                     , Language.Haskell.Tools.Refactor.Builtin.HelloRefactor
-                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp1
-                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp2
-                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
 
   build-depends:       base                      >= 4.9  && < 4.10
                      , mtl                       >= 2.2  && < 2.3

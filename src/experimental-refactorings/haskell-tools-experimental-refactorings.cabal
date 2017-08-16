@@ -1,0 +1,75 @@
+name:                haskell-tools-experimental-refactorings
+version:             0.8.2.0
+synopsis:            Refactoring Tool for Haskell
+description:         Contains experimental refactorings implemented in the Haskell-tools framework for tutorial purposes, or to be added later to the set of mature refactorings.
+homepage:            https://github.com/haskell-tools/haskell-tools
+license:             BSD3
+license-file:        LICENSE
+author:              Boldizsar Nemeth
+maintainer:          nboldi@elte.hu
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+extra-source-files: examples/Refactor/DataToNewtype/*.hs
+                  , examples/Refactor/DollarApp/*.hs
+                  , examples/Refactor/IfToGuards/*.hs
+
+library
+  exposed-modules:     Language.Haskell.Tools.Refactor.Builtin.DataToNewtype
+                     , Language.Haskell.Tools.Refactor.Builtin.IfToGuards
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp
+                     , Language.Haskell.Tools.Refactor.Builtin.HelloRefactor
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp1
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp2
+                     , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
+
+  build-depends:       base                      >= 4.9  && < 4.10
+                     , mtl                       >= 2.2  && < 2.3
+                     , uniplate                  >= 1.6  && < 1.7
+                     , ghc-paths                 >= 0.1  && < 0.2
+                     , containers                >= 0.5  && < 0.6
+                     , directory                 >= 1.2  && < 1.4
+                     , transformers              >= 0.5  && < 0.6
+                     , references                >= 0.3  && < 0.4
+                     , split                     >= 0.2  && < 0.3
+                     , filepath                  >= 1.4  && < 1.5
+                     , template-haskell          >= 2.11 && < 2.12
+                     , ghc                       >= 8.0  && < 8.1
+                     , Cabal                     >= 1.24 && < 1.25
+                     , haskell-tools-ast         >= 0.8  && < 0.9
+                     , haskell-tools-backend-ghc >= 0.8  && < 0.9
+                     , haskell-tools-rewrite     >= 0.8  && < 0.9
+                     , haskell-tools-prettyprint >= 0.8  && < 0.9
+                     , haskell-tools-refactor    >= 0.8  && < 0.9
+  default-language:    Haskell2010
+
+test-suite haskell-tools-experimental-refactorings-test
+  type:                exitcode-stdio-1.0
+  ghc-options:         -with-rtsopts=-M2g
+  hs-source-dirs:      test
+  main-is:             Main.hs
+  build-depends:       base                      >= 4.9  && < 4.10
+                     , tasty                     >= 0.11 && < 0.12
+                     , tasty-hunit               >= 0.9 && < 0.10
+                     , transformers              >= 0.5  && < 0.6
+                     , either                    >= 4.4  && < 4.5
+                     , filepath                  >= 1.4  && < 1.5
+                     , mtl                       >= 2.2  && < 2.3
+                     , uniplate                  >= 1.6  && < 1.7
+                     , containers                >= 0.5  && < 0.6
+                     , directory                 >= 1.2  && < 1.4
+                     , references                >= 0.3  && < 0.4
+                     , split                     >= 0.2  && < 0.3
+                     , time                      >= 1.6  && < 1.7
+                     , template-haskell          >= 2.11 && < 2.12
+                     , ghc                       >= 8.0  && < 8.1
+                     , ghc-paths                 >= 0.1  && < 0.2
+                     , Cabal                     >= 1.24 && < 1.25
+                     , haskell-tools-ast         >= 0.8  && < 0.9
+                     , haskell-tools-backend-ghc >= 0.8  && < 0.9
+                     , haskell-tools-rewrite     >= 0.8  && < 0.9
+                     , haskell-tools-prettyprint >= 0.8  && < 0.9
+                     , haskell-tools-refactor    >= 0.8  && < 0.9
+                     , haskell-tools-experimental-refactorings >= 0.8  && < 0.9
+  default-language:    Haskell2010
