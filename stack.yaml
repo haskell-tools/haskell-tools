@@ -1,4 +1,4 @@
-resolver: lts-8.20
+resolver: lts-9.0
 
 ghc-options:
   "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports

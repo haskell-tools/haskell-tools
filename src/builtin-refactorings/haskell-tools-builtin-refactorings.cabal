@@ -1,5 +1,5 @@
 name:                haskell-tools-builtin-refactorings
-version:             0.8.0.0
+version:             0.8.2.0
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools

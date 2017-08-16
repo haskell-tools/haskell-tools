@@ -148,6 +148,7 @@ reloadModule report ms = do
       let ms' = ms { ms_hspp_opts = dfs' }
       newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
+      -- replace the module in the program database
       modify $ refSessMCs & traversal & filtered (== mc) & mcModules
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
                       . Map.delete (SourceFileKey "" modName)

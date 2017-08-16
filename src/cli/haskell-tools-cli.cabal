@@ -1,5 +1,5 @@
 name:                haskell-tools-cli
-version:             0.8.0.0
+version:             0.8.2.0
 synopsis:            Command-line frontend for Haskell-tools Refact
 description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -69,7 +69,7 @@ executable ht-test-stackage
                      , split                     >= 0.2 && < 0.3
                      , filepath                  >= 1.4 && < 2.0
                      , optparse-applicative      >= 0.13 && < 0.14
-                     , Glob                      >= 0.7 && < 0.8
+                     , Glob                      >= 0.8 && < 0.9
   ghc-options:         -threaded
   hs-source-dirs:      test-stackage
   main-is:             Main.hs
