@@ -2,6 +2,7 @@
            , TupleSections
            , TypeApplications
            , MultiWayIf
+           , FlexibleContexts
            #-}
 -- | Common operations for managing Daemon-tools sessions, for example loading whole packages or
 -- re-loading modules when they are changed. Maintains the state of the compilation with loaded
@@ -35,12 +36,14 @@ import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Utils
 import Language.Haskell.Tools.Refactor hiding (ModuleName)
 
+type DaemonSession a = StateT DaemonSessionState Ghc a
+
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
 loadPackagesFrom :: (ModSummary -> IO a)
                       -> ([ModSummary] -> IO ())
                       -> (DaemonSessionState -> FilePath -> IO [FilePath])
                       -> [FilePath]
-                      -> StateT DaemonSessionState Ghc (Either RefactorException [a])
+                      -> DaemonSession (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      modify $ refSessMCs .- (++ map modCollToSfk modColls)
@@ -64,7 +67,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        mods <- mapM (loadModule report) actuallyCompiled
        return mods
 
-  where loadModule :: (ModSummary -> IO a) -> ModSummary -> StateT DaemonSessionState Ghc a
+  where loadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
@@ -91,17 +94,15 @@ handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
 handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action)
                         `gcatch` (return . Left)
 
-getMods :: (Monad m, IsRefactSessionState st)
-        => Maybe SourceFileKey -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                              , [(SourceFileKey, UnnamedModule IdDom)] )
+getMods :: Maybe SourceFileKey -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
+                                                , [(SourceFileKey, UnnamedModule IdDom)] )
 getMods actMod
   = do mcs <- gets (^. refSessMCs)
        return $ ( (_2 !~ (^? typedRecModule)) =<< flip lookupModInSCs mcs =<< actMod
                 , filter ((actMod /=) . Just . fst) $ concatMap (catMaybes . map (_2 !~ (^? typedRecModule)) . Map.assocs . (^. mcModules)) mcs )
 
-getFileMods :: (GhcMonad m, IsRefactSessionState st)
-        => String -> StateT st m ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                   , [(SourceFileKey, UnnamedModule IdDom)] )
+getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
+                                       , [(SourceFileKey, UnnamedModule IdDom)] )
 getFileMods fname
   = do mcs <- gets (^. refSessMCs)
        let mods = mapMaybe (\(k,m) -> fmap (,k) (m ^? modRecMS))
@@ -113,13 +114,14 @@ getFileMods fname
                              []       -> getMods Nothing
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
-reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT DaemonSessionState Ghc (Either RefactorException [a])
+reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool)
+                           -> DaemonSession (Either RefactorException [a])
 reloadChangedModules report loadCallback isChanged = handleErrors $ do
   reachable <- getReachableModules loadCallback isChanged
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
-getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> StateT DaemonSessionState Ghc [ModSummary]
+getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
   allModColls <- gets (^. refSessMCs)
   withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
@@ -134,7 +136,7 @@ getReachableModules loadCallback selected = do
     return sortedRecompMods
 
 -- | Reload a given module. Perform a callback.
-reloadModule :: (ModSummary -> IO a) -> ModSummary -> StateT DaemonSessionState Ghc a
+reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
@@ -157,7 +159,7 @@ reloadModule report ms = do
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.
-checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> StateT DaemonSessionState Ghc [a]
+checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> DaemonSession [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc
