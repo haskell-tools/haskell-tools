@@ -3,7 +3,7 @@
            , FlexibleContexts
            #-}
 -- | Helper functions for defining refactorings.
-module Language.Haskell.Tools.Refactor.Helpers where
+module Language.Haskell.Tools.Refactor.Utils.Helpers where
 
 import Control.Monad.State ()
 import Control.Reference
