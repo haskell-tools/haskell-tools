@@ -27,7 +27,6 @@ import Exception (ExceptionMonad)
 import GHC
 import HscTypes as GHC
 import Language.Haskell.TH.LanguageExtensions
-import Outputable
 
 import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.State
@@ -55,9 +54,10 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
          alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
-     targets <- map targetId <$> (lift getTargets)
-     lift $ mapM_ (\t -> when (targetId t `notElem` targets) (addTarget t)) . concat
-             =<< liftIO (mapM (\(dirs,mapping,mods) -> mapM (createTarget dirs mapping) mods) dirsMods)
+     actualTargets <- map targetId <$> (lift getTargets)
+     targetCandidates <- concat <$> liftIO (mapM (\(dirs,mapping,mods) -> mapM (createTargetCandidate dirs mapping) mods) dirsMods)
+     lift $ mapM_ (\t -> when (targetId t `notElem` actualTargets) (addTarget t))
+                  (map makeTarget $ List.nub $ List.sort targetCandidates)
      handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
@@ -72,18 +72,22 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
 
-        -- | Creates a target from a module name. If possible, finds the
+        -- | Creates a possible target from a module name. If possible, finds the
         -- corresponding source file to distinguish between modules of the same name.
-        createTarget :: [FilePath] -> [(ModuleNameStr, FilePath)] -> ModuleNameStr -> IO Target
-        createTarget srcFolders mapping modName
-          = makeTarget <$> filterM doesFileExist
+        createTargetCandidate :: [FilePath] -> [(ModuleNameStr, FilePath)] -> ModuleNameStr
+                                    -> IO (Either ModuleName FilePath)
+        createTargetCandidate srcFolders mapping modName
+          = wrapEither <$> filterM doesFileExist
                              (map (</> toFileName modName) srcFolders)
           where toFileName modName
                   = case lookup modName mapping of
                       Just fileName -> fileName
                       Nothing -> List.intercalate [pathSeparator] (splitOn "." modName) <.> "hs"
-                makeTarget [] = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
-                makeTarget (fn:_) = Target (TargetFile fn Nothing) True Nothing
+                wrapEither [] = Left (GHC.mkModuleName modName)
+                wrapEither (fn:_) = Right fn
+
+        makeTarget (Left modName) = Target (TargetModule modName) True Nothing
+        makeTarget (Right filePath) = Target (TargetFile filePath Nothing) True Nothing
 
         getExposedModules :: ModuleCollection ModuleNameStr -> [ModuleNameStr]
         getExposedModules
