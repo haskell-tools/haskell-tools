@@ -2,6 +2,7 @@
            , RecordWildCards
            , FlexibleContexts
            #-}
+-- | Representation of the modules and packages in the daemon session.
 module Language.Haskell.Tools.Daemon.Representation where
 
 import Control.Reference

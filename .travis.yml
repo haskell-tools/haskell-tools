@@ -56,6 +56,7 @@ script:
   # Run tests. We record test coverage information.
   - stack --no-terminal test --coverage haskell-tools-rewrite
   - stack --no-terminal test --coverage haskell-tools-builtin-refactorings
+  - stack --no-terminal test --coverage haskell-tools-experimental-refactorings
   - stack --no-terminal test --coverage haskell-tools-daemon
   - stack --no-terminal test --coverage haskell-tools-cli
   - stack --no-terminal test --coverage haskell-tools-demo

@@ -5,11 +5,11 @@ module Language.Haskell.Tools.Refactor
     , module Language.Haskell.Tools.AST.References
     , module Language.Haskell.Tools.AST.Helpers
     , module Language.Haskell.Tools.Refactor.Utils.Monadic
-  , module Language.Haskell.Tools.Refactor.Helpers
+  , module Language.Haskell.Tools.Refactor.Utils.Helpers
     , module Language.Haskell.Tools.Rewrite.ElementTypes
     , module Language.Haskell.Tools.Refactor.Prepare
     , module Language.Haskell.Tools.Refactor.Utils.Lists
-    , module Language.Haskell.Tools.Refactor.BindingElem
+    , module Language.Haskell.Tools.Refactor.Utils.BindingElem
     , module Language.Haskell.Tools.Refactor.Utils.Indentation
     , module Language.Haskell.Tools.Refactor.Refactoring
     , module Language.Haskell.Tools.Refactor.Utils.Name
@@ -30,8 +30,8 @@ import Language.Haskell.Tools.AST.Helpers
 import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.SemaInfoClasses
 import Language.Haskell.Tools.PrettyPrint.Prepare
-import Language.Haskell.Tools.Refactor.BindingElem
-import Language.Haskell.Tools.Refactor.Helpers
+import Language.Haskell.Tools.Refactor.Utils.BindingElem
+import Language.Haskell.Tools.Refactor.Utils.Helpers
 import Language.Haskell.Tools.Refactor.Monad
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.Refactoring

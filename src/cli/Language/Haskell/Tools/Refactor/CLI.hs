@@ -5,6 +5,10 @@
            , StandaloneDeriving
            , RecordWildCards
            #-}
+-- | The command line interface for Haskell-tools. It uses the Haskell-tools daemon package starting
+-- the daemon in the same process and communicating with it through a channel.
+-- It can be used in a one-shot mode, listing all actions in a command-line parameter or using its
+-- standard input to perform a series of refactorings.
 module Language.Haskell.Tools.Refactor.CLI
   (refactorSession, normalRefactorSession, CLIOptions(..)) where
 
@@ -22,17 +26,17 @@ import Language.Haskell.Tools.Daemon.Mode (channelMode)
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_cli (version)
-
-type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
-
+-- | Normal entry point of the cli.
 normalRefactorSession :: [RefactoringChoice IdDom] -> Handle -> Handle -> CLIOptions -> IO Bool
 normalRefactorSession refactorings input output options@CLIOptions{..}
   = do hSetBuffering stdout LineBuffering -- to synch our output with GHC's
        hSetBuffering stderr LineBuffering -- to synch our output with GHC's
        refactorSession refactorings
-         (\st -> void $ forkIO $ runDaemon refactorings channelMode st (DaemonOptions False 0 True cliNoWatch cliWatchExe))
+         (\st -> void $ forkIO $ runDaemon refactorings channelMode st
+                                   (DaemonOptions False 0 True cliNoWatch cliWatchExe))
          input output options
 
+-- | Command-line options for the Haskell-tools CLI
 data CLIOptions = CLIOptions { displayVersion :: Bool
                              , executeCommands :: Maybe String
                              , cliNoWatch :: Bool
@@ -41,6 +45,8 @@ data CLIOptions = CLIOptions { displayVersion :: Bool
                              , packageRoots :: [FilePath]
                              }
 
+-- | Entry point with configurable initialization. Mainly for testing, call 'normalRefactorSession'
+-- to use the command-line.
 refactorSession :: [RefactoringChoice IdDom] -> ServerInit -> Handle -> Handle -> CLIOptions -> IO Bool
 refactorSession _ _ _ output CLIOptions{..} | displayVersion
   = do hPutStrLn output $ showVersion version
@@ -60,12 +66,18 @@ refactorSession refactorings init input output CLIOptions{..} = do
   when (isNothing executeCommands) (void $ forkIO $ processUserInput refactorings input output send)
   readFromSocket (isJust executeCommands) output recv
 
+-- | An initialization action for the daemon.
+type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
+
+-- | Reads commands from standard input and executes them.
 processUserInput :: [RefactoringChoice IdDom] -> Handle -> Handle -> Chan ClientMessage -> IO ()
 processUserInput refactorings input output chan = do
   cmd <- hGetLine input
   continue <- processCommand False refactorings output chan cmd
   when continue $ processUserInput refactorings input output chan
 
+-- | Perform a command received from the user. The resulting boolean states if the user may continue
+-- (True), or the session is over (False).
 processCommand :: Bool -> [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> String -> IO Bool
 processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
@@ -78,13 +90,15 @@ processCommand shutdown refactorings output chan cmd = do
                                             ++ intercalate ", " (refactorCommands refactorings)
             return True
 
+-- | Read the responses of the daemon. The result states if the session exited normally or in an
+-- erronous way.
 readFromSocket :: Bool -> Handle -> Chan ResponseMsg -> IO Bool
 readFromSocket pedantic output recv = do
   continue <- readChan recv >>= processMessage pedantic output
   maybe (readFromSocket pedantic output recv) return continue -- repeate if not stopping
 
--- | Returns Nothing if the execution should continue, Just False on erronous termination
--- and Just True on normal termination.
+-- | Receives a single response from daemon. Returns Nothing if the execution should continue,
+-- Just False on erronous termination and Just True on normal termination.
 processMessage :: Bool -> Handle -> ResponseMsg -> IO (Maybe Bool)
 processMessage _ output (ErrorMessage msg) = hPutStrLn output msg >> return (Just False)
 processMessage pedantic output (CompilationProblem marks)
@@ -102,6 +116,7 @@ processMessage _ output (UnusedFlags flags)
 processMessage _ _ Disconnected = return (Just True)
 processMessage _ _ _ = return Nothing
 
+-- | Perform the commands specified by the user as a command line argument.
 performCmdOptions :: [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> [String] -> IO ()
 performCmdOptions refactorings output chan cmds = do
   continue <- mapM (processCommand True refactorings output chan) cmds

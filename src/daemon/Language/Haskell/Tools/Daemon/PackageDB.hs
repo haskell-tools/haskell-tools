@@ -1,7 +1,11 @@
 {-# LANGUAGE DeriveGeneric
            , ScopedTypeVariables
            #-}
-module Language.Haskell.Tools.Daemon.PackageDB where
+-- | Setting the package database to use when compiling modules. The daemon must have one single
+-- package database that cannot be changed after a package is loaded using that package database.
+-- Available package databases are the cabal global, the cabal sandbox, the stack or one that had
+-- been explicitely set by a file path.
+module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, detectAutogen) where
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Monad (Monad(..), when)
@@ -14,15 +18,17 @@ import System.Directory (withCurrentDirectory, doesFileExist, doesDirectoryExist
 import System.FilePath (FilePath, (</>))
 import System.Process (readProcessWithExitCode)
 
-data PackageDB = AutoDB
-               | DefaultDB
-               | CabalSandboxDB
-               | StackDB
-               | ExplicitDB { packageDBPath :: FilePath }
+-- | Possible package database configurations.
+data PackageDB = AutoDB -- ^ Decide the package database automatically.
+               | DefaultDB -- ^ Use the global cabal package database (like when using ghc).
+               | CabalSandboxDB -- ^ Use the sandboxed cabal package database.
+               | StackDB -- ^ Use the stack package databases (local and snapshot).
+               | ExplicitDB { packageDBPath :: FilePath } -- ^ Set the package database explicitely.
   deriving (Show, Generic)
 
 instance FromJSON PackageDB
 
+-- | Finds the location of the package database based on the configuration.
 packageDBLoc :: PackageDB -> FilePath -> IO [FilePath]
 packageDBLoc AutoDB path = (++) <$> packageDBLoc StackDB path <*> packageDBLoc CabalSandboxDB path
 packageDBLoc DefaultDB _ = return []

@@ -32,9 +32,6 @@ import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.PrettyPrint.Prepare
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.Builtin.DataToNewtype (dataToNewtype)
-import Language.Haskell.Tools.Refactor.Builtin.DollarApp (dollarApp)
-import Language.Haskell.Tools.Refactor.Builtin.IfToGuards (ifToGuards)
 
 main :: IO ()
 main = defaultMain nightlyTests
@@ -64,7 +61,6 @@ functionalTests
             ++ map makeWrongFloatOutTest wrongFloatOutTests
             ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
             ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
-            ++ map makeMiscRefactorTest miscRefactorTests
     ]
   where checkTestCases = languageTests
                           ++ organizeImportTests
@@ -438,16 +434,6 @@ wrongMultiModuleTests =
   [ ("InlineBinding 3:1-3:2", "A", "Refactor" </> "InlineBinding" </> "AppearsInAnother", [])
   ]
 
-miscRefactorTests =
-  [ ("Refactor.DataToNewtype.Cases", \m -> dataToNewtype)
-  , ("Refactor.IfToGuards.Simple", \m -> ifToGuards (correctRefactorSpan m $ readSrcSpan "3:11-3:33"))
-  , ("Refactor.DollarApp.FirstSingle", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:12"))
-  , ("Refactor.DollarApp.FirstMulti", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
-  , ("Refactor.DollarApp.InfixOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
-  , ("Refactor.DollarApp.AnotherOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:15"))
-  , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
-  ]
-
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ())
                          -> (String, String, String, [String]) -> TestTree
 makeMultiModuleTest checker test@(refact, mod, root, removed)
@@ -521,13 +507,6 @@ checkCorrectlyTransformed command workingDir moduleName
        res <- performRefactor command workingDir [] moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                     (mapRight standardizeLineEndings res)
-makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> TestTree
-makeMiscRefactorTest (moduleName, refact)
-  = testCase moduleName $
-      do expected <- loadExpected True rootDir moduleName
-         res <- testRefactor refact moduleName
-         assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
-                                                                      (mapRight standardizeLineEndings res)
 
 testRefactor :: (UnnamedModule IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
 testRefactor refact moduleName

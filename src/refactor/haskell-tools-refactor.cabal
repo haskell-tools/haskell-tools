@@ -14,14 +14,14 @@ cabal-version:       >=1.10
 library
   ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.Refactor
-                     , Language.Haskell.Tools.Refactor.BindingElem
+                     , Language.Haskell.Tools.Refactor.Utils.BindingElem
                      , Language.Haskell.Tools.Refactor.Utils.Monadic
                      , Language.Haskell.Tools.Refactor.Monad
                      , Language.Haskell.Tools.Refactor.Representation
                      , Language.Haskell.Tools.Refactor.Prepare
                      , Language.Haskell.Tools.Refactor.Utils.Lists
                      , Language.Haskell.Tools.Refactor.Utils.Name
-                     , Language.Haskell.Tools.Refactor.Helpers
+                     , Language.Haskell.Tools.Refactor.Utils.Helpers
                      , Language.Haskell.Tools.Refactor.Utils.AST
                      , Language.Haskell.Tools.Refactor.Refactoring
                      , Language.Haskell.Tools.Refactor.Utils.Indentation
