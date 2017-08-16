@@ -58,12 +58,6 @@ data ModuleCollectionId = DirectoryMC FilePath
                         | BenchmarkMC String String
  deriving (Eq, Ord, Show)
 
-
--- | A common class for the state of refactoring tools
-class IsRefactSessionState st where -- TODO: remove
-  refSessMCs :: Simple Lens st [ModuleCollection SourceFileKey]
-  initSession :: st
-
 instance Eq (ModuleCollection k) where
   (==) = (==) `on` _mcId
 

@@ -3,6 +3,7 @@
            , TypeApplications
            , TypeFamilies
            , RecordWildCards
+           , FlexibleContexts
            #-}
 module Language.Haskell.Tools.Daemon.Update where
 
