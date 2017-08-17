@@ -33,11 +33,12 @@ normalRefactorSession refactorings input output options@CLIOptions{..}
        hSetBuffering stderr LineBuffering -- to synch our output with GHC's
        refactorSession refactorings
          (\st -> void $ forkIO $ runDaemon refactorings channelMode st
-                                   (DaemonOptions False 0 True cliNoWatch cliWatchExe))
+                                   (DaemonOptions False 0 (not cliVerbose) cliNoWatch cliWatchExe))
          input output options
 
 -- | Command-line options for the Haskell-tools CLI
 data CLIOptions = CLIOptions { displayVersion :: Bool
+                             , cliVerbose :: Bool
                              , executeCommands :: Maybe String
                              , cliNoWatch :: Bool
                              , cliWatchExe :: Maybe FilePath
@@ -82,6 +83,7 @@ processCommand :: Bool -> [RefactoringChoice IdDom] -> Handle -> Chan ClientMess
 processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
     ["Exit"] -> writeChan chan Disconnect >> return False
+    ["Undo"] -> writeChan chan UndoLast >> return True
     ref : rest | let modPath:selection:details = rest ++ (replicate (2 - length rest) "")
                , ref `elem` refactorCommands refactorings
        -> do writeChan chan (PerformRefactoring ref modPath selection details shutdown False)
@@ -126,5 +128,7 @@ processMessage _ _ _ = return Nothing
 -- | Perform the commands specified by the user as a command line argument.
 performCmdOptions :: [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> [String] -> IO ()
 performCmdOptions refactorings output chan cmds = do
-  continue <- mapM (processCommand True refactorings output chan) cmds
-  when (not $ and continue) $ writeChan chan Disconnect
+    continue <- mapM (\(shutdown, cmd) -> processCommand shutdown refactorings output chan cmd)
+                     (zip lastIsShutdown cmds)
+    when (and continue) $ writeChan chan Disconnect
+  where lastIsShutdown = replicate (length cmds - 1) False ++ [True]

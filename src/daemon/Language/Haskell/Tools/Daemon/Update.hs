@@ -36,7 +36,7 @@ import HscTypes (hsc_mod_graph)
 import Packages (Version(..), initPackages)
 
 import Language.Haskell.Tools.Daemon.PackageDB (packageDBLoc, detectAutogen)
-import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
+import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
@@ -45,20 +45,34 @@ import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_daemon (version)
 
--- | This function does the real job of acting upon client messages in a stateful environment of a client
-updateClient :: [RefactoringChoice IdDom] ->  (ResponseMsg -> IO ()) -> ClientMessage -> DaemonSession Bool
-updateClient _ resp (Handshake _) = liftIO (resp $ HandshakeResponse $ versionBranch version) >> return True
-updateClient _ resp KeepAlive = liftIO (resp KeepAliveResponse) >> return True
-updateClient _ resp Disconnect = liftIO (resp Disconnected) >> return False
-updateClient _ _ (SetPackageDB pkgDB) = modify (packageDB .= pkgDB) >> return True
-updateClient _ resp (AddPackages packagePathes) = do
-    addPackages resp packagePathes
-    return True
-updateClient _ _ (SetWorkingDir fp) = liftIO (setCurrentDirectory fp) >> return True
+-- | This function does the real job of acting upon client messages in a stateful environment of a
+-- client.
+updateClient :: [RefactoringChoice IdDom] ->  (ResponseMsg -> IO ()) -> ClientMessage
+                  -> DaemonSession Bool
+
+updateClient _ resp (Handshake _) = do liftIO (resp $ HandshakeResponse $ versionBranch version)
+                                       return True
+
+updateClient _ resp KeepAlive = do liftIO (resp KeepAliveResponse)
+                                   return True
+
+updateClient _ resp Disconnect = do liftIO (resp Disconnected)
+                                    return False
+
+updateClient _ _ (SetPackageDB pkgDB) = do modify (packageDB .= pkgDB)
+                                           return True
+
+updateClient _ resp (AddPackages packagePathes) = do addPackages resp packagePathes
+                                                     return True
+
+updateClient _ _ (SetWorkingDir fp) = do liftIO (setCurrentDirectory fp)
+                                         return True
+
 updateClient _ resp (SetGHCFlags flags) = do (unused, change) <- lift (useFlags flags)
                                              liftIO $ resp $ UnusedFlags unused
                                              modify $ ghcFlagsSet .= change
                                              return True
+
 updateClient _ _ (RemovePackages packagePathes) = do
     mcs <- gets (^. refSessMCs)
     let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)
@@ -71,9 +85,22 @@ updateClient _ _ (RemovePackages packagePathes) = do
     return True
   where isRemoved mc = (mc ^. mcRoot) `elem` packagePathes
 
+updateClient refs resp UndoLast =
+  do undos <- gets (^. undoStack)
+     case undos of
+       [] -> do liftIO $ resp $ ErrorMessage "There is nothing to undo."
+                return True
+       lastUndo:_ -> do
+         modify (undoStack .= [])
+         liftIO $ mapM_ performUndo lastUndo
+         updateClient refs resp $ ReLoad (getUndoAdded lastUndo)
+                                         (getUndoChanged lastUndo)
+                                         (getUndoRemoved lastUndo) -- reload the reverted files
+
 updateClient _ resp (ReLoad added changed removed) =
   -- TODO: check for changed cabal files and reload their packages
-  do lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
+  do modify (undoStack .= []) -- clear the undo stack
+     lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
      -- remove targets deleted
      modify $ refSessMCs & traversal & mcModules
                 .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
@@ -90,7 +117,8 @@ updateClient _ resp (ReLoad added changed removed) =
                                 Right _ -> return ()
      return True
 
-updateClient _ _ Stop = modify (exiting .= True) >> return False
+updateClient _ _ Stop = do modify (exiting .= True)
+                           return False
 
 -- TODO: perform refactorings without selected modules
 updateClient refactorings resp (PerformRefactoring refact modPath selection args shutdown diffMode)
@@ -105,7 +133,8 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
             Left err -> liftIO $ resp $ ErrorMessage err
             Right diff -> do changedMods <- applyChanges diff
                              if not diffMode
-                               then liftIO $ resp $ ModulesChanged (map (either fst (^. _3)) changedMods)
+                               then do modify (undoStack .- (map (either fst (^. _3)) changedMods :))
+                                       liftIO $ resp $ ModulesChanged
                                else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
                              when (not isWatching && not shutdown && not diffMode)
@@ -137,7 +166,7 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
                 hSetEncoding handle utf8
                 StrictIO.hGetContents handle
               let undo = createUndo 0 $ getGroupedDiff origCont newCont
-              let unifiedDiff = {- show $ getGroupedDiff origCont newCont -} createUnifiedDiff file origCont newCont
+              let unifiedDiff = createUnifiedDiff file origCont newCont
               when (not diffMode) $ do
                liftIO $ withBinaryFile file WriteMode $ \handle -> do
                  hSetEncoding handle utf8
@@ -222,6 +251,38 @@ createUndo _ [] = []
 createUnifiedDiff :: FilePath -> String -> String -> String
 createUnifiedDiff name left right
   = render $ prettyContextDiff (PP.text name) (PP.text name) PP.text $ getContextDiff 3 (lines left) (lines right)
+
+performUndo :: UndoRefactor -> IO ()
+performUndo (RemoveAdded fp) = removeFile fp
+performUndo (RestoreRemoved fp cont)
+  = liftIO $ withBinaryFile fp WriteMode $ \handle -> do
+      hSetEncoding handle utf8
+      hPutStr handle cont
+performUndo (UndoChanges fp changes) = do
+  cont <- liftIO $ withBinaryFile fp ReadMode $ \handle -> do
+    hSetEncoding handle utf8
+    StrictIO.hGetContents handle
+  liftIO $ withBinaryFile fp WriteMode $ \handle -> do
+      hSetEncoding handle utf8
+      hPutStr handle (performUndoChanges 0 changes cont)
+
+performUndoChanges :: Int -> FileDiff -> String -> String
+performUndoChanges i ((start,end,replace):rest) str | i == start
+  = replace ++ performUndoChanges end rest (drop (end-start) str)
+performUndoChanges i diffs (c:str) = c : performUndoChanges (i+1) diffs str
+performUndoChanges i diffs [] = []
+
+getUndoAdded :: [UndoRefactor] -> [FilePath]
+getUndoAdded = catMaybes . map (\case RestoreRemoved fp _ -> Just fp
+                                      _                   -> Nothing)
+
+getUndoChanged :: [UndoRefactor] -> [FilePath]
+getUndoChanged = catMaybes . map (\case UndoChanges fp _ -> Just fp
+                                        _                -> Nothing)
+
+getUndoRemoved :: [UndoRefactor] -> [FilePath]
+getUndoRemoved = catMaybes . map (\case RemoveAdded fp -> Just fp
+                                        _              -> Nothing)
 
 initGhcSession :: IO Session
 initGhcSession = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))
