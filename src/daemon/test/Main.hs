@@ -159,7 +159,7 @@ compProblemTests =
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "no-such-file"
-    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False ]
+    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False]
     , \case [ ErrorMessage _ ] -> True; _ -> False )
   , ( "additional-files"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "additional-files"] ]
@@ -180,13 +180,23 @@ refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] 
 refactorTests testRoot =
   [ ( "simple-refactor", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
+  , ( "dry-refactor", testRoot </> "reloading"
+    , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["cc"] False True
+      ]
+    , \case [ LoadingModules{}, LoadedModules {}, LoadedModules {}, LoadedModules {}
+              , DiffInfo diff'
+              ] -> let [cFile,bFile] = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs"]
+                       diff = "--- " ++ cFile ++ "\n+++ " ++ cFile ++ "\n@@\n module C where\r\n \r\n-c = ()\n+cc = ()\n--- "
+                                ++ bFile ++ "\n+++ " ++ bFile ++ "\n@@\n module B where\r\n \r\n import C\r\n \r\n-b = c\n+b = cc\n"
+                    in diff' == diff; _ -> False )
   , ( "hs-boots", testRoot </> "hs-boots"
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _, ModulesChanged _
               , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
@@ -196,7 +206,7 @@ refactorTests testRoot =
             _ -> False )
   , ( "remove-module", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False False
       ]
     , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{},LoadedModules [ (aaPath, _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
@@ -209,7 +219,7 @@ reloadingTests =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
               , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
@@ -223,7 +233,7 @@ reloadingTests =
     , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
     , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
     , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
               , LoadedModules [(pathB',_)], ModulesChanged _
@@ -242,7 +252,7 @@ reloadingTests =
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
                   [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False
+      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
               , LoadingModules{}, LoadedModules [(pathC',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathC'',_)] ]
@@ -255,7 +265,7 @@ reloadingTests =
     , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
     , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"]
       , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
-                                              "3:1-3:2" ["d"] False
+                                              "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathA,_)] ]
               -> let [pA,pB] = map ((testRoot </> "multi-packages-dependent" ++ testSuffix) </>) [ "package1" </> "A.hs", "package2" </> "B.hs"]
