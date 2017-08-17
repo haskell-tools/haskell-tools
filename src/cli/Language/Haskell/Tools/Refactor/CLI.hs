@@ -84,8 +84,12 @@ processCommand shutdown refactorings output chan cmd = do
     ["Exit"] -> writeChan chan Disconnect >> return False
     ref : rest | let modPath:selection:details = rest ++ (replicate (2 - length rest) "")
                , ref `elem` refactorCommands refactorings
-       -> do writeChan chan (PerformRefactoring ref modPath selection details shutdown) >> return (not shutdown)
-
+       -> do writeChan chan (PerformRefactoring ref modPath selection details shutdown False)
+             return (not shutdown)
+    "Try" : ref : rest | let modPath:selection:details = rest ++ (replicate (2 - length rest) "")
+                       , ref `elem` refactorCommands refactorings
+       -> do writeChan chan (PerformRefactoring ref modPath selection details shutdown True)
+             return (not shutdown)
     _ -> do liftIO $ hPutStrLn output $ "'" ++ cmd ++ "' is not a known command. Commands are: Exit, "
                                             ++ intercalate ", " (refactorCommands refactorings)
             return True
@@ -106,6 +110,9 @@ processMessage pedantic output (CompilationProblem marks)
        return (if pedantic then Just False else Nothing)
 processMessage _ output (LoadedModules mods)
   = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods
+       return Nothing
+processMessage _ output (DiffInfo diff)
+  = do putStrLn diff
        return Nothing
 processMessage _ output (UnusedFlags flags)
   = if not $ null flags

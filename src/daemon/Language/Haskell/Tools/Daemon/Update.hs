@@ -23,6 +23,8 @@ import Data.Version (Version(..))
 import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
 import System.IO
 import System.IO.Strict as StrictIO (hGetContents)
+import Text.PrettyPrint as PP
+import Data.Algorithm.DiffContext
 
 import Bag (bagToList)
 import DynFlags (DynFlags(..), PkgConfRef(..))
@@ -91,40 +93,43 @@ updateClient _ resp (ReLoad added changed removed) =
 updateClient _ _ Stop = modify (exiting .= True) >> return False
 
 -- TODO: perform refactorings without selected modules
-updateClient refactorings resp (PerformRefactoring refact modPath selection args shutdown) = do
-    (selectedMod, otherMods) <- getFileMods modPath
-    performRefactoring (refact:selection:args)
-                       (maybe (Left modPath) Right selectedMod) otherMods
-    when shutdown $ liftIO $ resp Disconnected
-    return (not shutdown)
+updateClient refactorings resp (PerformRefactoring refact modPath selection args shutdown diffMode)
+  = do (selectedMod, otherMods) <- getFileMods modPath
+       performRefactoring (refact:selection:args)
+                          (maybe (Left modPath) Right selectedMod) otherMods
+       when shutdown $ liftIO $ resp Disconnected
+       return (not shutdown)
   where performRefactoring cmd actualMod otherMods = do
           res <- lift $ performCommand refactorings cmd actualMod otherMods
           case res of
             Left err -> liftIO $ resp $ ErrorMessage err
             Right diff -> do changedMods <- applyChanges diff
-                             liftIO $ resp $ ModulesChanged (map (either id (\(_,_,ch) -> ch)) changedMods)
+                             if not diffMode
+                               then liftIO $ resp $ ModulesChanged (map (either fst (^. _3)) changedMods)
+                               else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
-                             when (not isWatching && not shutdown)
+                             when (not isWatching && not shutdown && not diffMode)
                                  -- if watch is on, then it will automatically
                                  -- reload changed files, otherwise we do it manually
-                               $ void $ reloadChanges (map ((^. sfkModuleName) . (\(key,_,_) -> key)) (rights changedMods))
+                               $ void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
         applyChanges changes = do
           forM changes $ \case
             ModuleCreated n m otherM -> do
               mcs <- gets (^. refSessMCs)
               Just (_, otherMR) <- gets (lookupModInSCs otherM . (^. refSessMCs))
-
               let Just otherMS = otherMR ^? modRecMS
                   Just mc = lookupModuleColl (otherM ^. sfkModuleName) mcs
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
-              modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                         .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
-              liftIO $ withBinaryFile loc WriteMode $ \handle -> do
-                hSetEncoding handle utf8
-                hPutStr handle (prettyPrint m)
-              lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
-              return $ Right (SourceFileKey loc n, loc, RemoveAdded loc)
+              let newCont = prettyPrint m
+              when (not diffMode) $ do
+                modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
+                           .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
+                liftIO $ withBinaryFile loc WriteMode $ \handle -> do
+                  hSetEncoding handle utf8
+                  hPutStr handle newCont
+                lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
+              return $ Right (SourceFileKey loc n, loc, RemoveAdded loc, createUnifiedDiff loc "" newCont)
             ContentChanged (n,m) -> do
               let newCont = prettyPrint m
                   file = n ^. sfkFileName
@@ -132,18 +137,21 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
                 hSetEncoding handle utf8
                 StrictIO.hGetContents handle
               let undo = createUndo 0 $ getGroupedDiff origCont newCont
-              liftIO $ withBinaryFile file WriteMode $ \handle -> do
-                hSetEncoding handle utf8
-                hPutStr handle newCont
-              return $ Right (n, file, UndoChanges file undo)
+              let unifiedDiff = {- show $ getGroupedDiff origCont newCont -} createUnifiedDiff file origCont newCont
+              when (not diffMode) $ do
+               liftIO $ withBinaryFile file WriteMode $ \handle -> do
+                 hSetEncoding handle utf8
+                 hPutStr handle newCont
+              return $ Right (n, file, UndoChanges file undo, unifiedDiff)
             ModuleRemoved mod -> do
               Just (sfk,_) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
               let file = sfk ^. sfkFileName
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
-              lift $ removeTarget (TargetFile file Nothing)
-              modify $ (refSessMCs .- removeModule mod)
-              liftIO $ removeFile file
-              return $ Left $ RestoreRemoved file origCont
+              when (not diffMode) $ do
+                lift $ removeTarget (TargetFile file Nothing)
+                modify $ (refSessMCs .- removeModule mod)
+                liftIO $ removeFile file
+              return $ Left (RestoreRemoved file origCont, createUnifiedDiff file origCont "")
 
         reloadChanges changedMods
           = do reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
@@ -210,6 +218,10 @@ createUndo i (First rem : rest) = (i, i, rem) : createUndo i rest
 createUndo i (Second add : rest)
   = (i, i + length add, []) : createUndo (i + length add) rest
 createUndo _ [] = []
+
+createUnifiedDiff :: FilePath -> String -> String -> String
+createUnifiedDiff name left right
+  = render $ prettyContextDiff (PP.text name) (PP.text name) PP.text $ getContextDiff 3 (lines left) (lines right)
 
 initGhcSession :: IO Session
 initGhcSession = Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags >> getSession))

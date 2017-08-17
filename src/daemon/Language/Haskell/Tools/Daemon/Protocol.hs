@@ -37,12 +37,15 @@ data ClientMessage
   | PerformRefactoring { refactoring :: String
                        , modulePath :: FilePath
                        , editorSelection :: String
-                       , details :: [String]
-                       , shutdownAfter :: Bool
+                       , details :: [String] -- ^ Additional details for the refactoring like the
+                                             -- names of generated definitions.
+                       , shutdownAfter :: Bool -- ^ Stop the daemon after performing the refactoring.
+                       , diffMode :: Bool -- ^ Don't change the files, send back the result as
+                                          -- a unified diff.
                        }
     -- ^ Orders the engine to perform the refactoring on the module given
     -- with the selection and details. Successful refactorings respond with
-    -- ModulesChanged. If shutdownAfter is not specified, after the refactoring,
+    -- ModulesChanged. If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
     -- modules are re-loaded, LoadingModules, LoadedModules responses are sent.
   | Disconnect
     -- ^ Stops the engine. It replies with Disconnected.
@@ -70,6 +73,8 @@ data ResponseMsg
     -- ^ A response that tells there are errors in the source code given.
   | ModulesChanged { undoChanges :: [UndoRefactor] }
     -- ^ The refactoring succeeded. The information to undo the changes is sent.
+  | DiffInfo { diffInfo :: String }
+    -- ^ Information about changes that would be caused by the refactoring.
   | LoadingModules { modulesToLoad :: [FilePath] }
     -- ^ The traversal of the project is done, now the engine is loading the
     -- given modules.
