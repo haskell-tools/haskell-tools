@@ -91,31 +91,16 @@ updateClient refs resp UndoLast =
        [] -> do liftIO $ resp $ ErrorMessage "There is nothing to undo."
                 return True
        lastUndo:_ -> do
-         modify (undoStack .= [])
+         modify (undoStack .- tail)
          liftIO $ mapM_ performUndo lastUndo
-         updateClient refs resp $ ReLoad (getUndoAdded lastUndo)
-                                         (getUndoChanged lastUndo)
-                                         (getUndoRemoved lastUndo) -- reload the reverted files
+         reloadModules resp (getUndoAdded lastUndo)
+                            (getUndoChanged lastUndo)
+                            (getUndoRemoved lastUndo) -- reload the reverted files
 
 updateClient _ resp (ReLoad added changed removed) =
   -- TODO: check for changed cabal files and reload their packages
   do modify (undoStack .= []) -- clear the undo stack
-     lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
-     -- remove targets deleted
-     modify $ refSessMCs & traversal & mcModules
-                .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
-     modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
-     -- reload changed modules
-     -- TODO: filter those that are in reloaded packages
-     reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
-                                       (\mss -> resp (LoadingModules (map getModSumOrig mss)))
-                                       (\ms -> getModSumOrig ms `elem` changed)
-     mcs <- gets (^. refSessMCs)
-     let mcsToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
-     addPackages resp (map (^. mcRoot) mcsToReload) -- reload packages containing added modules
-     liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage CompilationProblem (getProblems errs))
-                                Right _ -> return ()
-     return True
+     reloadModules resp added changed removed
 
 updateClient _ _ Stop = do modify (exiting .= True)
                            return False
@@ -238,6 +223,27 @@ addPackages resp packagePathes = do
                      return True
             [] -> return True
 
+-- | Reloads changed modules to have an up-to-date version loaded
+reloadModules :: (ResponseMsg -> IO ()) -> [FilePath] -> [FilePath] -> [FilePath] -> DaemonSession Bool
+reloadModules resp added changed removed = do
+  lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
+  -- remove targets deleted
+  modify $ refSessMCs & traversal & mcModules
+             .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
+  modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
+  -- reload changed modules
+  -- TODO: filter those that are in reloaded packages
+  reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+                                    (\mss -> resp (LoadingModules (map getModSumOrig mss)))
+                                    (\ms -> getModSumOrig ms `elem` changed)
+  mcs <- gets (^. refSessMCs)
+  let mcsToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
+  addPackages resp (map (^. mcRoot) mcsToReload) -- reload packages containing added modules
+  liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage CompilationProblem (getProblems errs))
+                             Right _ -> return ()
+  return True
+
+-- | Creates a compressed set of changes in one file
 createUndo :: Eq a => Int -> [Diff [a]] -> [(Int, Int, [a])]
 createUndo i (Both str _ : rest) = createUndo (i + length str) rest
 createUndo i (First rem : Second add : rest)
@@ -247,10 +253,12 @@ createUndo i (Second add : rest)
   = (i, i + length add, []) : createUndo (i + length add) rest
 createUndo _ [] = []
 
+-- | Creates a unified-style diff of two texts. Only used when the user wants to know what would change.
 createUnifiedDiff :: FilePath -> String -> String -> String
 createUnifiedDiff name left right
   = render $ prettyContextDiff (PP.text name) (PP.text name) PP.text $ getContextDiff 3 (lines left) (lines right)
 
+-- | Undo a refactoring change using the information that was saved earlier.
 performUndo :: UndoRefactor -> IO ()
 performUndo (RemoveAdded fp) = removeFile fp
 performUndo (RestoreRemoved fp cont)
@@ -265,20 +273,24 @@ performUndo (UndoChanges fp changes) = do
       hSetEncoding handle utf8
       hPutStr handle (performUndoChanges 0 changes cont)
 
+-- | Undo the changes in one file using the information that was saved earlier. See 'createUndo'.
 performUndoChanges :: Int -> FileDiff -> String -> String
 performUndoChanges i ((start,end,replace):rest) str | i == start
   = replace ++ performUndoChanges end rest (drop (end-start) str)
 performUndoChanges i diffs (c:str) = c : performUndoChanges (i+1) diffs str
 performUndoChanges i diffs [] = []
 
+-- | Get the files added by a refactoring.
 getUndoAdded :: [UndoRefactor] -> [FilePath]
 getUndoAdded = catMaybes . map (\case RestoreRemoved fp _ -> Just fp
                                       _                   -> Nothing)
 
+-- | Get the files changed by a refactoring.
 getUndoChanged :: [UndoRefactor] -> [FilePath]
 getUndoChanged = catMaybes . map (\case UndoChanges fp _ -> Just fp
                                         _                -> Nothing)
 
+-- | Get the files removed by a refactoring.
 getUndoRemoved :: [UndoRefactor] -> [FilePath]
 getUndoRemoved = catMaybes . map (\case RemoveAdded fp -> Just fp
                                         _              -> Nothing)
