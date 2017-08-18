@@ -96,7 +96,7 @@ testPackage noLoad sourceDirectory logDirectory pack = do
                   , Left ("stack build --test --no-run-tests --bench --no-run-benchmarks --ghc-options=\"-w\" > "
                              ++ buildLogPath ++ " 2>&1", pkgLoc, BuildFailure)
                   -- correct rts option handling (on windows) requires stack 1.4
-                  , Left ("stack exec -- ht-refact +RTS -M4G -RTS --no-watch --ghc-options=\"-w\" "
+                  , Left ("stack exec --RTS -- ht-refact +RTS -M4G -RTS --no-watch --ghc-options=\"-w\" "
                             ++ " --execute=\"ProjectOrganizeImports\" . > "
                             ++ refLogPath ++ " 2>&1", pkgLoc, RefactError)
                   , Left ("stack build > " ++ reloadLogPath ++ " 2>&1", pkgLoc, WrongCodeError)

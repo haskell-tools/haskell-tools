@@ -19,7 +19,7 @@ import System.IO
 import System.IO.Error (catchIOError)
 import System.Process
 import Test.Tasty
-import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
+import Test.Tasty.HUnit
 
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
@@ -52,6 +52,8 @@ allTests isSource testRoot portCounter
               $ map (makeRefactorTest portCounter) (refactorTests testRoot)
           , testGroup "reload-tests"
               $ map (makeReloadTest portCounter) reloadingTests
+          , testGroup "undo-tests"
+              $ map (makeUndoTest portCounter) undoTests
           , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
           -- if not a stack build, we cannot guarantee that stack is on the path
@@ -182,7 +184,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{}, LoadedModules [ (aPath', _) ]]
+    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
   , ( "dry-refactor", testRoot </> "reloading"
     , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
@@ -198,7 +200,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _, ModulesChanged _
+    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _
               , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
               , LoadedModules [ (path3, _) ], LoadedModules [ (path4, _) ]
               ] -> let allPathes = map ((testRoot </> "hs-boots" ++ testSuffix) </>) ["A.hs","B.hs","A.hs-boot","B.hs-boot"]
@@ -208,7 +210,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False False
       ]
-    , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], ModulesChanged _, LoadingModules{},LoadedModules [ (aaPath, _) ]]
+    , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], LoadingModules{},LoadedModules [ (aaPath, _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
                    && aaPath == testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs"
             _ -> False )
@@ -223,7 +225,7 @@ reloadingTests =
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
               , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
-              , ModulesChanged _, LoadingModules{},LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
+              , LoadingModules{},LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
               ] -> let allPathes = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
                     in [pathC,pathB,pathA] == allPathes
                          && [pathC',pathB',pathA'] == allPathes
@@ -236,7 +238,7 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
-              , LoadedModules [(pathB',_)], ModulesChanged _
+              , LoadedModules [(pathB',_)]
               , LoadingModules{}, LoadedModules [(pathA'',_)], LoadedModules [(pathB'',_)]
               ] -> let [pA,pB] = map ((testRoot </> "changing-cabal" ++ testSuffix) </>) ["A.hs","B.hs"]
                     in pA == pathA && pA == pathA' && pA == pathA'' && pB == pathB' && pB == pathB''
@@ -255,7 +257,7 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
-              , LoadingModules{}, LoadedModules [(pathC',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathC'',_)] ]
+              , LoadingModules{}, LoadedModules [(pathC',_)], LoadingModules{}, LoadedModules [(pathC'',_)] ]
               -> let [pC,pB,pA] = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
                   in pA == pathA && pB == pathB && pC == pathC && pC == pathC' && pC == pathC''
             _ -> False )
@@ -267,11 +269,47 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
                                               "3:1-3:2" ["d"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)], ModulesChanged _, LoadingModules{}, LoadedModules [(pathA,_)] ]
+    , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)]
+              , LoadingModules{}, LoadedModules [(pathA,_)] ]
               -> let [pA,pB] = map ((testRoot </> "multi-packages-dependent" ++ testSuffix) </>) [ "package1" </> "A.hs", "package2" </> "B.hs"]
                   in pA == pathA && pA == pathA' && pB == pathB'
             _ -> False )
   ]
+
+undoTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+undoTests
+  = [ ( "simple-undo", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Left $ do -- if the test does not succeed, insert a delay here
+                    res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
+                    when (filter (`notElem` ['\r','\n']) res /= "module A wherey = ()")
+                      $ assertFailure ("Module content after refactoring is not the expected:\n" ++ res)
+        , Right UndoLast
+        , Left $ do -- if the test does not succeed, insert a delay here
+                    res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
+                    when (filter (`notElem` ['\r','\n']) res /= "module A wherex = ()")
+                      $ assertFailure ("Module content after undoing is not the expected:\n" ++ res)
+        ]
+      , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}]
+                -> True; _ -> False )
+    , ( "multi-module-undo", testRoot </> "reloading"
+        , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
+          , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
+          , Right UndoLast
+          , Left $ do -- if the test does not succeed, insert a delay here
+                      resC <- readFile (testRoot </> "reloading" ++ testSuffix </> "C.hs")
+                      resB <- readFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
+                      when (filter (`notElem` ['\r','\n']) resC /= "module C wherec = ()")
+                        $ assertFailure ("C.hs content after undoing is not the expected:\n" ++ resC)
+                      when (filter (`notElem` ['\r','\n']) resB /= "module B whereimport Cb = c")
+                        $ assertFailure ("B.hs content after undoing is not the expected:\n" ++ resC)
+          ]
+        , \case [ LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
+                  , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
+                  , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{} ]
+                  -> True; _ -> False )
+    ]
 
 pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
 pkgDbTests
@@ -344,6 +382,16 @@ makeReloadTest port (label, dir, input1, io, input2, validator) = testCase label
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
+makeUndoTest :: MVar Int -> (String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeUndoTest port (label, dir, inputs, validator) = testCase label $ do
+    exists <- doesDirectoryExist (dir ++ testSuffix)
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
+    actual <- communicateWithDaemon False port inputs
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
+
 makePkgDbTest :: MVar Int -> (String, IO (), [ClientMessage], [ResponseMsg]) -> TestTree
 makePkgDbTest port (label, prepare, inputs, expected)
   = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
@@ -355,16 +403,6 @@ makeCompProblemTest :: MVar Int -> (String, [Either (IO ()) ClientMessage], [Res
 makeCompProblemTest port (label, actions, validator) = testCase label $ do
   actual <- communicateWithDaemon False port actions
   assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
-
-makeWatchTest :: MVar Int -> (String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
-makeWatchTest port (label, dir, actions, validator) = testCase label $ do
-    exists <- doesDirectoryExist (dir ++ testSuffix)
-    -- clear the target directory from possible earlier test runs
-    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
-    copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon True port (Right (SetPackageDB DefaultDB) : actions)
-    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
-  `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 communicateWithDaemon :: Bool -> MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
 communicateWithDaemon watch port msgs = withSocketsDo $ do

@@ -24,10 +24,13 @@ main = exit =<< normalRefactorSession builtinRefactorings stdin stdout =<< execP
                       <> header "ht-refact: a command-line interface for Haskell-tools")
 
 cliOptions :: Parser CLIOptions
-cliOptions = CLIOptions <$> version <*> oneShot <*> noWatch <*> watch <*> ghcFlags <*> packages
+cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> noWatch <*> watch <*> ghcFlags
+                        <*> packages
   where version = switch (long "version"
                             <> short 'v'
                             <> help "Show the version of this software")
+        verb = switch (long "verbose"
+                           <> help "Prints debugging information.")
         oneShot
           = optional $ strOption (long "execute"
                                    <> short 'e'

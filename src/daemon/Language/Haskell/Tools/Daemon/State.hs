@@ -9,6 +9,7 @@ import GHC
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB
+import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 
 -- | The actual state of the daemon process. Contains loaded modules and user settings.
@@ -27,13 +28,15 @@ data DaemonSessionState
                            -- ^ The pathes where the package databases are located.
                        , _exiting :: Bool
                            -- ^ True if in the process of shutting down the session.
+                       , _undoStack :: [[UndoRefactor]]
+                           -- ^ True if in the process of shutting down the session.
                        , _watchProc :: Maybe WatchProcess
                            -- ^ Information about the file system watch process.
                        }
 
 -- | An initial state of a daemon session.
 initSession :: DaemonSessionState
-initSession = DaemonSessionState [] AutoDB id False [] False Nothing
+initSession = DaemonSessionState [] AutoDB id False [] False [] Nothing
 
 -- | The state of the file system watching. Needed for adding new packages and shutting it down when
 -- we are finished.
