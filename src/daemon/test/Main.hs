@@ -19,7 +19,7 @@ import System.IO
 import System.IO.Error (catchIOError)
 import System.Process
 import Test.Tasty
-import Test.Tasty.HUnit (assertEqual, assertBool, testCase)
+import Test.Tasty.HUnit
 
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
@@ -52,6 +52,8 @@ allTests isSource testRoot portCounter
               $ map (makeRefactorTest portCounter) (refactorTests testRoot)
           , testGroup "reload-tests"
               $ map (makeReloadTest portCounter) reloadingTests
+          , testGroup "undo-tests"
+              $ map (makeUndoTest portCounter) undoTests
           , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
           -- if not a stack build, we cannot guarantee that stack is on the path
@@ -274,6 +276,41 @@ reloadingTests =
             _ -> False )
   ]
 
+undoTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+undoTests
+  = [ ( "simple-undo", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Left $ do -- if the test does not succeed, insert a delay here
+                    res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
+                    when (lines res /= ["module A where", "", "y = ()"])
+                      $ assertFailure ("Module content after refactoring is not the expected:\n" ++ res)
+        , Right UndoLast
+        , Left $ do -- if the test does not succeed, insert a delay here
+                    res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
+                    when (lines res /= ["module A where", "", "x = ()"])
+                      $ assertFailure ("Module content after undoing is not the expected:\n" ++ res)
+        ]
+      , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}]
+                -> True; _ -> False )
+    , ( "multi-module-undo", testRoot </> "reloading"
+        , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
+          , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
+          , Right UndoLast
+          , Left $ do -- if the test does not succeed, insert a delay here
+                      resC <- readFile (testRoot </> "reloading" ++ testSuffix </> "C.hs")
+                      resB <- readFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
+                      when (lines resC /= ["module C where", "", "c = ()"])
+                        $ assertFailure ("C.hs content after undoing is not the expected:\n" ++ resC)
+                      when (lines resB /= ["module B where", "", "import C", "", "b = c"])
+                        $ assertFailure ("B.hs content after undoing is not the expected:\n" ++ resC)
+          ]
+        , \case [ LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
+                  , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
+                  , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{} ]
+                  -> True; _ -> False )
+    ]
+
 pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
 pkgDbTests
   = [ ( "cabal-sandbox"
@@ -345,6 +382,16 @@ makeReloadTest port (label, dir, input1, io, input2, validator) = testCase label
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
+makeUndoTest :: MVar Int -> (String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeUndoTest port (label, dir, inputs, validator) = testCase label $ do
+    exists <- doesDirectoryExist (dir ++ testSuffix)
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
+    actual <- communicateWithDaemon False port inputs
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
+
 makePkgDbTest :: MVar Int -> (String, IO (), [ClientMessage], [ResponseMsg]) -> TestTree
 makePkgDbTest port (label, prepare, inputs, expected)
   = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
@@ -356,16 +403,6 @@ makeCompProblemTest :: MVar Int -> (String, [Either (IO ()) ClientMessage], [Res
 makeCompProblemTest port (label, actions, validator) = testCase label $ do
   actual <- communicateWithDaemon False port actions
   assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
-
-makeWatchTest :: MVar Int -> (String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
-makeWatchTest port (label, dir, actions, validator) = testCase label $ do
-    exists <- doesDirectoryExist (dir ++ testSuffix)
-    -- clear the target directory from possible earlier test runs
-    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
-    copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon True port (Right (SetPackageDB DefaultDB) : actions)
-    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
-  `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 communicateWithDaemon :: Bool -> MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
 communicateWithDaemon watch port msgs = withSocketsDo $ do
