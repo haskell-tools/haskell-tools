@@ -182,7 +182,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], ModulesChanged, LoadingModules{}, LoadedModules [ (aPath', _) ]]
+    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
   , ( "dry-refactor", testRoot </> "reloading"
     , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
@@ -198,7 +198,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _, ModulesChanged
+    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _
               , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
               , LoadedModules [ (path3, _) ], LoadedModules [ (path4, _) ]
               ] -> let allPathes = map ((testRoot </> "hs-boots" ++ testSuffix) </>) ["A.hs","B.hs","A.hs-boot","B.hs-boot"]
@@ -208,7 +208,7 @@ refactorTests testRoot =
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False False
       ]
-    , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], ModulesChanged, LoadingModules{},LoadedModules [ (aaPath, _) ]]
+    , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], LoadingModules{},LoadedModules [ (aaPath, _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
                    && aaPath == testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs"
             _ -> False )
@@ -223,7 +223,7 @@ reloadingTests =
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
               , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
-              , ModulesChanged, LoadingModules{},LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
+              , LoadingModules{},LoadedModules [(pathC',_)], LoadedModules [(pathB',_)], LoadedModules [(pathA',_)]
               ] -> let allPathes = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
                     in [pathC,pathB,pathA] == allPathes
                          && [pathC',pathB',pathA'] == allPathes
@@ -236,7 +236,7 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
-              , LoadedModules [(pathB',_)], ModulesChanged
+              , LoadedModules [(pathB',_)]
               , LoadingModules{}, LoadedModules [(pathA'',_)], LoadedModules [(pathB'',_)]
               ] -> let [pA,pB] = map ((testRoot </> "changing-cabal" ++ testSuffix) </>) ["A.hs","B.hs"]
                     in pA == pathA && pA == pathA' && pA == pathA'' && pB == pathB' && pB == pathB''
@@ -255,7 +255,7 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
-              , LoadingModules{}, LoadedModules [(pathC',_)], ModulesChanged, LoadingModules{}, LoadedModules [(pathC'',_)] ]
+              , LoadingModules{}, LoadedModules [(pathC',_)], LoadingModules{}, LoadedModules [(pathC'',_)] ]
               -> let [pC,pB,pA] = map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
                   in pA == pathA && pB == pathB && pC == pathC && pC == pathC' && pC == pathC''
             _ -> False )
@@ -267,7 +267,8 @@ reloadingTests =
       , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
                                               "3:1-3:2" ["d"] False False
       ]
-    , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)], ModulesChanged, LoadingModules{}, LoadedModules [(pathA,_)] ]
+    , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)]
+              , LoadingModules{}, LoadedModules [(pathA,_)] ]
               -> let [pA,pB] = map ((testRoot </> "multi-packages-dependent" ++ testSuffix) </>) [ "package1" </> "A.hs", "package2" </> "B.hs"]
                   in pA == pathA && pA == pathA' && pB == pathB'
             _ -> False )

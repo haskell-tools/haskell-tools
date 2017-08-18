@@ -44,8 +44,8 @@ data ClientMessage
                                           -- a unified diff.
                        }
     -- ^ Orders the engine to perform the refactoring on the module given
-    -- with the selection and details. Successful refactorings respond with
-    -- ModulesChanged. If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
+    -- with the selection and details. Successful refactorings will cause re-loading of modules.
+    -- If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
     -- modules are re-loaded, LoadingModules, LoadedModules responses are sent.
   | UndoLast
     -- ^ Asks the daemon to undo the last refactoring.
@@ -57,7 +57,7 @@ data ClientMessage
            }
     -- ^ Instructs the engine to re-load a changed module.
     -- LoadingModules, LoadedModules responses may be sent.
-  | Stop -- TODO: remove 
+  | Stop -- TODO: remove
     -- ^ Stops the server. OBSOLATE
   deriving (Show, Generic)
 
@@ -73,8 +73,6 @@ data ResponseMsg
     -- TODO: separate internal problems and user mistakes.
   | CompilationProblem { errorMarkers :: [(SrcSpan, String)] }
     -- ^ A response that tells there are errors in the source code given.
-  | ModulesChanged -- TODO: remove if may be removed
-    -- ^ The refactoring succeeded. The information to undo the changes is sent.
   | DiffInfo { diffInfo :: String }
     -- ^ Information about changes that would be caused by the refactoring.
   | LoadingModules { modulesToLoad :: [FilePath] }

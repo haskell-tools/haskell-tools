@@ -133,8 +133,7 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
             Left err -> liftIO $ resp $ ErrorMessage err
             Right diff -> do changedMods <- applyChanges diff
                              if not diffMode
-                               then do modify (undoStack .- (map (either fst (^. _3)) changedMods :))
-                                       liftIO $ resp $ ModulesChanged
+                               then modify (undoStack .- (map (either fst (^. _3)) changedMods :))
                                else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
                              when (not isWatching && not shutdown && not diffMode)
