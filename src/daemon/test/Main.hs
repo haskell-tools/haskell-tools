@@ -283,12 +283,12 @@ undoTests
         , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
         , Left $ do -- if the test does not succeed, insert a delay here
                     res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
-                    when (lines res /= ["module A where", "", "y = ()"])
+                    when (filter (`notElem` ['\r','\n']) res /= "module A wherey = ()")
                       $ assertFailure ("Module content after refactoring is not the expected:\n" ++ res)
         , Right UndoLast
         , Left $ do -- if the test does not succeed, insert a delay here
                     res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
-                    when (lines res /= ["module A where", "", "x = ()"])
+                    when (filter (`notElem` ['\r','\n']) res /= "module A wherex = ()")
                       $ assertFailure ("Module content after undoing is not the expected:\n" ++ res)
         ]
       , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}]
@@ -300,9 +300,9 @@ undoTests
           , Left $ do -- if the test does not succeed, insert a delay here
                       resC <- readFile (testRoot </> "reloading" ++ testSuffix </> "C.hs")
                       resB <- readFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
-                      when (lines resC /= ["module C where", "", "c = ()"])
+                      when (filter (`notElem` ['\r','\n']) resC /= "module C wherec = ()")
                         $ assertFailure ("C.hs content after undoing is not the expected:\n" ++ resC)
-                      when (lines resB /= ["module B where", "", "import C", "", "b = c"])
+                      when (filter (`notElem` ['\r','\n']) resB /= "module B whereimport Cb = c")
                         $ assertFailure ("B.hs content after undoing is not the expected:\n" ++ resC)
           ]
         , \case [ LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
