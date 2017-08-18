@@ -22,7 +22,7 @@ import GhcMonad (Session(..), reflectGhc)
 
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage(..))
 import Language.Haskell.Tools.Daemon.State (WatchProcess(..), DaemonSessionState)
-import Language.Haskell.Tools.Daemon.Update (updateClient)
+import Language.Haskell.Tools.Daemon.Update (reloadModules)
 
 -- | Starts the watch process and a thread that receives notifications from it. The notification
 -- thread will invoke updates on the daemon state to re-load files.
@@ -58,9 +58,9 @@ createWatchProcess watchExePath ghcSess daemonSess upClient = do
           changedFiles <- catMaybes <$> mapM (getFiles "Mod") allChanges
           addedFiles <- catMaybes <$> mapM (getFiles "Add") allChanges
           removedFiles <- catMaybes <$> mapM (getFiles "Rem") allChanges
-          let rel = ReLoad addedFiles changedFiles removedFiles
+          let reloadAction = reloadModules upClient addedFiles changedFiles removedFiles
           when (length changedFiles + length addedFiles + length removedFiles > 0)
-            $ void $ modifyMVar daemonSess (\st -> swap <$> reflectGhc (runStateT (updateClient [] upClient rel) st) ghcSess)
+            $ void $ modifyMVar daemonSess (\st -> swap <$> reflectGhc (runStateT reloadAction st) ghcSess)
       let _watchThreads = [collectorThread, reloaderThread]
       return $ Just WatchProcess{..}
     accumulateChanges store previous = do

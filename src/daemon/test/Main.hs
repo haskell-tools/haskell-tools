@@ -278,7 +278,11 @@ reloadingTests =
 
 undoTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
 undoTests
-  = [ ( "simple-undo", testRoot </> "simple-refactor"
+  = [ ( "nothing-to-undo", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right UndoLast
+        ] , \case [ LoadingModules{}, LoadedModules{}, ErrorMessage{}] -> True; _ -> False )
+    , ( "simple-undo", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
         , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
         , Left $ do -- if the test does not succeed, insert a delay here
@@ -309,6 +313,24 @@ undoTests
                   , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{}
                   , LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadedModules{} ]
                   -> True; _ -> False )
+    , ( "multiple-undo", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
+        , Right UndoLast
+        , Right UndoLast
+        , Left $ do -- if the test does not succeed, insert a delay here
+                    res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
+                    when (filter (`notElem` ['\r','\n']) res /= "module A wherex = ()")
+                      $ assertFailure ("Module content after undoing is not the expected:\n" ++ res)
+        ]
+      , \case [ LoadingModules{}, LoadedModules{} -- initial load
+                , LoadingModules{}, LoadedModules{} -- re-load after first refactor
+                , LoadingModules{}, LoadedModules{} -- re-load after second refactor
+                , LoadingModules{}, LoadedModules{} -- re-load after first undo
+                , LoadingModules{}, LoadedModules{} -- re-load after second undo
+                ]
+                -> True; _ -> False )
     ]
 
 pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
