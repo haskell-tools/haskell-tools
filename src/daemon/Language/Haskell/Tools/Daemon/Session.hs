@@ -17,6 +17,7 @@ import qualified Data.List as List
 import Data.List.Split
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Function (on)
 import System.Directory
 import System.FilePath
 
@@ -45,19 +46,19 @@ loadPackagesFrom :: (ModSummary -> IO a)
                       -> DaemonSession (Either RefactorException [a])
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
-     modify $ refSessMCs .- (++ map modCollToSfk modColls)
-     allModColls <- gets (^. refSessMCs)
      st <- get
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
-     let dirsMods = map (\mc -> (mc ^. mcSourceDirs, mc ^. mcModuleFiles, getExposedModules mc)) modColls
-         alreadyLoadedFilesInOtherPackages
+     mcs' <- liftIO (traversal !~ locateModules $ modColls)
+     modify (refSessMCs .- (++ mcs'))
+     allModColls <- gets (^. refSessMCs)
+     let alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
-     actualTargets <- map targetId <$> (lift getTargets)
-     targetCandidates <- concat <$> liftIO (mapM (\(dirs,mapping,mods) -> mapM (createTargetCandidate dirs mapping) mods) dirsMods)
-     lift $ mapM_ (\t -> when (targetId t `notElem` actualTargets) (addTarget t))
-                  (map makeTarget $ List.nub $ List.sort targetCandidates)
+     currentTargets <- map targetId <$> (lift getTargets)
+     lift $ mapM_ (\t -> when (targetId t `notElem` currentTargets) (addTarget t))
+                  (map makeTarget $ List.nubBy ((==) `on` (^. sfkFileName))
+                                  $ List.sort $ concatMap getExposedModules mcs')
      handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags allModColls) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
@@ -67,7 +68,24 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        mods <- mapM (loadModule report) actuallyCompiled
        return mods
 
-  where loadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
+  where getExposedModules :: ModuleCollection k -> [k]
+        getExposedModules
+          = Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)) . (^. mcModules)
+
+        locateModules :: ModuleCollection ModuleNameStr -> IO (ModuleCollection SourceFileKey)
+        locateModules mc
+          = mcModules !~ ((Map.fromList <$>)
+                            . mapM (locateModule (mc ^. mcSourceDirs) (mc ^. mcModuleFiles))
+                            . Map.assocs) $ mc
+
+        locateModule :: [FilePath] -> [(ModuleNameStr, FilePath)]
+                          -> (ModuleNameStr, ModuleRecord) -> IO (SourceFileKey,ModuleRecord)
+        locateModule srcDirs modMaps (modName, record)
+          = do candidate <- createTargetCandidate srcDirs modMaps modName
+               return (SourceFileKey (either (const "") id candidate) modName, record)
+
+
+        loadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
         loadModule report ms
           = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
                reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
@@ -86,12 +104,8 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
                 wrapEither [] = Left (GHC.mkModuleName modName)
                 wrapEither (fn:_) = Right fn
 
-        makeTarget (Left modName) = Target (TargetModule modName) True Nothing
-        makeTarget (Right filePath) = Target (TargetFile filePath Nothing) True Nothing
-
-        getExposedModules :: ModuleCollection ModuleNameStr -> [ModuleNameStr]
-        getExposedModules
-          = Map.keys . Map.filter (\v -> fromMaybe True (v ^? recModuleExposed)) . (^. mcModules)
+        makeTarget (SourceFileKey "" modName) = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
+        makeTarget (SourceFileKey filePath _) = Target (TargetFile filePath Nothing) True Nothing
 
 -- | Handle GHC exceptions and RefactorException.
 handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
