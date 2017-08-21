@@ -154,7 +154,11 @@ reloadModule report ms = do
       modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
   case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
-    Just mc -> do
+    Just mc -> reloadModuleIn codeGen modName ghcfl mcs mc
+    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mcs mc
+                           []   -> error "reloadModule: module collections empty"
+  where
+    reloadModuleIn codeGen modName ghcfl mcs mc = do
       let dfs = ms_hspp_opts ms
       dfs' <- liftIO $ fmap ghcfl $ compileInContext mc mcs dfs
       let ms' = ms { ms_hspp_opts = dfs' }
@@ -165,7 +169,6 @@ reloadModule report ms = do
                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
                       . Map.delete (SourceFileKey "" modName)
       liftIO $ report ms
-    Nothing -> liftIO $ throwIO $ ModuleNotInPackage modName
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.

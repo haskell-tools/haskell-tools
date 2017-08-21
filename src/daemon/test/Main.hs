@@ -138,6 +138,13 @@ loadingTests =
     , [ AddPackages [testRoot </> "unused-mod"] ]
     , [ LoadingModules [ testRoot </> "unused-mod" </> "Main.hs" ]
       , LoadedModules [ (testRoot </> "unused-mod" </> "Main.hs", "Main") ] ] )
+  , ( "additional-files"
+    , [ SetPackageDB DefaultDB, AddPackages [testRoot </> "additional-files"] ]
+    , [ LoadingModules [ testRoot </> "additional-files" </> "B.hs"
+                       , testRoot </> "additional-files" </> "A.hs" ]
+      , LoadedModules [ (testRoot </> "additional-files" </> "B.hs", "B") ]
+      , LoadedModules [ (testRoot </> "additional-files" </> "A.hs", "A") ]
+      ])
   ]
 
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
@@ -163,9 +170,6 @@ compProblemTests =
   , ( "no-such-file"
     , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False]
     , \case [ ErrorMessage _ ] -> True; _ -> False )
-  , ( "additional-files"
-    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "additional-files"] ]
-    , \case [ LoadingModules {}, ErrorMessage _ ] -> True; _ -> False )
   ]
 
 sourceRoot = ".." </> ".." </> "src"

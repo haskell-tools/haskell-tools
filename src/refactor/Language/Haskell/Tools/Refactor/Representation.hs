@@ -46,7 +46,6 @@ instance Show (RefactorChange dom) where
 -- | Exceptions that can occur while loading modules or during internal operations (not during performing the refactor).
 data RefactorException = IllegalExtensions [String]
                        | SourceCodeProblem ErrorMessages
-                       | ModuleNotInPackage String
                        | UnknownException String
   deriving (Show, Typeable)
 
@@ -58,7 +57,6 @@ instance Exception RefactorException where
     = "Source code problem: " ++ showSDocUnsafe (vcat (pprErrMsgBagWithLoc prob))
   displayException (IllegalExtensions exts)
     = "The following extensions are not allowed: " ++ (concat $ intersperse ", " exts) ++ "."
-  displayException (ModuleNotInPackage modName) = "The module is not in the package: " ++ modName
   displayException (UnknownException ex) = "An unexpected problem appeared: " ++ ex ++ "."
 
 -- | Transforms module name to a .hs file name relative to the source root directory.
