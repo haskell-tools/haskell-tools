@@ -6,7 +6,7 @@ import Control.Exception (SomeException(..), finally, catch)
 import Control.Monad
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.List (sort)
+import Data.List (sort, isSuffixOf)
 import Data.Maybe (Maybe(..), isJust, catMaybes)
 import Network.Socket hiding (KeepAlive, send, recv)
 import Network.Socket.ByteString.Lazy as Sock (sendAll, recv)
@@ -48,6 +48,8 @@ allTests isSource testRoot portCounter
               $ map (makeDaemonTest portCounter) simpleTests
           , testGroup "loading-tests"
               $ map (makeDaemonTest portCounter) loadingTests
+          , testGroup "complex-loading-tests"
+              $ map (makeComplexLoadTest portCounter) complexLoadingTests
           , testGroup "refactor-tests"
               $ map (makeRefactorTest portCounter) (refactorTests testRoot)
           , testGroup "reload-tests"
@@ -145,6 +147,22 @@ loadingTests =
       , LoadedModules [ (testRoot </> "additional-files" </> "B.hs", "B") ]
       , LoadedModules [ (testRoot </> "additional-files" </> "A.hs", "A") ]
       ])
+  ]
+
+complexLoadingTests :: [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
+complexLoadingTests =
+  [ ( "paths-module", testRoot </> "paths-module"
+    , [AddPackages [testRoot </> "paths-module"]]
+    , \case [ LoadingModules [paths, a], LoadedModules{}, LoadedModules{}
+              ] -> "Paths_some_test_package.hs" `isSuffixOf` paths
+                      && "A.hs" `isSuffixOf` a
+              ; _ -> False)
+  , ( "paths-codegen", testRoot </> "paths-codegen"
+    , [AddPackages [testRoot </> "paths-codegen"]]
+    , \case [ LoadingModules [paths, a], LoadedModules{}, LoadedModules{}
+              ] -> "Paths_some_test_package.hs" `isSuffixOf` paths
+                      && "A.hs" `isSuffixOf` a
+              ; _ -> False)
   ]
 
 compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
@@ -387,6 +405,16 @@ makeDaemonTest :: MVar Int -> (String, [ClientMessage], [ResponseMsg]) -> TestTr
 makeDaemonTest port (label, input, expected) = testCase label $ do
     actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
+
+makeComplexLoadTest :: MVar Int -> (String, FilePath, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeComplexLoadTest port (label, dir, inputs, validator) = testCase label $ do
+    exists <- doesDirectoryExist (dir ++ testSuffix)
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
+    actual <- communicateWithDaemon False port (map Right inputs)
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 makeRefactorTest :: MVar Int -> (String, FilePath, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
 makeRefactorTest port (label, dir, input, validator) = testCase label $ do

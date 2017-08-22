@@ -63,10 +63,11 @@ needsGeneratedCode key mcs = maybe False (\case ModuleCodeGenerated {} -> True; 
 -- | Marks the given module for code generation. Finds the module if no source file name is
 -- present and module names check or if both module names and source file names check.
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
-codeGeneratedFor key = map (mcModules .- Map.adjust setCodeGen (sfkFileName .= "" $ key) . Map.adjust setCodeGen key)
-  where setCodeGen (ModuleTypeChecked mod ms) = ModuleCodeGenerated mod ms
-        setCodeGen (ModuleNotLoaded _ exp) = ModuleNotLoaded True exp
-        setCodeGen m = m
+codeGeneratedFor key = map (mcModules .- Map.alter setCodeGen (sfkFileName .= "" $ key) . Map.alter setCodeGen key)
+  where setCodeGen (Just (ModuleTypeChecked mod ms)) = Just $ ModuleCodeGenerated mod ms
+        setCodeGen (Just (ModuleNotLoaded _ exp)) = Just $ ModuleNotLoaded True exp
+        setCodeGen m@(Just _) = m
+        setCodeGen Nothing = Just $ ModuleNotLoaded True False
 
 -- | Check if the given module has been already loaded. Based on both module name and source
 -- file name.

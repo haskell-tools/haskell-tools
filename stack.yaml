@@ -15,5 +15,6 @@ packages:
   - src/cli
   - src/debug
   - src/daemon
-  - location: https://github.com/kelemzol/watch/archive/master.zip
-    extra-dep: true
+
+extra-deps:
+- fswatch-0.1.0.1

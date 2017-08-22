@@ -87,7 +87,7 @@ library
                      , haskell-tools-prettyprint >= 0.8   && < 0.9
                      , haskell-tools-refactor    >= 0.8   && < 0.9
                      , haskell-tools-builtin-refactorings >= 0.8   && < 0.9
-                     , watch                     >= 0.1   && < 0.2
+                     , fswatch                   >= 0.1   && < 0.2
 
   exposed-modules:     Language.Haskell.Tools.Daemon
                      , Language.Haskell.Tools.Daemon.Session
