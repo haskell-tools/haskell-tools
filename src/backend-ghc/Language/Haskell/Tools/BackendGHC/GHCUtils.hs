@@ -22,6 +22,7 @@ import PatSyn (patSynSig)
 import RdrName (RdrName, rdrNameOcc, nameRdrName)
 import SrcLoc
 import Type (TyThing(..), mkFunTys)
+import Data.Maybe
 
 class OutputableBndr name => GHCName name where
   rdrName :: name -> RdrName
@@ -74,132 +75,144 @@ getTopLevelId name =
       _ -> return Nothing
   where createPatSynType patSyn = case patSynSig patSyn of (_, _, _, _, args, res) -> mkFunTys args res
 
+hsGetNames' :: HsHasName a => a -> [GHC.Name]
+hsGetNames' = map fst . hsGetNames Nothing
+
 -- | Get names from the GHC AST
 class HsHasName a where
-  hsGetNames :: a -> [GHC.Name]
+  hsGetNames :: Maybe GHC.Name -> a -> [(GHC.Name, Maybe GHC.Name)]
 
 instance HsHasName RdrName where
-  hsGetNames _ = []
+  hsGetNames _ _ = []
 
 instance HsHasName Name where
-  hsGetNames n = [n]
+  hsGetNames p n = [(n, p)]
 
 instance HsHasName Id where
-  hsGetNames n = [getName n]
+  hsGetNames p n = [(getName n, p)]
 
 instance HsHasName e => HsHasName [e] where
-  hsGetNames es = concatMap hsGetNames es
+  hsGetNames p es = concatMap (hsGetNames p) es
 
 instance HsHasName e => HsHasName (Located e) where
-  hsGetNames (L _ e) = hsGetNames e
+  hsGetNames p (L _ e) = hsGetNames p e
 
 instance HsHasName n => HsHasName (HsLocalBinds n) where
-  hsGetNames (HsValBinds bnds) = hsGetNames bnds
-  hsGetNames _ = []
+  hsGetNames p (HsValBinds bnds) = hsGetNames p bnds
+  hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (HsDecl n) where
-  hsGetNames (TyClD tycl) = hsGetNames tycl
-  hsGetNames (ValD vald) = hsGetNames vald
-  hsGetNames (ForD ford) = hsGetNames ford
-  hsGetNames (InstD inst) = hsGetNames inst
-  hsGetNames _ = []
+  hsGetNames p (TyClD tycl) = hsGetNames p tycl
+  hsGetNames p (ValD vald) = hsGetNames p vald
+  hsGetNames p (ForD ford) = hsGetNames p ford
+  hsGetNames p (InstD inst) = hsGetNames p inst
+  hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (InstDecl n) where
-  hsGetNames (ClsInstD clsInst) = hsGetNames (cid_datafam_insts clsInst)
-  hsGetNames (DataFamInstD dataFamInst) = hsGetNames dataFamInst
-  hsGetNames _ = []
+  hsGetNames p (ClsInstD clsInst) = hsGetNames p (cid_datafam_insts clsInst)
+  hsGetNames p (DataFamInstD dataFamInst) = hsGetNames p dataFamInst
+  hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (DataFamInstDecl n) where
-  hsGetNames dfid = hsGetNames (dfid_defn dfid)
+  hsGetNames p dfid = hsGetNames p (dfid_defn dfid)
 
 instance (GHCName n, HsHasName n) => HsHasName (TyClGroup n) where
-  hsGetNames (TyClGroup tycls _) = hsGetNames tycls
+  hsGetNames p (TyClGroup tycls _) = hsGetNames p tycls
 
 instance (GHCName n, HsHasName n) => HsHasName (TyClDecl n) where
-  hsGetNames (FamDecl (FamilyDecl {fdLName = name})) = hsGetNames name
-  hsGetNames (SynDecl {tcdLName = name}) = hsGetNames name
-  hsGetNames (DataDecl {tcdLName = name, tcdDataDefn = datadef}) = hsGetNames name ++ hsGetNames datadef
-  hsGetNames (ClassDecl {tcdLName = name, tcdSigs = sigs}) = hsGetNames name ++ hsGetNames sigs
+  hsGetNames p (FamDecl fd) = hsGetNames p fd
+  hsGetNames p (SynDecl {tcdLName = name}) = hsGetNames p name
+  hsGetNames p (DataDecl {tcdLName = name, tcdDataDefn = datadef})
+    = let n = hsGetNames p name in n ++ hsGetNames (listToMaybe (map fst n)) datadef
+  hsGetNames p (ClassDecl {tcdLName = name, tcdSigs = sigs, tcdATs = typeAssocs})
+    = let n = hsGetNames p name in n ++ hsGetNames (listToMaybe (map fst n)) sigs
+                                     ++ hsGetNames (listToMaybe (map fst n)) typeAssocs
+
+instance (GHCName n, HsHasName n) => HsHasName (FamilyDecl n) where
+ hsGetNames p (FamilyDecl { fdLName = name }) = hsGetNames p name
 
 instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
-  hsGetNames (HsDataDefn {dd_cons = ctors}) = hsGetNames ctors
+  hsGetNames p (HsDataDefn {dd_cons = ctors}) = hsGetNames p ctors
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
-  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)))})
-    = hsGetNames names ++ hsGetNames flds
-  hsGetNames (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))})
-    = hsGetNames names ++ hsGetNames flds
-  hsGetNames (ConDeclGADT {con_names = names}) = hsGetNames names
-  hsGetNames (ConDeclH98 {con_name = name, con_details = details}) = hsGetNames name ++ hsGetNames details
+  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)))})
+    = hsGetNames p names ++ hsGetNames p flds
+  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))})
+    = hsGetNames p names ++ hsGetNames p flds
+  hsGetNames p (ConDeclGADT {con_names = names}) = hsGetNames p names
+  hsGetNames p (ConDeclH98 {con_name = name, con_details = details})
+    = hsGetNames p name ++ hsGetNames p details
 
 instance (GHCName n, HsHasName n) => HsHasName (HsConDeclDetails n) where
-  hsGetNames (RecCon rec) = hsGetNames rec
-  hsGetNames _ = []
+  hsGetNames p (RecCon rec) = hsGetNames p rec
+  hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDeclField n) where
-  hsGetNames (ConDeclField name _ _) = hsGetNames name
+  hsGetNames p (ConDeclField name _ _) = hsGetNames p name
 
 instance (GHCName n, HsHasName n) => HsHasName (FieldOcc n) where
-  hsGetNames (FieldOcc _ pr) = gunpackPostRn [] (hsGetNames :: n -> [Name]) pr
+  hsGetNames p (FieldOcc _ pr) = gunpackPostRn [] (hsGetNames p :: n -> [(Name, Maybe Name)]) pr
 
-instance (HsHasName n) => HsHasName (Sig n) where
-  hsGetNames (TypeSig n _) = hsGetNames n
-  hsGetNames (PatSynSig n _) = hsGetNames n
-  hsGetNames _ = []
+instance (GHCName n, HsHasName n) => HsHasName (Sig n) where
+  hsGetNames p (TypeSig n _) = hsGetNames p n
+  hsGetNames p (ClassOpSig _ n _) = hsGetNames p n
+  hsGetNames p (PatSynSig n _) = hsGetNames p n
+  hsGetNames _ _ = []
 
 instance HsHasName n => HsHasName (ForeignDecl n) where
-  hsGetNames (ForeignImport n _ _ _) = hsGetNames n
-  hsGetNames _ = []
+  hsGetNames p (ForeignImport n _ _ _) = hsGetNames p n
+  hsGetNames _ _ = []
 
 instance HsHasName n => HsHasName (HsValBinds n) where
-  hsGetNames (ValBindsIn bnds _) = hsGetNames bnds
-  hsGetNames (ValBindsOut bnds _) = hsGetNames $ map snd bnds
+  hsGetNames p (ValBindsIn bnds _) = hsGetNames p bnds
+  hsGetNames p (ValBindsOut bnds _) = hsGetNames p $ map snd bnds
 
 instance HsHasName n => HsHasName (Bag n) where
-  hsGetNames = hsGetNames . bagToList
+  hsGetNames p = hsGetNames p . bagToList
 
 instance HsHasName n => HsHasName (HsBind n) where
-  hsGetNames (FunBind {fun_id = lname}) = hsGetNames lname
-  hsGetNames (PatBind {pat_lhs = pat}) = hsGetNames pat
-  hsGetNames (VarBind {var_id = id}) = hsGetNames id
-  hsGetNames (PatSynBind (PSB {psb_id = id})) = hsGetNames id
-  hsGetNames _ = error "hsGetNames: called on compiler-generated binding"
+  hsGetNames p (FunBind {fun_id = lname}) = hsGetNames p lname
+  hsGetNames p (PatBind {pat_lhs = pat}) = hsGetNames p pat
+  hsGetNames p (VarBind {var_id = id}) = hsGetNames p id
+  hsGetNames p (PatSynBind (PSB {psb_id = id})) = hsGetNames p id
+  hsGetNames _ _ = error "hsGetNames: called on compiler-generated binding"
 
 instance HsHasName n => HsHasName (ParStmtBlock l n) where
-  hsGetNames (ParStmtBlock _ binds _) = hsGetNames binds
+  hsGetNames p (ParStmtBlock _ binds _) = hsGetNames p binds
 
 --instance HsHasName n => HsHasName (LHsTyVarBndrs n) where
 --  hsGetNames (HsQTvs kvs tvs) = hsGetNames kvs ++ hsGetNames tvs
 
 instance HsHasName n => HsHasName (HsTyVarBndr n) where
-  hsGetNames (UserTyVar n) = hsGetNames n
-  hsGetNames (KindedTyVar n _) = hsGetNames n
+  hsGetNames p (UserTyVar n) = hsGetNames p n
+  hsGetNames p (KindedTyVar n _) = hsGetNames p n
 
 instance HsHasName n => HsHasName (Stmt n b) where
-  hsGetNames (LetStmt binds) = hsGetNames binds
-  hsGetNames (BindStmt pat _ _ _ _) = hsGetNames pat
-  hsGetNames (RecStmt {recS_rec_ids = ids}) = hsGetNames ids
-  hsGetNames _ = []
+  hsGetNames p (LetStmt binds) = hsGetNames p binds
+  hsGetNames p (BindStmt pat _ _ _ _) = hsGetNames p pat
+  hsGetNames p (RecStmt {recS_rec_ids = ids}) = hsGetNames p ids
+  hsGetNames _ _ = []
 
 instance HsHasName n => HsHasName (Pat n) where
-  hsGetNames (VarPat id) = hsGetNames id
-  hsGetNames (LazyPat p) = hsGetNames p
-  hsGetNames (AsPat lname p) = hsGetNames lname ++ hsGetNames p
-  hsGetNames (ParPat p) = hsGetNames p
-  hsGetNames (BangPat p) = hsGetNames p
-  hsGetNames (ListPat pats _ _) = concatMap hsGetNames pats
-  hsGetNames (TuplePat pats _ _) = concatMap hsGetNames pats
-  hsGetNames (PArrPat pats _) = concatMap hsGetNames pats
-  hsGetNames (ConPatIn _ details) = concatMap hsGetNames (hsConPatArgs details)
-  hsGetNames (ConPatOut {pat_args = details}) = concatMap hsGetNames (hsConPatArgs details)
-  hsGetNames (ViewPat _ p _) = hsGetNames p
-  hsGetNames (NPlusKPat lname _ _ _ _ _) = hsGetNames lname
-  hsGetNames (SigPatIn p _) = hsGetNames p
-  hsGetNames (SigPatOut p _) = hsGetNames p
-  hsGetNames _ = []
+  hsGetNames x (VarPat id) = hsGetNames x id
+  hsGetNames x (LazyPat p) = hsGetNames x p
+  hsGetNames x (AsPat lname p) = hsGetNames x lname ++ hsGetNames x p
+  hsGetNames x (ParPat p) = hsGetNames x p
+  hsGetNames x (BangPat p) = hsGetNames x p
+  hsGetNames x (ListPat pats _ _) = concatMap (hsGetNames x) pats
+  hsGetNames x (TuplePat pats _ _) = concatMap (hsGetNames x) pats
+  hsGetNames x (PArrPat pats _) = concatMap (hsGetNames x) pats
+  hsGetNames x (ConPatIn _ details) = concatMap (hsGetNames x) (hsConPatArgs details)
+  hsGetNames x (ConPatOut {pat_args = details}) = concatMap (hsGetNames x) (hsConPatArgs details)
+  hsGetNames x (ViewPat _ p _) = hsGetNames x p
+  hsGetNames x (NPlusKPat lname _ _ _ _ _) = hsGetNames x lname
+  hsGetNames x (SigPatIn p _) = hsGetNames x p
+  hsGetNames x (SigPatOut p _) = hsGetNames x p
+  hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
-  hsGetNames (HsGroup vals _ clds insts _ _ _ foreigns _ _ _ _ _) = hsGetNames vals ++ hsGetNames clds ++ hsGetNames insts ++ hsGetNames foreigns
+  hsGetNames p (HsGroup vals _ clds insts _ _ _ foreigns _ _ _ _ _)
+    = hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p insts ++ hsGetNames p foreigns
 
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String

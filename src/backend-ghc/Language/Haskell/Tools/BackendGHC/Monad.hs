@@ -83,9 +83,9 @@ typeVarTransform = local (\s -> s { defining = defining s || definingTypeVars s 
 
 -- | Transform a name as a type variable if it is one.
 transformingPossibleVar :: HsHasName n => n -> Trf a -> Trf a
-transformingPossibleVar n = case hsGetNames n of
-  [name] | isVarName name || isTyVarName name -> typeVarTransform
-  _                                           -> id
+transformingPossibleVar n = case hsGetNames Nothing n of
+  [(name,_)] | isVarName name || isTyVarName name -> typeVarTransform
+  _                                               -> id
 
 -- | Perform the transformation putting the given definition in a new local scope.
 addEmptyScope :: Trf a -> Trf a
@@ -98,12 +98,12 @@ addToScopeImported ls = local (\s -> s { localsInScope = concatMap (\(mn, asName
 
 -- | Perform the transformation putting the given definition in a new local scope.
 addToScope :: HsHasName e => e -> Trf a -> Trf a
-addToScope e = local (\s -> s { localsInScope = map (, Nothing, Nothing) (hsGetNames e) : localsInScope s })
+addToScope e = local (\s -> s { localsInScope = map (\(n,p) -> (n, Nothing, p)) (hsGetNames Nothing e) : localsInScope s })
 
 -- | Perform the transformation putting the given definitions in the current scope.
 addToCurrentScope :: HsHasName e => e -> Trf a -> Trf a
-addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (map (, Nothing, Nothing) (hsGetNames e) ++ lastScope):rest
-                                                                               []             -> [map (, Nothing, Nothing) (hsGetNames e)] })
+addToCurrentScope e = local (\s -> s { localsInScope = case localsInScope s of lastScope:rest -> (map (\(n,p) -> (n, Nothing, p)) (hsGetNames Nothing e) ++ lastScope):rest
+                                                                               []             -> [map (\(n,p) -> (n, Nothing, p)) (hsGetNames Nothing e)] })
 
 -- | Performs the transformation given the tokens of the source file
 runTrf :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> Trf a -> Ghc a
