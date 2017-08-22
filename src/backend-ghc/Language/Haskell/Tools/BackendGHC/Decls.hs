@@ -529,8 +529,7 @@ trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe 
 trfFamilyResultSig (L l fr) Nothing = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyKind <$> trfKindSig' k)
-  TyVarSig {} -> error "trfFamilyResultSig: TyVarSig not supported" {- makeJust <$> (annLocNoSema (combineSrcSpans (getLoc tv) <$> (tokenBefore (srcSpanStart (getLoc tv)) AnnDcolon))
-                              (AST.UKindConstraint <$> trfKindVar tv)) -}
+  TyVarSig tv -> makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyTyVar <$> trfTyVar tv)
 trfFamilyResultSig (L _ sig) (Just (L l (InjectivityAnn n deps)))
   = makeJust <$> (annLocNoSema (pure l) $ AST.UTypeFamilyInjectivity <$> (annContNoSema $ AST.UInjectivityAnn <$> tv <*> trfAnnList ", " trfName' deps))
     where tv = case sig of TyVarSig tv -> trfTyVar tv

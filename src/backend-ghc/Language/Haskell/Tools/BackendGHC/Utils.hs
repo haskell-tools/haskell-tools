@@ -62,7 +62,6 @@ createNameInfo name = do locals <- asks localsInScope
                          isDefining <- asks defining
                          return (mkNameInfo locals isDefining name)
 
-
 -- | Creates a semantic information for an ambiguous name (caused by field disambiguation for example)
 createAmbigousNameInfo :: RdrName -> SrcSpan -> Trf (NameInfo n)
 createAmbigousNameInfo name span = do locals <- asks localsInScope
@@ -455,6 +454,11 @@ compareSpans _ _ = EQ
 unhandledElement :: (Data a, Outputable a) => String -> a -> Trf b
 unhandledElement label e = do rng <- asks contRange
                               error ("Illegal " ++ label ++ ": " ++ showSDocUnsafe (ppr e) ++ " (ctor: " ++ show (toConstr e) ++ ") at: " ++ show rng)
+
+unhandledElementNoPpr :: (Data a) => String -> a -> Trf b
+unhandledElementNoPpr label e = do rng <- asks contRange
+                                   error ("Illegal " ++ label ++ ": (ctor: " ++ show (toConstr e) ++ ") at: " ++ show rng)
+
 
 instance Monoid SrcSpan where
   span1@(RealSrcSpan _) `mappend` _ = span1

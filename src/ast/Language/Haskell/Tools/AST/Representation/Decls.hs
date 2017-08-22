@@ -217,6 +217,8 @@ data UTypeFamily dom stage
 data UTypeFamilySpec dom stage
   = UTypeFamilyKind { _tfSpecKind :: Ann UKindConstraint dom stage
                     } -- ^ Specifies the kind of a type family (@ :: * -> * @)
+  | UTypeFamilyTyVar { _tfTypeVar :: Ann UTyVar dom stage
+                     } -- ^ Specifies the kind of a type family (@ = t :: * -> * @)
   | UTypeFamilyInjectivity { _tfInjectivity :: Ann UInjectivityAnn dom stage
                            } -- ^ Specifies the injectivity of a type family (@ = r | r -> a @)
 
