@@ -180,6 +180,7 @@ languageTests =
   , "TH.Splice.Define"
   , "TH.Splice.Use"
   , "TH.CrossDef"
+  , "TH.ClassUse"
   , "TH.Splice.UseImported"
   , "TH.Splice.UseQual"
   , "TH.Splice.UseQualMulti"

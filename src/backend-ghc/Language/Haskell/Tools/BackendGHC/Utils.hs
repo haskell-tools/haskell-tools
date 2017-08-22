@@ -80,7 +80,7 @@ createImplicitFldInfo :: (GHCName n, HsHasName n) => (a -> n) -> [HsRecField n a
 createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))
   where getLabelAndExpr fld = ( getTheName $ unLoc (getFieldOccName (hsRecFieldLbl fld))
                               , getTheName $ select (hsRecFieldArg fld) )
-        getTheName = (\case e:_ -> e; [] -> error "createImplicitFldInfo: missing names") . hsGetNames
+        getTheName = (\case e:_ -> e; [] -> error "createImplicitFldInfo: missing names") . hsGetNames'
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
@@ -139,9 +139,9 @@ checkImportVisible (Just (isHiding, specs)) name
 checkImportVisible _ _ = return True
 
 ieSpecMatches :: (HsHasName name, GhcMonad m) => IE name -> GHC.Name -> m Bool
-ieSpecMatches (concatMap hsGetNames . HsSyn.ieNames -> ls) name
+ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -> ls) name
   | name `elem` ls = return True
-ieSpecMatches ie@(IEThingAll _) name | [n] <- hsGetNames (HsSyn.ieName ie), isTyConName n
+ieSpecMatches ie@(IEThingAll _) name | [n] <- hsGetNames' (HsSyn.ieName ie), isTyConName n
   = do entity <- lookupName n
        return $ case entity of Just (ATyCon tc)
                                  | Just cls <- tyConClass_maybe tc
