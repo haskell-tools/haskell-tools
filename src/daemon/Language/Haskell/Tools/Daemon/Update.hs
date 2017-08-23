@@ -25,6 +25,7 @@ import System.IO
 import System.IO.Strict as StrictIO (hGetContents)
 import Text.PrettyPrint as PP
 import Data.Algorithm.DiffContext
+import System.FSWatch.Slave
 
 import Bag (bagToList)
 import DynFlags (DynFlags(..), PkgConfRef(..))
@@ -314,6 +315,5 @@ getProblems other = Left $ displayException other
 
 watchNew :: FilePath -> DaemonSession ()
 watchNew fp = do
-    watch <- gets (^. watchProc)
-    case watch of Just w -> void $ liftIO $ hPutStrLn (_watchStdIn w) $ "watch " ++ fp
-                  _      -> return ()
+    wt <- gets (^. watchProc)
+    maybe (return ()) (\w -> watch w fp) wt

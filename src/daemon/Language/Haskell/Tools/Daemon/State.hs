@@ -6,6 +6,7 @@ import Control.Reference
 import System.IO
 import System.Process
 import GHC
+import System.FSWatch.Repr
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB
@@ -32,20 +33,13 @@ data DaemonSessionState
                            -- ^ True if in the process of shutting down the session.
                        , _watchProc :: Maybe WatchProcess
                            -- ^ Information about the file system watch process.
+                       , _watchThreads :: [ThreadId]
+                           -- ^ Extra threads started for handling the
+                           -- information from the watch process.
                        }
 
 -- | An initial state of a daemon session.
 initSession :: DaemonSessionState
-initSession = DaemonSessionState [] AutoDB id False [] False [] Nothing
-
--- | The state of the file system watching. Needed for adding new packages and shutting it down when
--- we are finished.
-data WatchProcess
-  = WatchProcess { _watchPHandle :: ProcessHandle -- ^ The handle for the watch process.
-                 , _watchStdIn :: Handle -- ^ Input of the watch process.
-                 , _watchStdOut :: Handle -- ^ Output of the watch process.
-                 , _watchThreads :: [ThreadId] -- ^ Extra threads started for handling the
-                                               -- information from the watch process.
-                 }
+initSession = DaemonSessionState [] AutoDB id False [] False [] Nothing []
 
 makeReferences ''DaemonSessionState

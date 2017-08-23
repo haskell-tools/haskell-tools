@@ -63,11 +63,11 @@ runDaemon refactorings mode connStore DaemonOptions{..} = withSocketsDo $
        when (not silentMode) $ putStrLn $ "Connection established"
        ghcSess <- initGhcSession
        state <- newMVar initSession
-       wp <- if noWatch then return Nothing
-                        else createWatchProcess watchExe ghcSess state (daemonSend mode conn)
-       modifyMVarMasked_ state ( \s -> return s { _watchProc = wp })
+       (wp,th) <- if noWatch then return (Nothing, [])
+                             else createWatchProcess' watchExe ghcSess state (daemonSend mode conn)
+       modifyMVarMasked_ state ( \s -> return s { _watchProc = wp, _watchThreads = th })
        serverLoop refactorings mode conn silentMode ghcSess state
-       case wp of Just watchProcess -> stopWatch watchProcess
+       case wp of Just watchProcess -> stopWatch watchProcess th
                   Nothing -> return ()
        daemonDisconnect mode conn
 
