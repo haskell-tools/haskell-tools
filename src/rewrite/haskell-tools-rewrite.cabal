@@ -1,5 +1,5 @@
 name:                haskell-tools-rewrite
-version:             0.8.2.0
+version:             0.9.0.0
 synopsis:            Facilities for generating new parts of the Haskell-Tools AST
 description:         Contains utility functions to generate parts of the Haskell-Tools AST. Generates these elements to be compatible with the source annotations that are already present on the AST. The package is divided into modules based on which language elements can the given module generate. This packages should be used during the transformations to generate parts of the new AST.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -44,8 +44,8 @@ library
                      , containers                >= 0.5  && < 0.6
                      , references                >= 0.3  && < 0.4
                      , ghc                       >= 8.0  && < 8.1
-                     , haskell-tools-ast         >= 0.8  && < 0.9
-                     , haskell-tools-prettyprint >= 0.8  && < 0.9
+                     , haskell-tools-ast         >= 0.9  && < 0.10
+                     , haskell-tools-prettyprint >= 0.9  && < 0.10
   default-language:    Haskell2010
 
 test-suite haskell-tools-rewrite-tests
@@ -58,7 +58,7 @@ test-suite haskell-tools-rewrite-tests
                      , tasty-hunit               >= 0.9 && < 0.10
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
-                     , haskell-tools-ast         >= 0.8 && < 0.9
-                     , haskell-tools-prettyprint >= 0.8 && < 0.9
-                     , haskell-tools-rewrite     >= 0.8 && < 0.9
+                     , haskell-tools-ast         >= 0.9 && < 0.10
+                     , haskell-tools-prettyprint >= 0.9 && < 0.10
+                     , haskell-tools-rewrite     >= 0.9 && < 0.10
   default-language:    Haskell2010

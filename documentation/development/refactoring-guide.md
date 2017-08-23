@@ -4,7 +4,7 @@ Refactorings in Haskell-tools are monadic functions that take a syntax tree (AST
 
 One important decision when writing a refactoring is whether we want to refactor elements in a selection or we want to refactor a whole module, package or project.
 
-If we want to create a refactoring that changes only one module, we can create a [local refactoring](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#t:LocalRefactoring) otherwise we must create an [ordinary refactoring](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#t:Refactoring). Of course if we don't need the monadic effects, we can define a pure function that works on the AST and call `return` to create a local or regular refactoring.
+If we want to create a refactoring that changes only one module, we can create a [local refactoring](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) otherwise we must create an ordinary refactoring. Of course if we don't need the monadic effects, we can define a pure function that works on the AST and call `return` to create a local or regular refactoring.
 
 You should also check the general [development tips](general-tips.md).
 
@@ -14,7 +14,7 @@ When you try to create a refactoring, most likely you only want to change small 
 
 If you want to change AST fragments that are located at a particular place in the AST and not on a very deep level, you can use references to access that part.
 
-For example, to replace data type definitions with newtype definitions wherever possible, you can use the `modDecl & annList` reference, that accesses each declaration in the module. See the whole source code of the transformation [here](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DataToNewtype.hs).
+For example, to replace data type definitions with newtype definitions wherever possible, you can use the `modDecl & annList` reference, that accesses each declaration in the module. See the whole source code of the transformation [here](https://github.com/haskell-tools/haskell-tools/blob/master/src/experimental-refactorings/Language/Haskell/Tools/Refactor/Builtin/DataToNewtype.hs).
 
 [The API documentation for the complete list of references](https://www.stackage.org/haddock/nightly/haskell-tools-ast/Language-Haskell-Tools-AST-References.html)
 
@@ -22,7 +22,7 @@ For example, to replace data type definitions with newtype definitions wherever 
 
 On the other hand, if the AST elements you want to change can be found at multiple levels of the AST, it would be inconvenient to select each possible location with references. In these cases you can use generics to select all possible location where an AST element of a given type can appear.
 
-For example, replace an if statement on the right-hand side of a binding with a function guard. The problem is that bindings can be local, so they can appear on different levels of the AST. But we can use the generic reference `nodesContaining sp` that selects the AST elements that contain the current selection. If we apply a function to that reference that has `ValueBind dom -> ValueBind dom` type, it will select all bindings contain the current selection. By checking the right-hand sides of these bindings, we can check to which one can be the subject of the refactoring. See the whole source code of the transformation [here](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/IfToGuards.hs).
+For example, replace an if statement on the right-hand side of a binding with a function guard. The problem is that bindings can be local, so they can appear on different levels of the AST. But we can use the generic reference `nodesContaining sp` that selects the AST elements that contain the current selection. If we apply a function to that reference that has `ValueBind dom -> ValueBind dom` type, it will select all bindings contain the current selection. By checking the right-hand sides of these bindings, we can check to which one can be the subject of the refactoring. See the whole source code of the transformation [here](https://github.com/haskell-tools/haskell-tools/blob/master/src/experimental-refactorings/Language/Haskell/Tools/Refactor/Builtin/IfToGuards.hs).
 
  - `biplateRef` is the most general way to use generics, it is a reference for all elements contained in an AST node.
  - `nodesContaining` gets all the nodes that contain a given selection
@@ -81,20 +81,20 @@ Semantic information is stored in the AST nodes. The semantic information we cur
 
 ## How to run the generated refactoring?
 
-The [`tryRefactor` function](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-Prepare.html#v:tryRefactor) provides an easy way to test the defined refactoring. Refactorings that are accepted by our software can be registered in the [Perform module](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-Perform.html) and thus be used in the demo and command line tools as well as the coming editor integration.
+The [`tryRefactor` function](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Prepare.hs) provides an easy way to test the defined refactoring. The daemon is parameterized with a set of refactorings, so if you add your refactoring here, you can use it in your editor.
 
 ## How to add monadic effects to the transformation?
 
-The transformation can be easily extended by monadic effects. For example, see the [dollar application](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DollarApp.hs) example to see how a mutable state can be added to a transformation.
+The transformation can be easily extended by monadic effects. For example, see the [dollar application](https://github.com/haskell-tools/haskell-tools/blob/master/src/experimental-refactorings/Language/Haskell/Tools/Refactor/Builtin/DollarApp.hs) example to see how a mutable state can be added to a transformation.
 
 ## How to change elements with multiplicity?
 
-Not every element has single children in an AST, for example, there can be multiple definitions in a module and it may or may not contain a module head (optional element). In the [ListOperations](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-ListOperations.html) module there are some useful functions for changing AST elements with multiplicity, for more information, see the documentation.
+Not every element has single children in an AST, for example, there can be multiple definitions in a module and it may or may not contain a module head (optional element). In the [Utils.Lists](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Lists.hs) module there are some useful functions for changing AST elements with multiplicity, for more information, see the documentation.
 
 ## How to import the definitions that I generate?
 
-If you work in the `LocalRefactor` monad, you can ask the framework to automatically import the definitions that you use in the changed AST. To do this, use the [`referenceName`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#v:referenceName) and [`referenceOperator`](https://www.stackage.org/haddock/nightly/haskell-tools-refactor/Language-Haskell-Tools-Refactor-RefactorBase.html#v:referenceOperator) functions.
+If you work in the `LocalRefactor` monad, you can ask the framework to automatically import the definitions that you use in the changed AST. To do this, use the [`referenceName`](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) and [`referenceOperator`](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) functions.
 
 ## Where to get help?
 
-If stuck, check out the [predefined refactorings](https://github.com/haskell-tools/haskell-tools/tree/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined), where you can find many useful examples on how to define refactorings.
+If stuck, check out the [built-in refactorings](https://github.com/haskell-tools/haskell-tools/tree/master/src/builtin-refactorings/Language/Haskell/Tools/Refactor/Builtin), where you can find many useful examples on how to define refactorings.

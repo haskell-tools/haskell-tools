@@ -52,7 +52,7 @@ tryItOut :: String -> IO ()
 tryItOut moduleName = tryRefactor (localRefactoring $ dataToNewtype) moduleName
 ```
 
-Here, [`localRefactoring`](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/RefactorBase.hs) takes a refactoring that is defined on one module and makes it possible to use it on a whole project.
+Here, [`localRefactoring`](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) takes a refactoring that is defined on one module and makes it possible to use it on a whole project.
 
 After that evaluating `tryItOut "Test"` will perform the transformation, and print the result:
 ```haskell
@@ -66,4 +66,4 @@ module Test where
 newtype A = A Int
 ```
 
-The solution source code can be found [in the repository](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/DataToNewtype.hs).
+The solution source code can be found [in the repository](https://github.com/haskell-tools/haskell-tools/blob/master/src/experimental-refactorings/Language/Haskell/Tools/Refactor/Builtin/DataToNewtype.hs).

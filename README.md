@@ -11,6 +11,7 @@ The goal of this project is to create developer tools for the functional program
 **[Installation instructions](documentation/installation.md)**
   - The package is available from hackage and stackage
   - `stack install haskell-tools-daemon haskell-tools-cli --resolver=nightly-[current-date]`
+  - When we are not yet on the latest GHC, the only way to install the latest version is to clone this repository and `stack install` it. See the stackage nightly badge above.
 
 **User manuals**
    - Use in editor: [Atom](https://github.com/nboldi/haskell-tools-atom/blob/master/documentation/user-manual.md), Sublime (Coming soon...)

@@ -46,9 +46,7 @@ Other optional components that may increase the usability of your integration:
  - `AddPackages` should be sent when the user adds a new package to the project. It should also be sent after Haskell Tool is started. In that case each selected package should be added.
  - `RemovePackages` should be sent when the user removes a package from the project.
  - If the user wants to perform a refactoring, the corresponding `PerformRefactoring` command should be sent. The `refactoring` field should be set to the name of the refactoring. Some refactoring need additional details, for example the name of the extracted definition. These should be asked from the user via input messages. The message should also contain the file that is currently viewed and the selected region (`modulePath` and `editorSelection`).
- - `ModulesChanged` tells the client that a refactoring changed some files on the disk and gives instructions to undo the changes if needed. If the editor does not re-load changed files automatically it can be used to reload the changed files. Otherwise it can be used to track changes of the files and be able to undo all changes of a refactoring.
  - `Stop` message is needed when the user closes the editor or decided to end the refactoring session and executes the Stop Command.
- - `Reload` is now the way for the editor to notify the server about changes, but **will be taken out**.
 
  Check the protocol description for details.
 
