@@ -10,7 +10,7 @@ Pattern matching on the Haskell-tools AST is done by pattern synonyms. The synon
 
 Handling source-code related information consist of white-spaces and comments. White spaces are implicitly attached to the nodes as the source code fragments are attached to their AST element, but comments are outside of these elements. However it is important to attach the comments to their correspondig element. For example, it would be confusing if after reordering some imports, a comment that was before an import would remain at the same place even when the import had been moved to a different line. When comments are attached to their AST elements they move with them and are deleted when the elements are removed.
 
-We get the position and text of comments from GHC parser phase. We attach them to the AST elements in the [PlaceComments](https://github.com/haskell-tools/haskell-tools/blob/master/src/prettyprint/Language/Haskell/Tools/Transform/PlaceComments.hs) module.
+We get the position and text of comments from GHC parser phase. We attach them to the AST elements in the [PlaceComments](https://github.com/haskell-tools/haskell-tools/blob/master/src/prettyprint/Language/Haskell/Tools/PrettyPrint/Prepare/PlaceComments.hs) module.
 
 When we attach comments to elements we use simple rules to check if a comment belongs to a given element. First we define the AST elements that may have comments. These are:
   - *Decl* (declarations)
@@ -42,7 +42,7 @@ If an element in the AST can have any number of children (for example, a list of
 
 The separators that are present in the original source code are intact. When new element is added, we get the most common separator from the list and use that to separate the new element from the rest. If there are no separators, then a default one will be used that depends on the kind of node we have.
 
-In the [ListOperations](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/ListOperations.hs) module defines a few useful operations on multiplicity AST elements, for example filtering and inserting new elements.
+In the [Utils.Lists](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Utils/Lists.hs) module defines a few useful operations on multiplicity AST elements, for example filtering and inserting new elements.
 
 ## Source information
 
@@ -54,7 +54,7 @@ You can get the position of a node in the original source by the `getRange` func
 
 The domain of an AST depends on how far GHC can progress with the compilation of the module. If the module is type-correct, its domain will be `IdDom`, if it can be renamed but it is not type correct, its domain will be `Dom Name`, if the module can be parsed but cannot be renamed, the domain will be `Dom RdrName`.
 
-All the semantic information datatypes can be found in the [`SemaInfoTypes` module](https://www.stackage.org/haddock/nightly/haskell-tools-ast/Language-Haskell-Tools-AST-SemaInfoTypes.html). The accessor functions are found in [`SemaInfoClasses`](https://www.stackage.org/haddock/nightly/haskell-tools-ast/Language-Haskell-Tools-AST-SemaInfoClasses.html)
+All the semantic information datatypes can be found in the [`SemaInfoTypes` module](https://github.com/haskell-tools/haskell-tools/blob/master/src/ast/Language/Haskell/Tools/AST/SemaInfoTypes.hs). The accessor functions are found in [`SemaInfoClasses`](https://github.com/haskell-tools/haskell-tools/blob/master/src/ast/Language/Haskell/Tools/AST/SemaInfoClasses.hs)
 
 Common semantic information:
   - **Names** (`QualifiedName` AST element): `NameInfo`. It contains the GHC representation of a name and the names that are in scope of that AST element. It also has a flag to decide if the name was defined at that place or elsewhere. Additionally it can contain fixity information if the name is an operator.

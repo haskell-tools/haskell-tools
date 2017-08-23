@@ -15,6 +15,7 @@ Haskell-tools Refactor (sub)framework:
 
 Application packages:
 
+* **haskell-tools-builtin-refactorings**: A collection of refactorings provided by the developers.
 * **haskell-tools-daemon**: A backend for the Haskell-tools Refactor that supports editor integration. It exposes an interface that can be accessed through socket communication. The [protocol description](haskell-tools-refactoring-protocol.md) describes how the daemon should be used as a refactoring engine.
 * **haskell-tools-cli**: A command-line interface for Haskell-tools Refactor. This can be used by scripts, or users who don't need editor integration. For an interactive usage, haskell-tools-daemon should be better.
 * **haskell-tools-demo**: A demo web application that shows the capabilities of Haskell-tools Refactor

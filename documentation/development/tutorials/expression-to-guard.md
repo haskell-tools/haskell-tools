@@ -50,7 +50,7 @@ In our representation, bindings come in two flavors: `SimpleBind`s have a patter
 
 ### Transform simple bindings
 
-We use pattern matching to check that we have a simple binding that can be transformed: `SimpleBind (VarPat name) (UnguardedRhs (If pred thenE elseE)) locals`. The we construct the transformed binding using function from the [`Gen` modules](https://github.com/haskell-tools/haskell-tools/tree/0.3/src/rewrite/Language/Haskell/Tools/AST/Gen): `mkFunctionBind [mkMatch (mkMatchLhs name []) (createSimpleIfRhss pred thenE elseE) (locals ^. annMaybe) ]`. Here `createSimpleIfRhss` defines two guarded right-hand-sides (former then and else branches). We will reuse this definitions when dealing with function bindings.
+We use pattern matching to check that we have a simple binding that can be transformed: `SimpleBind (VarPat name) (UnguardedRhs (If pred thenE elseE)) locals`. The we construct the transformed binding using function from the [`Rewrite.Create` modules](https://github.com/haskell-tools/haskell-tools/tree/master/src/rewrite/Language/Haskell/Tools/Rewrite/Create): `mkFunctionBind [mkMatch (mkMatchLhs name []) (createSimpleIfRhss pred thenE elseE) (locals ^. annMaybe) ]`. Here `createSimpleIfRhss` defines two guarded right-hand-sides (former then and else branches). We will reuse this definitions when dealing with function bindings.
 
 ```haskell
 createSimpleIfRhss :: Expr dom -> Expr dom -> Expr dom -> Rhs dom
@@ -78,7 +78,7 @@ Now the last thing to do is to create a simple wrapper for our refactoring and t
 tryItOut moduleName sp = tryRefactor (localRefactoring $ ifToGuards (readSrcSpan (toFileName "." moduleName) sp)) moduleName
 ```
 
-Here, [`localRefactoring`](https://github.com/haskell-tools/haskell-tools/tree/0.3/src/refactor/Language/Haskell/Tools/Refactor/RefactorBase.hs) takes a refactoring that is defined on one module and makes it possible to use it on a whole project. `readSrcSpan` is a utility function that creates a source range from a string like "3:1-3:20", so it goes from the first character of the 3rd row to the 20th character of the 3rd row. `toFileName` transforms a module name into the name of the corresponding `.hs` file.
+Here, [`localRefactoring`](https://github.com/haskell-tools/haskell-tools/blob/b3f852c18dbe7f8912dc2df9feea38fe7814d3b0/src/refactor/Language/Haskell/Tools/Refactor/Utils/Monadic.hs) takes a refactoring that is defined on one module and makes it possible to use it on a whole project. `readSrcSpan` is a utility function that creates a source range from a string like "3:1-3:20", so it goes from the first character of the 3rd row to the 20th character of the 3rd row. `toFileName` transforms a module name into the name of the corresponding `.hs` file.
 
 After that evaluating `tryItOut "Test" "3:1-3:33"` will perform the transformation, and print the result:
 ```haskell
@@ -93,4 +93,4 @@ max a b | a > b = a
         | otherwise = b
 ```
 
-The solution source code can be found [in the repository](https://github.com/haskell-tools/haskell-tools/blob/master/src/refactor/Language/Haskell/Tools/Refactor/Predefined/IfToGuards.hs).
+The solution source code can be found [in the repository](https://github.com/haskell-tools/haskell-tools/blob/master/src/experimental-refactorings/Language/Haskell/Tools/Refactor/Builtin/IfToGuards.hs).

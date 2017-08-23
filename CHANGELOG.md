@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.9
+ - CLI now uses daemon as a backend. Functionalities are merged.
+ - Command-line interfaces refined
+ - File system modifications are now detected by the daemon.
+ - The daemon now can create unified diffs for showing changes.
+ - The daemon now can undo refactorings it did before.
+
 ## 0.8
  - The tool now handles Main modules.
  - Only those modules are loaded that cabal would load.
