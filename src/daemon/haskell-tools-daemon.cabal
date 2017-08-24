@@ -56,6 +56,14 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/empty/*.hs
                   , examples/Project/additional-files/*.hs
                   , examples/Project/additional-files/*.cabal
+                  , examples/Project/paths-codegen/dist/build/autogen/cabal_macros.h
+                  , examples/Project/paths-codegen/dist/build/autogen/Paths_some_test_package.hs
+                  , examples/Project/paths-codegen/*.hs
+                  , examples/Project/paths-codegen/*.cabal
+                  , examples/Project/paths-module/dist/build/autogen/cabal_macros.h
+                  , examples/Project/paths-module/dist/build/autogen/Paths_some_test_package.hs
+                  , examples/Project/paths-module/*.hs
+                  , examples/Project/paths-module/*.cabal
                   , examples/Project/cabal-sandbox/*.hs
                   , examples/Project/cabal-sandbox/*.cabal
                   , examples/Project/cabal-sandbox/groups-0.4.0.0/LICENSE
@@ -64,6 +72,10 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/cabal-sandbox/groups-0.4.0.0/src/Data/Group.hs
                   , examples/Project/unused-mod/*.hs
                   , examples/Project/unused-mod/*.cabal
+                  , examples/Project/same-module-in-two-mod-coll/*.hs
+                  , examples/Project/same-module-in-two-mod-coll/*.cabal
+                  , examples/Project/exposed-mod-as-main/*.hs
+                  , examples/Project/exposed-mod-as-main/*.cabal
 
 library
   build-depends:       base                      >= 4.9   && < 5.0
