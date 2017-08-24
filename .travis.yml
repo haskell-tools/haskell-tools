@@ -53,13 +53,8 @@ script:
   # Build Haskell-tools with all library, executable, test and benchmark
   - travis_wait 30 stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps
 
-  # Run tests. We record test coverage information.
-  - stack --no-terminal test --coverage haskell-tools-rewrite
-  - stack --no-terminal test --coverage haskell-tools-builtin-refactorings
-  - stack --no-terminal test --coverage haskell-tools-experimental-refactorings
-  - stack --no-terminal test --coverage haskell-tools-daemon
-  - stack --no-terminal test --coverage haskell-tools-cli
-  - stack --no-terminal test --coverage haskell-tools-demo
+  # Run tests. We record test coverage information. We need to perform all of them at once to create the unified coverage reports.
+  - travis_wait 30 stack --no-terminal test --coverage haskell-tools-rewrite haskell-tools-builtin-refactorings haskell-tools-experimental-refactorings haskell-tools-daemon haskell-tools-cli haskell-tools-demo
   - stack sdist
 
   # Run the daily test if doing a daily build.
