@@ -33,8 +33,6 @@ cp -r .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
 mkdir -p out/$TRAVIS_BRANCH/coverage
 cp -r .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
 
-find .stack-work/install -type d
-
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
   # Copy the benchmark report
   cp benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt

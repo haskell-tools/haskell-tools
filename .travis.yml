@@ -54,7 +54,7 @@ script:
   - travis_wait 30 stack --no-terminal build --test --no-run-tests --coverage --haddock --no-haddock-deps
 
   # Run tests. We record test coverage information. We need to perform all of them at once to create the unified coverage reports.
-  - stack --no-terminal test --coverage haskell-tools-rewrite haskell-tools-builtin-refactorings haskell-tools-experimental-refactorings haskell-tools-daemon haskell-tools-cli haskell-tools-demo
+  - travis_wait 30 stack --no-terminal test --coverage haskell-tools-rewrite haskell-tools-builtin-refactorings haskell-tools-experimental-refactorings haskell-tools-daemon haskell-tools-cli haskell-tools-demo
   - stack sdist
 
   # Run the daily test if doing a daily build.
