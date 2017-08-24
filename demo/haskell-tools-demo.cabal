@@ -44,7 +44,7 @@ executable ht-demo
   hs-source-dirs:      exe
   ghc-options:         -with-rtsopts=-M1500m
   build-depends:       base                      >= 4.9  && < 4.10
-                     , haskell-tools-demo        >= 0.9  && < 0.10
+                     , haskell-tools-demo
   default-language:  Haskell2010
 
 test-suite haskell-tools-demo-tests
@@ -62,5 +62,5 @@ test-suite haskell-tools-demo-tests
                      , network                   >= 2.6 && < 2.7
                      , websockets                >= 0.10 && < 0.11
                      , aeson                     >= 1.0 && < 1.3
-                     , haskell-tools-demo        >= 0.9 && < 0.10
+                     , haskell-tools-demo
   default-language:    Haskell2010
