@@ -26,6 +26,8 @@ import DynFlags
 import FastString (mkFastString)
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
+import HscTypes
+import GhcMonad
 import GHC.Paths ( libdir )
 import Packages (initPackages)
 import SrcLoc
@@ -161,8 +163,9 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
       ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
   when hasApplicativeDo $ error "The ApplicativeDo extension is not supported"
   when hasOverloadedLabels $ error "The OverloadedLabels extension is not supported"
+  modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod modSum) (hsc_mod_graph s) }
   p <- parseModule ms
-  tc <- typecheckModule p -- template haskell needs the correct working directory in the type check phase
+  tc <- typecheckModule p
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
   let annots = pm_annotations p
   srcBuffer <- if hasCppExtension
@@ -180,9 +183,10 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
 withAlteredDynFlags :: GhcMonad m => (DynFlags -> m DynFlags) -> m a -> m a
 withAlteredDynFlags modDFs action = do
   dfs <- getSessionDynFlags
-  void $ setSessionDynFlags =<< modDFs dfs
+  newFlags <- modDFs dfs
+  void $ modifySession $ \s -> s { hsc_dflags = newFlags }
   res <- action
-  void $ setSessionDynFlags dfs
+  void $ modifySession $ \s -> s { hsc_dflags = dfs }
   return res
 
 -- | Forces the code generation for a given module

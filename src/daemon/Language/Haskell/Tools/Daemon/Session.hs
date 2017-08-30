@@ -140,7 +140,7 @@ reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModS
                            -> DaemonSession (Either RefactorException [a])
 reloadChangedModules report loadCallback isChanged = handleErrors $ do
   reachable <- getReachableModules loadCallback isChanged
-  void $ checkEvaluatedMods report reachable
+  -- void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
 
 -- | Get all modules that can be accessed from a given set of modules. Can be used to select which
