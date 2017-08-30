@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e # Exit with nonzero exit code if anything fails
 
 # Pull requests and commits to other branches shouldn't try to deploy
 if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then

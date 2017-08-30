@@ -60,5 +60,5 @@ test-suite haskell-tools-rewrite-tests
                      , filepath                  >= 1.4 && < 2.0
                      , haskell-tools-ast         >= 0.9 && < 0.10
                      , haskell-tools-prettyprint >= 0.9 && < 0.10
-                     , haskell-tools-rewrite     >= 0.9 && < 0.10
+                     , haskell-tools-rewrite
   default-language:    Haskell2010
