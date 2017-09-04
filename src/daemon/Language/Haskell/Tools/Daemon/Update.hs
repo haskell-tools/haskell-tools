@@ -17,7 +17,7 @@ import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
 import Data.Either (Either(..), either, rights)
 import Data.IORef (newIORef)
 import Data.List hiding (insert)
-import qualified Data.Map as Map (insert, keys, filter)
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Version (Version(..))
 import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
@@ -123,9 +123,9 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
                                else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
                              when (not isWatching && not shutdown && not diffMode)
-                                 -- if watch is on, then it will automatically
-                                 -- reload changed files, otherwise we do it manually
-                               $ void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
+                              -- if watch is on, then it will automatically
+                              -- reload changed files, otherwise we do it manually
+                              $ void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
         applyChanges changes = do
           forM changes $ \case
             ModuleCreated n m otherM -> do
