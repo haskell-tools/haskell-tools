@@ -5,6 +5,7 @@
            , FlexibleContexts
            , TypeApplications
            , RankNTypes
+           , BangPatterns
            #-}
 -- | Collecting modules contained in a module collection (library, executable, testsuite or
 -- benchmark). Gets names, source file locations, compilation and load flags for these modules.
@@ -180,30 +181,23 @@ getMain' bi
   where ls = dropWhile (/= "-main-is") (concatMap snd (options bi))
 
 -- | Checks if the module collection created from a folder without .cabal file.
-isDirectoryMC :: ModuleCollection k -> Bool
-isDirectoryMC mc = case mc ^. mcId of DirectoryMC{} -> True; _ -> False
-
--- | Modify the dynamic flags to match the ghc-options and dependencies requested in the .cabal
--- file.
-compileInContext :: ModuleCollection k -> [ModuleCollection k] -> DynFlags -> IO DynFlags
-compileInContext mc mcs dfs
-  = (\dfs' -> applyDependencies mcs (mc ^. mcDependencies) (selectEnabled dfs'))
-       <$> (mc ^. mcFlagSetup $ dfs)
-  where selectEnabled = if isDirectoryMC mc then id else onlyUseEnabled
+isDirectoryMC :: ModuleCollectionId -> Bool
+isDirectoryMC DirectoryMC{} = True
+isDirectoryMC _ = False
 
 -- | Modify the dynamic flags to match the dependencies requested in the .cabal file.
-applyDependencies :: [ModuleCollection k] -> [ModuleCollectionId] -> DynFlags -> DynFlags
-applyDependencies mcs ids dfs
-  = dfs { GHC.packageFlags = GHC.packageFlags dfs ++ (catMaybes $ map (dependencyToPkgFlag mcs) ids) }
+applyDependencies :: [ModuleCollectionId] -> [ModuleCollectionId] -> DynFlags -> DynFlags
+applyDependencies mcs deps dfs
+  = dfs { GHC.packageFlags = GHC.packageFlags dfs ++ (catMaybes $ map (dependencyToPkgFlag mcs) deps) }
 
 -- | Only use the dependencies that are explicitely enabled. (As cabal does opposed to as ghc does.)
 onlyUseEnabled :: DynFlags -> DynFlags
 onlyUseEnabled = GHC.setGeneralFlag' GHC.Opt_HideAllPackages
 
 -- | Transform dependencies of a module collection into the package flags of the GHC API
-dependencyToPkgFlag :: [ModuleCollection k] -> ModuleCollectionId -> Maybe (GHC.PackageFlag)
+dependencyToPkgFlag :: [ModuleCollectionId] -> ModuleCollectionId -> Maybe (GHC.PackageFlag)
 dependencyToPkgFlag mcs lib@(LibraryMC pkgName)
-  = if isNothing $ find (\mc -> (mc ^. mcId) == lib) mcs
+  = if lib `notElem` mcs
       then Just $ GHC.ExposePackage pkgName (GHC.PackageArg pkgName) (GHC.ModRenaming True [])
       else Nothing
 dependencyToPkgFlag _ _ = Nothing
@@ -211,15 +205,17 @@ dependencyToPkgFlag _ _ = Nothing
 -- | Sets the configuration for loading all the modules from the whole project. Combines the
 -- configuration of all package fragments. This solution is not perfect (it would be better to load
 -- all package fragments separately), but it is how it works. See 'loadFlagsFromBuildInfo'.
-setupLoadFlags :: [ModuleCollection k] -> DynFlags -> IO DynFlags
-setupLoadFlags mcs dfs = applyDependencies mcs allDeps . selectEnabled <$> useSavedFlags dfs
-  where allDeps = mcs ^? traversal & mcDependencies & traversal
-        selectEnabled = if any (\(mc,rest) -> isDirectoryMC mc && isIndependentMc mc rest) (breaks mcs) then id else onlyUseEnabled
+setupLoadFlags :: [ModuleCollectionId] -> [FilePath] 
+                    -> [ModuleCollectionId] -> (DynFlags -> IO DynFlags) -> DynFlags -> IO DynFlags
+-- need to be strict here, otherwise the previous modules cannot be garbage collected
+setupLoadFlags !ids !roots !allDeps !flags dfs = applyDependencies ids allDeps . selectEnabled <$> flags dfs
+  where selectEnabled = if any (\((mcId,mcRoot),rest) -> isDirectoryMC mcId && isIndependentMc mcRoot rest) (breaks (zip ids roots)) 
+                          then id 
+                          else onlyUseEnabled
           where breaks :: [a] -> [(a,[a])]
                 breaks [] = []
                 breaks (e:rest) = (e,rest) : map (\(x,ls) -> (x,e:ls)) (breaks rest)
-        useSavedFlags = foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)
-        isIndependentMc mc rest = not $ any (`isPrefixOf` (mc ^. mcRoot)) (map (^. mcRoot) rest)
+        isIndependentMc root rest = not $ any (`isPrefixOf` root) (map snd rest)
 
 -- | Collects the compilation options and enabled extensions from Cabal's build info representation.
 -- This setup will be used when loading all packages in the project. See 'setupLoadFlags'.

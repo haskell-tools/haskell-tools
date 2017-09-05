@@ -7,7 +7,7 @@ module Language.Haskell.Tools.Daemon.Representation where
 
 import Control.Reference
 import Data.Function (on)
-import Data.Map as Map
+import Data.Map.Strict as Map
 import Data.Maybe
 
 import DynFlags
@@ -21,9 +21,9 @@ data ModuleCollection k
                      , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
                      , _mcModuleFiles :: [(ModuleNameStr, FilePath)]
-                     , _mcModules :: Map.Map k ModuleRecord
-                     , _mcFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for compiling the modules of this collection
-                     , _mcLoadFlagSetup :: DynFlags -> IO DynFlags -- ^ Sets up the ghc environment for dependency analysis
+                     , _mcModules :: (Map.Map k ModuleRecord)
+                     , _mcFlagSetup :: (DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for compiling the modules of this collection
+                     , _mcLoadFlagSetup :: (DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for dependency analysis
                      , _mcDependencies :: [ModuleCollectionId]
                      }
 

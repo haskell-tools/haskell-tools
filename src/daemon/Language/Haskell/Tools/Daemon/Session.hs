@@ -3,6 +3,7 @@
            , TypeApplications
            , MultiWayIf
            , FlexibleContexts
+           , BangPatterns
            #-}
 -- | Common operations for managing Daemon-tools sessions, for example loading whole packages or
 -- re-loading modules when they are changed. Maintains the state of the compilation with loaded
@@ -50,16 +51,18 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      moreSrcDirs <- liftIO $ mapM (additionalSrcDirs st) packages
      lift $ useDirs ((modColls ^? traversal & mcSourceDirs & traversal) ++ concat moreSrcDirs)
      mcs' <- liftIO (traversal !~ locateModules $ modColls)
-     modify (refSessMCs .- (++ mcs'))
-     allModColls <- gets (^. refSessMCs)
+     modify' (refSessMCs .- (++ mcs'))
+     mcs <- gets (^. refSessMCs)
      let alreadyLoadedFilesInOtherPackages
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
-                       (filter (\mc -> (mc ^. mcRoot) `notElem` packages) allModColls)
+                       (filter (\mc -> (mc ^. mcRoot) `notElem` packages) mcs)
      currentTargets <- map targetId <$> (lift getTargets)
      lift $ mapM_ (\t -> when (targetId t `notElem` currentTargets) (addTarget t))
                   (map makeTarget $ List.nubBy ((==) `on` (^. sfkFileName))
                                   $ List.sort $ concatMap getExposedModules mcs')
-     handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags allModColls) $ do
+     handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
+                                                                                            (mcs ^? traversal & mcDependencies & traversal)
+                                                                                            (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
@@ -147,8 +150,13 @@ reloadChangedModules report loadCallback isChanged = handleErrors $ do
 -- modules need to be reloaded after a change.
 getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
-  allModColls <- gets (^. refSessMCs)
-  withAlteredDynFlags (liftIO . setupLoadFlags allModColls) $ do
+  mcs <- gets (^. refSessMCs)
+  -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+  -- might not be evaluated and then the reference could prevent garbage collection
+  -- of entire ASTs
+  withAlteredDynFlags (liftIO . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
+                                               (mcs ^? traversal & mcDependencies & traversal)
+                                               (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)) ) $ do
     allMods <- lift $ depanal [] True
     let (allModsGraph, lookup) = moduleGraphNodes False allMods
         changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
@@ -164,31 +172,38 @@ reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
+  
   let fp = getModSumOrig ms
       modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
   case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
-    Just mc -> reloadModuleIn codeGen modName ghcfl mcs mc
-    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mcs mc
+    Just mc -> reloadModuleIn codeGen modName ghcfl mc
+    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mc
                            []   -> error "reloadModule: module collections empty"
   where
-    reloadModuleIn codeGen modName ghcfl mcs mc = do
+    reloadModuleIn codeGen modName ghcfl mc = do
       let dfs = ms_hspp_opts ms
-      dfs' <- liftIO $ fmap ghcfl $ compileInContext mc mcs dfs
+      -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+      -- might not be evaluated and then the reference could prevent garbage collection
+      -- of entire ASTs
+      dfs' <- liftIO $ fmap ghcfl $ ((mc ^. mcFlagSetup) <=< (mc ^. mcLoadFlagSetup)) dfs
       let ms' = ms { ms_hspp_opts = dfs' }
       newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       -- replace the module in the program database
-      modify $ refSessMCs & traversal & filtered (== mc) & mcModules
-                 .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
-                      . Map.delete (SourceFileKey "" modName)
-      liftIO $ report ms
+      modify' $ refSessMCs & traversal & filtered (== mc) & mcModules
+                  .- Map.insert (keyFromMS ms') ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms')
+                       . Map.delete (SourceFileKey "" modName)
+      liftIO $ report ms'
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.
 checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> DaemonSession [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
+    -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+    -- might not be evaluated and then the reference could prevent garbage collection
+    -- of entire ASTs
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc
           where modName = getModSumName ms
                 mc = lookupModuleColl modName mcs
@@ -212,7 +227,7 @@ codeGenForModule report mcs ms
   = let modName = getModSumName ms
         mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
      in -- TODO: don't recompile, only load?
-        do withAlteredDynFlags (liftIO . compileInContext mc mcs)
+        do withAlteredDynFlags (liftIO . (mc ^. mcFlagSetup))
              $ void $ parseTyped (forceCodeGen ms)
            liftIO $ report ms
 
