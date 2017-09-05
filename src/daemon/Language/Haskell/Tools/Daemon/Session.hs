@@ -143,17 +143,17 @@ reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModS
                            -> DaemonSession (Either RefactorException [a])
 reloadChangedModules report loadCallback isChanged = handleErrors $ do
   reachable <- getReachableModules loadCallback isChanged
-  let reachable = []
   void $ checkEvaluatedMods report reachable
-  res <- mapM (reloadModule report) reachable
-  liftIO $ putStrLn "loading done"
-  return res
+  mapM (reloadModule report) reachable
 
 -- | Get all modules that can be accessed from a given set of modules. Can be used to select which
 -- modules need to be reloaded after a change.
 getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
   mcs <- gets (^. refSessMCs)
+  -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+  -- might not be evaluated and then the reference could prevent garbage collection
+  -- of entire ASTs
   withAlteredDynFlags (liftIO . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
                                                (mcs ^? traversal & mcDependencies & traversal)
                                                (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)) ) $ do
@@ -177,27 +177,33 @@ reloadModule report ms = do
       modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
   case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
-    Just mc -> reloadModuleIn codeGen modName ghcfl mcs mc
-    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mcs mc
+    Just mc -> reloadModuleIn codeGen modName ghcfl mc
+    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mc
                            []   -> error "reloadModule: module collections empty"
   where
-    reloadModuleIn codeGen modName ghcfl mcs mc = do
+    reloadModuleIn codeGen modName ghcfl mc = do
       let dfs = ms_hspp_opts ms
-      dfs' <- liftIO $ fmap ghcfl $ (mc ^. mcLoadFlagSetup) dfs
+      -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+      -- might not be evaluated and then the reference could prevent garbage collection
+      -- of entire ASTs
+      dfs' <- liftIO $ fmap ghcfl $ ((mc ^. mcFlagSetup) <=< (mc ^. mcLoadFlagSetup)) dfs
       let ms' = ms { ms_hspp_opts = dfs' }
       newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       -- replace the module in the program database
       modify' $ refSessMCs & traversal & filtered (== mc) & mcModules
-                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+                  .- Map.insert (keyFromMS ms') ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms')
                        . Map.delete (SourceFileKey "" modName)
-      liftIO $ report ms
+      liftIO $ report ms'
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.
 checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> DaemonSession [a]
 checkEvaluatedMods report mods = do
     mcs <- gets (^. refSessMCs)
+    -- IMPORTANT: make sure that the module collection is not passed into the flags, they
+    -- might not be evaluated and then the reference could prevent garbage collection
+    -- of entire ASTs
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc
           where modName = getModSumName ms
                 mc = lookupModuleColl modName mcs

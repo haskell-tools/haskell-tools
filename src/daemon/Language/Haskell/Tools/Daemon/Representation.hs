@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell
            , RecordWildCards
            , FlexibleContexts
-           , BangPatterns
            #-}
 -- | Representation of the modules and packages in the daemon session.
 module Language.Haskell.Tools.Daemon.Representation where
@@ -18,14 +17,14 @@ import Language.Haskell.Tools.Refactor
 
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
 data ModuleCollection k
-  = ModuleCollection { _mcId :: !ModuleCollectionId
-                     , _mcRoot :: !FilePath
-                     , _mcSourceDirs :: ![FilePath]
-                     , _mcModuleFiles :: ![(ModuleNameStr, FilePath)]
-                     , _mcModules :: !(Map.Map k ModuleRecord)
-                     , _mcFlagSetup :: !(DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for compiling the modules of this collection
-                     , _mcLoadFlagSetup :: !(DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for dependency analysis
-                     , _mcDependencies :: ![ModuleCollectionId]
+  = ModuleCollection { _mcId :: ModuleCollectionId
+                     , _mcRoot :: FilePath
+                     , _mcSourceDirs :: [FilePath]
+                     , _mcModuleFiles :: [(ModuleNameStr, FilePath)]
+                     , _mcModules :: (Map.Map k ModuleRecord)
+                     , _mcFlagSetup :: (DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for compiling the modules of this collection
+                     , _mcLoadFlagSetup :: (DynFlags -> IO DynFlags) -- ^ Sets up the ghc environment for dependency analysis
+                     , _mcDependencies :: [ModuleCollectionId]
                      }
 
 modCollToSfk :: ModuleCollection ModuleNameStr -> ModuleCollection SourceFileKey

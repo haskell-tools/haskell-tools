@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric
            , OverloadedStrings
+           , DeriveAnyClass
            #-}
 -- | This module declares the messages that can be sent from the client to the
 -- daemon engine and from the engine to the client.
@@ -8,6 +9,7 @@ module Language.Haskell.Tools.Daemon.Protocol where
 import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))
 import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import FastString (unpackFS)
 import SrcLoc
@@ -104,7 +106,7 @@ data UndoRefactor = RemoveAdded { undoRemovePath :: FilePath }
                   | UndoChanges { undoChangedPath :: FilePath
                                 , undoDiff :: FileDiff
                                 }
-  deriving (Show, Generic)
+  deriving (Show, Generic, NFData)
 
 instance ToJSON UndoRefactor
 

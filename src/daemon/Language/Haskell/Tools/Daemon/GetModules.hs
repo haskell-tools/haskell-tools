@@ -207,6 +207,7 @@ dependencyToPkgFlag _ _ = Nothing
 -- all package fragments separately), but it is how it works. See 'loadFlagsFromBuildInfo'.
 setupLoadFlags :: [ModuleCollectionId] -> [FilePath] 
                     -> [ModuleCollectionId] -> (DynFlags -> IO DynFlags) -> DynFlags -> IO DynFlags
+-- need to be strict here, otherwise the previous modules cannot be garbage collected
 setupLoadFlags !ids !roots !allDeps !flags dfs = applyDependencies ids allDeps . selectEnabled <$> flags dfs
   where selectEnabled = if any (\((mcId,mcRoot),rest) -> isDirectoryMC mcId && isIndependentMc mcRoot rest) (breaks (zip ids roots)) 
                           then id 

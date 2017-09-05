@@ -4,12 +4,15 @@
            , TypeFamilies
            , RecordWildCards
            , FlexibleContexts
+           , BangPatterns
+           , ViewPatterns
            #-}
 -- | Resolves how the daemon should react to individual requests from the client.
 module Language.Haskell.Tools.Daemon.Update where
 
-import Control.Exception (Exception(..))
+import Control.Exception
 import Control.Monad
+import Control.DeepSeq
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
 import Data.Algorithm.Diff (Diff(..), getGroupedDiff)
@@ -36,7 +39,7 @@ import GhcMonad (GhcMonad(..), Session(..), modifySession)
 import HscTypes (hsc_mod_graph)
 import Packages (Version(..), initPackages)
 
-import Language.Haskell.Tools.Daemon.PackageDB (packageDBLoc, detectAutogen)
+import Language.Haskell.Tools.Daemon.PackageDB
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Session
@@ -60,7 +63,7 @@ updateClient _ resp KeepAlive = do liftIO (resp KeepAliveResponse)
 updateClient _ resp Disconnect = do liftIO (resp Disconnected)
                                     return False
 
-updateClient _ _ (SetPackageDB pkgDB) = do modify (packageDB .= pkgDB)
+updateClient _ _ (SetPackageDB pkgDB) = do modify' (packageDB .= pkgDB)
                                            return True
 
 updateClient _ resp (AddPackages packagePathes) = do addPackages resp packagePathes
@@ -71,7 +74,7 @@ updateClient _ _ (SetWorkingDir fp) = do liftIO (setCurrentDirectory fp)
 
 updateClient _ resp (SetGHCFlags flags) = do (unused, change) <- lift (useFlags flags)
                                              liftIO $ resp $ UnusedFlags unused
-                                             modify $ ghcFlagsSet .= change
+                                             modify' $ ghcFlagsSet .= change
                                              return True
 
 updateClient _ _ (RemovePackages packagePathes) = do
@@ -79,10 +82,10 @@ updateClient _ _ (RemovePackages packagePathes) = do
     let existingFiles = concatMap @[] (map (^. sfkFileName) . Map.keys) (mcs ^? traversal & filtered isRemoved & mcModules)
     lift $ forM_ existingFiles (\fs -> removeTarget (TargetFile fs Nothing))
     lift $ deregisterDirs (mcs ^? traversal & filtered isRemoved & mcSourceDirs & traversal)
-    modify $ refSessMCs .- filter (not . isRemoved)
+    modify' $ refSessMCs .- filter (not . isRemoved)
     modifySession (\s -> s { hsc_mod_graph = filter ((`notElem` existingFiles) . getModSumOrig) (hsc_mod_graph s) })
     mcs <- gets (^. refSessMCs)
-    when (null mcs) $ modify (packageDBSet .= False)
+    when (null mcs) $ modify' (packageDBSet .= False)
     return True
   where isRemoved mc = (mc ^. mcRoot) `elem` packagePathes
 
@@ -119,13 +122,19 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
             Left err -> liftIO $ resp $ ErrorMessage err
             Right diff -> do changedMods <- applyChanges diff
                              if not diffMode
-                               then modify (undoStack .- (map (either fst (^. _3)) changedMods :))
+                               then do modify (undoStack .- (map (either fst (^. _3)) changedMods :))
+                                       -- force the evaluation of the undo stack to prevent older versions of 
+                                       -- modules seeming to be used when they could be garbage collected
+                                       us <- gets (^. undoStack)
+                                       liftIO $ evaluate $ force us 
+                                       return ()
                                else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
                              when (not isWatching && not shutdown && not diffMode)
                               -- if watch is on, then it will automatically
                               -- reload changed files, otherwise we do it manually
                               $ void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
+
         applyChanges changes = do
           forM changes $ \case
             ModuleCreated n m otherM -> do
@@ -137,11 +146,12 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
               let loc = toFileName otherSrcDir n
               let newCont = prettyPrint m
               when (not diffMode) $ do
-                modify $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                           .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
+                modify' $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
+                            .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
                 liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                   hSetEncoding handle utf8
                   hPutStr handle newCont
+                  hFlush handle
                 lift $ addTarget (Target (TargetFile loc Nothing) True Nothing)
               return $ Right (SourceFileKey loc n, loc, RemoveAdded loc, createUnifiedDiff loc "" newCont)
             ContentChanged (n,m) -> do
@@ -156,6 +166,7 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
                liftIO $ withBinaryFile file WriteMode $ \handle -> do
                  hSetEncoding handle utf8
                  hPutStr handle newCont
+                 hFlush handle
               return $ Right (n, file, UndoChanges file undo, unifiedDiff)
             ModuleRemoved mod -> do
               Just (sfk,_) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
@@ -163,7 +174,7 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
               when (not diffMode) $ do
                 lift $ removeTarget (TargetFile file Nothing)
-                modify $ (refSessMCs .- removeModule mod)
+                modify' $ (refSessMCs .- removeModule mod)
                 liftIO $ removeFile file
               return $ Left (RestoreRemoved file origCont, createUnifiedDiff file origCont "")
 
@@ -189,7 +200,7 @@ addPackages resp packagePathes = do
           existingModNames = map ms_mod existing
       needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
                                        <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
-      modify $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
+      modify' $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
       forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
       modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
       -- load new modules
@@ -220,7 +231,7 @@ addPackages resp packagePathes = do
                      return (pkgDBLocs == firstLoc)
                  | otherwise -> do
                      usePackageDB firstLoc
-                     modify ((packageDBSet .= True) . (packageDBLocs .= firstLoc))
+                     modify' ((packageDBSet .= True) . (packageDBLocs .= firstLoc))
                      return True
             [] -> return True
 
@@ -229,8 +240,8 @@ reloadModules :: (ResponseMsg -> IO ()) -> [FilePath] -> [FilePath] -> [FilePath
 reloadModules resp added changed removed = do
   lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
   -- remove targets deleted
-  modify $ refSessMCs & traversal & mcModules
-             .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
+  modify' $ refSessMCs & traversal & mcModules
+              .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
   modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
   -- reload changed modules
   -- TODO: filter those that are in reloaded packages
