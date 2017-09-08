@@ -85,7 +85,8 @@ serverLoop refactorings mode conn isSilent ghcSess state =
        when (not (sessionData ^. exiting) && all (== True) continue)
          $ serverLoop refactorings mode conn isSilent ghcSess state
   `catchIOError` handleIOError )
-  `catch` (\(e :: AsyncException) -> hPutStrLn stderr $ "Asynch exception caught: " ++ show e)
+  `catch` (\e -> case e of UserInterrupt -> return ()
+                           _ -> hPutStrLn stderr $ "Error caught: " ++ show e)
   `catch` (\e -> handleException e >> serverLoop refactorings mode conn isSilent ghcSess state)
   where handleIOError err = hPutStrLn stderr $ "IO Exception caught: " ++ show err
         handleException ex = do
