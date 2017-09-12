@@ -4,6 +4,7 @@
            , TypeFamilies
            , StandaloneDeriving
            , RecordWildCards
+           , ScopedTypeVariables
            #-}
 -- | The command line interface for Haskell-tools. It uses the Haskell-tools daemon package starting
 -- the daemon in the same process and communicating with it through a channel.
@@ -14,12 +15,15 @@ module Language.Haskell.Tools.Refactor.CLI
 
 import Control.Concurrent
 import Control.Monad.State.Strict
+import Control.Exception
 import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Version (showVersion)
 import System.Directory
 import System.IO
+import System.IO.Error
+import System.Exit
 
 import Language.Haskell.Tools.Daemon
 import Language.Haskell.Tools.Daemon.Mode (channelMode)
@@ -32,8 +36,8 @@ normalRefactorSession refactorings input output options@CLIOptions{..}
   = do hSetBuffering stdout LineBuffering -- to synch our output with GHC's
        hSetBuffering stderr LineBuffering -- to synch our output with GHC's
        refactorSession refactorings
-         (\st -> void $ forkIO $ runDaemon refactorings channelMode st
-                                   (DaemonOptions False 0 (not cliVerbose) cliNoWatch cliWatchExe))
+         (\st -> void $ forkIO $ do runDaemon refactorings channelMode st
+                                      (DaemonOptions False 0 (not cliVerbose) cliNoWatch cliWatchExe))
          input output options
 
 -- | Command-line options for the Haskell-tools CLI
@@ -64,7 +68,7 @@ refactorSession refactorings init input output CLIOptions{..} = do
   case executeCommands of
     Just cmds -> performCmdOptions refactorings output send (splitOn ";" cmds)
     Nothing -> return ()
-  when (isNothing executeCommands) (void $ forkIO $ processUserInput refactorings input output send)
+  when (isNothing executeCommands) (void $ forkIO $ do processUserInput refactorings input output send)
   readFromSocket (isJust executeCommands) output recv
 
 -- | An initialization action for the daemon.
@@ -73,9 +77,11 @@ type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
 -- | Reads commands from standard input and executes them.
 processUserInput :: [RefactoringChoice IdDom] -> Handle -> Handle -> Chan ClientMessage -> IO ()
 processUserInput refactorings input output chan = do
-  cmd <- hGetLine input
-  continue <- processCommand False refactorings output chan cmd
-  when continue $ processUserInput refactorings input output chan
+    cmd <- hGetLine input
+    continue <- processCommand False refactorings output chan cmd
+    when continue $ processUserInput refactorings input output chan
+  `catch` \e -> if isEOFError e then return ()
+                                else putStrLn (show e) >> return ()
 
 -- | Perform a command received from the user. The resulting boolean states if the user may continue
 -- (True), or the session is over (False).
@@ -100,8 +106,9 @@ processCommand shutdown refactorings output chan cmd = do
 -- erronous way.
 readFromSocket :: Bool -> Handle -> Chan ResponseMsg -> IO Bool
 readFromSocket pedantic output recv = do
-  continue <- readChan recv >>= processMessage pedantic output
-  maybe (readFromSocket pedantic output recv) return continue -- repeate if not stopping
+    continue <- readChan recv >>= processMessage pedantic output
+    maybe (readFromSocket pedantic output recv) return continue -- repeate if not stopping
+  `catch` \(e :: BlockedIndefinitelyOnMVar) -> return False -- other threads terminated
 
 -- | Receives a single response from daemon. Returns Nothing if the execution should continue,
 -- Just False on erronous termination and Just True on normal termination.
