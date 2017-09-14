@@ -22,6 +22,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.Utils.GHCInstances ()
 import qualified Name as GHC
 import SrcLoc as GHC
+import FastString
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
@@ -231,6 +232,11 @@ shortShowSpan :: SrcSpan -> String
 shortShowSpan (UnhelpfulSpan _) = "??-??"
 shortShowSpan sp@(RealSrcSpan _)
   = shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
+
+shortShowSpanWithFile :: SrcSpan -> String
+shortShowSpanWithFile (UnhelpfulSpan _) = "?? ??-??"
+shortShowSpanWithFile sp@(RealSrcSpan rsp)
+  = unpackFS (srcSpanFile rsp) ++ " " ++ shortShowLoc (srcSpanStart sp) ++ "-" ++ shortShowLoc (srcSpanEnd sp)
 
 -- | A short form of showing a range, without file name, for debugging purposes.
 shortShowLoc :: SrcLoc -> String

@@ -93,7 +93,7 @@ trfModuleHead (Just mn) _ exports modPrag
                                                 <*> trfModulePragma (srcSpanEnd $ getLoc mn) modPrag
                                                 <*> trfExportList (before AnnWhere) exports))
 trfModuleHead _ rng Nothing _ = nothing "" "" (pure rng)
-trfModuleHead Nothing _ (Just _) _ = error "trfModuleHead: no head but has exports"
+trfModuleHead Nothing _ (Just _) _ = convertionProblem "trfModuleHead: no head but has exports"
 
 trfFilePragmas :: Trf (AnnListG AST.UFilePragma (Dom r) RangeStage)
 trfFilePragmas = do pragmas <- asks pragmaComms

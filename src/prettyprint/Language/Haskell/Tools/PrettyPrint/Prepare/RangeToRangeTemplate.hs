@@ -4,10 +4,11 @@
            #-}
 -- | Transform a syntax tree with ranges to a syntax tree that has range templates. Cuts the ranges of children
 -- from the ranges of their parents and replaces it with placeholders.
-module Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges) where
+module Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges, BreakUpProblem(..)) where
 
 import Language.Haskell.Tools.AST
 
+import Control.Exception
 import Control.Monad.State
 import Control.Reference ((^.))
 import Data.List
@@ -49,8 +50,22 @@ cutOutElemSpan sps (NormNodeInfo (RealSrcSpan sp))
              -- only continue if the correct place for the child range is not found
               Just pieces -> pieces ++ rest
               Nothing -> elem : breakFirstHit rest sp
-        breakFirstHit [] inner = error ("breakFirstHit: " ++ unpackFS (srcSpanFile sp) ++ " didn't find correct place for " ++ shortShowSpan inner ++ " in " ++ shortShowSpan (RealSrcSpan sp) ++ " with [" ++ concat (intersperse "," (map shortShowSpan sps)) ++ "]")
-cutOutElemSpan _ (NormNodeInfo (UnhelpfulSpan {})) = error "cutOutElemSpan: no real span"
+        breakFirstHit [] inner = throw $ BreakUpProblem sp inner sps
+cutOutElemSpan _ (NormNodeInfo (UnhelpfulSpan {}))
+  = trfProblem "cutOutElemSpan: no real span"
+
+data BreakUpProblem = BreakUpProblem { bupOuter :: RealSrcSpan
+                                     , bupInner :: SrcSpan
+                                     , bupSiblings :: [SrcSpan]
+                                     }
+
+instance Show BreakUpProblem where
+ show (BreakUpProblem outer (RealSrcSpan inner) _)
+   = unpackFS (srcSpanFile inner) ++ ": didn't find correct place for AST element at " ++ shortShowSpan (RealSrcSpan inner)
+ show (BreakUpProblem outer _ _)
+   = unpackFS (srcSpanFile outer) ++ ": didn't find correct place for AST element in " ++ shortShowSpan (RealSrcSpan outer)
+
+instance Exception BreakUpProblem
 
 cutOutElemList :: [SrcSpan] -> ListInfo NormRangeStage -> ListInfo RngTemplateStage
 cutOutElemList sps (NormListInfo bef aft sep indented sp)
@@ -126,5 +141,5 @@ collectSpanRanges _ ls = foldl combineSrcSpans noSrcSpan ls
 checkSpans :: [SrcSpan] -> SrcSpan -> SrcSpan
 checkSpans spans res
   = if any (not . isGoodSrcSpan) spans && isGoodSrcSpan res
-      then error $ "Wrong src spans in " ++ show res
+      then trfProblem $ "Wrong src spans in " ++ show res
       else res

@@ -8,6 +8,7 @@
 -- had been cut from the parent nodes, but the annotations still contain ranges instead of text.
 module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate where
 
+import Control.Exception
 import Control.Reference
 import Data.Data
 import Language.Haskell.Tools.AST
@@ -100,3 +101,11 @@ instance Show (OptionalInfo RngTemplateStage) where
 instance Show RangeTemplateElem where
   show (RangeElem sp) = shortShowSpan (RealSrcSpan sp)
   show RangeChildElem = "<.>"
+
+data TransformationProblem = TransformationProblem String
+  deriving Show
+
+instance Exception TransformationProblem
+
+trfProblem :: String -> a
+trfProblem = throw . TransformationProblem

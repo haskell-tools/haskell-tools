@@ -44,7 +44,7 @@ loadPackagesFrom :: (ModSummary -> IO a)
                       -> ([ModSummary] -> IO ())
                       -> (DaemonSessionState -> FilePath -> IO [FilePath])
                       -> [FilePath]
-                      -> DaemonSession (Either RefactorException [a])
+                      -> DaemonSession [a]
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do modColls <- liftIO $ getAllModules packages
      st <- get
@@ -60,9 +60,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      lift $ mapM_ (\t -> when (targetId t `notElem` currentTargets) (addTarget t))
                   (map makeTarget $ List.nubBy ((==) `on` (^. sfkFileName))
                                   $ List.sort $ concatMap getExposedModules mcs')
-     handleErrors $ withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
-                                                                                            (mcs ^? traversal & mcDependencies & traversal)
-                                                                                            (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
+     withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
+                                                                             (mcs ^? traversal & mcDependencies & traversal)
+                                                                             (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
@@ -111,9 +111,9 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
         makeTarget (SourceFileKey filePath _) = Target (TargetFile filePath Nothing) True Nothing
 
 -- | Handle GHC exceptions and RefactorException.
-handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
-handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action)
-                        `gcatch` (return . Left)
+-- handleErrors :: ExceptionMonad m => m a -> m (Either RefactorException a)
+-- handleErrors action = handleSourceError (return . Left . SourceCodeProblem . srcErrorMessages) (Right <$> action)
+--                         `gcatch` (return . Left)
 
 -- TODO: make getMods and getFileMods clearer
 
@@ -140,8 +140,8 @@ getFileMods fname
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
 reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool)
-                           -> DaemonSession (Either RefactorException [a])
-reloadChangedModules report loadCallback isChanged = handleErrors $ do
+                           -> DaemonSession [a]
+reloadChangedModules report loadCallback isChanged = do
   reachable <- getReachableModules loadCallback isChanged
   void $ checkEvaluatedMods report reachable
   mapM (reloadModule report) reachable
@@ -172,7 +172,7 @@ reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
-  
+
   let fp = getModSumOrig ms
       modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs

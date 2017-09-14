@@ -96,18 +96,18 @@ trfDeclsGroup (HsGroup vals splices tycls insts derivs fixities defaults foreign
     mergeSplice :: [Located (HsDecl n)] -> Located (HsSplice n) -> [Located (HsDecl n)]
     mergeSplice decls spl@(L spLoc@(RealSrcSpan rss) _)
       = L spLoc (SpliceD (SpliceDecl spl ExplicitSplice)) : filter (\(L (RealSrcSpan rdsp) _) -> not (rss `containsSpan` rdsp)) decls
-    mergeSplice _ (L (UnhelpfulSpan {}) _) = error "mergeSplice: no real span"
+    mergeSplice _ (L (UnhelpfulSpan {}) _) = convProblem "mergeSplice: no real span"
 
     getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
                           allLocals <- asks localsInScope
                           case allLocals of locals:_ -> liftGhc $ mapM (loadIdsForDecls (map (^. _1) locals)) decls
-                                            [] -> error "getDeclsToInsert: empty scope"
+                                            [] -> convertionProblem "getDeclsToInsert: empty scope"
        where loadIdsForDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
              loadIdsForDecls locals = AST.semaTraverse $
                 AST.SemaTrf (AST.nameInfo !~ findName) pure (traverse findName) pure pure pure
-               where findName rdr = pure $ fromGHCName $ fromMaybe (error $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr)
-                                                                              ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals))
+               where findName rdr = pure $ fromGHCName $ fromMaybe (convProblem $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr)
+                                                                                    ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals))
                                                        $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
 
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.UDecl (Dom r) RangeStage)
@@ -331,7 +331,7 @@ trfInstanceHead' = trfInstanceHead'' . cleanHsType where
 trfTypeEqs :: TransformName n r => Maybe [Located (TyFamInstEqn n)] -> Trf (AnnListG AST.UTypeEqn (Dom r) RangeStage)
 trfTypeEqs eqs =
   do toks <- tokensAfter AnnWhere
-     case toks of [] -> error "trfTypeEqs: no where found after closed type family"
+     case toks of [] -> convertionProblem "trfTypeEqs: no where found after closed type family"
                   loc:_ -> makeList "\n" (pure $ srcSpanStart loc) (mapM trfTypeEq (fromMaybe [] eqs))
 
 trfTypeEq :: TransformName n r => Located (TyFamInstEqn n) -> Trf (Ann AST.UTypeEqn (Dom r) RangeStage)
@@ -420,7 +420,7 @@ trfTypeFam' (FamilyDecl DataFamily name tyVars kindSig _)
 trfTypeFam' (FamilyDecl OpenTypeFamily name tyVars kindSig injectivity)
   = AST.UTypeFamily <$> (case unLoc kindSig of KindSig _ -> between AnnType AnnDcolon; _ -> id) (createDeclHead name tyVars)
                    <*> trfFamilyResultSig kindSig injectivity
-trfTypeFam' (FamilyDecl (ClosedTypeFamily {}) _ _ _ _) = error "trfTypeFam': closed type family received"
+trfTypeFam' (FamilyDecl (ClosedTypeFamily {}) _ _ _ _) = convertionProblem "trfTypeFam': closed type family received"
 
 trfTypeFamDef :: TransformName n r => Located (TyFamDefltEqn n) -> Trf (Ann AST.UClassElement (Dom r) RangeStage)
 trfTypeFamDef = trfLocNoSema $ \(TyFamEqn con pats rhs)
@@ -523,7 +523,7 @@ trfFamilyKind :: TransformName n r => Located (FamilyResultSig n) -> Trf (AnnMay
 trfFamilyKind (unLoc -> fr) = case fr of
   NoSig -> nothing "" " " atTheEnd
   KindSig k -> trfKindSig (Just k)
-  TyVarSig _ -> error "trfFamilyKind: TyVarSig not supported"
+  TyVarSig _ -> convertionProblem "trfFamilyKind: TyVarSig not supported"
 
 trfFamilyResultSig :: TransformName n r => Located (FamilyResultSig n) -> Maybe (LInjectivityAnn n) -> Trf (AnnMaybeG AST.UTypeFamilySpec (Dom r) RangeStage)
 trfFamilyResultSig (L l fr) Nothing = case fr of
@@ -555,7 +555,7 @@ trfCallConv' CCallConv = pure AST.UCCall
 trfCallConv' CApiConv = pure AST.UCApi
 trfCallConv' StdCallConv = pure AST.UStdCall
 trfCallConv' JavaScriptCallConv = pure AST.UJavaScript
-trfCallConv' PrimCallConv = error "trfCallConv: PrimCallConv not supported"
+trfCallConv' PrimCallConv = convertionProblem "trfCallConv: PrimCallConv not supported"
 
 trfSafety :: SrcSpan -> Located Safety -> Trf (AnnMaybeG AST.USafety (Dom r) RangeStage)
 trfSafety ccLoc lsaf@(L l _) | isGoodSrcSpan l
@@ -577,7 +577,7 @@ trfRole :: Located (Maybe Role) -> Trf (Ann AST.URole (Dom r) RangeStage)
 trfRole = trfLocNoSema $ \case Just Nominal -> pure AST.UNominal
                                Just Representational -> pure AST.URepresentational
                                Just GHC.Phantom -> pure AST.UPhantom
-                               Nothing -> error "trfRole: no role"
+                               Nothing -> convertionProblem "trfRole: no role"
 
 trfRewriteRule :: TransformName n r => Located (RuleDecl n) -> Trf (Ann AST.URule (Dom r) RangeStage)
 trfRewriteRule = trfLocNoSema $ \(HsRule (L nameLoc (_, ruleName)) act bndrs left _ right _) ->

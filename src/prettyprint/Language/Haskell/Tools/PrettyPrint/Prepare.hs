@@ -13,12 +13,13 @@ module Language.Haskell.Tools.PrettyPrint.Prepare
   -- parts of the transformation, used for debugging purposes
   , rangeToSource, fixRanges, cutUpRanges, getLocIndices, mapLocIndices, fixMainRange, extractStayingElems
   , sourceTemplateMinimalIndent, srcTmpListMinimalIndent, srcTmpOptMinimalIndent
+  , TransformationProblem(..), BreakUpProblem(..)
   ) where
 
 import Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments (getNormalComments, getPragmaComments, placeComments)
-import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate ()
+import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate (TransformationProblem(..))
 import Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate (rangeToSource, getLocIndices, mapLocIndices, extractStayingElems)
-import Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges)
+import Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRanges, fixRanges, BreakUpProblem(..))
 import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers
 

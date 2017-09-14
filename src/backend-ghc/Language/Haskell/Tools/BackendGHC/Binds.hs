@@ -44,7 +44,7 @@ trfBind' (PatBind pat (GRHSs rhs (unLoc -> locals)) _ _ _)
   = AST.USimpleBind <$> trfPattern pat
                     <*> addEmptyScope (addToScope locals (trfRhss rhs))
                     <*> addEmptyScope (trfWhereLocalBinds (collectLocs rhs) locals)
-trfBind' (PatSynBind _) = error "Pattern synonym bindings should be recognized on the declaration level"
+trfBind' (PatSynBind _) = convertionProblem "Pattern synonym bindings should be recognized on the declaration level"
 trfBind' b = unhandledElement "binding" b
 
 trfMatch :: TransformName n r => n -> Located (Match n (LHsExpr n)) -> Trf (Ann AST.UMatch (Dom r) RangeStage)
@@ -130,7 +130,7 @@ trfIpBind = trfLocNoSema $ \case
          <$> (annContNoSema $ AST.USimpleBind <$> focusOn l (annContNoSema (AST.UVarPat <$> define (trfImplicitName ipname)))
                                               <*> annFromNoSema AnnEqual (AST.UUnguardedRhs <$> trfExpr expr)
                                               <*> nothing " " "" atTheEnd)
-  IPBind (Right _) _ -> error "trfIpBind: called on typechecked AST"
+  IPBind (Right _) _ -> convertionProblem "trfIpBind: called on typechecked AST"
 
 trfLocalSig :: TransformName n r => Located (Sig n) -> Trf (Ann AST.ULocalBind (Dom r) RangeStage)
 trfLocalSig = trfLocNoSema $ \case
@@ -188,6 +188,6 @@ trfPhaseNum i = annLocNoSema (tokenLoc AnnVal) $ pure (AST.PhaseNumber $ fromInt
 trfConlike :: [SrcSpan] -> RuleMatchInfo -> Trf (AnnMaybeG AST.UConlikeAnnot (Dom r) RangeStage)
 trfConlike parts ConLike | length parts > 2
   = makeJust <$> annLocNoSema (pure $ parts !! 2) (pure AST.UConlikeAnnot)
-  | otherwise = error $ "trfConlike: expected 3 parts, got: " ++ show parts
+  | otherwise = convertionProblem $ "trfConlike: expected 3 parts, got: " ++ show parts
 trfConlike (_:inlTok:_) FunLike = nothing " " "" (pure $ srcSpanEnd inlTok)
 trfConlike (combTok:_) FunLike = nothing " " "" (pure $ srcSpanEnd combTok)

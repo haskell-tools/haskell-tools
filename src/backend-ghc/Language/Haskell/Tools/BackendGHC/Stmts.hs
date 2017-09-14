@@ -65,7 +65,7 @@ extractActualStmt = \case
     -> addAnnotation by using (AST.UThenStmt <$> trfExpr using <*> trfMaybe "," "" trfExpr by)
   TransStmt { trS_form = GroupForm, trS_using = using, trS_by = by }
     -> addAnnotation by using (AST.UGroupStmt <$> trfMaybe "," "" trfExpr by <*> (makeJust <$> trfExpr using))
-  _ -> error "extractActualStmt: called on a statement that is not then or group"
+  _ -> convertionProblem "extractActualStmt: called on a statement that is not then or group"
   where addAnnotation by using
           = annLocNoSema (combineSrcSpans (getLoc using) . combineSrcSpans (maybe noSrcSpan getLoc by)
                             <$> tokenLocBack AnnThen)
@@ -78,4 +78,4 @@ getNormalStmts [] = []
 getLastStmt :: [Located (Stmt n (LHsExpr n))] -> Located (HsExpr n)
 getLastStmt (L _ (LastStmt body _ _) : _) = body
 getLastStmt (_ : rest) = getLastStmt rest
-getLastStmt [] = error "getLastStmt: empty"
+getLastStmt [] = convProblem "getLastStmt: empty"

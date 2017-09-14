@@ -12,6 +12,7 @@
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.List ((\\), isSuffixOf)
@@ -161,8 +162,8 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
       hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum
       hasOverloadedLabels = OverloadedLabels `xopt` ms_hspp_opts modSum
       ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
-  when hasApplicativeDo $ error "The ApplicativeDo extension is not supported"
-  when hasOverloadedLabels $ error "The OverloadedLabels extension is not supported"
+  when hasApplicativeDo $ liftIO $ throwIO $ UnsupportedExtension "ApplicativeDo"
+  when hasOverloadedLabels $ liftIO $ throwIO $ UnsupportedExtension "OverloadedLabels"
   modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod modSum) (hsc_mod_graph s) }
   p <- parseModule ms
   tc <- typecheckModule p
@@ -178,6 +179,14 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
                      $ trfModuleRename ms parseTrf
                          (fromJust $ tm_renamed_source tc)
                          (pm_parsed_source p)))
+
+data UnsupportedExtension = UnsupportedExtension String
+  deriving Show
+
+instance Exception UnsupportedExtension
+
+trfProblem :: String -> a
+trfProblem = throw . UnsupportedExtension
 
 -- | Modifies the dynamic flags for performing a ghc task
 withAlteredDynFlags :: GhcMonad m => (DynFlags -> m DynFlags) -> m a -> m a

@@ -42,7 +42,7 @@ trfExpr (L l cs@(HsCase expr (unLoc . mg_alts -> [])))
        let actualSpan = case take 3 tokensAfter of
                           [(_, AnnOf), (_, AnnOpenC), (endSpan, AnnCloseC)] -> realSpan `combineSrcSpans` endSpan
                           ((endSpan, AnnOf) : _) -> realSpan `combineSrcSpans` endSpan
-                          _ -> error "trfExpr: case without 'of' '{' or '}' token"
+                          _ -> convProblem "trfExpr: case without 'of' '{' or '}' token"
        annLoc createScopeInfo (pure actualSpan) (trfExpr' cs)
 trfExpr e | RealSrcSpan loce <- getLoc e
   = do exprSpls <- asks exprSplices
@@ -81,7 +81,7 @@ trfExpr' (OpApp _ (L _ op) _ _) = unhandledElement "OpApp expression" op
 trfExpr' (NegApp e _) = AST.UPrefixApp <$> annLocNoSema loc (AST.UNormalOp <$> annLoc info loc (AST.nameFromList <$> trfOperatorStr False "-"))
                                        <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
-        info = createNameInfo =<< (fromMaybe (error "minus operation is not found") <$> liftGhc negateOpName)
+        info = createNameInfo =<< (fromMaybe (convProblem "minus operation is not found") <$> liftGhc negateOpName)
         negateOpName = getFromNameUsing (\n -> (\case Just (AnId id) -> Just id; _ -> Nothing) <$> lookupName n) negateName
 trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.ULeftSection <$> trfExpr expr <*> trfOperator op
 trfExpr' (HsPar (unLoc -> SectionL expr (L nameLoc (HsRecFld op))))
@@ -203,7 +203,7 @@ trfAlt' = gTrfAlt' trfExpr
 gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Match n (Located (ge n)) -> Trf (AST.UAlt' ae (Dom r) RangeStage)
 gTrfAlt' te (Match _ [pat] _ (GRHSs rhss (unLoc -> locBinds)))
   = AST.UAlt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds (collectLocs rhss) locBinds
-gTrfAlt' _ _ = error "gTrfAlt': not exactly one alternative when transforming a case alternative"
+gTrfAlt' _ _ = convertionProblem "gTrfAlt': not exactly one alternative when transforming a case alternative"
 
 trfCaseRhss :: TransformName n r => [Located (GRHS n (LHsExpr n))] -> Trf (Ann AST.UCaseRhs (Dom r) RangeStage)
 trfCaseRhss = gTrfCaseRhss trfExpr
@@ -248,8 +248,8 @@ trfCmd' (HsCmdIf _ pred thenExpr elseExpr) = AST.UIfCmd <$> trfExpr pred <*> trf
 trfCmd' (HsCmdLet (unLoc -> binds) cmd) = addToScope binds (AST.ULetCmd <$> trfLocalBinds AnnLet binds <*> trfCmd cmd)
 trfCmd' (HsCmdDo (unLoc -> stmts) _) = AST.UDoCmd <$> makeNonemptyIndentedList (mapM (trfLocNoSema (gTrfDoStmt' trfCmd)) stmts)
 -- | TODO: implement
-trfCmd' (HsCmdLam {}) = error "trfCmd': cmd lambda not supported yet"
-trfCmd' (HsCmdWrap {}) = error "trfCmd': cmd wrap not supported yet"
+trfCmd' (HsCmdLam {}) = convertionProblem "trfCmd': cmd lambda not supported yet"
+trfCmd' (HsCmdWrap {}) = convertionProblem "trfCmd': cmd wrap not supported yet"
 
 trfText' :: StringLiteral -> Trf (AST.UStringNode (Dom r) RangeStage)
 trfText' = pure . AST.UStringNode . unpackFS . sl_fs

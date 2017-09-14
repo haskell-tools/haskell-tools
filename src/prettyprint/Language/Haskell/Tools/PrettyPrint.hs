@@ -5,14 +5,14 @@
            #-}
 
 -- | Pretty printing the AST
-module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree) where
+module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree, PrettyPrintProblem(..)) where
 
 import FastString (fsLit)
 import SrcLoc
 
 import Language.Haskell.Tools.AST (SrcTemplateStage, SourceInfoTraversal(..))
 import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
-import Language.Haskell.Tools.PrettyPrint.RoseTree (RoseSourceInfo(..), RoseTree(..), toRoseTree)
+import Language.Haskell.Tools.PrettyPrint.RoseTree
 
 import Control.Monad.State
 import Control.Reference ((^.))
@@ -42,8 +42,14 @@ printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relIn
              where txt = concatMap (^. sourceTemplateText) txtElems
            printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child >+< printTemplateElems rest children
            printTemplateElems [] [] = return empty
-           printTemplateElems _ [] = error $ "More child elem in template than actual children (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
-           printTemplateElems [] _ = error $ "Not all children are used to pretty printing. (elems: " ++ show elems ++ ", children: " ++ show children ++ ")"
+           printTemplateElems _ []
+             = pprProblem $ "More child elem in template than actual children (elems: " ++ show elems
+                               ++ ", children: " ++ show children
+                               ++ "). Check that the default templates for AST elements are correct."
+           printTemplateElems [] _
+             = pprProblem $ "Not all children are used to pretty printing. (elems: "
+                              ++ show elems ++ ", children: " ++ show children
+                              ++ "). Check that the default templates for AST elements are correct."
 
            min = minInd `max` getPosByRelative parent relInd
 
@@ -68,7 +74,7 @@ printRose' parent (RoseTree (RoseOptional (SourceTemplateOpt rng bef aft minInd 
        actRng <- get
        let min = minInd `max` getPosByRelative parent relInd
        putString slide min bef >+< printRose' actRng child >+< putString slide min aft
-printRose' _ (RoseTree (RoseOptional _) _) = error "More than one child element in an optional node."
+printRose' _ (RoseTree (RoseOptional _) _) = pprProblem "More than one child element in an optional node."
 
 getPosByRelative :: RealSrcLoc -> Maybe Int -> Int
 getPosByRelative sp (Just i) = srcLocCol sp + i - 1
@@ -131,4 +137,4 @@ printListWithSeps' _ _ _ _ _ _ [] = return empty
 printListWithSeps' _ _ parent _ _ _ [child] = printRose' parent child
 printListWithSeps' putCorrectSep i parent slide minInd (sep:seps) (child:children)
   = printRose' parent child >+< putCorrectSep i slide minInd sep >+< printListWithSeps' putCorrectSep (i+1) parent slide minInd seps children
-printListWithSeps' _ _ _ _ _ [] _ = error "printListWithSeps': the number of elements and separators does not match"
+printListWithSeps' _ _ _ _ _ [] _ = pprProblem "printListWithSeps': the number of elements and separators does not match"

@@ -114,8 +114,9 @@ readFromSocket pedantic output recv = do
 -- Just False on erronous termination and Just True on normal termination.
 processMessage :: Bool -> Handle -> ResponseMsg -> IO (Maybe Bool)
 processMessage _ output (ErrorMessage msg) = hPutStrLn output msg >> return (Just False)
-processMessage pedantic output (CompilationProblem marks)
-  = do hPutStrLn output (show marks)
+processMessage pedantic output (CompilationProblem marks hints)
+  = do mapM_ (hPutStrLn output) hints
+       mapM_ (\(loc, msg) -> hPutStrLn output (shortShowSpanWithFile loc ++ ": " ++ msg)) marks
        return (if pedantic then Just False else Nothing)
 processMessage _ output (LoadedModules mods)
   = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods

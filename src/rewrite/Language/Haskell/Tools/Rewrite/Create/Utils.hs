@@ -9,7 +9,7 @@ import Language.Haskell.Tools.PrettyPrint.Prepare (child, opt, list)
 import Language.Haskell.Tools.Rewrite.ElementTypes (AnnMaybe, AnnList)
 
 fromTemplate :: src -> NodeInfo sema src
-fromTemplate = NodeInfo (error "The newly generated AST fragments have no semantic info")
+fromTemplate = NodeInfo (error "The newly generated AST fragments have no semantic info, but a refactoring tries to use that information.")
 
 emptyList :: AnnList e dom
 emptyList = AnnListG (fromTemplate list) []

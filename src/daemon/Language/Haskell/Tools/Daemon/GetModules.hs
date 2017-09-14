@@ -11,6 +11,7 @@
 -- benchmark). Gets names, source file locations, compilation and load flags for these modules.
 module Language.Haskell.Tools.Daemon.GetModules where
 
+import Control.Exception
 import Control.Monad
 import Control.Reference
 import Data.Char
@@ -96,7 +97,7 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
 
         toModuleCollection :: ToModuleCollection tmc => PackageDescription -> tmc -> Maybe (ModuleCollection ModuleNameStr)
         toModuleCollection PackageDescription{ buildType = Just Custom } _
-          = error "While parsing cabal file \"build-type: custom\" is not supported"
+          = throw $ UnsupportedPackage "'build-type: custom' setting in cabal file"
         toModuleCollection pkg tmc
           = let bi = getBuildInfo tmc
                 packageName = pkgName $ package pkg
@@ -115,6 +116,11 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePackageDescription [] (const True) buildPlatform
                                                     (unknownCompilerInfo buildCompilerId NoAbiTag) []
+
+data UnsupportedPackage = UnsupportedPackage String
+  deriving Show
+
+instance Exception UnsupportedPackage
 
 -- | Extract module-related information from different kind of package components (library,
 -- executable, test-suite or benchmark).
@@ -205,12 +211,12 @@ dependencyToPkgFlag _ _ = Nothing
 -- | Sets the configuration for loading all the modules from the whole project. Combines the
 -- configuration of all package fragments. This solution is not perfect (it would be better to load
 -- all package fragments separately), but it is how it works. See 'loadFlagsFromBuildInfo'.
-setupLoadFlags :: [ModuleCollectionId] -> [FilePath] 
+setupLoadFlags :: [ModuleCollectionId] -> [FilePath]
                     -> [ModuleCollectionId] -> (DynFlags -> IO DynFlags) -> DynFlags -> IO DynFlags
 -- need to be strict here, otherwise the previous modules cannot be garbage collected
 setupLoadFlags !ids !roots !allDeps !flags dfs = applyDependencies ids allDeps . selectEnabled <$> flags dfs
-  where selectEnabled = if any (\((mcId,mcRoot),rest) -> isDirectoryMC mcId && isIndependentMc mcRoot rest) (breaks (zip ids roots)) 
-                          then id 
+  where selectEnabled = if any (\((mcId,mcRoot),rest) -> isDirectoryMC mcId && isIndependentMc mcRoot rest) (breaks (zip ids roots))
+                          then id
                           else onlyUseEnabled
           where breaks :: [a] -> [(a,[a])]
                 breaks [] = []

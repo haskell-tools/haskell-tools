@@ -123,10 +123,10 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
             Right diff -> do changedMods <- applyChanges diff
                              if not diffMode
                                then do modify (undoStack .- (map (either fst (^. _3)) changedMods :))
-                                       -- force the evaluation of the undo stack to prevent older versions of 
+                                       -- force the evaluation of the undo stack to prevent older versions of
                                        -- modules seeming to be used when they could be garbage collected
                                        us <- gets (^. undoStack)
-                                       liftIO $ evaluate $ force us 
+                                       liftIO $ evaluate $ force us
                                        return ()
                                else liftIO $ resp $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
@@ -179,11 +179,9 @@ updateClient refactorings resp (PerformRefactoring refact modPath selection args
               return $ Left (RestoreRemoved file origCont, createUnifiedDiff file origCont "")
 
         reloadChanges changedMods
-          = do reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
-                                                 (\mss -> resp (LoadingModules (map getModSumOrig mss)))
-                                                 (\ms -> getModSumName ms `elem` changedMods)
-               liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage (ErrorMessage . ("The result of the refactoring contains errors: " ++) . show) (getProblems errs))
-                                          Right _ -> return ()
+          = reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+                                 (\mss -> resp (LoadingModules (map getModSumOrig mss)))
+                                 (\ms -> getModSumName ms `elem` changedMods)
 
 addPackages :: (ResponseMsg -> IO ()) -> [FilePath] -> DaemonSession ()
 addPackages _ [] = return ()
@@ -198,23 +196,20 @@ addPackages resp packagePathes = do
       existingMCs <- gets (^. refSessMCs)
       let existing = (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
           existingModNames = map ms_mod existing
-      needToReload <- handleErrors $ (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
-                                       <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
+      needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
+                        <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
       modify' $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
       forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
       modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded
       if pkgDBok then do
-        res <- loadPackagesFrom
-                 (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)])
-                           >> return (getModSumOrig ms))
-                 (resp . LoadingModules . map getModSumOrig)
-                 (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
-        case res of
-          Right _ -> do
-            mapM_ (reloadModule (\_ -> return ())) (either (const []) id needToReload) -- don't report consequent reloads (not expected)
-          Left err -> liftIO $ resp $ either ErrorMessage CompilationProblem (getProblems err)
+        loadPackagesFrom
+          (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)])
+                    >> return (getModSumOrig ms))
+          (resp . LoadingModules . map getModSumOrig)
+          (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
+        mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
@@ -245,14 +240,12 @@ reloadModules resp added changed removed = do
   modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
   -- reload changed modules
   -- TODO: filter those that are in reloaded packages
-  reloadRes <- reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
-                                    (\mss -> resp (LoadingModules (map getModSumOrig mss)))
-                                    (\ms -> getModSumOrig ms `elem` changed)
+  reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+                       (\mss -> resp (LoadingModules (map getModSumOrig mss)))
+                       (\ms -> getModSumOrig ms `elem` changed)
   mcs <- gets (^. refSessMCs)
   let mcsToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
   addPackages resp (map (^. mcRoot) mcsToReload) -- reload packages containing added modules
-  liftIO $ case reloadRes of Left errs -> resp (either ErrorMessage CompilationProblem (getProblems errs))
-                             Right _ -> return ()
   return True
 
 -- | Creates a compressed set of changes in one file
@@ -319,10 +312,6 @@ usePackageDB pkgDbLocs
                        , pkgDatabase = Nothing
                        }
        void $ setSessionDynFlags dfs'
-
-getProblems :: RefactorException -> Either String [(SrcSpan, String)]
-getProblems (SourceCodeProblem errs) = Right $ map (\err -> (errMsgSpan err, show err)) $ bagToList errs
-getProblems other = Left $ displayException other
 
 watchNew :: FilePath -> DaemonSession ()
 watchNew fp = do
