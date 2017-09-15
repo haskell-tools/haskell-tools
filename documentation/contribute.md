@@ -19,6 +19,8 @@ Check out the [Tutorials](development/tutorials.md) for the know-how of refactor
 
 ## Write other tools working with Haskell-tools
 
+(Comming soon...)
+
 ## Integrate the tool with your favourite editor.
 
 By implementing a client to handle a simple protocol you can make your favourite editor work with Haskell-tools. Check out the [editor integration](development/editor-integration.md) tutorial.
