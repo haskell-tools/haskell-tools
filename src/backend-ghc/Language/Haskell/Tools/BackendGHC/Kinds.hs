@@ -32,7 +32,7 @@ trfKind = trfLocNoSema (trfKind' . cleanHsType)
 
 trfKind' ::TransformName n r => HsKind n -> Trf (AST.UKind (Dom r) RangeStage)
 trfKind' = trfKind'' . cleanHsType where
-  trfKind'' (HsTyVar (rdrName . unLoc -> Exact n))
+  trfKind'' (HsTyVar _ (rdrName . unLoc -> Exact n))
     | isWiredInName n && occNameString (nameOccName n) == "*"
     = pure AST.UStarKind
     | isWiredInName n && occNameString (nameOccName n) == "#"
@@ -41,7 +41,7 @@ trfKind' = trfKind'' . cleanHsType where
   trfKind'' (HsFunTy k1 k2) = AST.UFunKind <$> trfKind k1 <*> trfKind k2
   trfKind'' (HsAppTy k1 k2) = AST.UAppKind <$> trfKind k1 <*> trfKind k2
   trfKind'' (HsOpTy k1 op k2) = AST.UInfixAppKind <$> trfKind k1 <*> trfOperator op <*> trfKind k2
-  trfKind'' (HsTyVar kv) = transformingPossibleVar kv (AST.UVarKind <$> trfName kv)
+  trfKind'' (HsTyVar _ kv) = transformingPossibleVar kv (AST.UVarKind <$> trfName kv)
   trfKind'' (HsListTy kind) = AST.UListKind <$> trfKind kind
   trfKind'' (HsTupleTy _ kinds) = AST.UTupleKind <$> makeList ", " atTheStart (mapM trfKind kinds)
   trfKind'' (HsAppsTy [unLoc -> HsAppPrefix t]) = trfKind' (unLoc t)
@@ -55,7 +55,7 @@ trfPromoted' :: (TransformName n r, HasNoSemanticInfo (Dom r) a)
                   => (HsType n -> Trf (a (Dom r) RangeStage)) -> HsType n -> Trf (AST.UPromoted a (Dom r) RangeStage)
 trfPromoted' _ (HsTyLit (HsNumTy _ int)) = pure $ AST.UPromotedInt int
 trfPromoted' _ (HsTyLit (HsStrTy _ str)) = pure $ AST.UPromotedString (unpackFS str)
-trfPromoted' _ (HsTyVar name) = AST.UPromotedCon <$> trfName name
-trfPromoted' f (HsExplicitListTy _ elems) = AST.UPromotedList <$> between AnnOpenS AnnCloseS (trfAnnList ", " f elems)
+trfPromoted' _ (HsTyVar _ name) = AST.UPromotedCon <$> trfName name
+trfPromoted' f (HsExplicitListTy _ _ elems) = AST.UPromotedList <$> between AnnOpenS AnnCloseS (trfAnnList ", " f elems)
 trfPromoted' f (HsExplicitTupleTy _ elems) = AST.UPromotedTuple <$> between AnnOpenP AnnCloseP (trfAnnList ", " f elems)
 trfPromoted' _ t = unhandledElement "promoted type/kind" t

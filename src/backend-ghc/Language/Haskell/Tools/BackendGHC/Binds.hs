@@ -13,13 +13,14 @@ import HsExpr as GHC
 import HsPat as GHC (LPat)
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
 import Name as GHC (isSymOcc)
+import PlaceHolder as GHC (NameOrRdrName)
 import SrcLoc as GHC
 
 import Control.Monad.Reader (Monad(..), mapM, asks)
 import Data.List
 
 import Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
-import Language.Haskell.Tools.BackendGHC.GHCUtils (occName)
+import Language.Haskell.Tools.BackendGHC.GHCUtils (occName, fromSrcText)
 import Language.Haskell.Tools.BackendGHC.Monad
 import Language.Haskell.Tools.BackendGHC.Names
 import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
@@ -57,7 +58,7 @@ trfMatch' name (Match funid pats _ (GRHSs rhss (unLoc -> locBinds)))
                <*> addToScope pats (addToScope locBinds (trfRhss rhss))
                <*> addToScope pats (trfWhereLocalBinds (collectLocs rhss) locBinds)
 
-trfMatchLhs :: TransformName n r => n -> MatchFixity n -> [LPat n] -> Trf (Ann AST.UMatchLhs (Dom r) RangeStage)
+trfMatchLhs :: TransformName n r => n -> HsMatchContext (NameOrRdrName n) -> [LPat n] -> Trf (Ann AST.UMatchLhs (Dom r) RangeStage)
 trfMatchLhs name fb pats
   = do implicitIdLoc <- mkSrcSpan <$> atTheStart <*> atTheStart
        parenOpLoc <- tokensLoc [AnnOpenP, AnnVal, AnnCloseP]
@@ -70,9 +71,9 @@ trfMatchLhs name fb pats
                                          -- a paren, so we need to check that it is actually what we seek
        closeLoc <- srcSpanStart <$> (combineSrcSpans <$> tokenLoc AnnEqual <*> tokenLoc AnnVbar)
        args <- mapM trfPattern pats
-       let (n, isInfix) = case fb of NonFunBindMatch -> let token = if isSymOcc (occName name) && isGoodSrcSpan infixLoc then infixLoc else implicitIdLoc
-                                                         in (L token name, length pats > 0 && srcSpanStart token >= srcSpanEnd (getLoc (pats !! 0)))
-                                     FunBindMatch n inf -> (n, inf)
+       let (n, isInfix) = case fb of FunRhs n inf _ -> (n, inf == Infix)
+                                     _ -> let token = if isSymOcc (occName name) && isGoodSrcSpan infixLoc then infixLoc else implicitIdLoc
+                                           in (L token name, length pats > 0 && srcSpanStart token >= srcSpanEnd (getLoc (pats !! 0)))
        annLocNoSema (mkSrcSpan <$> atTheStart <*> (pure closeLoc)) $
         case (args, isInfix) of
            (left:right:rest, True) -> AST.UInfixLhs left <$> define (trfOperator n) <*> pure right <*> makeList " " (pure closeLoc) (pure rest)
@@ -144,7 +145,7 @@ trfTypeSig = trfLocNoSema trfTypeSig'
 
 trfTypeSig' :: TransformName n r => Sig n -> Trf (AST.UTypeSignature (Dom r) RangeStage)
 trfTypeSig' (TypeSig names typ)
-  = defineTypeVars $ AST.UTypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType (hswc_body $ hsib_body typ)
+  = defineTypeVars $ AST.UTypeSignature <$> makeNonemptyList ", " (mapM trfName names) <*> trfType (hsib_body $ hswc_body typ)
 trfTypeSig' ts = unhandledElement "type signature" ts
 
 trfFixitySig :: TransformName n r => FixitySig n -> Trf (AST.UFixitySignature (Dom r) RangeStage)
@@ -166,7 +167,7 @@ trfInlinePragma :: TransformName n r => Located n -> InlinePragma -> Trf (Ann AS
 trfInlinePragma name (InlinePragma _ Inlinable _ phase _)
   = annContNoSema (AST.UInlinablePragma <$> trfPhase (pure $ srcSpanStart $ getLoc name) phase <*> trfName name)
 trfInlinePragma name (InlinePragma _ NoInline _ _ _) = annContNoSema (AST.UNoInlinePragma <$> trfName name)
-trfInlinePragma name (InlinePragma src Inline _ phase cl)
+trfInlinePragma name (InlinePragma (fromSrcText -> src) Inline _ phase cl)
   = annContNoSema $ do rng <- asks contRange
                        let parts = map getLoc $ splitLocated (L rng src)
                        AST.UInlinePragma <$> trfConlike parts cl

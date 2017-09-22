@@ -39,11 +39,11 @@ library
                      , Language.Haskell.Tools.Rewrite.Match.Names
                      , Language.Haskell.Tools.Rewrite.Match.TH
   other-modules:       Language.Haskell.Tools.Rewrite.Create.Utils
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , containers                >= 0.5  && < 0.6
                      , references                >= 0.3  && < 0.4
-                     , ghc                       >= 8.0  && < 8.1
+                     , ghc                       >= 8.2  && < 8.3
                      , haskell-tools-ast         >= 0.9  && < 0.10
                      , haskell-tools-prettyprint >= 0.9  && < 0.10
   default-language:    Haskell2010
@@ -53,7 +53,7 @@ test-suite haskell-tools-rewrite-tests
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9 && < 0.10
                      , directory                 >= 1.2 && < 1.4

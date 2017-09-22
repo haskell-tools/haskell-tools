@@ -395,3 +395,4 @@ type CmdStmtList dom = AnnList UCmdStmt dom
 type LanguageExtensionList dom = AnnList ULanguageExtension dom
 type StringNodeList dom = AnnList UStringNode dom
 type NamePartList dom = AnnList UNamePart dom
+type DerivingList dom = AnnList UDeriving dom

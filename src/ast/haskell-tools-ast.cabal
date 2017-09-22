@@ -46,10 +46,10 @@ library
                      , Language.Haskell.Tools.AST.TH.SemanticTraversal
                      , Language.Haskell.Tools.AST.TH.SourceInfoTraversal
 
-  build-depends:       base             >= 4.9  && < 4.10
-                     , ghc              >= 8.0  && < 8.1
+  build-depends:       base             >= 4.10  && < 4.11
+                     , ghc              >= 8.2  && < 8.3
                      , references       >= 0.3  && < 0.4
                      , uniplate         >= 1.6  && < 1.7
                      , mtl              >= 2.2  && < 2.3
-                     , template-haskell >= 2.11 && < 2.12
+                     , template-haskell >= 2.12 && < 2.13
   default-language:    Haskell2010

@@ -12,7 +12,6 @@
 module Language.Haskell.Tools.Daemon.GetModules where
 
 import Control.Exception
-import Control.Monad
 import Control.Reference
 import Data.Char
 import Data.Function (on)
@@ -21,11 +20,13 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Distribution.Compiler
 import Distribution.ModuleName
-import Distribution.Package (Dependency(..), PackageName(..), pkgName)
+import Distribution.Package (Dependency(..), PackageName(..), pkgName, unPackageName)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
 import Distribution.System
+import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity (silent)
 import Language.Haskell.Extension as Cabal
 import System.Directory
@@ -89,7 +90,7 @@ srcDirFromRoot fileName moduleName
 -- The flags and extensions set in the cabal file will be used by default.
 modulesFromCabalFile :: FilePath -> FilePath -> IO [ModuleCollection ModuleNameStr]
 -- now adding all conditional entries, regardless of flags
-modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescription silent (root </> cabal))
+modulesFromCabalFile root cabal = (getModules . setupFlags <$> readGenericPackageDescription silent (root </> cabal))
   where getModules pkg = maybe [] (maybe [] (:[]) . toModuleCollection pkg) (library pkg)
                            ++ catMaybes (map (toModuleCollection pkg) (executables pkg))
                            ++ catMaybes (map (toModuleCollection pkg) (testSuites pkg))
@@ -114,8 +115,8 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readPackageDescri
           where modRecord mn = ( moduleName mn, ModuleNotLoaded False (needsToCompile tmc mn) )
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
-                       . finalizePackageDescription [] (const True) buildPlatform
-                                                    (unknownCompilerInfo buildCompilerId NoAbiTag) []
+                       . finalizePD [] (ComponentRequestedSpec True True) (const True) buildPlatform
+                                    (unknownCompilerInfo buildCompilerId NoAbiTag) []
 
 data UnsupportedPackage = UnsupportedPackage String
   deriving Show
@@ -145,18 +146,18 @@ class ToModuleCollection t where
 instance ToModuleCollection Library where
   mkModuleCollKey pn _ = LibraryMC (unPackageName pn)
   getBuildInfo = libBuildInfo
-  getModuleNames = libModules
+  getModuleNames = explicitLibModules
   needsToCompile l m = m `elem` exposedModules l
 
 instance ToModuleCollection Executable where
-  mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (exeName exe)
+  mkModuleCollKey pn exe = ExecutableMC (unPackageName pn) (unUnqualComponentName $ exeName exe)
   getBuildInfo = buildInfo
   getModuleNames exe = fromString (getMain exe) : exeModules exe
   needsToCompile exe mn = components mn == [getMain exe]
   getModuleSourceFiles exe = [(fromString (getMain exe), modulePath exe)]
 
 instance ToModuleCollection TestSuite where
-  mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (testName test)
+  mkModuleCollKey pn test = TestSuiteMC (unPackageName pn) (unUnqualComponentName $ testName test)
   getBuildInfo = testBuildInfo
   getModuleNames exe = fromString (getMain exe) : testModules exe
   needsToCompile exe mn = components mn == [getMain exe]
@@ -169,7 +170,7 @@ instance ToModuleCollection TestSuite where
         _ -> getMain' (getBuildInfo t)
 
 instance ToModuleCollection Benchmark where
-  mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (benchmarkName test)
+  mkModuleCollKey pn test = BenchmarkMC (unPackageName pn) (unUnqualComponentName $ benchmarkName test)
   getBuildInfo = benchmarkBuildInfo
   getModuleNames exe = fromString (getMain exe) : benchmarkModules exe
   needsToCompile exe mn = components mn == [getMain exe]

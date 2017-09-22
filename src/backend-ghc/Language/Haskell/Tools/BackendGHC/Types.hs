@@ -45,8 +45,8 @@ trfType' = trfType'' . cleanHsType where
   trfType'' (HsQualTy (L _ []) typ) = trfType' (unLoc typ)
   trfType'' (HsQualTy ctx typ) = AST.UTyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx)
                                             <*> trfType typ
-  trfType'' (HsTyVar name) = AST.UTyVar <$> transformingPossibleVar name (trfName name)
-  trfType'' (HsAppsTy apps) | Just (head, args) <- getAppsTyHead_maybe apps
+  trfType'' (HsTyVar _ name) = AST.UTyVar <$> transformingPossibleVar name (trfName name)
+  trfType'' (HsAppsTy apps) | Just (head, args, _) <- getAppsTyHead_maybe apps
     = foldl (\core t -> AST.UTyApp <$> annLocNoSema (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
   trfType'' (HsAppTy t1 t2) = AST.UTyApp <$> trfType t1 <*> trfType t2
   trfType'' (HsFunTy t1 t2) = AST.UTyFun <$> trfType t1 <*> trfType t2
@@ -106,10 +106,9 @@ trfAssertion' (cleanHsType -> HsTupleTy _ tys)
 trfAssertion' (cleanHsType -> HsWildCardTy _)
   = pure AST.UWildcardAssert
 trfAssertion' (cleanHsType -> t) = case cleanHsType base of
-   HsTyVar name -> AST.UClassAssert <$> trfName name <*> trfAnnList " " trfType' args
+   HsTyVar _ name -> AST.UClassAssert <$> trfName name <*> trfAnnList " " trfType' args
    HsEqTy t1 t2 -> AST.UInfixAssert <$> trfType t1 <*> annLocNoSema (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
-   HsIParamTy name t -> do loc <- tokenLoc AnnVal
-                           AST.UImplicitAssert <$> define (focusOn loc (trfImplicitName name)) <*> trfType t
+   HsIParamTy name t -> AST.UImplicitAssert <$> define (focusOn (getLoc name) (trfImplicitName (unLoc name))) <*> trfType t
    t -> unhandledElement "assertion" t
   where (args, _, base) = getArgs t
 

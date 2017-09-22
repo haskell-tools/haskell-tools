@@ -18,24 +18,24 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
+import Data.List
 import Data.Maybe
 import Data.Tuple
-import Data.List
 import Data.Version
 import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import System.IO
 import System.IO.Error
 
-import GhcMonad (Session(..), reflectGhc)
-import SrcLoc
 import Bag
 import ErrUtils (ErrMsg(..))
+import GhcMonad (Session(..), reflectGhc)
 import HscTypes
+import SrcLoc
 
+import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.Mode
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
-import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Update
 import Language.Haskell.Tools.Daemon.Watch
@@ -110,7 +110,7 @@ userExceptionHandlers sendError sendCompProblems =
   [ Handler (\(UnsupportedPackage e) -> sendError ("There are unsupported elements in your package: " ++ e ++ " please correct them before loading them into Haskell-tools."))
   , Handler (\(UnsupportedExtension e) -> sendError ("The extension you use is not supported: " ++ e ++ ". Please check your source and cabal files for the use of that language extension."))
   , Handler (\(SpliceInsertionProblem rng _) -> sendError ("A problem occurred while type-checking the Template Haskell splice at: " ++ shortShowSpan rng ++ ". Some complex splices cannot be type checked for reasons currently unknown. Please simplify the splice. We are working on this problem."))
-  , Handler (\case (BreakUpProblem outer rng _) -> sendError ("The program element at " ++ (if isGoodSrcSpan rng then shortShowSpan rng else shortShowSpan (RealSrcSpan outer)) ++ " could not be prepared for refactoring. The most likely reason is preprocessor usage. Only conditional compilation is supported, includes and preprocessor macros are not. If there is no preprocessor usage at the given location, there might be a weirdly placed comment causing a problem."))
+  , Handler (\case (BreakUpProblem outer rng _) -> sendError ("The program element at " ++ (if isGoodSrcSpan rng then shortShowSpanWithFile rng else shortShowSpanWithFile (RealSrcSpan outer)) ++ " could not be prepared for refactoring. The most likely reason is preprocessor usage. Only conditional compilation is supported, includes and preprocessor macros are not. If there is no preprocessor usage at the given location, there might be a weirdly placed comment causing a problem."))
   , Handler (\(TransformationProblem msg) -> sendError ("A problem occurred while preparing the program for refactoring: " ++ msg))
   , Handler (\(PrettyPrintProblem msg) -> sendError ("A problem occurred while pretty printing the result of the refactoring: " ++ msg))
   , Handler (\case (ConvertionProblem rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpan rng ++ ": " ++ msg)

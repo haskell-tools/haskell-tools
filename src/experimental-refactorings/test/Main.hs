@@ -5,17 +5,17 @@
 module Main where
 
 import Test.Tasty (TestTree, testGroup, defaultMain)
-import Test.Tasty.HUnit
+import Test.Tasty.HUnit (assertEqual, testCase)
 
 import GHC hiding (loadModule, ParsedModule)
 import GHC.Paths ( libdir )
 
 import Control.Monad (Monad(..))
 import Data.Either.Combinators (mapRight)
-import System.FilePath
+import System.FilePath (pathSeparator, (</>))
 import System.IO
 
-import Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.AST as AST (IdDom)
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.DataToNewtype (dataToNewtype)

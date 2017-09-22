@@ -7,7 +7,6 @@ module Language.Haskell.Tools.AST.Instances.SourceInfoTraversal where
 import Control.Applicative
 import Language.Haskell.Tools.AST.TH.SourceInfoTraversal
 
-import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Decls
 import Language.Haskell.Tools.AST.Representation.Exprs
@@ -54,6 +53,7 @@ deriveSourceInfoTraversal ''UFunDep
 deriveSourceInfoTraversal ''UConDecl
 deriveSourceInfoTraversal ''UFieldDecl
 deriveSourceInfoTraversal ''UDeriving
+deriveSourceInfoTraversal ''UDeriveStrategy
 deriveSourceInfoTraversal ''UInstanceRule
 deriveSourceInfoTraversal ''UInstanceHead
 deriveSourceInfoTraversal ''UTypeEqn

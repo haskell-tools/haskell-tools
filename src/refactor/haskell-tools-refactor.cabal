@@ -26,7 +26,7 @@ library
                      , Language.Haskell.Tools.Refactor.Refactoring
                      , Language.Haskell.Tools.Refactor.Utils.Indentation
 
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
                      , ghc-paths                 >= 0.1  && < 0.2
@@ -36,9 +36,9 @@ library
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , filepath                  >= 1.4  && < 1.5
-                     , template-haskell          >= 2.11 && < 2.12
-                     , ghc                       >= 8.0  && < 8.1
-                     , Cabal                     >= 1.24 && < 1.25
+                     , template-haskell          >= 2.12 && < 2.13
+                     , ghc                       >= 8.2  && < 8.3
+                     , Cabal                     >= 2.0 && < 2.1
                      , haskell-tools-ast         >= 0.9  && < 0.10
                      , haskell-tools-backend-ghc >= 0.9  && < 0.10
                      , haskell-tools-rewrite     >= 0.9  && < 0.10

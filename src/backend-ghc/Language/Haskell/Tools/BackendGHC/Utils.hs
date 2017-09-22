@@ -31,7 +31,7 @@ import Name
 import Outputable (Outputable(..), showSDocUnsafe)
 import SrcLoc
 
-import Control.Exception
+import Control.Exception (Exception, throw)
 import Control.Monad.Reader
 import Control.Reference ((^.), (&))
 import Data.Char (isSpace)
@@ -426,6 +426,10 @@ orderAnnList (AnnListG a ls) = AnnListG a (orderDefs ls)
 removeDuplicates :: [Located e] -> [Located e]
 removeDuplicates (fst:rest) = fst : removeDuplicates (filter ((/= getLoc fst) . getLoc) rest)
 removeDuplicates [] = []
+
+-- | Orders a list of elements to the order they are defined in the source file.
+orderLocated :: [Located e] -> [Located e]
+orderLocated = sortBy (compare `on` getLoc)
 
 -- | Transform a list of definitions where the defined names are in scope for subsequent definitions
 trfScopedSequence :: HsHasName d => (d -> Trf e) -> [d] -> Trf [e]

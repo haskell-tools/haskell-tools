@@ -43,20 +43,20 @@ mkSpliceDecl = mkAnn child . USpliceDecl
 -- * Data type definitions
 
 -- | Creates a data or newtype declaration.
-mkDataDecl :: DataOrNewtypeKeyword dom -> Maybe (Context dom) -> DeclHead dom -> [ConDecl dom] -> Maybe (Deriving dom) -> Decl dom
+mkDataDecl :: DataOrNewtypeKeyword dom -> Maybe (Context dom) -> DeclHead dom -> [ConDecl dom] -> [Deriving dom] -> Decl dom
 mkDataDecl keyw ctx dh cons derivs
   = mkAnn (child <> " " <> child <> child <> child <> child)
       $ UDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh
-                 (mkAnnList (after " = " $ separatedBy " | " list) cons) (mkAnnMaybe (after " deriving " opt) derivs)
+                 (mkAnnList (after " = " $ separatedBy " | " list) cons) (mkAnnList (indented list) derivs)
 
 -- | Creates a GADT-style data or newtype declaration.
 mkGADTDataDecl :: DataOrNewtypeKeyword dom -> Maybe (Context dom) -> DeclHead dom -> Maybe (KindConstraint dom)
-                    -> [GadtConDecl dom] -> Maybe (Deriving dom) -> Decl dom
+                    -> [GadtConDecl dom] -> [Deriving dom] -> Decl dom
 mkGADTDataDecl keyw ctx dh kind cons derivs
   = mkAnn (child <> " " <> child <> child <> child <> child <> child)
       $ UGDataDecl keyw (mkAnnMaybe (after " " opt) ctx) dh
                   (mkAnnMaybe (after " " opt) kind) (mkAnnList (after " = " $ separatedBy " | " list) cons)
-                  (mkAnnMaybe (after " deriving " opt) derivs)
+                  (mkAnnList (indented list) derivs)
 
 -- | Creates a GADT constructor declaration (@ D1 :: Int -> T String @)
 mkGadtConDecl :: [Name dom] -> Type dom -> GadtConDecl dom
@@ -90,8 +90,8 @@ mkFieldDecl names typ = mkAnn (child <> " :: " <> child) $ UFieldDecl (mkAnnList
 
 -- | Creates a deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 mkDeriving :: [InstanceHead dom] -> Deriving dom
-mkDeriving [deriv] = mkAnn child $ UDerivingOne deriv
-mkDeriving derivs = mkAnn ("(" <> child <> ")") $ UDerivings (mkAnnList (separatedBy ", " list) derivs)
+mkDeriving [deriv] = mkAnn (" deriving " <> child <> child) $ UDerivingOne noth deriv
+mkDeriving derivs = mkAnn (" deriving " <> child <> " (" <> child <> ")") $ UDerivings noth (mkAnnList (separatedBy ", " list) derivs)
 
 -- | The @data@ keyword in a type definition
 mkDataKeyword :: DataOrNewtypeKeyword dom
@@ -225,19 +225,19 @@ mkInstanceTypeFamilyDef :: TypeEqn dom -> InstBodyDecl dom
 mkInstanceTypeFamilyDef = mkAnn child . UInstBodyTypeDecl
 
 -- | An associated data type implementation (@ data A X = C1 | C2 @) int a type class instance
-mkInstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> Maybe (Deriving dom) -> InstBodyDecl dom
+mkInstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> [Deriving dom] -> InstBodyDecl dom
 mkInstanceDataFamilyDef keyw instRule cons derivs
   = mkAnn (child <> " " <> child <> child <> child)
       $ UInstBodyDataDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons)
-                                        (mkAnnMaybe (after " deriving " opt) derivs)
+                                        (mkAnnList (indented list) derivs)
 
 -- | An associated data type implemented using GADT style int a type class instance
 mkInstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Maybe (KindConstraint dom) -> [GadtConDecl dom]
-                                 -> Maybe (Deriving dom) -> InstBodyDecl dom
+                                 -> [Deriving dom] -> InstBodyDecl dom
 mkInstanceDataFamilyGADTDef keyw instRule kind cons derivs
   = mkAnn (child <> " " <> child <> child <> child)
       $ UInstBodyGadtDataDecl keyw instRule (mkAnnMaybe opt kind) (mkAnnList (after " = " $ separatedBy " | " list) cons)
-                             (mkAnnMaybe (after " deriving " opt) derivs)
+                             (mkAnnList (indented list) derivs)
 
 -- | Specialize instance pragma (no phase selection is allowed) in a type class instance
 mkInstanceSpecializePragma :: Type dom -> InstBodyDecl dom
@@ -346,11 +346,11 @@ mkTypeInstance :: InstanceRule dom -> Type dom -> Decl dom
 mkTypeInstance instRule typ = mkAnn ("type instance " <> child <> " = " <> child) $ UTypeInstDecl instRule typ
 
 -- | Creates a data instance declaration (@ data instance Fam T = Con1 | Con2 @)
-mkDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> Maybe (Deriving dom) -> Decl dom
+mkDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> [ConDecl dom] -> [Deriving dom] -> Decl dom
 mkDataInstance keyw instRule cons derivs
   = mkAnn (child <> " instance " <> child <> " = " <> child <> child)
       $ UDataInstDecl keyw instRule (mkAnnList (after " = " $ separatedBy " | " list) cons)
-                                    (mkAnnMaybe (after " deriving " opt) derivs)
+                                    (mkAnnList (indented list) derivs)
 
 -- | Creates a GADT-style data instance declaration (@ data instance Fam T where ... @)
 mkGadtDataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> Maybe (KindConstraint dom) -> [GadtConDecl dom] -> Decl dom
@@ -395,8 +395,10 @@ mkTwoWayPatSyn pat match = mkAnn ("<- " <> child <> child) $ UBidirectionalPatSy
 mkPatternSignatureDecl :: PatternSignature dom -> Decl dom
 mkPatternSignatureDecl = mkAnn child . UPatTypeSigDecl
 
-mkPatternSignature :: Name dom -> Type dom -> PatternSignature dom
-mkPatternSignature name typ = mkAnn (child <> " :: " <> child) $ UPatternTypeSignature name typ
+mkPatternSignature :: [Name dom] -> Type dom -> PatternSignature dom
+mkPatternSignature names typ
+  = mkAnn (child <> " :: " <> child)
+      $ UPatternTypeSignature (mkAnnList (separatedBy ", " list) names) typ
 
 -- * Top level pragmas
 

@@ -27,7 +27,7 @@ import System.FilePath (FilePath, (</>))
 import System.IO
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.CLI
+import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSession)
 
 rootDir = "examples"
 
@@ -126,7 +126,7 @@ bm2Mcase :: Date -> BM -> IO BMCase
 bm2Mcase d bm = BMCase bm <$> (bm2Mms bm) <*> (return d)
 
 benchmakable :: String -> [String] -> Benchmarkable -- IO (Either String String)
-benchmakable wd rfs = Benchmarkable $ \ _ -> do
+benchmakable wd rfs = toBenchmarkable $ \ _ -> do
   makeCliTest wd rfs
 
 makeCliTest :: String -> [String] -> IO ()
@@ -137,7 +137,7 @@ makeCliTest wd rfs = do
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
     void $ normalRefactorSession builtinRefactorings inHandle outHandle
-             (CLIOptions False Nothing True Nothing Nothing [wd])
+             (CLIOptions False False Nothing True Nothing Nothing [wd])
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

@@ -16,7 +16,7 @@ library
   exposed-modules:     Language.Haskell.Tools.Demo
   other-modules:       Language.Haskell.Tools.ASTDebug
                      , Language.Haskell.Tools.ASTDebug.Instances
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , transformers              >= 0.5  && < 0.6
                      , directory                 >= 1.2  && < 1.4
@@ -26,10 +26,10 @@ library
                      , http-types                >= 0.9  && < 0.10
                      , warp                      >= 3.2  && < 3.3
                      , wai                       >= 3.2  && < 3.3
-                     , websockets                >= 0.10  && < 0.12
+                     , websockets                >= 0.12  && < 0.13
                      , wai-websockets            >= 3.0  && < 3.1
                      , references                >= 0.3  && < 0.4
-                     , ghc                       >= 8.0.2  && < 8.1
+                     , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
                      , filepath                  >= 1.4  && < 1.5
                      , haskell-tools-ast         >= 0.9  && < 0.10
@@ -43,7 +43,7 @@ executable ht-demo
   main-is:             Main.hs
   hs-source-dirs:      exe
   ghc-options:         -with-rtsopts=-M1500m
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , haskell-tools-demo
   default-language:  Haskell2010
 
@@ -52,7 +52,7 @@ test-suite haskell-tools-demo-tests
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , HUnit                     >= 1.5 && < 1.7
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9 && < 0.10
@@ -60,7 +60,7 @@ test-suite haskell-tools-demo-tests
                      , filepath                  >= 1.4 && < 2.0
                      , bytestring                >= 0.10 && < 0.11
                      , network                   >= 2.6 && < 2.7
-                     , websockets                >= 0.10 && < 0.11
+                     , websockets                >= 0.12 && < 0.13
                      , aeson                     >= 1.0 && < 1.3
                      , haskell-tools-demo
   default-language:    Haskell2010

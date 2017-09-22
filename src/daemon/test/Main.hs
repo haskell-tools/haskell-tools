@@ -24,7 +24,7 @@ import Test.Tasty.HUnit
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 
-import Language.Haskell.Tools.Daemon
+import Language.Haskell.Tools.Daemon (DaemonOptions(..), runDaemon')
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
@@ -105,17 +105,17 @@ loadingTests =
   , ( "multi-packages"
     , [ AddPackages [ testRoot </> "multi-packages" </> "package1"
                     , testRoot </> "multi-packages" </> "package2" ]]
-    , [ LoadingModules [ testRoot </> "multi-packages" </> "package2" </> "B.hs"
-                       , testRoot </> "multi-packages" </> "package1" </> "A.hs" ]
-      , LoadedModules [ (testRoot </> "multi-packages" </> "package2" </> "B.hs", "B") ]
-      , LoadedModules [ (testRoot </> "multi-packages" </> "package1" </> "A.hs", "A") ] ] )
+    , [ LoadingModules [ testRoot </> "multi-packages" </> "package1" </> "A.hs"
+                       , testRoot </> "multi-packages" </> "package2" </> "B.hs" ]
+      , LoadedModules [ (testRoot </> "multi-packages" </> "package1" </> "A.hs", "A") ]
+      , LoadedModules [ (testRoot </> "multi-packages" </> "package2" </> "B.hs", "B") ] ] )
   , ( "multi-packages-flags"
     , [ AddPackages [ testRoot </> "multi-packages-flags" </> "package1"
                     , testRoot </> "multi-packages-flags" </> "package2" ]]
-    , [ LoadingModules [ testRoot </> "multi-packages-flags" </> "package2" </> "B.hs"
-                       , testRoot </> "multi-packages-flags" </> "package1" </> "A.hs" ]
-      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package2" </> "B.hs", "B") ]
-      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package1" </> "A.hs", "A") ] ] )
+    , [ LoadingModules [ testRoot </> "multi-packages-flags" </> "package1" </> "A.hs"
+                       , testRoot </> "multi-packages-flags" </> "package2" </> "B.hs" ]
+      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package1" </> "A.hs", "A") ]
+      , LoadedModules [ (testRoot </> "multi-packages-flags" </> "package2" </> "B.hs", "B") ] ] )
   , ( "multi-packages-dependent"
     , [ AddPackages [ testRoot </> "multi-packages-dependent" </> "package1"
                     , testRoot </> "multi-packages-dependent" </> "package2" ]]

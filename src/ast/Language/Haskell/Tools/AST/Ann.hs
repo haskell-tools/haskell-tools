@@ -17,12 +17,12 @@ module Language.Haskell.Tools.AST.Ann where
 
 import Control.Reference
 import Data.Data
+import FastString
 import Id as GHC
 import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.Utils.GHCInstances ()
 import qualified Name as GHC
 import SrcLoc as GHC
-import FastString
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST

@@ -8,7 +8,7 @@ module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate 
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Reference
-import Data.List
+import Data.List as List
 import Data.List.Split (splitOn)
 import Data.Map as Map
 import Data.Ord (Ord(..), Ordering(..))
@@ -62,7 +62,7 @@ applyFragments srcs = flip evalState srcs
      (\ni -> do template <- mapM getTextFor (ni ^. rngTemplateNodeElems)
                 return $ SourceTemplateNode (RealSrcSpan $ ni ^. rngTemplateNodeRange) (concat template) 0 Nothing)
      (\(RangeTemplateList rng bef aft sep indented seps)
-         -> do (own, rest) <- splitAt (length seps) <$> get
+         -> do (own, rest) <- List.splitAt (length seps) <$> get
                put rest
                return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map RealSrcSpan seps)) 0 Nothing))
      (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft 0 Nothing)))

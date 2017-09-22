@@ -6,20 +6,16 @@
 module Language.Haskell.Tools.Daemon.Watch where
 
 import Control.Concurrent
-import Control.Exception
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Aeson as A ()
 import Data.Maybe (Maybe(..), catMaybes)
 import Data.Tuple (swap)
-import System.FilePath
-import System.IO
-import System.Process
-import System.Environment
-import System.Directory
-import System.FSWatch.Repr
-import System.FSWatch.Slave
-
+import System.Environment (getExecutablePath)
+import System.FSWatch.Repr (WatchProcess(..), PE(..))
+import System.FSWatch.Slave (waitNotifies, createWatchProcess)
+import System.FilePath (FilePath, takeDirectory, (</>))
+import System.IO (IO, FilePath)
 import GhcMonad (Session(..), reflectGhc)
 
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage(..))

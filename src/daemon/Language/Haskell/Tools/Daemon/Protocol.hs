@@ -6,10 +6,10 @@
 -- daemon engine and from the engine to the client.
 module Language.Haskell.Tools.Daemon.Protocol where
 
+import Control.DeepSeq (NFData)
 import qualified Data.Aeson as A ((.=))
 import Data.Aeson hiding ((.=))
 import GHC.Generics (Generic)
-import Control.DeepSeq
 
 import FastString (unpackFS)
 import SrcLoc

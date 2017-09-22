@@ -14,13 +14,13 @@ cabal-version:       >=1.10
 extra-source-files: examples/example-project/*.hs
 
 library
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , containers                >= 0.5 && < 0.6
                      , mtl                       >= 2.2 && < 2.3
                      , split                     >= 0.2 && < 0.3
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2
-                     , ghc                       >= 8.0 && < 8.1
+                     , ghc                       >= 8.2 && < 8.3
                      , ghc-paths                 >= 0.1 && < 0.2
                      , references                >= 0.3 && < 0.4
                      , strict                    >= 0.3 && < 0.4
@@ -34,12 +34,12 @@ library
 
 executable ht-refact
   ghc-options:         -rtsopts
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , split                     >= 0.2 && < 0.3
                      , mtl                       >= 2.2 && < 2.3
                      , directory                 >= 1.2  && < 1.4
                      , filepath                  >= 1.4  && < 2.0
-                     , optparse-applicative      >= 0.13 && < 0.14
+                     , optparse-applicative      >= 0.14 && < 0.15
                      , haskell-tools-cli
                      , haskell-tools-builtin-refactorings >= 0.9 && < 0.10
   hs-source-dirs:      exe
@@ -51,7 +51,7 @@ test-suite haskell-tools-cli-tests
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9 && < 0.10
                      , directory                 >= 1.2 && < 1.4
@@ -63,12 +63,12 @@ test-suite haskell-tools-cli-tests
   default-language:    Haskell2010
 
 executable ht-test-stackage
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , directory                 >= 1.2 && < 1.4
-                     , process                   >= 1.4 && < 1.5
+                     , process                   >= 1.6 && < 1.7
                      , split                     >= 0.2 && < 0.3
                      , filepath                  >= 1.4 && < 2.0
-                     , optparse-applicative      >= 0.13 && < 0.14
+                     , optparse-applicative      >= 0.14 && < 0.15
                      , Glob                      >= 0.8 && < 0.9
   ghc-options:         -threaded
   hs-source-dirs:      test-stackage
@@ -78,9 +78,9 @@ executable ht-test-stackage
 benchmark cli-benchmark
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
-  build-depends:       base                      >= 4.9 && < 4.10
+  build-depends:       base                      >= 4.10 && < 4.11
                      , criterion                 >= 1.1 && < 1.3
-                     , time                      >= 1.6 && < 1.7
+                     , time                      >= 1.6 && < 1.9
                      , aeson                     >= 1.0 && < 1.3
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0

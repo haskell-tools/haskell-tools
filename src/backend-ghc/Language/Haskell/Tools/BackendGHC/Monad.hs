@@ -3,8 +3,8 @@
 -- during the conversion from GHC AST to our representation.
 module Language.Haskell.Tools.BackendGHC.Monad where
 
-import Control.Exception
 import Control.Applicative ((<|>))
+import Control.Exception (Exception, throw)
 import Control.Monad.Reader
 import Control.Reference
 import Data.Function (on)
@@ -155,10 +155,10 @@ rdrSplice spl = do
     return $ fromMaybe (throw $ SpliceInsertionProblem rng typecheckErrors)
                        (snd tcSpl)
   where
-    tcHsSplice' (HsTypedSplice id e)
-      = HsTypedSplice (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
-    tcHsSplice' (HsUntypedSplice id e)
-      = HsUntypedSplice (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
+    tcHsSplice' (HsTypedSplice dec id e)
+      = HsTypedSplice dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
+    tcHsSplice' (HsUntypedSplice dec id e)
+      = HsUntypedSplice dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
     tcHsSplice' (HsQuasiQuote id1 id2 sp fs)
       = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
 

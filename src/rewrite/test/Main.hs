@@ -101,13 +101,13 @@ testDecls
       , mkValueBinding $ mkFunctionBind' (mkName "id") [([mkVarPat $ mkName "x"], mkVar $ mkName "x")])
     , ("datatype definition", "data A a = A a deriving Show"
       , mkDataDecl mkDataKeyword Nothing (mkDeclHeadApp (mkNameDeclHead (mkName "A")) (mkTypeVar (mkName "a")))
-          [mkConDecl (mkName "A") [mkVarType (mkName "a")]] (Just $ mkDeriving [mkInstanceHead (mkName "Show")]))
+          [mkConDecl (mkName "A") [mkVarType (mkName "a")]] [mkDeriving [mkInstanceHead (mkName "Show")]])
     , ("record definition", "data A = A { x :: Int }"
       , mkDataDecl mkDataKeyword Nothing (mkNameDeclHead (mkName "A"))
-          [mkRecordConDecl (mkName "A") [mkFieldDecl [mkName "x"] (mkVarType (mkName "Int"))]] Nothing)
+          [mkRecordConDecl (mkName "A") [mkFieldDecl [mkName "x"] (mkVarType (mkName "Int"))]] [])
     , ("typeclass definition",    "class A t => C t where f :: t\n"
                                ++ "                       type T t :: *"
-      , mkClassDecl (Just $ mkContext (mkClassAssert (mkName "A") [mkVarType (mkName "t")])) 
+      , mkClassDecl (Just $ mkContext (mkClassAssert (mkName "A") [mkVarType (mkName "t")]))
                     (mkDeclHeadApp (mkNameDeclHead (mkName "C")) (mkTypeVar (mkName "t"))) []
                     (Just $ mkClassBody [ mkClassElemSig $ mkTypeSignature (mkName "f") (mkVarType (mkName "t"))
                                         , mkClassElemTypeFam (mkDeclHeadApp (mkNameDeclHead (mkName "T"))

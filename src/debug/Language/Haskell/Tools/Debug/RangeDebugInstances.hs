@@ -60,6 +60,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug UFunDep dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UConDecl dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UFieldDecl dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UDeriving dom st
+instance (SourceInfo st, Domain dom) => TreeDebug UDeriveStrategy dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UInstanceRule dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UInstanceHead dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UTypeEqn dom st

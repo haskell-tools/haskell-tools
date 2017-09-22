@@ -33,7 +33,7 @@ import Outputable as GHC
 import RdrName as GHC
 import SrcLoc as GHC
 
-import Data.Data
+import Data.Data as Data
 import Data.List
 
 import Control.Reference
@@ -135,7 +135,7 @@ instance Data DynFlags where
   dataTypeOf _ = dynFlagsType
 
 dynFlagsType = mkDataType "DynFlags.DynFlags" [dynFlagsCon]
-dynFlagsCon = mkConstr dynFlagsType "DynFlags" [] Prefix
+dynFlagsCon = mkConstr dynFlagsType "DynFlags" [] Data.Prefix
 
 -- | Creates semantic information for the module element
 mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [PName n] -> [ClsInst] -> [FamInst] -> ModuleInfo n

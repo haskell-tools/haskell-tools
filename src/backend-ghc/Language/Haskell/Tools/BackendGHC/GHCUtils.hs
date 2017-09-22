@@ -5,6 +5,7 @@
            , ViewPatterns
            , LambdaCase
            , RecordWildCards
+           , FlexibleContexts
            #-}
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.BackendGHC.GHCUtils where
@@ -13,18 +14,19 @@ import Data.Generics.Uniplate.Data ()
 import Data.List
 
 import Bag (Bag, bagToList, unionManyBags)
+import BasicTypes (SourceText(..))
 import ConLike (ConLike(..))
+import Data.Maybe (Maybe(..), listToMaybe)
 import GHC
 import Id (Id, mkVanillaGlobal)
 import OccName (OccName)
-import Outputable (Outputable(..), OutputableBndr(..), showSDocUnsafe)
+import Outputable (Outputable(..), showSDocUnsafe)
 import PatSyn (patSynSig)
 import RdrName (RdrName, rdrNameOcc, nameRdrName)
 import SrcLoc
 import Type (TyThing(..), mkFunTys)
-import Data.Maybe
 
-class OutputableBndr name => GHCName name where
+class OutputableBndrId name => GHCName name where
   rdrName :: name -> RdrName
   getFromNameUsing :: Applicative f => (Name -> Ghc (f Id)) -> Name -> Ghc (f name)
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
@@ -117,7 +119,7 @@ instance (GHCName n, HsHasName n) => HsHasName (DataFamInstDecl n) where
   hsGetNames p dfid = hsGetNames p (dfid_defn dfid)
 
 instance (GHCName n, HsHasName n) => HsHasName (TyClGroup n) where
-  hsGetNames p (TyClGroup tycls _) = hsGetNames p tycls
+  hsGetNames p (TyClGroup tycls _ _) = hsGetNames p tycls
 
 instance (GHCName n, HsHasName n) => HsHasName (TyClDecl n) where
   hsGetNames p (FamDecl fd) = hsGetNames p fd
@@ -135,9 +137,9 @@ instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
   hsGetNames p (HsDataDefn {dd_cons = ctors}) = hsGetNames p ctors
 
 instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
-  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)))})
+  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)) _)})
     = hsGetNames p names ++ hsGetNames p flds
-  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)))})
+  hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)) _)})
     = hsGetNames p names ++ hsGetNames p flds
   hsGetNames p (ConDeclGADT {con_names = names}) = hsGetNames p names
   hsGetNames p (ConDeclH98 {con_name = name, con_details = details})
@@ -211,8 +213,8 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames _ _ = []
 
 instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
-  hsGetNames p (HsGroup vals _ clds insts _ _ _ foreigns _ _ _ _ _)
-    = hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p insts ++ hsGetNames p foreigns
+  hsGetNames p g@(HsGroup vals _ clds _ _ _ foreigns _ _ _ _ _)
+    = hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p (hsGroupInstDecls g) ++ hsGetNames p foreigns
 
 -- | Get the original form of a name
 rdrNameStr :: RdrName -> String
@@ -230,12 +232,12 @@ instance FromGHCName GHC.Name where
 
 -- | Tries to simplify the type that has HsAppsTy before renaming. Does not always provide the correct form.
 -- Treats each operator as if they are of equivalent precedence and always left-associative.
-cleanHsType :: forall n . (OutputableBndr n) => HsType n -> HsType n
+cleanHsType :: forall n . (OutputableBndrId n) => HsType n -> HsType n
 -- for some reason * is considered infix
 cleanHsType (HsAppsTy apps) = unLoc $ guessType apps
-  where guessType :: OutputableBndr n => [LHsAppType n] -> LHsType n
+  where guessType :: OutputableBndrId n => [LHsAppType n] -> LHsType n
         guessType (L l (HsAppInfix n) : rest) -- must be a prefix actually
-          = guessType' (L l (HsTyVar n)) rest
+          = guessType' (L l (HsTyVar NotPromoted n)) rest
         guessType (L _ (HsAppPrefix t) : rest) = guessType' t rest
         guessType [] = error $ "guessType: empty: " ++ showSDocUnsafe (ppr apps)
 
@@ -243,7 +245,7 @@ cleanHsType (HsAppsTy apps) = unLoc $ guessType apps
         guessType' fun (L _ (HsAppPrefix t) : rest) = guessType' (hsAppTy fun t) rest
         guessType' fun (L l (HsAppInfix n) : rest)
           -- TODO: find a better check
-          | showSDocUnsafe (ppr n) == "*" = guessType' (hsAppTy fun (L l (HsTyVar n))) rest
+          | showSDocUnsafe (ppr n) == "*" = guessType' (hsAppTy fun (L l (HsTyVar NotPromoted n))) rest
         guessType' left (L _ (HsAppInfix n) : right) = hsOpTy left n (guessType right)
         guessType' t [] = t
 
@@ -265,10 +267,14 @@ getGroupRange :: HsGroup n -> SrcSpan
 getGroupRange (HsGroup {..})
   = foldr combineSrcSpans noSrcSpan locs
   where locs = [getHsValRange hs_valds] ++ map getLoc hs_splcds ++ map getLoc (concatMap group_tyclds hs_tyclds) ++ map getLoc (concatMap group_roles hs_tyclds)
-                 ++ map getLoc hs_instds ++ map getLoc hs_derivds ++ map getLoc hs_fixds ++ map getLoc hs_defds
+                 ++ map getLoc hs_derivds ++ map getLoc hs_fixds ++ map getLoc hs_defds
                  ++ map getLoc hs_fords ++ map getLoc hs_warnds ++ map getLoc hs_annds ++ map getLoc hs_ruleds ++ map getLoc hs_vects
                  ++ map getLoc hs_docs
 
 getHsValRange :: HsValBinds n -> SrcSpan
 getHsValRange (ValBindsIn vals sig) = foldr combineSrcSpans noSrcSpan $ map getLoc (bagToList vals) ++ map getLoc sig
 getHsValRange (ValBindsOut vals sig) = foldr combineSrcSpans noSrcSpan $ concatMap (map getLoc . bagToList . snd) vals ++ map getLoc sig
+
+fromSrcText :: SourceText -> String
+fromSrcText (SourceText s) = s
+fromSrcText NoSourceText = ""

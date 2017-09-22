@@ -7,7 +7,7 @@
 -- | A simpler representation of the original AST.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
 
-import Control.Exception
+import Control.Exception (Exception(..), throw)
 import Control.Monad.State (Monad(..), execState, modify)
 import Language.Haskell.Tools.AST
 

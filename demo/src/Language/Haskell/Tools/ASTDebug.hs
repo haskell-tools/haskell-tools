@@ -20,7 +20,7 @@ import Control.Reference
 import Data.Foldable
 import Data.List as List
 import Data.Maybe
-import Data.Sequence as Seq
+import Data.Sequence as Seq (Seq, (><), empty, fromList)
 import GHC.Generics
 import Outputable
 import SrcLoc

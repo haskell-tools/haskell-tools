@@ -88,15 +88,15 @@ library
                      , mtl                       >= 2.2   && < 2.3
                      , split                     >= 0.2   && < 1.0
                      , directory                 >= 1.2   && < 1.4
-                     , process                   >= 1.4   && < 1.5
-                     , ghc                       >= 8.0   && < 8.1
+                     , process                   >= 1.6   && < 1.7
+                     , ghc                       >= 8.2   && < 8.3
                      , ghc-paths                 >= 0.1   && < 0.2
                      , references                >= 0.3.2 && < 1.0
                      , network                   >= 2.6   && < 3.0
                      , Diff                      >= 0.3   && < 0.4
-                     , Cabal                     >= 1.24  && < 1.25
+                     , Cabal                     >= 2.0  && < 2.1
                      , pretty                    >= 1.1   && < 1.2
-                     , template-haskell          >= 2.11  && < 2.12
+                     , template-haskell          >= 2.12  && < 2.13
                      , haskell-tools-prettyprint >= 0.9   && < 0.10
                      , haskell-tools-refactor    >= 0.9   && < 0.10
                      , haskell-tools-builtin-refactorings >= 0.9   && < 0.10
@@ -123,7 +123,7 @@ executable ht-daemon
   ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-daemon      >= 0.9 && < 0.10
-                     , optparse-applicative      >= 0.13 && < 0.14
+                     , optparse-applicative      >= 0.14 && < 0.15
                      , directory                 >= 1.2  && < 1.4
                      , filepath                  >= 1.4  && < 2.0
                      , haskell-tools-builtin-refactorings >= 0.9 && < 0.10
@@ -136,13 +136,13 @@ test-suite haskell-tools-daemon-tests
   ghc-options:         -with-rtsopts=-M2.5g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , HUnit                     >= 1.5  && < 1.7
-                     , ghc                       >= 8.0  && < 8.1
+                     , ghc                       >= 8.2  && < 8.3
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9  && < 0.10
                      , directory                 >= 1.2  && < 1.4
-                     , process                   >= 1.4  && < 1.5
+                     , process                   >= 1.6  && < 1.7
                      , filepath                  >= 1.4  && < 2.0
                      , bytestring                >= 0.10 && < 0.11
                      , network                   >= 2.6  && < 2.7

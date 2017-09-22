@@ -92,7 +92,7 @@ app sessions wd = websocketsOr defaultConnectionOptions wsApp backupApp
 
     serverLoop :: Int -> Session -> MVar RefactorSessionState -> Connection -> IO ()
     serverLoop sessId ghcSess state conn =
-        do Text msg <- receiveDataMessage conn
+        do Text msg _ <- receiveDataMessage conn
            respondTo wd sessId ghcSess state (sendTextData conn) msg
            currState <- readMVar state
            if currState ^. isDisconnecting

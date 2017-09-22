@@ -6,18 +6,16 @@
 module Main where
 
 import Control.Applicative ((<$>))
-import Control.Concurrent (threadDelay)
-import Control.Exception
+import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.List
-import Options.Applicative
-import Data.Semigroup ((<>))
 import Data.List.Split (splitOn)
-import System.Directory
-import System.FilePath
-import System.FilePath.Glob (glob)
-import System.Environment (getArgs)
+import Data.Semigroup ((<>))
+import Options.Applicative
+import System.Directory (removeDirectoryRecursive, getCurrentDirectory, createDirectoryIfMissing)
 import System.Exit (ExitCode(..))
+import System.FilePath (FilePath, (</>))
+import System.FilePath.Glob ()
 import System.Process
 
 main :: IO ()

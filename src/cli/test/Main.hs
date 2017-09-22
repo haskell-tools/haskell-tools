@@ -12,7 +12,7 @@ import System.FilePath
 import System.IO
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.CLI
+import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSession)
 
 main :: IO ()
 main = defaultMain allTests

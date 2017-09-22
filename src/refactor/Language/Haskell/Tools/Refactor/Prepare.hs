@@ -12,7 +12,7 @@
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
 
-import Control.Exception
+import Control.Exception (Exception(..), throwIO, throw)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.List ((\\), isSuffixOf)
@@ -27,9 +27,9 @@ import DynFlags
 import FastString (mkFastString)
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
-import HscTypes
-import GhcMonad
 import GHC.Paths ( libdir )
+import GhcMonad
+import HscTypes (HscEnv(..), ModSummary(..))
 import Packages (initPackages)
 import SrcLoc
 import StringBuffer (hGetStringBuffer)

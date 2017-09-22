@@ -20,7 +20,7 @@ import Data.List (nub)
 import Data.Maybe (Maybe(..), catMaybes)
 
 import Name as GHC (NamedThing(..), Name, occNameString)
-import SrcLoc as GHC (SrcSpan(..), RealSrcSpan, containsSpan)
+import SrcLoc as GHC (SrcSpan(..), RealSrcSpan)
 
 import Language.Haskell.Tools.Refactor as AST
 
@@ -64,10 +64,11 @@ inlineBinding' :: InlineBindingDomain dom
 inlineBinding' topLevelRef localRef exprRef removedBinding removedBindingName mod
   = do replacement <- createReplacement removedBinding
        let RealSrcSpan bindingSpan = getRange removedBinding
-       (mod', used) <- runStateT (descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod) False
+       mod' <- removeBindingAndSig topLevelRef localRef exprRef removedBindingName mod
+       (mod'', used) <- runStateT (descendBiM (replaceInvocations bindingSpan removedBindingName replacement) mod') False
        if not used
          then refactError "The selected definition is not used, it can be safely deleted."
-         else return $ removeBindingAndSig topLevelRef localRef exprRef removedBindingName mod'
+         else return mod''
 
 -- | True if the given module contains the name of the inlined definition.
 containInlined :: forall dom . InlineBindingDomain dom => GHC.Name -> ModuleDom dom -> Bool
@@ -79,26 +80,49 @@ removeBindingAndSig :: InlineBindingDomain dom
                          => Simple Traversal (Module dom) (DeclList dom)
                          -> Simple Traversal (Module dom) (LocalBindList dom)
                          -> Simple Traversal (Module dom) (Expr dom)
-                         -> GHC.Name -> AST.Module dom
-                         -> AST.Module dom
+                         -> GHC.Name
+                         -> LocalRefactoring dom
 removeBindingAndSig topLevelRef localRef exprRef name
-  = removeEmptyBnds (topLevelRef & annList & declValBind &+& localRef & annList & localVal) exprRef
-      . (topLevelRef .- removeBindingAndSig' name) . (localRef .- removeBindingAndSig' name)
+  = (return . removeEmptyBnds (topLevelRef & annList & declValBind &+& localRef & annList & localVal) exprRef)
+      <=< (topLevelRef !~ removeBindingAndSig' name)
+      <=< (localRef !~ removeBindingAndSig' name)
 
-removeBindingAndSig' :: SourceInfoTraversal d => (InlineBindingDomain dom, BindingElem d) => GHC.Name -> AnnList d dom -> AnnList d dom
-removeBindingAndSig' name = (annList .- removeNameFromSigBind) . filterList notThatBindOrSig
+removeBindingAndSig' :: (SourceInfoTraversal d, InlineBindingDomain dom, BindingElem d)
+                     => GHC.Name -> AnnList d dom -> LocalRefactor dom (AnnList d dom)
+removeBindingAndSig' name ls = do
+   bnds <- mapM notThatBindOrSig (ls ^? annList)
+   return $ (annList .- removeNameFromSigBind) (filterListIndexed (\i _ -> bnds !! i) ls)
   where notThatBindOrSig e
-          | Just sb <- e ^? sigBind = nub (map semanticsName (sb ^? tsName & annList & simpleName)) /= [Just name]
-          | Just vb <- e ^? valBind = nub (map semanticsName (vb ^? bindingName)) /= [Just name]
-          | Just fs <- e ^? fixitySig = nub (map semanticsName (fs ^? fixityOperators & annList & operatorName)) /= [Just name]
-          | otherwise = True
+          | Just sb <- e ^? sigBind = return $ nub (map semanticsName (sb ^? tsName & annList & simpleName)) /= [Just name]
+          | Just vb <- e ^? valBind = do
+             let isThat = nub (map semanticsName (vb ^? bindingName)) == [Just name]
+             when isThat (void $ accessRhs !| checkForRecursion name $ vb)
+             return $ not isThat
+          | Just fs <- e ^? fixitySig = return $ nub (map semanticsName (fs ^? fixityOperators & annList & operatorName)) /= [Just name]
+          | otherwise = return True
 
-        removeNameFromSigBind d
-          | Just sb <- d ^? sigBind
-          = createTypeSig $ tsName .- filterList (\n -> semanticsName (n ^. simpleName) /= Just name) $ sb
-          | Just fs <- d ^? fixitySig
-          = createFixitySig $ fixityOperators .- filterList (\n -> semanticsName (n ^. operatorName) /= Just name) $ fs
-          | otherwise = d
+        removeNameFromSigBind
+          = (sigBind & tsName .- filterList (\n -> semanticsName (n ^. simpleName) /= Just name))
+             . (fixitySig & fixityOperators .- filterList (\n -> semanticsName (n ^. operatorName) /= Just name))
+
+        accessRhs = valBindRhs
+                      &+& valBindLocals & accessLocalRhs
+                      &+& funBindMatches & annList & matchRhs
+                      &+& funBindMatches & annList & (matchRhs &+& matchBinds & accessLocalRhs)
+        accessLocalRhs = annJust & localBinds & annList & localVal & accessRhs
+
+-- | Check the extracted bindings right-hand-side for possible recursion
+checkForRecursion :: InlineBindingDomain dom
+                  => GHC.Name -> Rhs dom -> LocalRefactor dom ()
+checkForRecursion n = void . (biplateRef !| checkNameForRecursion n)
+
+checkNameForRecursion :: InlineBindingDomain dom
+                      => GHC.Name -> AST.Name dom -> LocalRefactor dom ()
+checkNameForRecursion name n
+  | semanticsName (n ^. simpleName) == Just name
+  = refactError $ "Cannot inline definitions containing direct recursion. Recursive call at: "
+                    ++ shortShowSpanWithFile (getRange n)
+  | otherwise = return ()
 
 -- | As a top-down transformation, replaces the occurrences of the binding with generated expressions. This method passes
 -- the captured arguments of the function call to generate simpler results.
@@ -107,11 +131,9 @@ replaceInvocations :: InlineBindingDomain dom
 replaceInvocations bindingRange name replacement expr
   | (Var n, args) <- splitApps expr
   , semanticsName (n ^. simpleName) == Just name
-  = case getRange expr of
-      RealSrcSpan ownRange | bindingRange `containsSpan` ownRange
-        -> lift $ refactError "Cannot inline definitions containing direct recursion."
-      _ -> do put True
-              replacement (map (map (^. _1)) $ semanticsScope expr) <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
+  = do put True
+       replacement (map (map (^. _1)) $ semanticsScope expr)
+         <$> mapM (descendM (replaceInvocations bindingRange name replacement)) args
   | otherwise
   = descendM (replaceInvocations bindingRange name replacement) expr
 

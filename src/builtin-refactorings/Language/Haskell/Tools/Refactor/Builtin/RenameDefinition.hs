@@ -60,7 +60,10 @@ renameModule isAlias from to m mods
         alterChange _ _ c = c
 
         replaceModuleNames :: LocalRefactoring dom
-        replaceModuleNames = biplateRef @_ @(ModuleName dom) & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
+        replaceModuleNames = modNames & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
+          where modNames = modHead & annJust & (mhName &+& mhExports & annJust & espExports & annList & exportModuleName)
+                             &+& modImports & annList & ( importModule
+                                                            &+& importAs & annJust & importRename )
 
         alterNormalNames :: LocalRefactoring dom
         alterNormalNames mod =

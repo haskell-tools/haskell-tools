@@ -8,7 +8,7 @@ import FastString as GHC (unpackFS)
 import HsLit as GHC (OverLitVal(..), HsLit(..))
 
 import Language.Haskell.Tools.AST (Dom, RangeStage)
-import qualified Language.Haskell.Tools.AST as AST (ULiteral(..), Dom, RangeStage)
+import qualified Language.Haskell.Tools.AST as AST (ULiteral(..))
 import Language.Haskell.Tools.BackendGHC.Monad (Trf)
 
 trfLiteral' :: HsLit -> Trf (AST.ULiteral (Dom r) RangeStage)

@@ -16,30 +16,37 @@ chmod 600 deploykey
 eval `ssh-agent -s`
 ssh-add deploykey
 
-# Clone the existing repo into out/
-git clone git@github.com:haskell-tools/haskell-tools.github.io out
+# Clone the existing repo into out/. Download only the files for the given folder
+mkdir out
+cd out
+git init
+git remote add -f origin git@github.com:haskell-tools/haskell-tools.github.io
+git config core.sparseCheckout true
+echo "$TRAVIS_BRANCH" >> .git/info/sparse-checkout
+git pull origin master
+cd ..
 
 # Clean out existing contents
 rm -rf out/$TRAVIS_BRANCH/api/**
 rm -rf out/$TRAVIS_BRANCH/coverage/**
 
-# Copy generated haddock documentation
+# Move generated haddock documentation
 
 mkdir -p out/$TRAVIS_BRANCH/api
-cp -r .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
+mv .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
 
-# Copy the test coverage report
+# Move the test coverage report
 
 mkdir -p out/$TRAVIS_BRANCH/coverage
-cp -r .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
+mv .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
 
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
   # Copy the benchmark report
-  cp benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
+  mv benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
 fi
 
 # Create an index page
-cp branch-info-index.html out/$TRAVIS_BRANCH/index.html
+mv branch-info-index.html out/$TRAVIS_BRANCH/index.html
 
 cd out
 
@@ -49,4 +56,4 @@ git config push.default simple
 
 git add -A .
 git commit -m "Updating API documentation for: https://github.com/haskell-tools/haskell-tools/commit/$TRAVIS_COMMIT"
-git push -f
+git push --set-upstream origin master

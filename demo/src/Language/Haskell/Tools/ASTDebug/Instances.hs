@@ -77,6 +77,7 @@ instance (Domain dom, SourceInfo st) => ASTDebug UFunDep dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UConDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UFieldDecl dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UDeriving dom st
+instance (Domain dom, SourceInfo st) => ASTDebug UDeriveStrategy dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UInstanceRule dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UInstanceHead dom st
 instance (Domain dom, SourceInfo st) => ASTDebug UTypeEqn dom st

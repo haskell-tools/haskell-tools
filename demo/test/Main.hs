@@ -114,7 +114,7 @@ communicateWithDemo msgs = runClient "127.0.0.1" 8206 "/" $ \conn -> do
 
 receiveAllResponses :: Connection -> IO [ResponseMsg]
 receiveAllResponses conn = do
-  Text mess <- receiveDataMessage conn
+  Text mess _ <- receiveDataMessage conn
   let decoded = decode mess
   case decoded of Just Disconnected -> return []
                   Just other -> (other :) <$> receiveAllResponses conn

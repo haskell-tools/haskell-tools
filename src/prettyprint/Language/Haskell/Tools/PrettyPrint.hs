@@ -91,7 +91,7 @@ putString slide minInd s
   = do modify $ advanceStr newStr
        return (fromList newStr)
   where start:rest = splitOn "\n" s
-        newStr = concat $ intersperse ("\n" ++ replicate slide ' ') (start : map (extendToNSpaces minInd) rest)
+        newStr = concat $ List.intersperse ("\n" ++ replicate slide ' ') (start : map (extendToNSpaces minInd) rest)
         extendToNSpaces n str = replicate n ' ' ++ (List.dropWhile (== ' ') $ List.take n str) ++ List.drop n str
 
 advanceStr :: String -> RealSrcLoc -> RealSrcLoc

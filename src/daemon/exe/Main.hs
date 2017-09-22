@@ -1,14 +1,11 @@
 module Main where
 
-import Control.Concurrent.MVar
-import Options.Applicative
+import Control.Concurrent.MVar (newEmptyMVar)
 import Data.Semigroup ((<>))
-import System.Environment
-import System.Directory
-import System.FilePath
-import Language.Haskell.Tools.Daemon
-import Language.Haskell.Tools.Daemon.Mode
-import Language.Haskell.Tools.Refactor.Builtin
+import Language.Haskell.Tools.Daemon (DaemonOptions(..), runDaemon)
+import Language.Haskell.Tools.Daemon.Mode (socketMode)
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Options.Applicative
 
 main :: IO ()
 main = do store <- newEmptyMVar

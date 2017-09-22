@@ -7,7 +7,6 @@ module Language.Haskell.Tools.AST.Instances.SemanticTraversal where
 import Control.Applicative
 import Language.Haskell.Tools.AST.TH.SemanticTraversal
 
-import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Decls
 import Language.Haskell.Tools.AST.Representation.Exprs
@@ -54,6 +53,7 @@ deriveSemanticTraversal ''UFunDep
 deriveSemanticTraversal ''UConDecl
 deriveSemanticTraversal ''UFieldDecl
 deriveSemanticTraversal ''UDeriving
+deriveSemanticTraversal ''UDeriveStrategy
 deriveSemanticTraversal ''UInstanceRule
 deriveSemanticTraversal ''UInstanceHead
 deriveSemanticTraversal ''UTypeEqn

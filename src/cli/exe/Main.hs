@@ -1,14 +1,14 @@
 module Main where
 
+import Control.Monad (Monad(..), (=<<), when)
+import Control.Monad.Reader
+import Data.List
+import Data.List.Split (splitOn)
+import Data.Semigroup ((<>))
+import Options.Applicative
+import Options.Applicative.Types (Parser, ReadM(..))
 import System.Exit (exitSuccess, exitFailure)
 import System.IO (IO, stdout, stdin)
-import Options.Applicative
-import Options.Applicative.Types
-import Control.Monad
-import Control.Monad.Reader
-import Data.Semigroup ((<>))
-import Data.List
-import Data.List.Split
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession, CLIOptions(..))
@@ -52,8 +52,10 @@ cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> noWatch <*> watch <
           where ghcFlagsParser :: ReadM [String]
                 ghcFlagsParser
                   = ReadM $ do str <- ask
-                               let str' = case str of '=':rest -> rest
-                                                      other    -> other
+                               let str' = case str of '=':'"':rest -> init rest
+                                                      '=':rest     -> rest
+                                                      '"':rest     -> init rest
+                                                      other        -> other
                                let splitted = splitOn " " str'
                                let wrong = filter (not . isPrefixOf "-") splitted
                                when (not $ null wrong)

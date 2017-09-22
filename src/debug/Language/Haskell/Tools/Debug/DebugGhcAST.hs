@@ -1,6 +1,8 @@
 {-# LANGUAGE StandaloneDeriving
            , TypeSynonymInstances
            , FlexibleInstances
+           , FlexibleContexts
+           , UndecidableInstances
            #-}
 -- | A module for showing GHC's syntax tree representation.
 module Language.Haskell.Tools.Debug.DebugGhcAST where
@@ -16,13 +18,14 @@ import CoreSyn (Tickish(..))
 import FieldLabel (FieldLbl(..))
 import ForeignCall
 import GHC
-import Module (UnitId(..), Module(..), ModuleName(..))
+import Module (Module(..), ModuleName(..))
 import OccName (OccName(..))
-import Outputable (Outputable(..), OutputableBndr(..), showSDocUnsafe)
+import Outputable (Outputable(..), showSDocUnsafe)
 import PatSyn (PatSyn(..))
 import RdrName (RdrName(..))
 import TcEvidence
 import UniqFM (UniqFM(..))
+import UniqSet (UniqSet(..))
 
 instance Show a => Show (Located a) where
   show (L l a) = "L(" ++ shortShowSpan l ++ ") (" ++ show a ++ ")"
@@ -58,11 +61,11 @@ deriving instance Show (HsCmdTop RdrName)
 deriving instance Show (HsConDeclDetails RdrName)
 deriving instance Show (HsConPatDetails RdrName)
 deriving instance Show (HsDataDefn RdrName)
+deriving instance Show (HsDerivingClause RdrName)
 deriving instance Show (HsDecl RdrName)
 deriving instance Show (HsExpr RdrName)
 deriving instance Show (HsGroup RdrName)
 deriving instance Show (HsLocalBindsLR RdrName RdrName)
-deriving instance Show (HsMatchContext RdrName)
 deriving instance Show (HsModule RdrName)
 deriving instance Show (HsOverLit RdrName)
 deriving instance Show (HsPatSynDetails (Located RdrName))
@@ -78,11 +81,12 @@ deriving instance Show (HsType RdrName)
 deriving instance Show (HsValBindsLR RdrName RdrName)
 deriving instance Show (HsWildCardInfo RdrName)
 deriving instance Show (IE RdrName)
+deriving instance Show (IEWrappedName RdrName)
 deriving instance Show (ImportDecl RdrName)
 deriving instance Show (InstDecl RdrName)
 deriving instance Show (LHsQTyVars RdrName)
 deriving instance Show a => Show (Match RdrName a)
-deriving instance Show (MatchFixity RdrName)
+deriving instance Show (HsMatchContext RdrName)
 deriving instance Show a => Show (MatchGroup RdrName a)
 deriving instance Show (ParStmtBlock RdrName RdrName)
 deriving instance Show (Pat RdrName)
@@ -136,6 +140,7 @@ deriving instance Show (HsCmdTop Name)
 deriving instance Show (HsConDeclDetails Name)
 deriving instance Show (HsConPatDetails Name)
 deriving instance Show (HsDataDefn Name)
+deriving instance Show (HsDerivingClause Name)
 deriving instance Show (HsDecl Name)
 deriving instance Show (HsExpr Name)
 deriving instance Show (HsGroup Name)
@@ -156,11 +161,11 @@ deriving instance Show (HsType Name)
 deriving instance Show (HsValBindsLR Name Name)
 deriving instance Show (HsWildCardInfo Name)
 deriving instance Show (IE Name)
+deriving instance Show (IEWrappedName Name)
 deriving instance Show (ImportDecl Name)
 deriving instance Show (InstDecl Name)
 deriving instance Show (LHsQTyVars Name)
 deriving instance Show a => Show (Match Name a)
-deriving instance Show (MatchFixity Name)
 deriving instance Show a => Show (MatchGroup Name a)
 deriving instance Show (ParStmtBlock Name Name)
 deriving instance Show (Pat Name)
@@ -214,6 +219,7 @@ deriving instance Show (HsCmdTop Id)
 deriving instance Show (HsConDeclDetails Id)
 deriving instance Show (HsConPatDetails Id)
 deriving instance Show (HsDataDefn Id)
+deriving instance Show (HsDerivingClause Id)
 deriving instance Show (HsDecl Id)
 deriving instance Show (HsExpr Id)
 deriving instance Show (HsGroup Id)
@@ -234,11 +240,11 @@ deriving instance Show (HsType Id)
 deriving instance Show (HsValBindsLR Id Id)
 deriving instance Show (HsWildCardInfo Id)
 deriving instance Show (IE Id)
+deriving instance Show (IEWrappedName Id)
 deriving instance Show (ImportDecl Id)
 deriving instance Show (InstDecl Id)
 deriving instance Show (LHsQTyVars Id)
 deriving instance Show a => Show (Match Id a)
-deriving instance Show (MatchFixity Id)
 deriving instance Show a => Show (MatchGroup Id a)
 deriving instance Show (ParStmtBlock Id Id)
 deriving instance Show (Pat Id)
@@ -330,9 +336,6 @@ deriving instance Show t => Show (HsWildCardBndrs Name t)
 deriving instance Show t => Show (HsWildCardBndrs Id t)
 deriving instance (Show a, Show b) => Show (HsRecField' a b)
 
-
-instance Show UnitId where
-  show = showSDocUnsafe . ppr
 instance Show Name where
   show = showSDocUnsafe . ppr
 instance Show HsTyLit where
@@ -351,11 +354,17 @@ instance Show Class where
   show = showSDocUnsafe . ppr
 instance Show TcCoercion where
   show = showSDocUnsafe . ppr
+instance Show DerivStrategy where
+  show = showSDocUnsafe . ppr
 instance Outputable a => Show (UniqFM a) where
+  show = showSDocUnsafe . ppr
+instance Outputable a => Show (UniqSet a) where
   show = showSDocUnsafe . ppr
 instance Outputable a => Show (Tickish a) where
   show = showSDocUnsafe . ppr
-instance OutputableBndr a => Show (HsIPBinds a) where
+instance OutputableBndrId a => Show (HsIPBinds a) where
+  show = showSDocUnsafe . ppr
+instance Show LexicalFixity where
   show = showSDocUnsafe . ppr
 
 instance Show a => Show (Bag a) where

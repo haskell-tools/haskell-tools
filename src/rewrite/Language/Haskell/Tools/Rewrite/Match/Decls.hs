@@ -41,11 +41,11 @@ pattern SpliceDecl sp <- Ann _ (USpliceDecl sp)
 
 -- | A data or newtype declaration. Empty data type declarations without
 -- where keyword are always belong to DataDecl.
-pattern DataDecl :: DataOrNewtypeKeyword dom -> MaybeContext dom -> DeclHead dom -> ConDeclList dom -> MaybeDeriving dom -> Decl dom
+pattern DataDecl :: DataOrNewtypeKeyword dom -> MaybeContext dom -> DeclHead dom -> ConDeclList dom -> DerivingList dom -> Decl dom
 pattern DataDecl keyw ctx dh cons derivs <- Ann _ (UDataDecl keyw ctx dh cons derivs)
 
 -- | A GADT-style data or newtype declaration.
-pattern GADTDataDecl :: DataOrNewtypeKeyword dom -> MaybeContext dom -> DeclHead dom -> MaybeKindConstraint dome -> AnnListG UGadtConDecl dom stage -> MaybeDeriving dom -> Decl dom
+pattern GADTDataDecl :: DataOrNewtypeKeyword dom -> MaybeContext dom -> DeclHead dom -> MaybeKindConstraint dome -> AnnListG UGadtConDecl dom stage -> DerivingList dom -> Decl dom
 pattern GADTDataDecl keyw ctx dh kind cons derivs  <- Ann _ (UGDataDecl keyw ctx dh kind cons derivs )
 
 -- | GADT constructor declaration (@ D1 :: Int -> T String @)
@@ -74,11 +74,11 @@ pattern FieldDecl names typ <- Ann _ (UFieldDecl names typ)
 
 -- | A deriving clause without parentheses (@ deriving Show @.
 pattern DerivingOne :: InstanceHead dom -> Deriving dom
-pattern DerivingOne deriv <- Ann _ (UDerivingOne deriv)
+pattern DerivingOne deriv <- Ann _ (UDerivingOne _ deriv)
 
 -- | A deriving clause with parentheses @ deriving (Show, Eq) @)
 pattern DerivingMulti :: InstanceHeadList dom -> Deriving dom
-pattern DerivingMulti derivs <- Ann _ (UDerivings derivs)
+pattern DerivingMulti derivs <- Ann _ (UDerivings _ derivs)
 
 pattern DataKeyword :: DataOrNewtypeKeyword dom
 pattern DataKeyword <- Ann _ UDataKeyword
@@ -187,12 +187,12 @@ pattern InstanceTypeFamilyDef :: TypeEqn dom -> InstBodyDecl dom
 pattern InstanceTypeFamilyDef typeEq <- Ann _ (UInstBodyTypeDecl typeEq)
 
 -- | An associated data definition (@ data A X = B Int | C @) in a class instance
-pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> ConDeclList dom -> MaybeDeriving dom -> InstBodyDecl dom
+pattern InstanceDataFamilyDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> ConDeclList dom -> DerivingList dom -> InstBodyDecl dom
 pattern InstanceDataFamilyDef keyw instRule cons derivs  <- Ann _ (UInstBodyDataDecl keyw instRule cons derivs )
 
 -- | An associated data definition as a GADT (@ data A X where B :: Int -> A X @) in a class instance
 pattern InstanceDataFamilyGADTDef :: DataOrNewtypeKeyword dom -> InstanceRule dom -> MaybeKindConstraint dome -> AnnListG UGadtConDecl dom stage
-                                       -> MaybeDeriving dom -> InstBodyDecl dom
+                                       -> DerivingList dom -> InstBodyDecl dom
 pattern InstanceDataFamilyGADTDef keyw instRule kind cons derivs <- Ann _ (UInstBodyGadtDataDecl keyw instRule kind cons derivs)
 
 -- | Specialize instance pragma in a class instance  (no phase selection is allowed)
@@ -318,7 +318,7 @@ pattern TwoWayPatSyn pat match <- Ann _ (UBidirectionalPatSyn pat (AnnJust (Ann 
 pattern PatternSignatureDecl :: PatternSignature dom -> Decl dom
 pattern PatternSignatureDecl patsig <- Ann _ (UPatTypeSigDecl patsig)
 
-pattern PatternSignature :: Name dom -> Type dom -> PatternSignature dom
+pattern PatternSignature :: NameList dom -> Type dom -> PatternSignature dom
 pattern PatternSignature name typ <- Ann _ (UPatternTypeSignature name typ)
 
 -- * Type families
@@ -336,7 +336,7 @@ pattern TypeInstance :: InstanceRule dom -> Type dom -> Decl dom
 pattern TypeInstance instRule typ <- Ann _ (UTypeInstDecl instRule typ)
 
 -- | Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
-pattern DataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> ConDeclList dom -> MaybeDeriving dom -> Decl dom
+pattern DataInstance :: DataOrNewtypeKeyword dom -> InstanceRule dom -> ConDeclList dom -> DerivingList dom -> Decl dom
 pattern DataInstance keyw instRule cons derivs  <- Ann _ (UDataInstDecl keyw instRule cons derivs )
 
 -- | GADT-style data instance declaration (@ data instance Fam T where ... @)

@@ -28,7 +28,7 @@ data UDecl dom stage
                           , _declCtx  :: AnnMaybeG UContext dom stage
                           , _declHead :: Ann UDeclHead dom stage
                           , _declCons :: AnnListG UConDecl dom stage
-                          , _declDeriving :: AnnMaybeG UDeriving dom stage
+                          , _declDeriving :: AnnListG UDeriving dom stage
                           } -- ^ A data or newtype declaration. Empty data type declarations without
                             -- where keyword are always belong to DataDecl.
   | UGDataDecl            { _declNewtype :: Ann UDataOrNewtypeKeyword dom stage
@@ -36,7 +36,7 @@ data UDecl dom stage
                           , _declHead :: Ann UDeclHead dom stage
                           , _declKind :: AnnMaybeG UKindConstraint dom stage
                           , _declGadt :: AnnListG UGadtConDecl dom stage
-                          , _declDeriving :: AnnMaybeG UDeriving dom stage
+                          , _declDeriving :: AnnListG UDeriving dom stage
                           } -- ^ A GADT-style data or newtype declaration.
   | UTypeInstDecl         { _declInstance :: Ann UInstanceRule dom stage
                           , _declAssignedType :: Ann UType dom stage
@@ -44,7 +44,7 @@ data UDecl dom stage
   | UDataInstDecl         { _declNewtype :: Ann UDataOrNewtypeKeyword dom stage
                           , _declInstance :: Ann UInstanceRule dom stage
                           , _declCons :: AnnListG UConDecl dom stage
-                          , _declDeriving :: AnnMaybeG UDeriving dom stage
+                          , _declDeriving :: AnnListG UDeriving dom stage
                           } -- ^ Data instance declaration (@ data instance Fam T = Con1 | Con2 @)
   | UGDataInstDecl        { _declNewtype :: Ann UDataOrNewtypeKeyword dom stage
                           , _declInstance :: Ann UInstanceRule dom stage
@@ -175,13 +175,13 @@ data UInstBodyDecl dom stage
   | UInstBodyDataDecl     { _instBodyDataNew :: Ann UDataOrNewtypeKeyword dom stage
                           , _instBodyLhsType :: Ann UInstanceRule dom stage
                           , _instBodyDataCons :: AnnListG UConDecl dom stage
-                          , _instBodyDerivings :: AnnMaybeG UDeriving dom stage
+                          , _instBodyDerivings :: AnnListG UDeriving dom stage
                           } -- ^ An associated data type implementation (@ data A X = C1 | C2 @)
   | UInstBodyGadtDataDecl { _instBodyDataNew :: Ann UDataOrNewtypeKeyword dom stage
                           , _instBodyLhsType :: Ann UInstanceRule dom stage
                           , _instBodyDataKind :: AnnMaybeG UKindConstraint dom stage
                           , _instBodyGadtCons :: AnnListG UGadtConDecl dom stage
-                          , _instBodyDerivings :: AnnMaybeG UDeriving dom stage
+                          , _instBodyDerivings :: AnnListG UDeriving dom stage
                           } -- ^ An associated data type implemented using GADT style
   | USpecializeInstance   { _specializeInstanceType :: Ann UType dom stage
                           } -- ^ Specialize instance pragma (no phase selection is allowed)
@@ -295,14 +295,23 @@ data UFieldDecl dom stage
 
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 data UDeriving dom stage
-  = UDerivingOne { _oneDerived :: Ann UInstanceHead dom stage }
-  | UDerivings { _allDerived :: AnnListG UInstanceHead dom stage }
+  = UDerivingOne { _deriveStrategy :: AnnMaybeG UDeriveStrategy dom stage
+                 , _oneDerived :: Ann UInstanceHead dom stage
+                 }
+  | UDerivings { _deriveStrategy :: AnnMaybeG UDeriveStrategy dom stage
+               , _allDerived :: AnnListG UInstanceHead dom stage
+               }
+
+data UDeriveStrategy dom stage
+  = UStockStrategy
+  | UAnyClassStrategy
+  | UNewtypeStrategy
 
 -- * Pattern synonyms
 
 -- | Pattern type signature declaration (@ pattern Succ :: Int -> Int @)
 data UPatternTypeSignature dom stage
-  = UPatternTypeSignature { _patSigName :: Ann UName dom stage
+  = UPatternTypeSignature { _patSigName :: AnnListG UName dom stage
                           , _patSigType :: Ann UType dom stage
                           }
 

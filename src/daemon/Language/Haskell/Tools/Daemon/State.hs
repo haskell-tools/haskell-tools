@@ -3,15 +3,13 @@ module Language.Haskell.Tools.Daemon.State where
 
 import Control.Concurrent
 import Control.Reference
-import System.IO
-import System.Process
 import GHC
 import System.FSWatch.Repr
 
-import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
+import Language.Haskell.Tools.Refactor
 
 -- | The actual state of the daemon process. Contains loaded modules and user settings.
 -- The GHC state is handled separately.

@@ -1,4 +1,4 @@
 module Refactor.GenerateTypeSignature.Function where
 
-identity :: t -> t
+identity :: p -> p
 identity x = x

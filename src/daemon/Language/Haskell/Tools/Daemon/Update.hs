@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -O0 #-} -- this is needed because of an optimization bug in GHC 8.2.1: https://ghc.haskell.org/trac/ghc/ticket/13413
 {-# LANGUAGE LambdaCase
            , MultiWayIf
            , TypeApplications
@@ -10,36 +11,34 @@
 -- | Resolves how the daemon should react to individual requests from the client.
 module Language.Haskell.Tools.Daemon.Update where
 
-import Control.Exception
+import Control.DeepSeq (force)
+import Control.Exception (evaluate)
 import Control.Monad
-import Control.DeepSeq
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
 import Data.Algorithm.Diff (Diff(..), getGroupedDiff)
+import Data.Algorithm.DiffContext (prettyContextDiff, getContextDiff)
 import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
 import Data.Either (Either(..), either, rights)
 import Data.IORef (newIORef)
 import Data.List hiding (insert)
-import qualified Data.Map as Map
+import qualified Data.Map as Map (insert, keys, filter)
 import Data.Maybe
 import Data.Version (Version(..))
 import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
+import System.FSWatch.Slave (watch)
 import System.IO
 import System.IO.Strict as StrictIO (hGetContents)
-import Text.PrettyPrint as PP
-import Data.Algorithm.DiffContext
-import System.FSWatch.Slave
+import Text.PrettyPrint as PP (text, render)
 
-import Bag (bagToList)
-import DynFlags (DynFlags(..), PkgConfRef(..))
-import ErrUtils (ErrMsg(..))
+import DynFlags (DynFlags(..), PkgConfRef(..), PackageDBFlag(..))
 import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), modifySession)
 import HscTypes (hsc_mod_graph)
-import Packages (Version(..), initPackages)
+import Packages (initPackages)
 
-import Language.Haskell.Tools.Daemon.PackageDB
+import Language.Haskell.Tools.Daemon.PackageDB (packageDBLoc, detectAutogen)
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Session
@@ -89,7 +88,7 @@ updateClient _ _ (RemovePackages packagePathes) = do
     return True
   where isRemoved mc = (mc ^. mcRoot) `elem` packagePathes
 
-updateClient refs resp UndoLast =
+updateClient _ resp UndoLast =
   do undos <- gets (^. undoStack)
      case undos of
        [] -> do liftIO $ resp $ ErrorMessage "There is nothing to undo."
@@ -283,7 +282,7 @@ performUndoChanges :: Int -> FileDiff -> String -> String
 performUndoChanges i ((start,end,replace):rest) str | i == start
   = replace ++ performUndoChanges end rest (drop (end-start) str)
 performUndoChanges i diffs (c:str) = c : performUndoChanges (i+1) diffs str
-performUndoChanges i diffs [] = []
+performUndoChanges _ _ [] = []
 
 -- | Get the files added by a refactoring.
 getUndoAdded :: [UndoRefactor] -> [FilePath]
@@ -308,7 +307,7 @@ usePackageDB [] = return ()
 usePackageDB pkgDbLocs
   = do dfs <- getSessionDynFlags
        dfs' <- liftIO $ fmap fst $ initPackages
-                 $ dfs { extraPkgConfs = (map PkgConfFile pkgDbLocs ++) . extraPkgConfs dfs
+                 $ dfs { packageDBFlags = map (PackageDB . PkgConfFile) pkgDbLocs ++ packageDBFlags dfs
                        , pkgDatabase = Nothing
                        }
        void $ setSessionDynFlags dfs'

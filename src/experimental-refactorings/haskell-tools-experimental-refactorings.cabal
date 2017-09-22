@@ -24,7 +24,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp2
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
 
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
                      , ghc-paths                 >= 0.1  && < 0.2
@@ -34,9 +34,9 @@ library
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , filepath                  >= 1.4  && < 1.5
-                     , template-haskell          >= 2.11 && < 2.12
-                     , ghc                       >= 8.0  && < 8.1
-                     , Cabal                     >= 1.24 && < 1.25
+                     , template-haskell          >= 2.12 && < 2.13
+                     , ghc                       >= 8.2  && < 8.3
+                     , Cabal                     >= 2.0 && < 2.1
                      , haskell-tools-ast         >= 0.9  && < 0.10
                      , haskell-tools-backend-ghc >= 0.9  && < 0.10
                      , haskell-tools-rewrite     >= 0.9  && < 0.10
@@ -49,7 +49,7 @@ test-suite haskell-tools-experimental-refactorings-test
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.9  && < 4.10
+  build-depends:       base                      >= 4.10  && < 4.11
                      , tasty                     >= 0.11 && < 0.12
                      , tasty-hunit               >= 0.9 && < 0.10
                      , transformers              >= 0.5  && < 0.6
@@ -61,15 +61,15 @@ test-suite haskell-tools-experimental-refactorings-test
                      , directory                 >= 1.2  && < 1.4
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
-                     , time                      >= 1.6  && < 1.7
-                     , template-haskell          >= 2.11 && < 2.12
-                     , ghc                       >= 8.0  && < 8.1
+                     , time                      >= 1.6  && < 1.9
+                     , template-haskell          >= 2.12 && < 2.13
+                     , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
-                     , Cabal                     >= 1.24 && < 1.25
+                     , Cabal                     >= 2.0 && < 2.1
                      , haskell-tools-ast         >= 0.9  && < 0.10
                      , haskell-tools-backend-ghc >= 0.9  && < 0.10
                      , haskell-tools-rewrite     >= 0.9  && < 0.10
                      , haskell-tools-prettyprint >= 0.9  && < 0.10
                      , haskell-tools-refactor    >= 0.9  && < 0.10
-                     , haskell-tools-experimental-refactorings >= 0.9  && < 0.10
+                     , haskell-tools-experimental-refactorings
   default-language:    Haskell2010

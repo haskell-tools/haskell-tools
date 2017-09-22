@@ -21,6 +21,7 @@ import FastString as GHC (FastString, unpackFS)
 import HsSyn as GHC
 import Name as GHC (isSymOcc, occNameString)
 import qualified Name as GHC (Name)
+import OccName as GHC (HasOccName)
 import RdrName as GHC (RdrName)
 import SrcLoc as GHC
 
@@ -69,7 +70,7 @@ trfAmbiguousFieldOperator' _ (Ambiguous (L l rdr) _)
           <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfOperatorStr (not $ isSymOcc (occName rdr)) (rdrNameStr rdr))
 
 
-class (DataId n, Eq n, GHCName n, FromGHCName n) => TransformableName n where
+class (DataId n, Eq n, GHCName n, FromGHCName n, NameOrRdrName n ~ n, HasOccName n) => TransformableName n where
   correctNameString :: n -> Trf String
   transformSplice :: HsSplice RdrName -> Trf (HsSplice n)
 

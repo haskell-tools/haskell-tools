@@ -31,20 +31,20 @@ module Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.AST.Helpers
 import Language.Haskell.Tools.AST.References
 import Language.Haskell.Tools.AST.SemaInfoClasses
+import Language.Haskell.Tools.BackendGHC (SpliceInsertionProblem(..), ConvertionProblem(..))
+import Language.Haskell.Tools.PrettyPrint (PrettyPrintProblem(..))
 import Language.Haskell.Tools.PrettyPrint.Prepare
-import Language.Haskell.Tools.Refactor.Utils.BindingElem
-import Language.Haskell.Tools.Refactor.Utils.Helpers
 import Language.Haskell.Tools.Refactor.Monad
 import Language.Haskell.Tools.Refactor.Prepare
 import Language.Haskell.Tools.Refactor.Refactoring
 import Language.Haskell.Tools.Refactor.Representation
+import Language.Haskell.Tools.Refactor.Utils.BindingElem
+import Language.Haskell.Tools.Refactor.Utils.Helpers
 import Language.Haskell.Tools.Refactor.Utils.Indentation
 import Language.Haskell.Tools.Refactor.Utils.Lists
 import Language.Haskell.Tools.Refactor.Utils.Monadic
 import Language.Haskell.Tools.Refactor.Utils.Name
 import Language.Haskell.Tools.Rewrite
 import Language.Haskell.Tools.Rewrite.ElementTypes
-import Language.Haskell.Tools.PrettyPrint
-import Language.Haskell.Tools.BackendGHC
 
 import Language.Haskell.Tools.AST.Ann

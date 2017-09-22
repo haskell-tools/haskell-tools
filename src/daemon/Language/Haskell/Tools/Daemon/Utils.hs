@@ -6,10 +6,10 @@
 module Language.Haskell.Tools.Daemon.Utils where
 
 import Control.Applicative (Alternative(..))
-import Control.Reference
+import Control.Reference ((^.), (.=), (.-))
 import Data.List
-import Data.Maybe
 import qualified Data.Map as Map
+import Data.Maybe
 
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Refactor (SourceFileKey(..), sfkFileName, sfkModuleName)

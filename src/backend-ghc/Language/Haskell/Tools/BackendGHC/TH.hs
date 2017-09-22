@@ -36,16 +36,17 @@ trfSplice spls = do rng <- asks contRange
                     annLocNoSema (pure $ getSpliceLoc spls `mappend` rng) (trfSplice' spls)
 
 getSpliceLoc :: HsSplice a -> SrcSpan
-getSpliceLoc (HsTypedSplice _ e) = getLoc e
-getSpliceLoc (HsUntypedSplice _ e) = getLoc e
+getSpliceLoc (HsTypedSplice _ _ e) = getLoc e
+getSpliceLoc (HsUntypedSplice _ _ e) = getLoc e
 getSpliceLoc (HsQuasiQuote _ _ sp _) = sp
 getSpliceLoc (HsSpliced _ _) = noSrcSpan
 
 trfSplice' :: TransformName n r => HsSplice n -> Trf (AST.USplice (Dom r) RangeStage)
-trfSplice' (HsTypedSplice _ expr) = trfSpliceExpr expr
-trfSplice' (HsUntypedSplice _ expr) = trfSpliceExpr expr
+trfSplice' (HsTypedSplice _ _ expr) = trfSpliceExpr expr
+trfSplice' (HsUntypedSplice _ _ expr) = trfSpliceExpr expr
 trfSplice' s = unhandledElement "splice" s
 
+-- | TODO: easier with splice decoration
 trfSpliceExpr :: TransformName n r => Located (HsExpr n) -> Trf (AST.USplice (Dom r) RangeStage)
 trfSpliceExpr expr =
   do hasDollar <- allTokenLoc AnnThIdSplice

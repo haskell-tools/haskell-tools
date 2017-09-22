@@ -8,7 +8,7 @@ module Language.Haskell.Tools.PrettyPrint.Prepare.RangeToRangeTemplate (cutUpRan
 
 import Language.Haskell.Tools.AST
 
-import Control.Exception
+import Control.Exception (Exception, throw)
 import Control.Monad.State
 import Control.Reference ((^.))
 import Data.List

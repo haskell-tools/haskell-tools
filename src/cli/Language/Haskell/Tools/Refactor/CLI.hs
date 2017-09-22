@@ -14,20 +14,19 @@ module Language.Haskell.Tools.Refactor.CLI
   (refactorSession, normalRefactorSession, CLIOptions(..)) where
 
 import Control.Concurrent
+import Control.Exception (BlockedIndefinitelyOnMVar(..), catch)
 import Control.Monad.State.Strict
-import Control.Exception
 import Data.List
-import Data.List.Split
+import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Version (showVersion)
-import System.Directory
+import System.Directory (getCurrentDirectory)
 import System.IO
-import System.IO.Error
-import System.Exit
+import System.IO.Error (isEOFError)
 
-import Language.Haskell.Tools.Daemon
+import Language.Haskell.Tools.Daemon (DaemonOptions(..), runDaemon)
 import Language.Haskell.Tools.Daemon.Mode (channelMode)
-import Language.Haskell.Tools.Daemon.Protocol
+import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_cli (version)
 -- | Normal entry point of the cli.
@@ -108,7 +107,7 @@ readFromSocket :: Bool -> Handle -> Chan ResponseMsg -> IO Bool
 readFromSocket pedantic output recv = do
     continue <- readChan recv >>= processMessage pedantic output
     maybe (readFromSocket pedantic output recv) return continue -- repeate if not stopping
-  `catch` \(e :: BlockedIndefinitelyOnMVar) -> return False -- other threads terminated
+  `catch` \(_ :: BlockedIndefinitelyOnMVar) -> return False -- other threads terminated
 
 -- | Receives a single response from daemon. Returns Nothing if the execution should continue,
 -- Just False on erronous termination and Just True on normal termination.
@@ -121,7 +120,7 @@ processMessage pedantic output (CompilationProblem marks hints)
 processMessage _ output (LoadedModules mods)
   = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods
        return Nothing
-processMessage _ output (DiffInfo diff)
+processMessage _ _ (DiffInfo diff)
   = do putStrLn diff
        return Nothing
 processMessage _ output (UnusedFlags flags)
