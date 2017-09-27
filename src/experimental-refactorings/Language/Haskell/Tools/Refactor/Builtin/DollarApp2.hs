@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.DollarApp2 where
 
 import Language.Haskell.Tools.Refactor

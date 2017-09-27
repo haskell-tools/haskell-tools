@@ -4,6 +4,7 @@
            , ViewPatterns
            , TypeApplications
            , ScopedTypeVariables
+           , TypeFamilies
            #-}
 module Language.Haskell.Tools.Refactor.Builtin.FloatOut
   (floatOut, FloatOutDefinition, floatOutRefactoring) where

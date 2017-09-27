@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 module Language.Haskell.Tools.Refactor.Builtin.HelloRefactor where
 
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)

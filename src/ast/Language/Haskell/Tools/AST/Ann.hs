@@ -11,6 +11,7 @@
            , TypeApplications
            , ScopedTypeVariables
            , PatternSynonyms
+           , ConstraintKinds
            #-}
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
@@ -102,52 +103,30 @@ type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
 type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' IdDom SameInfoDefaultCls = NoSemanticInfo
 
--- | Class for domain configuration markers
-class ( Typeable d
-      , Data d
-      , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
-      , Data (SemanticInfo' d SameInfoNameCls)
-      , Data (SemanticInfo' d SameInfoExprCls)
-      , Data (SemanticInfo' d SameInfoImportCls)
-      , Data (SemanticInfo' d SameInfoModuleCls)
-      , Data (SemanticInfo' d SameInfoWildcardCls)
-      , Show (SemanticInfo' d SameInfoNameCls)
-      , Show (SemanticInfo' d SameInfoExprCls)
-      , Show (SemanticInfo' d SameInfoImportCls)
-      , Show (SemanticInfo' d SameInfoModuleCls)
-      , Show (SemanticInfo' d SameInfoWildcardCls)
-      ) => Domain d where
-
 -- | A semantic domain for the AST. The semantic domain maps semantic information for
 -- the different types of nodes in the AST. The kind of semantic domain for an AST
 -- depends on which stages of the compilation did it pass. However after transforming
 -- the GHC representation to our AST, the domain keeps the same.
 -- The domain is not applied to the AST elements that are generated while refactoring.
-instance ( Typeable d
-         , Data d
-         , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
-         , Data (SemanticInfo' d SameInfoNameCls)
-         , Data (SemanticInfo' d SameInfoExprCls)
-         , Data (SemanticInfo' d SameInfoImportCls)
-         , Data (SemanticInfo' d SameInfoModuleCls)
-         , Data (SemanticInfo' d SameInfoWildcardCls)
-         , Show (SemanticInfo' d SameInfoNameCls)
-         , Show (SemanticInfo' d SameInfoExprCls)
-         , Show (SemanticInfo' d SameInfoImportCls)
-         , Show (SemanticInfo' d SameInfoModuleCls)
-         , Show (SemanticInfo' d SameInfoWildcardCls)
-         ) => Domain d where
+type Domain d = ( Typeable d
+                , Data d
+                , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
+                , Data (SemanticInfo' d SameInfoNameCls)
+                , Data (SemanticInfo' d SameInfoExprCls)
+                , Data (SemanticInfo' d SameInfoImportCls)
+                , Data (SemanticInfo' d SameInfoModuleCls)
+                , Data (SemanticInfo' d SameInfoWildcardCls)
+                , Show (SemanticInfo' d SameInfoNameCls)
+                , Show (SemanticInfo' d SameInfoExprCls)
+                , Show (SemanticInfo' d SameInfoImportCls)
+                , Show (SemanticInfo' d SameInfoModuleCls)
+                , Show (SemanticInfo' d SameInfoWildcardCls)
+                )
 
-
-class ( Data (SemanticInfo' d (SemaInfoClassify e))
-      , Show (SemanticInfo' d (SemaInfoClassify e))
-      , Domain d
-      ) => DomainWith e d where
-
-instance ( Data (SemanticInfo' d (SemaInfoClassify e))
-         , Show (SemanticInfo' d (SemaInfoClassify e))
-         , Domain d
-         ) => DomainWith e d where
+type DomainWith e d = ( Data (SemanticInfo' d (SemaInfoClassify e))
+                      , Show (SemanticInfo' d (SemaInfoClassify e))
+                      , Domain d
+                      )
 
 -- | Extracts or modifies the concrete range corresponding to a given source info.
 -- In case of lists and optional elements, it may not contain the elements inside.
@@ -167,8 +146,8 @@ class ( Typeable stage
       , HasRange (SpanInfo stage)
       , HasRange (ListInfo stage)
       , HasRange (OptionalInfo stage)
-      )
-         => SourceInfo stage where
+      ) => SourceInfo stage where
+
   -- | UType of source info for normal AST elements
   data SpanInfo stage :: *
   -- | UType of source info for lists of AST elements

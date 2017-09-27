@@ -1,7 +1,7 @@
 resolver: nightly-2017-09-14
 
 ghc-options:
-  "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports -fno-warn-simplifiable-class-constraints
+  "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
 
 packages:
   - src/ast
@@ -17,5 +17,7 @@ packages:
   - src/daemon
 
 extra-deps:
+  - references-0.3.3.0
+  - instance-control-0.1.2.0
   - fswatch-0.1.0.2
   - knob-0.1.1
