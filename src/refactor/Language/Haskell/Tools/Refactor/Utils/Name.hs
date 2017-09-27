@@ -62,7 +62,7 @@ nameValid Variable (c : nameRest) | isLower c && isIdStartChar c && all (\c -> i
 nameValid Variable _ = Just "The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore"
 
 isIdStartChar :: Char -> Bool
-isIdStartChar c = (isLetter c && isAscii c) || c == '\'' || c == '_'
+isIdStartChar c = isLetter c || c == '\'' || c == '_'
 
 isOperatorChar :: Char -> Bool
-isOperatorChar c = (isPunctuation c || isSymbol c) && isAscii c
+isOperatorChar c = isPunctuation c || isSymbol c
