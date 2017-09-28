@@ -17,7 +17,5 @@ packages:
   - src/daemon
 
 extra-deps:
-  - references-0.3.3.0
-  - instance-control-0.1.2.0
   - fswatch-0.1.0.2
   - knob-0.1.1
