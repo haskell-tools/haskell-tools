@@ -109,11 +109,11 @@ userExceptionHandlers :: (String -> IO Bool) -> ([(SrcSpan, String)] -> [String]
 userExceptionHandlers sendError sendCompProblems =
   [ Handler (\(UnsupportedPackage e) -> sendError ("There are unsupported elements in your package: " ++ e ++ " please correct them before loading them into Haskell-tools."))
   , Handler (\(UnsupportedExtension e) -> sendError ("The extension you use is not supported: " ++ e ++ ". Please check your source and cabal files for the use of that language extension."))
-  , Handler (\(SpliceInsertionProblem rng _) -> sendError ("A problem occurred while type-checking the Template Haskell splice at: " ++ shortShowSpan rng ++ ". Some complex splices cannot be type checked for reasons currently unknown. Please simplify the splice. We are working on this problem."))
+  , Handler (\(SpliceInsertionProblem rng _) -> sendError ("A problem occurred while type-checking the Template Haskell splice at: " ++ shortShowSpanWithFile rng ++ ". Some complex splices cannot be type checked for reasons currently unknown. Please simplify the splice. We are working on this problem."))
   , Handler (\case (BreakUpProblem outer rng _) -> sendError ("The program element at " ++ (if isGoodSrcSpan rng then shortShowSpanWithFile rng else shortShowSpanWithFile (RealSrcSpan outer)) ++ " could not be prepared for refactoring. The most likely reason is preprocessor usage. Only conditional compilation is supported, includes and preprocessor macros are not. If there is no preprocessor usage at the given location, there might be a weirdly placed comment causing a problem."))
   , Handler (\(TransformationProblem msg) -> sendError ("A problem occurred while preparing the program for refactoring: " ++ msg))
   , Handler (\(PrettyPrintProblem msg) -> sendError ("A problem occurred while pretty printing the result of the refactoring: " ++ msg))
-  , Handler (\case (ConvertionProblem rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpan rng ++ ": " ++ msg)
+  , Handler (\case (ConvertionProblem rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpanWithFile rng ++ ": " ++ msg)
                    (UnrootedConvertionProblem msg) -> sendError ("An unexpected problem occurred while converting between different program representations: " ++ msg))
   , Handler (\errs -> let msgs = map (\err -> (errMsgSpan err, show err))
                                    $ bagToList $ srcErrorMessages errs

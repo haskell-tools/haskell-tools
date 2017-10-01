@@ -52,7 +52,7 @@ addTypeInfos bnds mod = do
                 (Just l@(RealSrcSpan loc), _)
                   -> case Map.lookup l locMapping of
                             Just id -> return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
-                            _ -> do (none,rest) <- gets (break ((\(RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
+                            _ -> do (none,rest) <- gets (break ((\case (RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
                                     case rest of [] -> throw $ ConvertionProblem (RealSrcSpan loc) "Ambiguous or implicit name missing"
                                                  ((_,id):more) -> do put (none ++ more)
                                                                      return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
@@ -85,15 +85,19 @@ extractExprIds = catMaybes . map (\case L l (HsVar (L _ n)) -> Just (L l n)
                                  ) . concatMap universeBi . bagToList
 
 extractSigIds :: LHsBinds Id -> [(SrcSpan,Id)]
-extractSigIds = concat . map (\case L l bs@(AbsBindsSig {} :: HsBind Id) -> map (l,) $ getImplVars (abs_sig_ev_bind bs)
-                                    _                                    -> []
-                             ) . concatMap universeBi . bagToList
+extractSigIds = filter (isGoodSrcSpan . fst)
+                  . concat
+                  . map (\case L l bs@(AbsBindsSig {} :: HsBind Id) -> map (l,) $ getImplVars (abs_sig_ev_bind bs)
+                               _                                    -> [] )
+                  . concatMap universeBi . bagToList
   where getImplVars (EvBinds evbnds) = catMaybes $ map getEvVar $ bagToList evbnds
         getImplVars _                = []
         getEvVar (EvBind lhs _ False) = Just lhs
         getEvVar _                    = Nothing
 
 extractSigBindIds :: LHsBinds Id -> [(SrcSpan,Id)]
-extractSigBindIds = catMaybes . map (\case L l (IPBind (Right id) _) -> Just (l,id)
-                                           _                         -> Nothing
-                                    ) . concatMap universeBi . bagToList
+extractSigBindIds = filter (isGoodSrcSpan . fst)
+                      . catMaybes
+                      . map (\case L l (IPBind (Right id) _) -> Just (l,id)
+                                   _                         -> Nothing )
+                      . concatMap universeBi . bagToList
