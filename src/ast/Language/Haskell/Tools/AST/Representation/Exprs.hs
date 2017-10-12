@@ -115,6 +115,10 @@ data UExpr dom stage
                     } -- ^ Lambda case ( @\case 0 -> 1; 1 -> 2@ )
   | UStaticPtr      { _exprInner :: Ann UExpr dom stage
                     } -- ^ Static pointer expression (@ static e @). The inner expression must be closed (cannot have variables bound outside)
+  | UUnboxedSum     { _exprSumPlaceholdersBefore :: AnnListG UUnboxedSumPlaceHolder dom stage
+                    , _exprInner :: Ann UExpr dom stage
+                    , _exprSumPlaceholdersAfter :: AnnListG UUnboxedSumPlaceHolder dom stage
+                    } -- ^ Unboxed sum expression (@ (# | True #) @).
   -- XML expressions omitted
 
 -- | Field update expressions
@@ -225,3 +229,5 @@ data UArrowAppl dom stage
   | URightAppl -- ^ Right arrow application: @>-@
   | ULeftHighApp -- ^ Left arrow high application: @-<<@
   | URightHighApp -- ^ Right arrow high application: @>>-@
+
+data UUnboxedSumPlaceHolder dom stage = UUnboxedSumPlaceHolder

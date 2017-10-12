@@ -95,7 +95,7 @@ initGhcFlags' needsCodeGen = do
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ dflags { importPaths = []
-             , hscTarget = if needsCodeGen then HscInterpreted else HscNothing
+             , hscTarget = if needsCodeGen then HscAsm else HscNothing
              , ghcLink = if needsCodeGen then LinkInMemory else NoLink
              , ghcMode = CompManager
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags

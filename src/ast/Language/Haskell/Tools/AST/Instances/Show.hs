@@ -114,6 +114,7 @@ deriving instance Show (ULanguageExtension dom stage)
 deriving instance Show (UMatchLhs dom stage)
 deriving instance Show (UInlinePragma dom stage)
 deriving instance Show (USpecializePragma dom stage)
+deriving instance Show (UUnboxedSumPlaceHolder dom stage)
 
 
 -- ULiteral

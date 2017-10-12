@@ -68,6 +68,7 @@ trfType' = trfType'' . cleanHsType where
   trfType'' pt@(HsExplicitTupleTy {}) = AST.UTyPromoted <$> annContNoSema (trfPromoted' trfType' pt)
   trfType'' pt@(HsTyLit {}) = AST.UTyPromoted <$> annContNoSema (trfPromoted' trfType' pt)
   trfType'' (HsWildCardTy _) = pure AST.UTyWildcard -- TODO: named wildcards
+  trfType'' (HsSumTy types) = AST.UUnbSumType <$> trfAnnList " | " trfType' types
   trfType'' t = unhandledElement "type" t
 
 trfBindings :: TransformName n r => [Located (HsTyVarBndr n)] -> Trf (AnnListG AST.UTyVar (Dom r) RangeStage)

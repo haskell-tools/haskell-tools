@@ -276,6 +276,12 @@ updateFocus :: (SrcSpan -> Trf SrcSpan) -> Trf a -> Trf a
 updateFocus f trf = do newSpan <- f =<< asks contRange
                        focusOn newSpan trf
 
+focusAfterLoc :: SrcLoc -> Trf a -> Trf a
+focusAfterLoc loc = local (\s -> s { contRange = mkSrcSpan loc (srcSpanEnd (contRange s)) })
+
+focusBeforeLoc :: SrcLoc -> Trf a -> Trf a
+focusBeforeLoc loc = local (\s -> s { contRange = mkSrcSpan (srcSpanStart (contRange s)) loc })
+
 -- | Focuses the transformation to go between tokens. The tokens must be found inside the current range.
 between :: AnnKeywordId -> AnnKeywordId -> Trf a -> Trf a
 between firstTok lastTok = focusAfter firstTok . focusBefore lastTok
@@ -364,13 +370,15 @@ tokensAfter keyw
 
 -- | Searches for tokens in the given order inside the parent element and returns their combined location
 tokensLoc :: [AnnKeywordId] -> Trf SrcSpan
-tokensLoc keys = asks contRange >>= tokensLoc' keys
-  where tokensLoc' :: [AnnKeywordId] -> SrcSpan -> Trf SrcSpan
-        tokensLoc' (keyw:rest) r
-          = do spanFirst <- tokenLoc keyw
-               spanRest <- tokensLoc' rest (mkSrcSpan (srcSpanEnd spanFirst) (srcSpanEnd r))
-               return (combineSrcSpans spanFirst spanRest)
-        tokensLoc' [] _ = pure noSrcSpan
+tokensLoc keys = foldLocs <$> eachTokenLoc keys
+
+-- | Searches for tokens in the given order inside the parent element and returns their location
+eachTokenLoc :: [AnnKeywordId] -> Trf [SrcSpan]
+eachTokenLoc (keyw:rest)
+  = do spanFirst <- tokenLoc keyw
+       spanRest <- focusAfterLoc (srcSpanEnd spanFirst) (eachTokenLoc rest)
+       return (spanFirst : spanRest)
+eachTokenLoc [] = pure []
 
 -- | Searches for a token and retrieves its location anywhere
 uniqueTokenAnywhere :: AnnKeywordId -> Trf SrcSpan

@@ -35,13 +35,16 @@ demoRefactor command workingDir args moduleName =
     initGhcFlags
     _ <- useFlags args
     useDirs [workingDir]
+    liftIO $ putStrLn "hello1"
     ms <- loadModule workingDir moduleName
-    let modSum = ms { ms_hspp_opts = (ms_hspp_opts ms) { hscTarget = HscAsm, ghcLink = LinkInMemory } }
-    p <- parseModule modSum
+    liftIO $ putStrLn "hello2"
+    p <- parseModule ms
+    liftIO $ putStrLn "hello3"
     t <- typecheckModule p
+    liftIO $ putStrLn "hello4"
 
     let annots = pm_annotations $ tm_parsed_module t
-        hasCPP = Cpp `xopt` ms_hspp_opts modSum
+        hasCPP = Cpp `xopt` ms_hspp_opts ms
 
     liftIO $ putStrLn "=========== tokens:"
     liftIO $ putStrLn $ show (fst annots)
@@ -55,10 +58,10 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn $ show (typecheckedSource t)
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
-    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule modSum (pm_parsed_source p)
+    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
     liftIO $ putStrLn $ srcInfoDebug parseTrf
     liftIO $ putStrLn "=========== typed:"
-    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename modSum parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename ms parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
     liftIO $ putStrLn $ srcInfoDebug transformed
     liftIO $ putStrLn "=========== ranges fixed:"
     sourceOrigin <- if hasCPP then liftIO $ hGetStringBuffer (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName <.> "hs")

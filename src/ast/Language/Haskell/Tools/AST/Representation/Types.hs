@@ -62,6 +62,8 @@ data UType dom stage
   | UTyWildcard   -- ^ A wildcard type (@ _ @) with @-XPartialTypeSignatures@
   | UTyNamedWildc { _typeWildcardName :: Ann UName dom stage
                   } -- ^ A named wildcard type (@ _t @) with @-XPartialTypeSignatures@
+  | UUnbSumType   { _typeElements :: AnnListG UType dom stage
+                  } -- ^ An unboxed sum type (@ (# Bool | Int | String #) @)
 
 -- One or more assertions
 data UContext dom stage

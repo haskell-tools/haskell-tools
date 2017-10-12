@@ -9,3 +9,6 @@ data UCmd dom stage
 
 type role UFieldWildcard phantom phantom
 data UFieldWildcard dom stage
+
+type role UUnboxedSumPlaceHolder phantom phantom
+data UUnboxedSumPlaceHolder dom stage

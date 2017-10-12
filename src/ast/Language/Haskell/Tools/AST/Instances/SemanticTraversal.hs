@@ -109,6 +109,7 @@ deriveSemanticTraversal ''UCaseRhs'
 deriveSemanticTraversal ''UGuardedCaseRhs'
 deriveSemanticTraversal ''UInlinePragma
 deriveSemanticTraversal ''USpecializePragma
+deriveSemanticTraversal ''UUnboxedSumPlaceHolder
 
 -- ULiteral
 deriveSemanticTraversal ''ULiteral
