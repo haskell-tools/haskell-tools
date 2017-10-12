@@ -239,6 +239,7 @@ organizeImportTests =
   , "Refactor.OrganizeImports.KeepPrelude"
   , "Refactor.OrganizeImports.KeepReexported"
   , "Refactor.OrganizeImports.KeepRenamedReexported"
+  , "Refactor.OrganizeImports.KeepExplicit"
   , "Refactor.OrganizeImports.MakeExplicit.ImportOne"
   , "Refactor.OrganizeImports.MakeExplicit.ImportThree"
   , "Refactor.OrganizeImports.MakeExplicit.ImportClassFun"

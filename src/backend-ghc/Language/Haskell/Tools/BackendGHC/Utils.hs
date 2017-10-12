@@ -28,7 +28,7 @@ import InstEnv as GHC (ClsInst(..), instanceDFunId, instEnvElts)
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
-import Outputable (Outputable(..), showSDocUnsafe)
+import Outputable
 import SrcLoc
 
 import Control.Exception (Exception, throw)
@@ -142,6 +142,10 @@ checkImportVisible _ _ = return True
 ieSpecMatches :: (HsHasName name, GhcMonad m) => IE name -> GHC.Name -> m Bool
 ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -> ls) name
   | name `elem` ls = return True
+-- ieNames does not consider field names
+ieSpecMatches (IEThingWith thing _ with flds) name
+  | name `elem` concatMap hsGetNames' (map (ieWrappedName . unLoc) (thing : with) ++ map (flSelector . unLoc) flds)
+  = return True
 ieSpecMatches ie@(IEThingAll _) name | [n] <- hsGetNames' (HsSyn.ieName ie), isTyConName n
   = do entity <- lookupName n
        return $ case entity of Just (ATyCon tc)

@@ -26,11 +26,13 @@ main = testStackage =<< execParser opts
                       <> header "ht-test-stackage: a tester utility for Haskell-tools")
 
 options :: Parser StackageTestConfig
-options = StackageTestConfig <$> noload <*> noretest <*> result <*> srcdir <*> logdir <*> inputfile <*> snapshot
+options = StackageTestConfig <$> noload <*> noretest <*> noclean <*> result <*> srcdir <*> logdir <*> inputfile <*> snapshot
   where noload = switch (long "no-load"
                            <> help "Don't download the package, use the existing sources.")
         noretest = switch (long "no-retest"
                              <> help "Don't run the test on packages already in the results file.")
+        noclean = switch (long "no-clean"
+                             <> help "Keep the refactored files.")
         srcdir
           = strOption (long "src-dir"
                          <> short 't'
@@ -61,6 +63,7 @@ options = StackageTestConfig <$> noload <*> noretest <*> result <*> srcdir <*> l
 
 data StackageTestConfig = StackageTestConfig { noLoad :: Bool
                                              , noRetest :: Bool
+                                             , noClean :: Bool
                                              , resultFile :: FilePath
                                              , sourceDirectory :: FilePath
                                              , logDirectory :: FilePath
@@ -81,19 +84,19 @@ testStackage config = do
     createDirectoryIfMissing False (logDirectory config)
     mapM_ testAndEvaluate filteredPackages
   where testAndEvaluate p = do
-          (res, problem) <- testPackage (noLoad config) (sourceDirectory config)
+          (res, problem) <- testPackage (noLoad config) (noClean config) (sourceDirectory config)
                                         (logDirectory config) (stackageSnapshot config) p
           appendFile (resultFile config) (p ++ ";" ++ show res ++ " ; " ++ problem ++ "\n")
 
 
-testPackage :: Bool -> FilePath -> FilePath -> Maybe String -> String -> IO (Result, String)
-testPackage noLoad sourceDirectory logDirectory resolver pack = do
+testPackage :: Bool -> Bool -> FilePath -> FilePath -> Maybe String -> String -> IO (Result, String)
+testPackage noLoad noClean sourceDirectory logDirectory resolver pack = do
   baseDir <- getCurrentDirectory
   let pkgLoc = baseDir </> sourceDirectory </> pack
       buildLogPath = baseDir </> logDirectory </> (pack ++ "-build-log.txt")
       refLogPath = baseDir </> logDirectory </> (pack ++ "-refact-log.txt")
       reloadLogPath = baseDir </> logDirectory </> (pack ++ "-reload-log.txt")
-  res <- runCommands (cleanup pkgLoc)
+  res <- runCommands (if noClean then return () else cleanup pkgLoc)
            $ init
                ++ load
                ++ [ Left ("stack init" ++ (maybe "" (" --resolver="++) resolver) ++ " > " ++ buildLogPath ++ " 2>&1", pkgLoc, BuildFailure)
