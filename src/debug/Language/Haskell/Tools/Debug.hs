@@ -35,13 +35,9 @@ demoRefactor command workingDir args moduleName =
     initGhcFlags
     _ <- useFlags args
     useDirs [workingDir]
-    liftIO $ putStrLn "hello1"
     ms <- loadModule workingDir moduleName
-    liftIO $ putStrLn "hello2"
     p <- parseModule ms
-    liftIO $ putStrLn "hello3"
     t <- typecheckModule p
-    liftIO $ putStrLn "hello4"
 
     let annots = pm_annotations $ tm_parsed_module t
         hasCPP = Cpp `xopt` ms_hspp_opts ms
