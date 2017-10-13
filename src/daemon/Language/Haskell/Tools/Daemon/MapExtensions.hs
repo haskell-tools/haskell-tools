@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-} -- all extensions should be matched
+
 -- | Mapping between Cabal's and GHC's representation of language extensions.
 module Language.Haskell.Tools.Daemon.MapExtensions where
 
@@ -150,6 +152,7 @@ translateExtension TransformListComp = Just GHC.TransformListComp
 translateExtension TupleSections = Just GHC.TupleSections
 translateExtension TypeApplications = Just GHC.TypeApplications
 translateExtension TypeFamilies = Just GHC.TypeFamilies
+translateExtension TypeFamilyDependencies = Just GHC.TypeFamilyDependencies
 translateExtension TypeInType = Just GHC.TypeInType
 translateExtension TypeOperators = Just GHC.TypeOperators
 translateExtension TypeSynonymInstances = Just GHC.TypeSynonymInstances

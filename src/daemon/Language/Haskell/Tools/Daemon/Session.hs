@@ -189,7 +189,7 @@ reloadModule report ms = do
       newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       -- replace the module in the program database
-      modify' $ refSessMCs & traversal & filtered (== mc) & mcModules
+      modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
                   .- Map.insert (keyFromMS ms') ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms')
                        . Map.delete (SourceFileKey "" modName)
       liftIO $ report ms'

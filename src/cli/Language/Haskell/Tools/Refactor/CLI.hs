@@ -120,8 +120,11 @@ processMessage pedantic output (CompilationProblem marks hints)
 processMessage _ output (LoadedModules mods)
   = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods
        return Nothing
-processMessage _ _ (DiffInfo diff)
-  = do putStrLn diff
+processMessage _ output (DiffInfo diff)
+  = do hPutStrLn output diff
+       return Nothing
+processMessage _ output (LoadingModules mods)
+  = do hPutStrLn output $ "Found modules: " ++ intercalate ", " mods
        return Nothing
 processMessage _ output (UnusedFlags flags)
   = if not $ null flags
