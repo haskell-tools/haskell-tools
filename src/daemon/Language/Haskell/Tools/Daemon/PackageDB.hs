@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric
            , ScopedTypeVariables
+           , MultiWayIf
            #-}
 -- | Setting the package database to use when compiling modules. The daemon must have one single
 -- package database that cannot be changed after a package is loaded using that package database.
@@ -9,12 +10,12 @@ module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, det
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Exception (SomeException, try)
-import Control.Monad (Monad(..), when)
+import Control.Monad
 import Data.Aeson (FromJSON(..))
 import Data.Char (isSpace)
 import Data.List
 import GHC.Generics (Generic(..))
-import System.Directory (withCurrentDirectory, doesFileExist, doesDirectoryExist)
+import System.Directory
 import System.FilePath (FilePath, (</>))
 import System.Process (readProcessWithExitCode)
 
@@ -66,7 +67,15 @@ detectAutogen root StackDB = (fmap $ either (\(_ :: SomeException) -> Nothing) i
     when (not $ null distDirErrs)  -- print errors if they occurred
       $ putStrLn $ "Errors while checking dist directory with stack: " ++ distDirErrs
     return $ trim distDir
-  ifExists $ root </> dir </> "build" </> "autogen"
+  genExists <- doesDirectoryExist (root </> dir </> "build" </> "autogen")
+  buildExists <- doesDirectoryExist (root </> dir </> "build")
+  if | genExists -> return $ Just (root </> dir </> "build" </> "autogen")
+     | buildExists -> do -- for some packages, the autogen folder is inside a folder named after the package
+                         cont <- filterM doesDirectoryExist . map ((root </> dir </> "build") </>)
+                                   =<< listDirectory (root </> dir </> "build")
+                         existing <- mapM ifExists (map (</> "autogen") cont)
+                         return $ choose existing
+     | otherwise -> return Nothing
 
 trim :: String -> String
 trim = f . f
