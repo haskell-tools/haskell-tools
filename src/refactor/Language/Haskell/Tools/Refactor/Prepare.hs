@@ -157,11 +157,13 @@ type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 -- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
-  let hasStaticFlags = StaticPointers `xopt` ms_hspp_opts modSum
+  let needCodeGen = StaticPointers `xopt` ms_hspp_opts modSum
+                     || UnboxedTuples `xopt` ms_hspp_opts modSum
+                     || UnboxedSums `xopt` ms_hspp_opts modSum
       hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
       hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum
       hasOverloadedLabels = OverloadedLabels `xopt` ms_hspp_opts modSum
-      ms = if hasStaticFlags then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
+      ms = if needCodeGen then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
   when hasApplicativeDo $ liftIO $ throwIO $ UnsupportedExtension "ApplicativeDo"
   when hasOverloadedLabels $ liftIO $ throwIO $ UnsupportedExtension "OverloadedLabels"
   modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod modSum) (hsc_mod_graph s) }
