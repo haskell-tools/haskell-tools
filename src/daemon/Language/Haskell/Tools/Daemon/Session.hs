@@ -70,6 +70,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
        liftIO $ loadCallback actuallyCompiled
+       modify (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
        return mods

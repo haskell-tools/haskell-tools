@@ -6,7 +6,7 @@
 module Language.Haskell.Tools.Daemon.Utils where
 
 import Control.Applicative (Alternative(..))
-import Control.Reference ((^.), (.=), (.-))
+import Control.Reference
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -73,3 +73,10 @@ codeGeneratedFor key = map (mcModules .- Map.adjust setCodeGen (sfkFileName .= "
 isAlreadyLoaded :: SourceFileKey -> [ModuleCollection SourceFileKey] -> Bool
 isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True)
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+-- | Insert a module with a source file key to our database if it wasn't there already
+insertIfMissing :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
+insertIfMissing sfk mods
+  = case lookupSFKInSCs sfk mods of
+      Just x -> mods
+      Nothing -> element 0 & mcModules .- Map.insert sfk (ModuleNotLoaded False False) $ mods
