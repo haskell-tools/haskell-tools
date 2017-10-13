@@ -41,10 +41,14 @@ packageDBLoc CabalSandboxDB path = do
                                      else return ""
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
 packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either (\(_ :: SomeException) -> []) id) $ try $ do
-     (_, globalDB, globalDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--global-pkg-db"] ""
-     (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
-     (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
-     return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs] ++ [trim globalDB | null globalDBErrs]
+     (_, projRoot, projRootErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--project-root"] ""
+     -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
+     if null projRootErrs && (projRoot `isPrefixOf` path) then do
+       (_, globalDB, globalDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--global-pkg-db"] ""
+       (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
+       (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
+       return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs] ++ [trim globalDB | null globalDBErrs]
+     else return []
 packageDBLoc (ExplicitDB dir) path = do
   hasDir <- doesDirectoryExist (path </> dir)
   if hasDir then return [path </> dir]
