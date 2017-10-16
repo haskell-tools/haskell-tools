@@ -117,6 +117,7 @@ instance (SourceInfo st, Domain dom) => TreeDebug ULanguageExtension dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UMatchLhs dom st
 instance (SourceInfo st, Domain dom) => TreeDebug UInlinePragma dom st
 instance (SourceInfo st, Domain dom) => TreeDebug USpecializePragma dom st
+instance (SourceInfo st, Domain dom) => TreeDebug UUnboxedSumPlaceHolder dom st
 
 -- ULiteral
 instance (SourceInfo st, Domain dom) => TreeDebug ULiteral dom st

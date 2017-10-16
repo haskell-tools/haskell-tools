@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric
            , ScopedTypeVariables
+           , MultiWayIf
            #-}
 -- | Setting the package database to use when compiling modules. The daemon must have one single
 -- package database that cannot be changed after a package is loaded using that package database.
@@ -9,12 +10,12 @@ module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, det
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Exception (SomeException, try)
-import Control.Monad (Monad(..), when)
+import Control.Monad
 import Data.Aeson (FromJSON(..))
 import Data.Char (isSpace)
 import Data.List
 import GHC.Generics (Generic(..))
-import System.Directory (withCurrentDirectory, doesFileExist, doesDirectoryExist)
+import System.Directory
 import System.FilePath (FilePath, (</>))
 import System.Process (readProcessWithExitCode)
 
@@ -40,10 +41,14 @@ packageDBLoc CabalSandboxDB path = do
                                      else return ""
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
 packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either (\(_ :: SomeException) -> []) id) $ try $ do
-     (_, globalDB, globalDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--global-pkg-db"] ""
-     (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
-     (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
-     return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs] ++ [trim globalDB | null globalDBErrs]
+     (_, projRoot, projRootErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--project-root"] ""
+     -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
+     if null projRootErrs && (projRoot `isPrefixOf` path) then do
+       (_, globalDB, globalDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--global-pkg-db"] ""
+       (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
+       (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
+       return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs] ++ [trim globalDB | null globalDBErrs]
+     else return []
 packageDBLoc (ExplicitDB dir) path = do
   hasDir <- doesDirectoryExist (path </> dir)
   if hasDir then return [path </> dir]
@@ -66,7 +71,15 @@ detectAutogen root StackDB = (fmap $ either (\(_ :: SomeException) -> Nothing) i
     when (not $ null distDirErrs)  -- print errors if they occurred
       $ putStrLn $ "Errors while checking dist directory with stack: " ++ distDirErrs
     return $ trim distDir
-  ifExists $ root </> dir </> "build" </> "autogen"
+  genExists <- doesDirectoryExist (root </> dir </> "build" </> "autogen")
+  buildExists <- doesDirectoryExist (root </> dir </> "build")
+  if | genExists -> return $ Just (root </> dir </> "build" </> "autogen")
+     | buildExists -> do -- for some packages, the autogen folder is inside a folder named after the package
+                         cont <- filterM doesDirectoryExist . map ((root </> dir </> "build") </>)
+                                   =<< listDirectory (root </> dir </> "build")
+                         existing <- mapM ifExists (map (</> "autogen") cont)
+                         return $ choose existing
+     | otherwise -> return Nothing
 
 trim :: String -> String
 trim = f . f

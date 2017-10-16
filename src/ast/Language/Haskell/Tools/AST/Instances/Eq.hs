@@ -114,6 +114,7 @@ deriving instance Eq (ULanguageExtension dom stage)
 deriving instance Eq (UMatchLhs dom stage)
 deriving instance Eq (UInlinePragma dom stage)
 deriving instance Eq (USpecializePragma dom stage)
+deriving instance Eq (UUnboxedSumPlaceHolder dom stage)
 
 -- ULiteral
 deriving instance Eq (ULiteral dom stage)

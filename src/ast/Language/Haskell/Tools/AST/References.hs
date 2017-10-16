@@ -80,6 +80,7 @@ $(toASTReferences (makeReferences ''UAnnotationSubject))
 $(toASTReferences (makeReferences ''UMinimalFormula))
 $(toASTReferences (makeReferences ''USourceRange))
 $(toASTReferences (makeReferences ''Number))
+$(toASTReferences (makeReferences ''UUnboxedSumPlaceHolder))
 
 
 -- * Binds

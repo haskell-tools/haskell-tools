@@ -508,16 +508,16 @@ trfPatternSynonym (PSB id _ lhs def dir)
         rewrites = case lhs of RecordPatSyn flds -> map (\r -> (unLoc (recordPatSynPatVar r), unLoc (recordPatSynSelectorId r))) flds
                                _                 -> []
         changedRhs = biplateRef .- (\n -> case lookup n rewrites of Just x -> x; Nothing -> n) $ def
-     in AST.UPatternSynonym <$> trfPatSynLhs id lhs
+     in AST.UPatternSynonym <$> trfPatSynLhs id lhs sep
                             <*> annLocNoSema rhsLoc (trfPatSynRhs dir changedRhs)
 
-  where trfPatSynLhs :: Located n -> HsPatSynDetails (Located n) -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
-        trfPatSynLhs id (PrefixPatSyn args)
+  where trfPatSynLhs :: Located n -> HsPatSynDetails (Located n) -> AnnKeywordId -> Trf (Ann AST.UPatSynLhs (Dom r) RangeStage)
+        trfPatSynLhs id (PrefixPatSyn args) _
           = annLocNoSema (pure $ foldLocs (getLoc id : map getLoc args)) $ AST.UNormalPatSyn <$> define (trfName id) <*> trfAnnList " " trfName' args
-        trfPatSynLhs op (InfixPatSyn lhs rhs)
+        trfPatSynLhs op (InfixPatSyn lhs rhs) _
           = annLocNoSema (pure $ getLoc lhs `combineSrcSpans` getLoc rhs) $ AST.UInfixPatSyn <$> define (trfName lhs) <*> trfOperator op <*> trfName rhs
-        trfPatSynLhs id (RecordPatSyn flds)
-          = annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) <$> before AnnEqual)
+        trfPatSynLhs id (RecordPatSyn flds) kw
+          = annLocNoSema (mkSrcSpan (srcSpanStart (getLoc id)) <$> before kw)
               $ AST.URecordPatSyn <$> define (trfName id) <*> trfAnnList ", " trfName' (map recordPatSynSelectorId flds)
 
         trfPatSynRhs :: HsPatSynDir n -> Located (Pat n) -> Trf (AST.UPatSynRhs (Dom r) RangeStage)

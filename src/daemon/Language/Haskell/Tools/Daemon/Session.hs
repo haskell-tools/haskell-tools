@@ -70,6 +70,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
        liftIO $ loadCallback actuallyCompiled
+       modify (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
        void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
        mods <- mapM (loadModule report) actuallyCompiled
        return mods
@@ -189,7 +190,7 @@ reloadModule report ms = do
       newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       -- replace the module in the program database
-      modify' $ refSessMCs & traversal & filtered (== mc) & mcModules
+      modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
                   .- Map.insert (keyFromMS ms') ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms')
                        . Map.delete (SourceFileKey "" modName)
       liftIO $ report ms'

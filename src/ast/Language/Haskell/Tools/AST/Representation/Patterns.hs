@@ -1,14 +1,14 @@
 -- | Representation of Haskell patterns
 module Language.Haskell.Tools.AST.Representation.Patterns where
-          
+
 import Language.Haskell.Tools.AST.Ann (Ann, AnnListG)
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UFieldWildcard)  
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs (UExpr, UFieldWildcard, UUnboxedSumPlaceHolder)
 import Language.Haskell.Tools.AST.Representation.Literals (ULiteral)
 import Language.Haskell.Tools.AST.Representation.Names (UName, UOperator)
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.TH (UQuasiQuote, USplice)
 import Language.Haskell.Tools.AST.Representation.Types (UType)
 
-        
+
 -- | Representation of patterns for pattern bindings
 data UPattern dom stage
   = UVarPat         { _patternName :: Ann UName dom stage
@@ -58,7 +58,11 @@ data UPattern dom stage
   | UNPlusKPat     { _patternName :: Ann UName dom stage
                    , _patternLit :: Ann ULiteral dom stage
                    }
-                  
+  | UUnboxedSumPat { _patternSumPlaceholdersBefore :: AnnListG UUnboxedSumPlaceHolder dom stage
+                   , _patternInner :: Ann UPattern dom stage
+                   , _patternSumPlaceholdersAfter :: AnnListG UUnboxedSumPlaceHolder dom stage
+                   } -- ^ Unboxed sum pattern (@ (# | expr #) @).
+
 -- Field specification of a record pattern
 data UPatternField dom stage
   = UNormalFieldPattern   { _fieldPatternName :: Ann UName dom stage

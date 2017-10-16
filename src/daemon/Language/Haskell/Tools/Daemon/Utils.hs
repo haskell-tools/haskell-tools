@@ -6,7 +6,7 @@
 module Language.Haskell.Tools.Daemon.Utils where
 
 import Control.Applicative (Alternative(..))
-import Control.Reference ((^.), (.=), (.-))
+import Control.Reference
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -63,14 +63,20 @@ needsGeneratedCode key mcs = maybe False (\case ModuleCodeGenerated {} -> True; 
 -- | Marks the given module for code generation. Finds the module if no source file name is
 -- present and module names check or if both module names and source file names check.
 codeGeneratedFor :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
-codeGeneratedFor key = map (mcModules .- Map.alter setCodeGen (sfkFileName .= "" $ key) . Map.alter setCodeGen key)
-  where setCodeGen (Just (ModuleTypeChecked mod ms)) = Just $ ModuleCodeGenerated mod ms
-        setCodeGen (Just (ModuleNotLoaded _ exp)) = Just $ ModuleNotLoaded True exp
-        setCodeGen m@(Just _) = m
-        setCodeGen Nothing = Just $ ModuleNotLoaded True False
+codeGeneratedFor key = map (mcModules .- Map.adjust setCodeGen (sfkFileName .= "" $ key) . Map.adjust setCodeGen key)
+  where setCodeGen (ModuleTypeChecked mod ms) = ModuleCodeGenerated mod ms
+        setCodeGen (ModuleNotLoaded _ exp) = ModuleNotLoaded True exp
+        setCodeGen m = m
 
 -- | Check if the given module has been already loaded. Based on both module name and source
 -- file name.
 isAlreadyLoaded :: SourceFileKey -> [ModuleCollection SourceFileKey] -> Bool
 isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True)
                          . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+
+-- | Insert a module with a source file key to our database if it wasn't there already
+insertIfMissing :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
+insertIfMissing sfk mods
+  = case lookupSFKInSCs sfk mods of
+      Just x -> mods
+      Nothing -> element 0 & mcModules .- Map.insert sfk (ModuleNotLoaded False False) $ mods

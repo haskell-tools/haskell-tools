@@ -65,6 +65,15 @@ trfPattern' (SigPatIn pat (hsib_body . hswc_body -> typ)) = AST.UTypeSigPat <$> 
 trfPattern' (NPat (ol_val . unLoc -> lit) _ _ _) = AST.ULitPat <$> annContNoSema (trfOverloadedLit lit)
 trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat <$> define (trfName id) <*> annLocNoSema (pure l) (trfOverloadedLit (ol_val lit))
 trfPattern' (CoPat _ pat _) = trfPattern' pat -- coercion pattern introduced by GHC
+trfPattern' (SumPat pat tag arity _)
+  = do sepsBefore <- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))
+       sepsAfter <- focusAfterLoc (srcSpanEnd (getLoc pat)) (eachTokenLoc (replicate (arity - tag) AnnVbar))
+       let locsBefore = map srcSpanEnd $ init sepsBefore
+           locsAfter = map srcSpanEnd sepsAfter
+       AST.UUnboxedSumPat <$> makeList " | " (after AnnOpen) (mapM makePlaceholder locsBefore)
+                          <*> trfPattern pat
+                          <*> makeList " | " (before AnnClose) (mapM makePlaceholder locsAfter)
+  where makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)
 trfPattern' p = unhandledElement "pattern" p
 
 trfPatternField' :: TransformName n r => HsRecField n (LPat n) -> Trf (AST.UPatternField (Dom r) RangeStage)
