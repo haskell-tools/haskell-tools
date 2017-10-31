@@ -188,19 +188,18 @@ getReachableModules loadCallback selected = do
 -- | Reload a given module. Perform a callback.
 reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
-
   mcs <- gets (^. refSessMCs)
+  ghcfl <- gets (^. ghcFlagsSet)
   let modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
   case lookupModuleCollection ms mcs of
-    Just mc -> reloadModuleIn codeGen modName mc
-    Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName mc
+    Just mc -> reloadModuleIn ghcfl codeGen modName mc
+    Nothing -> case mcs of mc:_ -> reloadModuleIn ghcfl codeGen modName mc
                            []   -> error "reloadModule: module collections empty"
   where
-    reloadModuleIn codeGen modName mc = do
-      let dfs = ms_hspp_opts ms
+    reloadModuleIn ghcfl codeGen modName mc = do
       newm <- withFlagsForModule mc $ lift $ do
-        dfs <- liftIO $ mc ^. mcFlagSetup $ ms_hspp_opts ms
+        dfs <- liftIO $ fmap ghcfl $ mc ^. mcFlagSetup $ ms_hspp_opts ms
         let ms' = ms { ms_hspp_opts = dfs }
         -- some flags are cached in mod summary, so we need to override
         parseTyped (if codeGen then forceCodeGen ms' else ms')

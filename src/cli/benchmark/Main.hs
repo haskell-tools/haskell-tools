@@ -138,7 +138,7 @@ makeCliTest wd rfs = do
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
     void $ normalRefactorSession builtinRefactorings inHandle outHandle
-             (CLIOptions False False Nothing Nothing (SharedDaemonOptions False Nothing False False) [wd])
+             (CLIOptions False False Nothing (SharedDaemonOptions False Nothing False False Nothing) [wd])
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

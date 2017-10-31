@@ -60,6 +60,11 @@ handleGHCException msg | "failed" `isInfixOf` msg && "C pre-processor" `isInfixO
 handleGHCException msg | "failed" `isInfixOf` msg && "Literate pre-processor" `isInfixOf` msg
   = Just ("Haskell-tools does not handle Literate Haskell yet."
              ++ " If you get this error after refactoring, you should undo the refactoring. The error message: " ++ msg, True)
+handleGHCException msg | "cannot satisfy" `isInfixOf` msg
+  = Just ("While trying to collect the modules of the project we found the a package is not in the"
+             ++ " used package database. Check that you actually compiled this package with all of its components (tests, benchmarks). "
+             ++ "If so, make sure that it is installed with the same tools that the project is "
+             ++ "configured for (cabal/stack/cabal sandbox). The error message: " ++ msg, True)
 handleGHCException msg = Nothing
 
 -- | Hint text and continuation suggestion for different kinds of source problems based on pattern matching on error text.

@@ -65,7 +65,6 @@ updateClient' :: UpdateCtx -> ClientMessage -> DaemonSession Bool
 -- resets the internal state of Haskell-tools (but keeps options)
 updateClient' UpdateCtx{..} Reset
   = do roots <- gets (^? refSessMCs & traversal & mcRoot)
-       ghcflags <- gets (^. ghcFlagsSet)
        modify' $ resetSession
        Session sess <- liftIO $ initGhcSession (generateCode (sharedOptions options))
        env <- liftIO $ readIORef sess
@@ -100,7 +99,7 @@ updateClient' _ (SetWorkingDir fp)
 
 updateClient' UpdateCtx{..} (SetGHCFlags flags)
   = do (unused, change) <- lift (useFlags flags)
-       liftIO $ response $ UnusedFlags unused
+       when (not $ null unused) $ liftIO $ response $ UnusedFlags unused
        modify' $ ghcFlagsSet .= change
        return True
 

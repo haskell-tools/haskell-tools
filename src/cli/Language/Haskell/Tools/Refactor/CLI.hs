@@ -44,7 +44,6 @@ normalRefactorSession refactorings input output options@CLIOptions{..}
 data CLIOptions = CLIOptions { displayVersion :: Bool
                              , cliVerbose :: Bool
                              , executeCommands :: Maybe String
-                             , ghcFlags :: Maybe [String]
                              , sharedOptions :: SharedDaemonOptions
                              , packageRoots :: [FilePath]
                              }
@@ -61,8 +60,6 @@ refactorSession refactorings init input output CLIOptions{..} = do
   (recv,send) <- takeMVar connStore -- wait for the server to establish connection
   wd <- getCurrentDirectory
   writeChan send (SetWorkingDir wd)
-  case ghcFlags of Just flags -> writeChan send (SetGHCFlags flags)
-                   Nothing -> return ()
   writeChan send (AddPackages packageRoots)
   case executeCommands of
     Just cmds -> performCmdOptions refactorings output send (splitOn ";" cmds)
@@ -128,11 +125,10 @@ processMessage _ output (LoadingModules mods)
   = do hPutStrLn output $ "Found modules: " ++ intercalate ", " mods
        return Nothing
 processMessage _ output (UnusedFlags flags)
-  = if not $ null flags
-      then do hPutStrLn output $ "Error: The following ghc-flags are not recognized: "
-                                    ++ intercalate " " flags
-              return $ Just False
-      else return Nothing
+  = do hPutStrLn output $ "Warning: The following ghc-flags are not recognized: "
+                             ++ intercalate " " flags
+       return Nothing
+
 processMessage _ _ Disconnected = return (Just True)
 processMessage _ _ _ = return Nothing
 

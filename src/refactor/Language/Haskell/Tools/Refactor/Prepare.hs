@@ -32,6 +32,7 @@ import GhcMonad
 import HscTypes (HscEnv(..), ModSummary(..))
 import Packages (initPackages)
 import SrcLoc
+import Outputable
 import StringBuffer (hGetStringBuffer)
 
 import Language.Haskell.Tools.AST as AST
@@ -63,14 +64,19 @@ correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpan
                                                        _ -> error "correctRefactorSpan: no real span"
         updateSrcFile fn loc = mkRealSrcLoc fn (srcLocLine loc) (srcLocCol loc)
 
--- | Set the given flags for the GHC session
+-- | Set the given flags for the GHC session.
+-- Also gives back a change function that you can use to apply the settings to any flags.
+-- Prints out errors and warnings
 useFlags :: [String] -> Ghc ([String], DynFlags -> DynFlags)
 useFlags args = do
   let lArgs = map (L noSrcSpan) args
   dynflags <- getSessionDynFlags
   let change = runCmdLine $ processArgs flagsAll lArgs
-  -- TODO: print errors and warnings?
-  let ((leftovers, _, _), newDynFlags) = change dynflags
+  let ((leftovers, errs, warnings), newDynFlags) = change dynflags
+  when (not (null warnings))
+    $ liftIO $ putStrLn $ showSDocUnsafe $ ppr warnings
+  when (not (null errs))
+    $ liftIO $ putStrLn $ showSDocUnsafe $ ppr errs
   void $ setSessionDynFlags newDynFlags
   when (any ("-package-db" `isSuffixOf`) args) reloadPkgDb
   return $ (map unLoc leftovers, snd . change)

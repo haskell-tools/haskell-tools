@@ -35,7 +35,7 @@ import SrcLoc
 import Language.Haskell.Tools.Daemon.ErrorHandling
 import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.Mode
-import Language.Haskell.Tools.Daemon.Options
+import Language.Haskell.Tools.Daemon.Options as Options
 import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.State
@@ -66,12 +66,19 @@ runDaemon refactorings mode connStore config@DaemonOptions{..} = withSocketsDo $
        when (not silentMode) $ putStrLn $ "Connection established"
        ghcSess <- initGhcSession (generateCode sharedOptions)
        state <- newMVar initSession
+       -- set the ghc flags given by command line
+       case Options.ghcFlags sharedOptions of
+         Just flags -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetGHCFlags flags)
+         Nothing -> return ()
+       -- set up the file watch
        (wp,th) <- if noWatch sharedOptions
                     then return (Nothing, [])
                     else createWatchProcess'
                            (watchExe sharedOptions) ghcSess state (daemonSend mode conn)
        modifyMVarMasked_ state ( \s -> return s { _watchProc = wp, _watchThreads = th })
+       -- start the server loop
        serverLoop refactorings mode conn config ghcSess state
+       -- free allocated resources
        case wp of Just watchProcess -> stopWatch watchProcess th
                   Nothing -> return ()
        daemonDisconnect mode conn

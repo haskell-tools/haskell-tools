@@ -22,12 +22,12 @@ allTests
   = testGroup "cli-tests" [
       makeCliTest ( "batch", ["examples"</>"example-project"]
                   , \s -> CLIOptions False False (Just $ "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b")
-                             Nothing (SharedDaemonOptions True Nothing False False)
+                             (SharedDaemonOptions True Nothing False False Nothing)
                   , \_ -> ""
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))
     , makeCliTest ( "session", ["examples"</>"example-project"]
-                  , \_ -> CLIOptions False False Nothing Nothing (SharedDaemonOptions True Nothing False False)
+                  , \_ -> CLIOptions False False Nothing (SharedDaemonOptions True Nothing False False Nothing)
                   , \s -> "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b\nExit\n"
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))

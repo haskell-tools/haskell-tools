@@ -25,7 +25,7 @@ import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 
 import Language.Haskell.Tools.Daemon (runDaemon')
-import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
+import Language.Haskell.Tools.Daemon.Options as Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
@@ -562,6 +562,7 @@ daemonOpts n we = DaemonOptions { daemonVersion = False
                                                                       , watchExe = we
                                                                       , generateCode = False
                                                                       , disableHistory = False
+                                                                      , Options.ghcFlags = Nothing
                                                                       }
                                 }
 

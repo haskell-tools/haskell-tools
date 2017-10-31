@@ -1,8 +1,11 @@
 module Language.Haskell.Tools.Daemon.Options
          (DaemonOptions(..), parseDaemonCLI, SharedDaemonOptions(..), sharedOptionsParser) where
 
+import Control.Monad.Reader (MonadReader(..))
+import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
 import Options.Applicative
+import Options.Applicative.Types (Parser, ReadM(..))
 
 -- | Command line options for the daemon process.
 data DaemonOptions = DaemonOptions { daemonVersion :: Bool
@@ -16,6 +19,7 @@ data SharedDaemonOptions = SharedDaemonOptions { noWatch :: Bool
                                                , watchExe :: Maybe FilePath
                                                , generateCode :: Bool
                                                , disableHistory :: Bool
+                                               , ghcFlags :: Maybe [String]
                                                }
 
 parseDaemonCLI = execParser daemonCLI
@@ -42,7 +46,7 @@ daemonOptionsParser = DaemonOptions <$> version <*> port <*> silent <*> sharedOp
                           <> help "Set to disable messages from daemon.")
 
 sharedOptionsParser :: Parser SharedDaemonOptions
-sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode <*> noHistory
+sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode <*> noHistory <*> ghcFlags
   where noWatch = switch (long "no-watch"
                             <> help "Disables file system watching.")
         watch = optional . strOption
@@ -54,3 +58,17 @@ sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode
                                  <> help "Always generate code for the modules of the loaded project.")
         noHistory = switch (long "no-history"
                               <> help "Disables saving the performed refactorings.")
+        ghcFlags
+          = optional $ option ghcFlagsParser
+                         (long "ghc-options"
+                           <> short 'g'
+                           <> metavar "GHC_OPTIONS"
+                           <> help "Flags passed to GHC when loading the packages, separated by spaces.")
+          where ghcFlagsParser :: ReadM [String]
+                ghcFlagsParser
+                  = ReadM $ do str <- ask
+                               let str' = case str of '=':'"':rest -> init rest
+                                                      '=':rest     -> rest
+                                                      '"':rest     -> init rest
+                                                      other        -> other
+                               return ( splitOn " " str')
