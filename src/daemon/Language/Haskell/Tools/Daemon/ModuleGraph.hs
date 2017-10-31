@@ -1,11 +1,15 @@
 -- | Creating a dependency graph of the modules loaded into a session.
 -- Code copied from GHC because it is not public in GhcMake module
-module Language.Haskell.Tools.Daemon.ModuleGraph (moduleGraphNodes, getModFromNode) where
+module Language.Haskell.Tools.Daemon.ModuleGraph
+  (moduleGraphNodes, getModFromNode, dependentModules, supportingModules) where
 
+import Control.Monad
+import Control.Monad.IO.Class
+import Language.Haskell.Tools.Refactor hiding (ModuleName)
 import qualified Data.Map as Map (fromList, Map, lookup)
-import Data.Maybe (Maybe(..), mapMaybe)
+import Data.Maybe (Maybe(..), mapMaybe, catMaybes)
 
-import Digraph as GHC (Graph, graphFromEdgedVerticesOrd)
+import Digraph as GHC
 import FastString as GHC (FastString, fsLit)
 import GHC
 import HscTypes as GHC
@@ -69,3 +73,21 @@ home_imps imps = [ lmodname |  (mb_pkg, lmodname) <- imps,
   where isLocal Nothing = True
         isLocal (Just pkg) | pkg == fsLit "this" = True -- "this" is special
         isLocal _ = False
+
+supportingModules :: (ModSummary -> Ghc Bool) -> Ghc [ModSummary]
+supportingModules = reachedModules False
+
+dependentModules :: (ModSummary -> Ghc Bool) -> Ghc [ModSummary]
+dependentModules = reachedModules True
+
+reachedModules :: Bool -> (ModSummary -> Ghc Bool) -> Ghc [ModSummary]
+reachedModules dependent pred = do
+  let op = if dependent then transposeG else id
+  allMods <- getModuleGraph
+  selected <- filterM pred allMods
+  let (allModsGraph, lookup) = moduleGraphNodes False allMods
+      selectedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms)) selected
+      recompMods = map (moduleName . ms_mod . getModFromNode) $ reachablesG (op allModsGraph) selectedMods -- TODO: compare on file name
+      sortedMods = map getModFromNode $ reverse $ topologicalSortG allModsGraph
+      sortedSelectedMods = filter ((`elem` recompMods) . moduleName . ms_mod) sortedMods -- TODO: compare on file name
+  return sortedSelectedMods

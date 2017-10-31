@@ -199,12 +199,7 @@ getReachableModules loadCallback selected = do
                                                (mcs ^? traversal & mcDependencies & traversal)
                                                (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
     allMods <- lift $ depanal [] True
-    let (allModsGraph, lookup) = moduleGraphNodes False allMods
-        changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
-                        $ filter selected allMods
-        recompMods = map (ms_mod . getModFromNode) $ reachablesG (transposeG allModsGraph) changedMods
-        sortedMods = reverse $ topologicalSortG allModsGraph
-        sortedRecompMods = filter ((`elem` recompMods) . ms_mod) $ map getModFromNode sortedMods
+    sortedRecompMods <- lift $ dependentModules (return . selected)
     liftIO $ loadCallback sortedRecompMods
     return sortedRecompMods
 
@@ -240,14 +235,14 @@ reloadModule report ms = do
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.
 checkEvaluatedMods :: [ModSummary] -> DaemonSession ()
-checkEvaluatedMods mods = do
+checkEvaluatedMods changed = do
     mcs <- gets (^. refSessMCs)
     -- IMPORTANT: make sure that the module collection is not passed into the flags, they
     -- might not be evaluated and then the reference could prevent garbage collection
     -- of entire ASTs
-    let lookupFlags ms = maybe return (^. mcFlagSetup) mc
+    let lookupFlags ms = maybe return (^. mcFlagSetup) mc $ ms_hspp_opts ms
           where mc = lookupModuleCollection ms mcs
-    modsNeedCode <- lift (getEvaluatedMods mods lookupFlags)
+    modsNeedCode <- lift (getEvaluatedMods changed lookupFlags)
     -- specify the need of code generation for later loading
     forM_ modsNeedCode (\ms -> modify $ refSessMCs .- codeGeneratedFor (keyFromMS ms))
     let reloaded = filter (\ms -> isAlreadyLoaded (keyFromMS ms) mcs) modsNeedCode
@@ -267,18 +262,11 @@ codeGenForModule mcs ms
 -- | Check which modules can be reached from the module, if it uses template haskell.
 -- A definition that needs code generation can be inside a module that does not uses the
 -- TemplateHaskell extension.
-getEvaluatedMods :: [ModSummary] -> (ModSummary -> DynFlags -> IO DynFlags) -> Ghc [GHC.ModSummary]
+getEvaluatedMods :: [ModSummary] -> (ModSummary -> IO DynFlags) -> Ghc [ModSummary]
 -- We cannot really get the modules that need to be linked, because we cannot rename splice content if the
 -- module is not type checked and that is impossible if the splice cannot be evaluated.
-getEvaluatedMods mods additionalFlags
-  = do allMods <- getModuleGraph
-       flags <- getSessionDynFlags
-       let (allModsGraph, lookup) = moduleGraphNodes False allMods
+getEvaluatedMods changed additionalFlags
+  = do let changedModulePathes = map getModSumOrig changed
        -- some flags are stored only in the module collection and are not recorded in the summary
-       thmods <- liftIO $ filterM (\ms -> ((|| isTH ms) . xopt TemplateHaskell) <$> additionalFlags ms flags) mods
-       let modsWithTH = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms)) thmods
-           recompMods = map (moduleName . ms_mod . getModFromNode) $ reachablesG allModsGraph modsWithTH
-           sortedMods = map getModFromNode $ reverse $ topologicalSortG allModsGraph
-           sortedTHMods = filter ((`elem` recompMods) . moduleName . ms_mod) sortedMods
-       return sortedTHMods
-  where isTH mod = fromEnum TemplateHaskell `member` extensionFlags (ms_hspp_opts mod)
+       supportingModules (\ms -> (\flags -> getModSumOrig ms `elem` changedModulePathes && TemplateHaskell `xopt` flags)
+                                    <$> liftIO (additionalFlags ms))
