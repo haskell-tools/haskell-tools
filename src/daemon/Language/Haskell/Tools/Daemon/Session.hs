@@ -84,7 +84,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
        return actuallyCompiled
 
      liftIO $ loadCallback mods
-     void $ checkEvaluatedMods (\_ -> return ()) mods
+     checkEvaluatedMods mods
      mapM (reloadModule report) mods
 
   where getExposedModules :: ModuleCollection k -> [k]
@@ -157,14 +157,15 @@ reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModS
                            -> DaemonSession [a]
 reloadChangedModules report loadCallback isChanged = do
   reachable <- getReachableModules loadCallback isChanged
-  void $ checkEvaluatedMods report reachable
+  checkEvaluatedMods reachable
   -- remove module from session before reloading it, resolves space leak
   clearModules reachable
   mapM (reloadModule report) reachable
 
 -- | Clears the given modules from the GHC state to enable re-loading them
--- TODO: also clear them from Haskell-tools state here
+-- From the Haskell-tools state we only clear them individually, when their module collection is determined.
 clearModules :: [ModSummary] -> DaemonSession ()
+clearModules [] = return ()
 clearModules mods = do
   let reachableMods = map ms_mod_name mods
       notReloaded = (`notElem` reachableMods) . GHC.moduleName . mi_module . hm_iface
@@ -212,10 +213,9 @@ reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
-  let fp = getModSumOrig ms
-      modName = getModSumName ms
+  let modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
-  case lookupSourceFileColl fp mcs <|> lookupModuleColl modName mcs of
+  case lookupModuleCollection ms mcs of
     Just mc -> reloadModuleIn codeGen modName ghcfl mc
     Nothing -> case mcs of mc:_ -> reloadModuleIn codeGen modName ghcfl mc
                            []   -> error "reloadModule: module collections empty"
@@ -234,43 +234,35 @@ reloadModule report ms = do
       -- replace the module in the program database
       modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
                   .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
-                       . Map.delete (SourceFileKey "" modName)
+                       . removeModuleMS ms
       liftIO $ report ms
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.
-checkEvaluatedMods :: (ModSummary -> IO a) -> [ModSummary] -> DaemonSession [a]
-checkEvaluatedMods report mods = do
+checkEvaluatedMods :: [ModSummary] -> DaemonSession ()
+checkEvaluatedMods mods = do
     mcs <- gets (^. refSessMCs)
     -- IMPORTANT: make sure that the module collection is not passed into the flags, they
     -- might not be evaluated and then the reference could prevent garbage collection
     -- of entire ASTs
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc
-          where modName = getModSumName ms
-                mc = lookupModuleColl modName mcs
+          where mc = lookupModuleCollection ms mcs
     modsNeedCode <- lift (getEvaluatedMods mods lookupFlags)
-    catMaybes <$> forM modsNeedCode (reloadIfNeeded mcs)
-  where reloadIfNeeded mcs ms
-          = let key = keyFromMS ms
-              in if not (hasGeneratedCode key mcs)
-                   then do -- mark the module for code generation
-                           modify $ refSessMCs .- codeGeneratedFor key
-                           if (isAlreadyLoaded key mcs) then
-                               -- The module is already loaded but code is not generated. Need to reload.
-                               Just <$> lift (codeGenForModule report (codeGeneratedFor key mcs) ms)
-                             else return Nothing
-                   else return Nothing
+    -- specify the need of code generation for later loading
+    forM_ modsNeedCode (\ms -> modify $ refSessMCs .- codeGeneratedFor (keyFromMS ms))
+    let reloaded = filter (\ms -> isAlreadyLoaded (keyFromMS ms) mcs) modsNeedCode
+    clearModules reloaded
+    -- reload modules that have already been loaded
+    lift $ forM_ reloaded (\ms -> codeGenForModule mcs ms)
 
 -- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
 -- but code generation were not enabled by then.
-codeGenForModule :: (ModSummary -> IO a) -> [ModuleCollection SourceFileKey] -> ModSummary -> Ghc a
-codeGenForModule report mcs ms
-  = let modName = getModSumName ms
-        mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ modName) $ lookupModuleColl modName mcs
-     in -- TODO: don't recompile, only load?
-        do withAlteredDynFlags (liftIO . (mc ^. mcFlagSetup))
-             $ void $ parseTyped (forceCodeGen ms)
-           liftIO $ report ms
+codeGenForModule :: [ModuleCollection SourceFileKey] -> ModSummary -> Ghc ()
+codeGenForModule mcs ms
+-- we don't need to update anything, just re-compile (we don't store the typed AST) and generate the code
+  = do withAlteredDynFlags (liftIO . (mc ^. mcFlagSetup)) $ void $ parseTyped (forceCodeGen ms)
+  where mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ getModSumName ms)
+               $ lookupModuleCollection ms mcs
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
 -- A definition that needs code generation can be inside a module that does not uses the
