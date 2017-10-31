@@ -26,6 +26,7 @@ import System.Environment (getArgs)
 import System.FilePath (FilePath, (</>))
 import System.IO
 
+import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..))
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSession)
 
@@ -137,7 +138,7 @@ makeCliTest wd rfs = do
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
     void $ normalRefactorSession builtinRefactorings inHandle outHandle
-             (CLIOptions False False Nothing True Nothing Nothing [wd])
+             (CLIOptions False False Nothing Nothing (SharedDaemonOptions False Nothing False False) [wd])
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
 

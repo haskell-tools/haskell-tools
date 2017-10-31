@@ -15,7 +15,6 @@ import StringBuffer (hGetStringBuffer)
 
 import Control.Monad (Monad(..), mapM, (=<<))
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.State
 import Control.Reference ((^.))
 import Data.Either.Combinators (mapRight, isLeft)
 import Data.List
@@ -443,14 +442,14 @@ wrongMultiModuleTests =
 
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ())
                          -> (String, String, String, [String]) -> TestTree
-makeMultiModuleTest checker test@(refact, mod, root, removed)
+makeMultiModuleTest checker test@(refact, mod, root, _)
   = testCase (root ++ ":" ++ mod)
       $ do res <- performRefactors refact (rootDir </> root) [] mod
            checker test res
 
 checkMultiResults :: (String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ()
 checkMultiResults _ (Left err) = assertFailure $ "The transformation failed : " ++ err
-checkMultiResults test@(_,_,root,removed) (Right ((name, Just mod):rest)) =
+checkMultiResults test@(_,_,root,_) (Right ((name, Just mod):rest)) =
   do expected <- loadExpected False ((rootDir </> root) ++ "_res") name
      assertEqual "The transformed result is not what is expected" (standardizeLineEndings expected)
                                                                   (standardizeLineEndings mod)
@@ -628,6 +627,6 @@ performRefactor command workingDir flags target =
     ((\case Right r -> Right (newContent r); Left l -> Left l) <$> (refact =<< parseTyped =<< loadModule workingDir target))
   where refact m = performCommand builtinRefactorings (splitOn " " command)
                                   (Right (SourceFileKey (workingDir </> moduleSourceFile target) target,m)) []
-        newContent (ContentChanged (_, newContent) : ress) = prettyPrint newContent
-        newContent ((ModuleCreated _ newContent _) : ress) = prettyPrint newContent
+        newContent (ContentChanged (_, newContent) : _) = prettyPrint newContent
+        newContent ((ModuleCreated _ newContent _) : _) = prettyPrint newContent
         newContent (_ : ress) = newContent ress

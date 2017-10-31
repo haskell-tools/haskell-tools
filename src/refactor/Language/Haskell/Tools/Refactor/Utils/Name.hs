@@ -55,14 +55,14 @@ nameValid SynonymOperator _ = Just "An operator must only contain operator chara
 nameValid ValueOperator (c : nameRest) | isOperatorChar c && c /= ':' && all isOperatorChar nameRest = Nothing
 nameValid ValueOperator _ = Just "An operator that is a value must only contain operator characters and cannot start with ':'"
 -- Data and type constructors (start with uppercase)
-nameValid Ctor (c : nameRest) | isUpper c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest = Nothing
+nameValid Ctor (c : nameRest) | isUpper c && isLetter c && all isIdChar nameRest = Nothing
 nameValid Ctor _ = Just "A constructor or module name must start with an uppercase letter, and only contain letters, digits, apostrhophe or underscore"
 -- Variables and type variables (start with lowercase)
-nameValid Variable (c : nameRest) | isLower c && isIdStartChar c && all (\c -> isIdStartChar c || isDigit c) nameRest = Nothing
+nameValid Variable (c : nameRest) | ((isLower c  && isLetter c) || c == '\'' || c == '_') && all isIdChar nameRest = Nothing
 nameValid Variable _ = Just "The name of a value must start with lowercase, and only contain letters, digits, apostrhophe or underscore"
 
-isIdStartChar :: Char -> Bool
-isIdStartChar c = isLetter c || c == '\'' || c == '_'
+isIdChar :: Char -> Bool
+isIdChar c = isLetter c || isDigit c || c == '\'' || c == '_'
 
 isOperatorChar :: Char -> Bool
 isOperatorChar c = isPunctuation c || isSymbol c

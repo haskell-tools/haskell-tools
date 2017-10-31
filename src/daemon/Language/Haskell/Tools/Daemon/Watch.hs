@@ -6,19 +6,21 @@
 module Language.Haskell.Tools.Daemon.Watch where
 
 import Control.Concurrent
+import Control.Exception (catches)
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Aeson as A ()
 import Data.Maybe (Maybe(..), catMaybes)
 import Data.Tuple (swap)
+import GhcMonad (Session(..), reflectGhc)
 import System.Environment (getExecutablePath)
 import System.FSWatch.Repr (WatchProcess(..), PE(..))
 import System.FSWatch.Slave (waitNotifies, createWatchProcess)
-import System.FilePath (FilePath, takeDirectory, (</>))
+import System.FilePath
 import System.IO (IO, FilePath)
-import GhcMonad (Session(..), reflectGhc)
 
-import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg, ClientMessage(..))
+import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
+import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..))
 import Language.Haskell.Tools.Daemon.State (DaemonSessionState)
 import Language.Haskell.Tools.Daemon.Update (reloadModules)
 
@@ -39,18 +41,25 @@ createWatchProcess' watchExePath ghcSess daemonSess upClient = do
             addedFiles = catMaybes $ map getAddedFile changes
             removedFiles = catMaybes $ map getRemovedFile changes
             reloadAction = reloadModules upClient addedFiles changedFiles removedFiles
+            handlers = userExceptionHandlers
+                           (upClient . ErrorMessage)
+                           (\err hint -> upClient (CompilationProblem err hint))
+                         ++ exceptionHandlers (return ()) (upClient . ErrorMessage)
         when (length changedFiles + length addedFiles + length removedFiles > 0)
-          $ void $ modifyMVar daemonSess (\st -> swap <$> reflectGhc (runStateT reloadAction st) ghcSess)
+          (void (modifyMVar daemonSess (\st -> swap <$> reflectGhc (runStateT reloadAction st) ghcSess))
+             `catches` handlers)
       return $ (Just process, [reloaderThread])
 
-    getModifiedFile (Mod file) = Just file
+    getModifiedFile (Mod file) | takeExtension file `elem` sourceExtensions = Just file
     getModifiedFile _ = Nothing
 
-    getAddedFile (Add file) = Just file
+    getAddedFile (Add file) | takeExtension file `elem` sourceExtensions = Just file
     getAddedFile _ = Nothing
 
-    getRemovedFile (Rem file) = Just file
+    getRemovedFile (Rem file) | takeExtension file `elem` sourceExtensions = Just file
     getRemovedFile _ = Nothing
+
+    sourceExtensions = [ ".hs", ".hs-boot" ]
 
     guessExePath = do exePath <- getExecutablePath
                       return $ takeDirectory exePath </> "hfswatch"

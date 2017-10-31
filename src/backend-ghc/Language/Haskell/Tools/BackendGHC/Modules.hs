@@ -5,6 +5,7 @@
            , TypeApplications
            , TupleSections
            , TypeFamilies
+           , BangPatterns
            #-}
 -- | Functions that convert the module-related elements (modules, imports, exports) of the GHC AST to corresponding elements in the Haskell-tools AST representation
 -- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
@@ -34,21 +35,29 @@ import Language.Haskell.Tools.BackendGHC.Monad
 import Language.Haskell.Tools.BackendGHC.Names (TransformName, trfName)
 import Language.Haskell.Tools.BackendGHC.Utils
 
+-- Transformes a module in its renamed state. This will be performed to help the transformation of the actual typed module representation.
 trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
-trfModule mod hsMod = trfLocCorrect (createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod))
-                                    (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
-                  (\(HsModule name exports imports decls deprec _) ->
-                     AST.UModule <$> trfFilePragmas
-                                 <*> trfModuleHead name (srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls))) exports deprec
-                                 <*> trfImports imports
-                                 <*> trfDecls decls) $ hsMod
+trfModule mod hsMod = do -- createModuleInfo involves reading the ghc compiler state, so it must be evaluated
+                         -- or large parts of the representation will be kept
+                         !modInfo <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod)
+                         trfLocCorrect (pure modInfo)
+                            (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
+                            (\(HsModule name exports imports decls deprec _) ->
+                               AST.UModule <$> trfFilePragmas
+                                           <*> trfModuleHead name (srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls))) exports deprec
+                                           <*> trfImports imports
+                                           <*> trfDecls decls) $ hsMod
 
+-- | Transformes the module in its typed state. Uses the results of 'trfModule' to extract program
+-- elements (splices for example) that are not kept in the typed representation.
 trfModuleRename :: ModSummary -> Ann AST.UModule (Dom RdrName) RangeStage
                               -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
                               -> Located (HsModule RdrName)
                               -> Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
-    = do info <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) imports
+    = do -- createModuleInfo involves reading the ghc compiler state, so it must be evaluated
+         -- or large parts of the representation will be kept
+         !info <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) imports
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod
   where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
         originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef)
@@ -89,6 +98,7 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
                   <*> return transformedImports
                   <*> trfDeclsGroup gr
 
+-- | Extract the template haskell splices from the representation and adds them to the transformation state.
 loadSplices :: HsModule RdrName -> Trf a -> Trf a
 loadSplices hsMod trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
@@ -155,7 +165,8 @@ trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHi
          annBeforeSafe = if isQual then AnnQualified else annBeforeQual
          annBeforePkg = if isGoodSrcSpan safeTok then AnnSafe else annBeforeSafe
 
-     annLoc (createImportData impDecl) (pure l) $ AST.UImportDecl
+     !importData <- createImportData impDecl
+     annLoc (pure importData) (pure l) $ AST.UImportDecl
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)
                      else nothing " " "" (after AnnImport))
        <*> (if isQual then makeJust <$> (annLocNoSema (tokenLoc AnnQualified) (pure AST.UImportQualified))

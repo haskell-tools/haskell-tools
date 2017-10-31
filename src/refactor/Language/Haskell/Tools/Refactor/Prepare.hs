@@ -85,7 +85,9 @@ initGhcFlags :: Ghc ()
 initGhcFlags = initGhcFlags' False
 
 initGhcFlagsForTest :: Ghc ()
-initGhcFlagsForTest = initGhcFlags' True
+initGhcFlagsForTest = do initGhcFlags' True
+                         dfs <- getSessionDynFlags
+                         void $ setSessionDynFlags $ dfs { hscTarget = HscAsm }
 
 -- | Sets up basic flags and settings for GHC
 initGhcFlags' :: Bool -> Ghc ()
@@ -95,7 +97,7 @@ initGhcFlags' needsCodeGen = do
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ dflags { importPaths = []
-             , hscTarget = if needsCodeGen then HscAsm else HscNothing
+             , hscTarget = if needsCodeGen then HscInterpreted else HscNothing
              , ghcLink = if needsCodeGen then LinkInMemory else NoLink
              , ghcMode = CompManager
              , packageFlags = ExposePackage "template-haskell" (PackageArg "template-haskell") (ModRenaming True []) : packageFlags dflags
@@ -202,9 +204,10 @@ withAlteredDynFlags modDFs action = do
 
 -- | Forces the code generation for a given module
 forceCodeGen :: ModSummary -> ModSummary
-forceCodeGen ms = ms { ms_hspp_opts = modOpts' }
-  where modOpts = (ms_hspp_opts ms) { hscTarget = HscInterpreted }
-        modOpts' = modOpts { ghcLink = LinkInMemory }
+forceCodeGen ms = ms { ms_hspp_opts = codeGenDfs (ms_hspp_opts ms) }
+
+codeGenDfs :: DynFlags -> DynFlags
+codeGenDfs dfs = dfs { hscTarget = HscInterpreted, ghcLink = LinkInMemory }
 
 -- | Forces ASM code generation for a given module
 forceAsmGen :: ModSummary -> ModSummary

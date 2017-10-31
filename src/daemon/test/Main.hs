@@ -7,7 +7,7 @@ import Control.Monad
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.List (sort, isSuffixOf)
-import Data.Maybe (Maybe(..), isJust, catMaybes)
+import Data.Maybe
 import Network.Socket hiding (KeepAlive, send, recv)
 import Network.Socket.ByteString.Lazy as Sock (sendAll, recv)
 import System.Directory
@@ -24,7 +24,8 @@ import Test.Tasty.HUnit
 import FastString (mkFastString)
 import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 
-import Language.Haskell.Tools.Daemon (DaemonOptions(..), runDaemon')
+import Language.Haskell.Tools.Daemon (runDaemon')
+import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
@@ -42,7 +43,7 @@ main = do unsetEnv "GHC_PACKAGE_PATH"
 
 allTests :: Bool -> FilePath -> MVar Int -> TestTree
 allTests isSource testRoot portCounter
-  = localOption (mkTimeout ({- 10s -} 1000 * 1000 * 20))
+  = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
       $ testGroup "daemon-tests"
           [ testGroup "simple-tests"
               $ map (makeDaemonTest portCounter) simpleTests
@@ -58,6 +59,8 @@ allTests isSource testRoot portCounter
               $ map (makeUndoTest portCounter) undoTests
           , testGroup "compilation-problem-tests"
               $ map (makeCompProblemTest portCounter) compProblemTests
+          , testGroup "special-tests"
+              $ map (makeSpecialTest portCounter) (specialTests testRoot)
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
              then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
@@ -190,15 +193,12 @@ compProblemTests =
     , \case [ ErrorMessage _ ] -> True; _ -> False )
   ]
 
-sourceRoot = ".." </> ".." </> "src"
-
-selfLoadingTest :: MVar Int -> TestTree
-selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do
-    actual <- communicateWithDaemon False port
-                [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor"]) ]
-    assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual)
-               (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
-
+-- selfLoadingTest :: MVar Int -> TestTree
+-- selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do
+--     actual <- communicateWithDaemon False port
+--                 [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor"]) ]
+--     assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual)
+--                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
 
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
 refactorTests testRoot =
@@ -208,6 +208,14 @@ refactorTests testRoot =
       ]
     , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
+  , ( "refactor-with-th", testRoot </> "th-imports-normal"
+      , [ AddPackages [ testRoot </> "th-imports-normal" ++ testSuffix ]
+        , PerformRefactoring "RenameDefinition" (testRoot </> "th-imports-normal" ++ testSuffix </> "A.hs") "3:6" ["A'"] False False
+        ]
+      , \case [ LoadingModules{}, LoadedModules [ (a, _) ], LoadedModules [ (c, _) ], LoadedModules [ (b, _) ]
+                , LoadingModules{}, LoadedModules [ (a', _) ], LoadedModules [ (c', _) ], LoadedModules [ (b', _) ]
+                ] -> [a,b,c] == map ((testRoot </> "th-imports-normal" ++ testSuffix) </>) ["A.hs","B.hs","C.hs"] && [a',b',c'] == [a,b,c]
+              _ -> False )
   , ( "dry-refactor", testRoot </> "reloading"
     , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
       , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["cc"] False True
@@ -264,6 +272,33 @@ reloadingTests =
               , LoadingModules{}, LoadedModules [(pathA'',_)], LoadedModules [(pathB'',_)]
               ] -> let [pA,pB] = map ((testRoot </> "changing-cabal" ++ testSuffix) </>) ["A.hs","B.hs"]
                     in pA == pathA && pA == pathA' && pA == pathA'' && pB == pathB' && pB == pathB''
+            _ -> False )
+  , ( "reloading-th", testRoot </> "has-th", [], return ()
+    , [ AddPackages [testRoot </> "has-th" ++ testSuffix]
+      , ReLoad [] [testRoot </> "has-th" ++ testSuffix </> "TH.hs"] []
+      ]
+    , \case [ LoadingModules{}, LoadedModules [(th,_)], LoadedModules [(a,_)]
+              , LoadingModules{}, LoadedModules [(th',_)], LoadedModules [(a',_)]
+              ] -> let [pth,pa] = map ((testRoot </> "has-th" ++ testSuffix) </>) ["TH.hs","A.hs"]
+                    in pa == a && pa == a' && pth == th && pth == th'
+            _ -> False )
+  -- TODO: This test runs correctly in itself. Probably a testing bug?
+  -- , ( "reset-th", testRoot </> "has-th", [], return ()
+  --   , [ AddPackages [testRoot </> "has-th" ++ testSuffix]
+  --     , Reset
+  --     ]
+  --   , \case [ LoadingModules{}, LoadedModules [(th,_)], LoadedModules [(a,_)]
+  --             , LoadingModules{}, LoadedModules [(th',_)], LoadedModules [(a',_)]
+  --             ] -> let [pth,pa] = map ((testRoot </> "has-th" ++ testSuffix) </>) ["TH.hs","A.hs"]
+  --                   in pa == a && pa == a' && pth == th && pth == th'
+  --           _ -> False )
+  , ( "reloading-ghc", testRoot </> "has-ghc", [], return ()
+    , [ AddPackages [testRoot </> "has-ghc" ++ testSuffix]
+      , ReLoad [] [testRoot </> "has-ghc" ++ testSuffix </> "A.hs"] []
+      ]
+    , \case [ LoadingModules{}, LoadedModules [(a,_)]
+              , LoadingModules{}, LoadedModules [(a',_)]
+              ] -> a == testRoot </> "has-ghc" ++ testSuffix </> "A.hs" && a' == a
             _ -> False )
   , ( "adding-module", testRoot </> "reloading", [AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "D.hs") "module D where\nd = ()"
@@ -385,6 +420,26 @@ pkgDbTests
             execute "cabal" ["sandbox", "init", "--sandbox", ".." </> ".cabal-sandbox"]
             execute "cabal" ["install"]
 
+specialTests :: FilePath -> [(String, FilePath, Int -> Maybe FilePath -> DaemonOptions, [ClientMessage], [ResponseMsg] -> Bool)]
+specialTests testRoot =
+  [ ( "force-code-gen-with-th", testRoot </> "th-imports-normal", codeGenOpts
+      , [ AddPackages [ testRoot </> "th-imports-normal" ++ testSuffix ]
+        , PerformRefactoring "RenameDefinition" (testRoot </> "th-imports-normal" ++ testSuffix </> "A.hs") "3:6" ["A'"] False False
+        ]
+      , \case [ LoadingModules{}, LoadedModules [ (a, _) ], LoadedModules [ (c, _) ], LoadedModules [ (b, _) ]
+                , LoadingModules{}, LoadedModules [ (a', _) ], LoadedModules [ (c', _) ], LoadedModules [ (b', _) ]
+                ] -> [a,b,c] == map ((testRoot </> "th-imports-normal" ++ testSuffix) </>) ["A.hs","B.hs","C.hs"] && [a',b',c'] == [a,b,c]
+              _ -> False )
+  ]
+  where codeGenOpts p fs = addCodeGen (daemonOpts p fs)
+        addCodeGen opts = opts { sharedOptions = (sharedOptions opts) { generateCode = True } }
+
+-------------------------------------------------------
+-- * Helper functions for test code -------------------
+-------------------------------------------------------
+
+sourceRoot = ".." </> ".." </> "src"
+
 execute :: String -> [String] -> IO ()
 execute cmd args
   = do let command = (cmd ++ concat (map (" " ++) args))
@@ -403,7 +458,7 @@ tryToExecute cmd args
 
 makeDaemonTest :: MVar Int -> (String, [ClientMessage], [ResponseMsg]) -> TestTree
 makeDaemonTest port (label, input, expected) = testCase label $ do
-    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input))
+    actual <- communicateWithDaemon False port daemonOpts (map Right (SetPackageDB DefaultDB : input))
     assertEqual "" expected actual
 
 makeComplexLoadTest :: MVar Int -> (String, FilePath, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
@@ -412,7 +467,7 @@ makeComplexLoadTest port (label, dir, inputs, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port (map Right inputs)
+    actual <- communicateWithDaemon False port daemonOpts (map Right inputs)
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -422,7 +477,7 @@ makeRefactorTest port (label, dir, input, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input))
+    actual <- communicateWithDaemon False port daemonOpts (map Right (SetPackageDB DefaultDB : input))
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -432,7 +487,7 @@ makeReloadTest port (label, dir, input1, io, input2, validator) = testCase label
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
+    actual <- communicateWithDaemon False port daemonOpts (map Right (SetPackageDB DefaultDB : input1) ++ [Left io] ++ map Right input2)
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -442,24 +497,33 @@ makeUndoTest port (label, dir, inputs, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port inputs
+    actual <- communicateWithDaemon False port daemonOpts inputs
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
 makePkgDbTest :: MVar Int -> (String, IO (), [ClientMessage], [ResponseMsg]) -> TestTree
 makePkgDbTest port (label, prepare, inputs, expected)
-  = localOption (mkTimeout ({- 30s -} 1000 * 1000 * 30))
-      $ testCase label $ do
-          actual <- communicateWithDaemon False port ([Left prepare] ++ map Right inputs)
-          assertEqual "" expected actual
+  = testCase label $ do
+      actual <- communicateWithDaemon False port daemonOpts ([Left prepare] ++ map Right inputs)
+      assertEqual "" expected actual
 
 makeCompProblemTest :: MVar Int -> (String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool) -> TestTree
 makeCompProblemTest port (label, actions, validator) = testCase label $ do
-  actual <- communicateWithDaemon False port actions
+  actual <- communicateWithDaemon False port daemonOpts actions
   assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
 
-communicateWithDaemon :: Bool -> MVar Int -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
-communicateWithDaemon watch port msgs = withSocketsDo $ do
+makeSpecialTest :: MVar Int -> (String, FilePath, Int -> Maybe FilePath -> DaemonOptions, [ClientMessage], [ResponseMsg] -> Bool) -> TestTree
+makeSpecialTest port (label, dir, opts, input, validator) = testCase label $ do
+    exists <- doesDirectoryExist (dir ++ testSuffix)
+    -- clear the target directory from possible earlier test runs
+    when exists $ removeDirectoryRecursive (dir ++ testSuffix)
+    copyDir dir (dir ++ testSuffix)
+    actual <- communicateWithDaemon False port opts (map Right (SetPackageDB DefaultDB : input))
+    assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
+  `finally` removeDirectoryRecursive (dir ++ testSuffix)
+
+communicateWithDaemon :: Bool -> MVar Int -> (Int -> Maybe FilePath -> DaemonOptions) -> [Either (IO ()) ClientMessage] -> IO [ResponseMsg]
+communicateWithDaemon watch port opts msgs = withSocketsDo $ do
     portNum <- retryConnect port
     addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just (show portNum))
     let serverAddr = head addrInfo
@@ -481,20 +545,25 @@ communicateWithDaemon watch port msgs = withSocketsDo $ do
                                watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
                                case (watch, watchDir) of
                                  (True, []) -> error "The watch executable is not found."
-                                 (True, [w]) -> forkIO $ runDaemon' builtinRefactorings (daemonOpts portNum){noWatch=False, watchExe=Just w}
-                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings (daemonOpts portNum)
+                                 (True, w:_) -> forkIO $ runDaemon' builtinRefactorings (opts portNum (Just w))
+                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings (opts portNum Nothing)
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END
                                                                         then return (i+1)
                                                                         else error "The port number reached the maximum")
                                               retryConnect port
-        daemonOpts n = DaemonOptions { daemonVersion = False
-                                     , portNumber = n
-                                     , silentMode = True
-                                     , noWatch = True
-                                     , watchExe = Nothing
-                                     }
+
+daemonOpts :: Int -> Maybe FilePath -> DaemonOptions
+daemonOpts n we = DaemonOptions { daemonVersion = False
+                                , portNumber = n
+                                , silentMode = True
+                                , sharedOptions = SharedDaemonOptions { noWatch = isNothing we
+                                                                      , watchExe = we
+                                                                      , generateCode = False
+                                                                      , disableHistory = False
+                                                                      }
+                                }
 
 -- this must be changed once watch is in stackage
 watchPath = "../../.stack-work/downloaded/*/watch-master/.stack-work/dist/*/build/watch"

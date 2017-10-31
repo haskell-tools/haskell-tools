@@ -1,8 +1,8 @@
 module Main where
 
-import Control.Monad (Monad(..), (=<<), when)
-import Control.Monad.Reader
-import Data.List
+import Control.Monad (Monad(..), (=<<))
+import Control.Monad.Reader (MonadReader(..))
+import Data.List (init)
 import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
 import Options.Applicative
@@ -10,6 +10,7 @@ import Options.Applicative.Types (Parser, ReadM(..))
 import System.Exit (exitSuccess, exitFailure)
 import System.IO (IO, stdout, stdin)
 
+import Language.Haskell.Tools.Daemon.Options (sharedOptionsParser)
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession, CLIOptions(..))
 
@@ -24,7 +25,7 @@ main = exit =<< normalRefactorSession builtinRefactorings stdin stdout =<< execP
                       <> header "ht-refact: a command-line interface for Haskell-tools")
 
 cliOptions :: Parser CLIOptions
-cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> noWatch <*> watch <*> ghcFlags
+cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> ghcFlags <*> sharedOptionsParser
                         <*> packages
   where version = switch (long "version"
                             <> short 'v'
@@ -36,13 +37,6 @@ cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> noWatch <*> watch <
                                    <> short 'e'
                                    <> metavar "COMMAND"
                                    <> help "Commands to execute in a one-shot refactoring run, separated by semicolons.")
-        noWatch = switch (long "no-watch"
-                           <> help "Disables file system watching.")
-        watch = optional $ strOption
-                  (long "watch-exe"
-                    <> short 'w'
-                    <> help "The file path of the watch executable that is used to monitor file system changes."
-                    <> metavar "WATH_PATH")
         ghcFlags
           = optional $ option ghcFlagsParser
                          (long "ghc-options"
@@ -56,10 +50,6 @@ cliOptions = CLIOptions <$> version <*> verb <*> oneShot <*> noWatch <*> watch <
                                                       '=':rest     -> rest
                                                       '"':rest     -> init rest
                                                       other        -> other
-                               let splitted = splitOn " " str'
-                               let wrong = filter (not . isPrefixOf "-") splitted
-                               when (not $ null wrong)
-                                 $ fail ("The following arguments passed as ghc-options are not flags: " ++ intercalate " " wrong)
-                               return splitted
+                               return ( splitOn " " str')
         packages = many $ strArgument (metavar "PACKAGE_ROOT"
                                         <> help "The root folder of packages that are refactored")

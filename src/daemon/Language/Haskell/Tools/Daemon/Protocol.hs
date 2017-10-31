@@ -19,6 +19,7 @@ import Language.Haskell.Tools.Daemon.PackageDB (PackageDB)
 -- | The messages expected from the client.
 data ClientMessage
   = KeepAlive -- ^ A simple ping message to check that the server is running.
+  | Reset -- ^ A message that instructs the server to reset its internal state and re-load loaded packages.
   | Handshake { clientVersion :: [Int] }
     -- ^ Tells the client version and asks the servers version.
   | SetPackageDB { pkgDB :: PackageDB }

@@ -4,7 +4,7 @@
 module Language.Haskell.Tools.BackendGHC.Monad where
 
 import Control.Applicative ((<|>))
-import Control.Exception (Exception, throw)
+import Control.Exception (Exception, evaluate, throw)
 import Control.Monad.Reader
 import Control.Reference
 import Data.Function (on)
@@ -152,6 +152,9 @@ rdrSplice spl = do
       $ tcHsSplice' spl
     let typecheckErrors = showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcSpl)))
                                             <+> vcat (pprErrMsgBagWithLoc (snd (fst tcSpl))))
+    -- This function refers the ghc environment, we must evaluate the result or the reference
+    -- may be kept preventing garbage collection.
+    liftIO $ evaluate (snd tcSpl)
     return $ fromMaybe (throw $ SpliceInsertionProblem rng typecheckErrors)
                        (snd tcSpl)
   where

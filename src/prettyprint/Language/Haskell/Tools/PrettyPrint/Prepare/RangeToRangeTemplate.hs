@@ -60,7 +60,7 @@ data BreakUpProblem = BreakUpProblem { bupOuter :: RealSrcSpan
                                      }
 
 instance Show BreakUpProblem where
- show (BreakUpProblem outer (RealSrcSpan inner) _)
+ show (BreakUpProblem _ (RealSrcSpan inner) _)
    = unpackFS (srcSpanFile inner) ++ ": didn't find correct place for AST element at " ++ shortShowSpan (RealSrcSpan inner)
  show (BreakUpProblem outer _ _)
    = unpackFS (srcSpanFile outer) ++ ": didn't find correct place for AST element in " ++ shortShowSpan (RealSrcSpan outer)

@@ -1,6 +1,6 @@
 -- | Show instance for Haskell AST representation ignoring source and semantic information
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
-module Language.Haskell.Tools.AST.Instances.Show where
+module Language.Haskell.Tools.AST.Instances.Show () where
 
 import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
 import Language.Haskell.Tools.AST.Representation.Binds

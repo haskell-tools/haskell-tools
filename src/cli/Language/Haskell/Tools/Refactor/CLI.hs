@@ -11,7 +11,7 @@
 -- It can be used in a one-shot mode, listing all actions in a command-line parameter or using its
 -- standard input to perform a series of refactorings.
 module Language.Haskell.Tools.Refactor.CLI
-  (refactorSession, normalRefactorSession, CLIOptions(..)) where
+  (refactorSession, normalRefactorSession, CLIOptions(..), SharedDaemonOptions(..)) where
 
 import Control.Concurrent
 import Control.Exception (BlockedIndefinitelyOnMVar(..), catch)
@@ -24,8 +24,9 @@ import System.Directory (getCurrentDirectory)
 import System.IO
 import System.IO.Error (isEOFError)
 
-import Language.Haskell.Tools.Daemon (DaemonOptions(..), runDaemon)
+import Language.Haskell.Tools.Daemon (runDaemon)
 import Language.Haskell.Tools.Daemon.Mode (channelMode)
+import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..))
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_cli (version)
@@ -36,16 +37,15 @@ normalRefactorSession refactorings input output options@CLIOptions{..}
        hSetBuffering stderr LineBuffering -- to synch our output with GHC's
        refactorSession refactorings
          (\st -> void $ forkIO $ do runDaemon refactorings channelMode st
-                                      (DaemonOptions False 0 (not cliVerbose) cliNoWatch cliWatchExe))
+                                      (DaemonOptions False 0 (not cliVerbose) sharedOptions))
          input output options
 
 -- | Command-line options for the Haskell-tools CLI
 data CLIOptions = CLIOptions { displayVersion :: Bool
                              , cliVerbose :: Bool
                              , executeCommands :: Maybe String
-                             , cliNoWatch :: Bool
-                             , cliWatchExe :: Maybe FilePath
                              , ghcFlags :: Maybe [String]
+                             , sharedOptions :: SharedDaemonOptions
                              , packageRoots :: [FilePath]
                              }
 
@@ -89,6 +89,7 @@ processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
     ["Exit"] -> writeChan chan Disconnect >> return False
     ["Undo"] -> writeChan chan UndoLast >> return True
+    ["Reset"] -> writeChan chan Reset >> return True
     ref : rest | let modPath:selection:details = rest ++ (replicate (2 - length rest) "")
                , ref `elem` refactorCommands refactorings
        -> do writeChan chan (PerformRefactoring ref modPath selection details shutdown False)

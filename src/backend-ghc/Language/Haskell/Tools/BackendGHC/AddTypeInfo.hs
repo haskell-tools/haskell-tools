@@ -20,7 +20,7 @@ import UniqSupply as GHC (uniqFromSupply, mkSplitUniqSupply)
 import Var as GHC (Var(..))
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
-import Control.Exception (throw)
+import Control.Exception (evaluate, throw)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.State
 import Control.Monad.Trans.Class (MonadTrans(..))
@@ -30,17 +30,18 @@ import Data.Generics.Uniplate.Operations (universeBi)
 import Data.List as List
 import qualified Data.Map as Map (fromList, lookup)
 import Data.Maybe (Maybe(..), fromMaybe, catMaybes)
-
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST (mkCNameInfo)
 import Language.Haskell.Tools.BackendGHC.GHCUtils (getTopLevelId)
-import Language.Haskell.Tools.BackendGHC.Utils (ConvertionProblem(..), convProblem)
+import Language.Haskell.Tools.BackendGHC.Utils (ConvertionProblem(..), forceElements, convProblem)
 
 addTypeInfos :: LHsBinds Id -> Ann AST.UModule (Dom GHC.Name) RangeStage -> Ghc (Ann AST.UModule IdDom RangeStage)
 addTypeInfos bnds mod = do
   ut <- liftIO mkUnknownType
   let getType = getType' ut
   fixities <- getFixities
+  -- evaluates fixities to normal form before going on, otherwise the reference to session would be kept
+  liftIO $ evaluate (forceElements fixities)
   let createCName sc def id = mkCNameInfo sc def id fixity
         where fixity = if any (any ((getOccName id ==) . getOccName . (^. _1))) (drop 1 sc)
                           then Nothing

@@ -8,16 +8,18 @@
 -- been explicitely set by a file path.
 module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, detectAutogen) where
 
-import Control.Applicative (Applicative(..), (<$>), Alternative(..))
+import Control.Applicative ((<$>), Alternative(..))
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Aeson (FromJSON(..))
 import Data.Char (isSpace)
 import Data.List
+import Data.Maybe
 import GHC.Generics (Generic(..))
 import System.Directory
+import System.Exit (ExitCode(..))
 import System.FilePath (FilePath, (</>))
-import System.Process (readProcessWithExitCode)
+import System.Process (shell, readCreateProcessWithExitCode)
 
 -- | Possible package database configurations.
 data PackageDB = AutoDB -- ^ Decide the package database automatically.
@@ -31,8 +33,13 @@ instance FromJSON PackageDB
 
 -- | Finds the location of the package database based on the configuration.
 packageDBLoc :: PackageDB -> FilePath -> IO [FilePath]
-packageDBLoc AutoDB path = (++) <$> packageDBLoc StackDB path <*> packageDBLoc CabalSandboxDB path
-packageDBLoc DefaultDB _ = return []
+packageDBLoc AutoDB path = concat <$> sequence [ packageDBLoc StackDB path
+                                               , packageDBLoc CabalSandboxDB path
+                                               , packageDBLoc DefaultDB path
+                                               ]
+packageDBLoc DefaultDB _ = do
+  dbs <- runCommandExpectOK "ghc-pkg list base"
+  return $ maybe [] (filter (\l -> not (null l) && not (" " `isPrefixOf` l)) . lines) dbs
 packageDBLoc CabalSandboxDB path = do
   hasConfigFile <- doesFileExist (path </> "cabal.config")
   hasSandboxFile <- doesFileExist (path </> "cabal.sandbox.config")
@@ -41,13 +48,13 @@ packageDBLoc CabalSandboxDB path = do
                                      else return ""
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
 packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either (\(_ :: SomeException) -> []) id) $ try $ do
-     (_, projRoot, projRootErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--project-root"] ""
+     projRoot <- runCommandExpectOK "stack path --allow-different-user --project-root"
      -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
-     if null projRootErrs && (projRoot `isPrefixOf` path) then do
-       (_, globalDB, globalDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--global-pkg-db"] ""
-       (_, snapshotDB, snapshotDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--snapshot-pkg-db"] ""
-       (_, localDB, localDBErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--local-pkg-db"] ""
-       return $ [trim localDB | null localDBErrs] ++ [trim snapshotDB | null snapshotDBErrs] ++ [trim globalDB | null globalDBErrs]
+     if maybe False (`isPrefixOf` path) projRoot then do
+       globalDB <- runCommandExpectOK "stack path --allow-different-user --global-pkg-db"
+       snapshotDB <- runCommandExpectOK "stack path --allow-different-user --snapshot-pkg-db"
+       localDB <- runCommandExpectOK "stack path --allow-different-user --local-pkg-db"
+       return $ maybeToList localDB ++ maybeToList snapshotDB ++ maybeToList globalDB
      else return []
 packageDBLoc (ExplicitDB dir) path = do
   hasDir <- doesDirectoryExist (path </> dir)
@@ -67,10 +74,8 @@ detectAutogen root (ExplicitDB _) = ifExists (root </> "dist" </> "build" </> "a
 detectAutogen root CabalSandboxDB = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root StackDB = (fmap $ either (\(_ :: SomeException) -> Nothing) id) $ try $ do
   dir <- withCurrentDirectory root $ do
-    (_, distDir, distDirErrs) <- readProcessWithExitCode "stack" ["path", "--allow-different-user", "--dist-dir"] ""
-    when (not $ null distDirErrs)  -- print errors if they occurred
-      $ putStrLn $ "Errors while checking dist directory with stack: " ++ distDirErrs
-    return $ trim distDir
+    distDir <- runCommandExpectOK "stack path --allow-different-user --dist-dir"
+    return $ trim (fromMaybe "" distDir)
   genExists <- doesDirectoryExist (root </> dir </> "build" </> "autogen")
   buildExists <- doesDirectoryExist (root </> dir </> "build")
   if | genExists -> return $ Just (root </> dir </> "build" </> "autogen")
@@ -80,6 +85,15 @@ detectAutogen root StackDB = (fmap $ either (\(_ :: SomeException) -> Nothing) i
                          existing <- mapM ifExists (map (</> "autogen") cont)
                          return $ choose existing
      | otherwise -> return Nothing
+
+-- | Run a command and return its result if successful display an error message otherwise.
+runCommandExpectOK :: String -> IO (Maybe String)
+runCommandExpectOK cmd = do
+  (exitCode, res, errs) <- readCreateProcessWithExitCode (shell cmd) ""
+  case exitCode of ExitSuccess -> return (Just $ trim res)
+                   ExitFailure code -> do putStrLn ("The command '" ++ cmd ++ "' exited with "
+                                                      ++ show code ++ ":\n" ++ errs)
+                                          return Nothing
 
 trim :: String -> String
 trim = f . f

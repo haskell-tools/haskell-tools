@@ -12,9 +12,11 @@
 module Language.Haskell.Tools.Daemon.Session where
 
 import Control.Applicative ((<|>))
+import Control.Concurrent.MVar
 import Control.Monad.State.Strict
 import Control.Reference
 import Data.Function (on)
+import Data.IORef
 import qualified Data.List as List
 import Data.List.Split
 import qualified Data.Map as Map
@@ -26,8 +28,17 @@ import Data.IntSet (member)
 import Digraph as GHC
 import DynFlags
 import GHC
-import Language.Haskell.TH.LanguageExtensions
+import GHCi
+import GhcMonad (modifySession)
+import HscTypes
+import Language.Haskell.TH.LanguageExtensions as Exts
+import Linker
+import Module
+import NameCache
+import Outputable
 import Packages
+import UniqDFM
+import UniqFM
 
 import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.ModuleGraph
@@ -59,21 +70,22 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      lift $ mapM_ (\t -> when (targetId t `notElem` currentTargets) (addTarget t))
                   (map makeTarget $ List.nubBy ((==) `on` (^. sfkFileName))
                                   $ List.sort $ concatMap getExposedModules mcs')
-     withAlteredDynFlags (liftIO . fmap (st ^. ghcFlagsSet) . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
-                                                                             (mcs ^? traversal & mcDependencies & traversal)
-                                                                             (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
-       -- need to update package state when setting the list of visible packages
-       dfs <- getSessionDynFlags
-       (dfs', _) <- liftIO $ initPackages dfs
-       setSessionDynFlags dfs'
+     let flagsForLoad = liftIO . fmap ((st ^. pkgDbFlags) . (st ^. ghcFlagsSet))
+                               . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
+                                                (mcs ^? traversal & mcDependencies & traversal)
+                                                (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))
+     mods <- withAlteredDynFlags flagsForLoad $ do
+       loadVisiblePackages -- need to update package state when setting the list of visible packages
        modsForColls <- lift $ depanal [] True
        let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
            actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
-       liftIO $ loadCallback actuallyCompiled
-       modify (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
-       void $ checkEvaluatedMods (\_ -> return ()) actuallyCompiled
-       mods <- mapM (loadModule report) actuallyCompiled
-       return mods
+       modify' (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
+       dfs <- getSessionDynFlags
+       return actuallyCompiled
+
+     liftIO $ loadCallback mods
+     void $ checkEvaluatedMods (\_ -> return ()) mods
+     mapM (reloadModule report) mods
 
   where getExposedModules :: ModuleCollection k -> [k]
         getExposedModules
@@ -91,12 +103,6 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
           = do candidate <- createTargetCandidate srcDirs modMaps modName
                return (SourceFileKey (either (const "") id candidate) modName, record)
 
-
-        loadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
-        loadModule report ms
-          = do needsCodeGen <- gets (needsGeneratedCode (keyFromMS ms) . (^. refSessMCs))
-               reloadModule report (if needsCodeGen then forceCodeGen ms else ms)
-
         -- | Creates a possible target from a module name. If possible, finds the
         -- corresponding source file to distinguish between modules of the same name.
         createTargetCandidate :: [FilePath] -> [(ModuleNameStr, FilePath)] -> ModuleNameStr
@@ -113,6 +119,15 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
 
         makeTarget (SourceFileKey "" modName) = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
         makeTarget (SourceFileKey filePath _) = Target (TargetFile filePath Nothing) True Nothing
+
+loadVisiblePackages :: DaemonSession ()
+loadVisiblePackages = do
+  dfs <- getSessionDynFlags
+  (dfs', _) <- liftIO $ initPackages dfs
+  setSessionDynFlags dfs' -- set the package flags (only for this load session)
+  modify' (pkgDbFlags .= \dfs -> dfs { pkgDatabase = pkgDatabase dfs'
+                                     , pkgState = pkgState dfs'
+                                     }) -- save the package database
 
 -- TODO: make getMods and getFileMods clearer
 
@@ -143,19 +158,45 @@ reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModS
 reloadChangedModules report loadCallback isChanged = do
   reachable <- getReachableModules loadCallback isChanged
   void $ checkEvaluatedMods report reachable
+  -- remove module from session before reloading it, resolves space leak
+  clearModules reachable
   mapM (reloadModule report) reachable
+
+-- | Clears the given modules from the GHC state to enable re-loading them
+-- TODO: also clear them from Haskell-tools state here
+clearModules :: [ModSummary] -> DaemonSession ()
+clearModules mods = do
+  let reachableMods = map ms_mod_name mods
+      notReloaded = (`notElem` reachableMods) . GHC.moduleName . mi_module . hm_iface
+  env <- getSession
+  let hptStay = filterHpt notReloaded (hsc_HPT env)
+  -- clear the symbol cache for iserv
+  liftIO $ purgeLookupSymbolCache env
+  -- clear the global linker state
+  liftIO $ unload env (mapMaybe hm_linkable (eltsHpt hptStay))
+  -- clear name cache
+  nameCache <- liftIO $ readIORef $ hsc_NC env
+  let nameCache' = nameCache { nsNames = delModuleEnvList (nsNames nameCache) (map ms_mod mods) }
+  liftIO $ writeIORef (hsc_NC env) nameCache'
+  -- clear home package table and module graph
+  lift $ modifySession (\s -> s { hsc_HPT = hptStay
+                                , hsc_mod_graph = filter ((`notElem` reachableMods) . ms_mod_name) (hsc_mod_graph s)
+                                })
 
 -- | Get all modules that can be accessed from a given set of modules. Can be used to select which
 -- modules need to be reloaded after a change.
 getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
+  ghcflags <- gets (^. ghcFlagsSet)
+  dbFlags <- gets (^. pkgDbFlags)
   mcs <- gets (^. refSessMCs)
   -- IMPORTANT: make sure that the module collection is not passed into the flags, they
   -- might not be evaluated and then the reference could prevent garbage collection
   -- of entire ASTs
-  withAlteredDynFlags (liftIO . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
+  withAlteredDynFlags (liftIO . fmap (dbFlags . ghcflags)
+                              . setupLoadFlags (mcs ^? traversal & mcId) (mcs ^? traversal & mcRoot)
                                                (mcs ^? traversal & mcDependencies & traversal)
-                                               (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup)) ) $ do
+                                               (foldl @[] (>=>) return (mcs ^? traversal & mcLoadFlagSetup))) $ do
     allMods <- lift $ depanal [] True
     let (allModsGraph, lookup) = moduleGraphNodes False allMods
         changedMods = catMaybes $ map (\ms -> lookup (ms_hsc_src ms) (moduleName $ ms_mod ms))
@@ -171,7 +212,6 @@ reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   mcs <- gets (^. refSessMCs)
-
   let fp = getModSumOrig ms
       modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
@@ -181,19 +221,21 @@ reloadModule report ms = do
                            []   -> error "reloadModule: module collections empty"
   where
     reloadModuleIn codeGen modName ghcfl mc = do
+      dbFlags <- gets (^. pkgDbFlags)
       let dfs = ms_hspp_opts ms
       -- IMPORTANT: make sure that the module collection is not passed into the flags, they
       -- might not be evaluated and then the reference could prevent garbage collection
       -- of entire ASTs
-      dfs' <- liftIO $ fmap ghcfl $ ((mc ^. mcFlagSetup) <=< (mc ^. mcLoadFlagSetup)) dfs
-      let ms' = ms { ms_hspp_opts = dfs' }
-      newm <- lift $ withAlteredDynFlags (\_ -> return dfs') $
+      newm <- lift $ withAlteredDynFlags (liftIO . fmap (dbFlags . ghcfl) . ((mc ^. mcFlagSetup) <=< (mc ^. mcLoadFlagSetup))) $ do
+        dfs <- liftIO $ mc ^. mcFlagSetup $ ms_hspp_opts ms
+        let ms' = ms { ms_hspp_opts = dfs }
+        -- some flags are cached in mod summary, so we need to override
         parseTyped (if codeGen then forceCodeGen ms' else ms')
       -- replace the module in the program database
       modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
-                  .- Map.insert (keyFromMS ms') ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms')
+                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
                        . Map.delete (SourceFileKey "" modName)
-      liftIO $ report ms'
+      liftIO $ report ms
 
 -- | Finds out if a newly added module forces us to generate code for another one.
 -- If the other is already loaded it will be reloaded.

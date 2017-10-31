@@ -76,6 +76,9 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/same-module-in-two-mod-coll/*.cabal
                   , examples/Project/exposed-mod-as-main/*.hs
                   , examples/Project/exposed-mod-as-main/*.cabal
+                  , examples/Project/th-imports-normal/*.hs
+                  , examples/Project/has-ghc/*.hs
+                  , examples/Project/has-ghc/*.cabal
 
 library
   build-depends:       base                      >= 4.9   && < 5.0
@@ -96,6 +99,7 @@ library
                      , Diff                      >= 0.3   && < 0.4
                      , Cabal                     >= 2.0  && < 2.1
                      , pretty                    >= 1.1   && < 1.2
+                     , optparse-applicative      >= 0.14 && < 0.15
                      , template-haskell          >= 2.12  && < 2.13
                      , haskell-tools-prettyprint >= 0.9   && < 0.10
                      , haskell-tools-refactor    >= 0.9   && < 0.10
@@ -115,6 +119,8 @@ library
                      , Language.Haskell.Tools.Daemon.Protocol
                      , Language.Haskell.Tools.Daemon.Update
                      , Language.Haskell.Tools.Daemon.Watch
+                     , Language.Haskell.Tools.Daemon.Options
+                     , Language.Haskell.Tools.Daemon.ErrorHandling
                      , Paths_haskell_tools_daemon
   default-language:    Haskell2010
 
@@ -123,7 +129,6 @@ executable ht-daemon
   ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 5.0
                      , haskell-tools-daemon      >= 0.9 && < 0.10
-                     , optparse-applicative      >= 0.14 && < 0.15
                      , directory                 >= 1.2  && < 1.4
                      , filepath                  >= 1.4  && < 2.0
                      , haskell-tools-builtin-refactorings >= 0.9 && < 0.10

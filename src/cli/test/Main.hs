@@ -12,7 +12,7 @@ import System.FilePath
 import System.IO
 
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
-import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSession)
+import Language.Haskell.Tools.Refactor.CLI (SharedDaemonOptions(..), CLIOptions(..), normalRefactorSession)
 
 main :: IO ()
 main = defaultMain allTests
@@ -22,11 +22,12 @@ allTests
   = testGroup "cli-tests" [
       makeCliTest ( "batch", ["examples"</>"example-project"]
                   , \s -> CLIOptions False False (Just $ "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b")
-                             True Nothing Nothing
+                             Nothing (SharedDaemonOptions True Nothing False False)
                   , \_ -> ""
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))
-    , makeCliTest ( "session", ["examples"</>"example-project"], \_ -> CLIOptions False False Nothing True Nothing Nothing
+    , makeCliTest ( "session", ["examples"</>"example-project"]
+                  , \_ -> CLIOptions False False Nothing Nothing (SharedDaemonOptions True Nothing False False)
                   , \s -> "RenameDefinition " ++ "examples"</>("example-project"++s)</>"Demo.hs" ++ " 3:1 b\nExit\n"
                   , \s _ -> checkFileContent ("examples"</>("example-project"++s)</>"Demo.hs")
                                              ("b = ()" `List.isInfixOf`))

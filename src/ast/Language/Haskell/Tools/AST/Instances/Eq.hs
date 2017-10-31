@@ -1,6 +1,6 @@
 -- | Equality check of AST nodes that ignore the source and semantic information.
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
-module Language.Haskell.Tools.AST.Instances.Eq where
+module Language.Haskell.Tools.AST.Instances.Eq () where
 
 import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
 import Language.Haskell.Tools.AST.Representation.Binds

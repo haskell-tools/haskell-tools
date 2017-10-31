@@ -56,15 +56,17 @@ extractBinding sp selectDecl selectExpr name mod
         declPats = decl ^? valBindPat &+& funBindMatches & annList & matchLhs
                                             & (matchLhsArgs & annList &+& matchLhsLhs &+& matchLhsRhs &+& matchLhsArgs & annList)
      in case exprRanges of
-          exprRange:_ ->
+          (reverse -> exprRange:_) ->
             if | not (null conflicting)
-               -> refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpan . getRange) conflicting))
+               -> refactError $ "The given name causes name conflict with the definition(s) at: " ++ concat (intersperse "," (map (shortShowSpanWithFile . getRange) conflicting))
                | any (`containsRange` exprRange) $ map getRange declPats
                -> refactError "Extract binding cannot be applied to view pattern expressions."
                | otherwise
-               -> do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name (head $ decl ^? actualContainingExpr exprRange) $ mod) Nothing
-                     case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
-                                Nothing -> refactError "There is no applicable expression to extract."
+               -> case decl ^? actualContainingExpr exprRange of
+                    expr:_ -> do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name expr $ mod) Nothing
+                                 case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
+                                            Nothing -> refactError "There is no applicable expression to extract."
+                    [] -> refactError $ "There is no applicable expression to extract."
           [] -> refactError "There is no applicable expression to extract."
   where RealSrcSpan sp1 `containsRange` RealSrcSpan sp2 = sp1 `containsSpan` sp2
         _ `containsRange` _ = False
@@ -216,9 +218,9 @@ getExternalBinds cont expr = map exprToName $ keepFirsts $ filter isApplicableNa
 actualContainingExpr :: SrcSpan -> Simple Traversal (ValueBind dom) (Expr dom)
 actualContainingExpr (RealSrcSpan rng) = accessRhs & accessExpr
   where accessRhs :: Simple Traversal (ValueBind dom) (Rhs dom)
-        accessRhs = valBindRhs &+& funBindMatches & annList & filtered (isInside rng) & matchRhs
+        accessRhs = valBindRhs &+& funBindMatches & annList & filtered (rng `isInside`) & matchRhs
         accessExpr :: Simple Traversal (Rhs dom) (Expr dom)
-        accessExpr = rhsExpr &+& rhsGuards & annList & filtered (isInside rng) & guardExpr
+        accessExpr = rhsExpr &+& rhsGuards & annList & filtered (rng `isInside`) & guardExpr
 actualContainingExpr _ = error "actualContainingExpr: not a real range"
 
 -- | Generates the expression that calls the local binding

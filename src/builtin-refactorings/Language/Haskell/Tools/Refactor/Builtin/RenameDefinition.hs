@@ -18,7 +18,7 @@ import IdInfo (RecSelParent(..))
 import Name (OccName(..), NamedThing(..), occNameString)
 import SrcLoc (RealSrcSpan)
 import TyCon (tyConDataCons)
-import Type (TyThing(..), funResultTy, eqType)
+import Type (funResultTy, eqType)
 
 import Control.Monad.State
 import Control.Reference as Ref
@@ -103,7 +103,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
           && semanticsDefining name == False
           && any @[] (\n -> str == occNameString (getOccName n) && not (mergeableFields origId n))
                      (scopeUpToDef (map (map (^. _1)) $ semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
-      = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpan (getRange name) -- name clash with an external definition
+      = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpanWithFile (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
            when (actualName == Just toChangeOrig)
@@ -116,7 +116,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
                                               && conflicts toChangeOrig exprName namesInScope
                                               && not (mergeableFields origId exprName)
               Nothing -> False -- ambiguous names
-      = refactError $ "The definition clashes with an existing one: " ++ shortShowSpan (getRange name) -- local name clash
+      = refactError $ "The definition clashes with an existing one: " ++ shortShowSpanWithFile (getRange name) -- local name clash
       | otherwise = return name -- not the changed name, leave as before
       where toChange = toChangeOrig : toChangeWith
             actualName = fmap getName (semanticsName name)
