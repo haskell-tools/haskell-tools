@@ -120,6 +120,7 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
         makeTarget (SourceFileKey "" modName) = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
         makeTarget (SourceFileKey filePath _) = Target (TargetFile filePath Nothing) True Nothing
 
+-- | Loads the packages that are declared visible (by .cabal file).
 loadVisiblePackages :: DaemonSession ()
 loadVisiblePackages = do
   dfs <- getSessionDynFlags
@@ -129,28 +130,17 @@ loadVisiblePackages = do
                                      , pkgState = pkgState dfs'
                                      }) -- save the package database
 
--- TODO: make getMods and getFileMods clearer
-
 -- | Get the module that is selected for refactoring and all the other modules.
-getMods :: Maybe SourceFileKey -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                                , [(SourceFileKey, UnnamedModule IdDom)] )
-getMods actMod
-  = do mcs <- gets (^. refSessMCs)
-       return $ ( (_2 !~ (^? typedRecModule)) =<< flip lookupModInSCs mcs =<< actMod
-                , filter ((actMod /=) . Just . fst) $ concatMap (catMaybes . map (_2 !~ (^? typedRecModule)) . Map.assocs . (^. mcModules)) mcs )
-
--- | Get the module that is selected for refactoring and all the other modules.
-getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                       , [(SourceFileKey, UnnamedModule IdDom)] )
+getFileMods :: FilePath -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
+                                         , [(SourceFileKey, UnnamedModule IdDom)] )
 getFileMods fname
-  = do mcs <- gets (^. refSessMCs)
-       let mods = mapMaybe (\(k,m) -> fmap (,k) (m ^? modRecMS))
-                           (concatMap @[] Map.assocs $ (mcs ^? traversal & mcModules))
-       let sfs = catMaybes $ map (\(ms,k) -> if | Just fname == fmap normalise (ml_hs_file (ms_location ms)) -> Just (False, k)
-                                                | fname == getModSumName ms -> Just (True, k)
-                                                | otherwise -> Nothing) mods
-       case List.sort sfs of (_,sf):_ -> getMods (Just sf)
-                             []       -> getMods Nothing
+  = do modMaps <- gets (^? refSessMCs & traversal & mcModules)
+       let modules = mapMaybe (\(k,m) -> fmap (k,) (m ^? typedRecModule)) -- not type checkable modules are ignored
+                       $ concatMap @[] Map.assocs modMaps
+           (selected,others) = List.partition (\(sfk,_) -> (sfk ^. sfkFileName) == fname) modules
+       case selected of [] -> return (Nothing, others)
+                        [m] -> return (Just m, others)
+                        (_:_) -> error "getFileMods: multiple modules selected"
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
 reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool)
