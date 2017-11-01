@@ -300,6 +300,22 @@ reloadingTests =
               , LoadingModules{}, LoadedModules [(a',_)]
               ] -> a == testRoot </> "has-ghc" ++ testSuffix </> "A.hs" && a' == a
             _ -> False )
+  , ( "change-cabal", testRoot </> "two-modules", [], return ()
+    , [ AddPackages [testRoot </> "two-modules" ++ testSuffix]
+      , ReLoad [] [testRoot </> "two-modules" ++ testSuffix </> "some-test-package.cabal"] []
+      ]
+    , \case [ LoadingModules{}, LoadedModules [(a,_)], LoadedModules [(b,_)]
+              , LoadingModules{}, LoadedModules [(a',_)], LoadedModules [(b',_)]
+              ] -> [a,b] == map ((testRoot </> "two-modules" ++ testSuffix) </>) ["A.hs","B.hs"] && [a',b'] == [a,b]
+            _ -> False )
+  , ( "change-incomplete-cabal", testRoot </> "incomplete-cabal"
+    , [ AddPackages [testRoot </> "incomplete-cabal" ++ testSuffix] ]
+    , appendFile (testRoot </> "incomplete-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
+    , [ ReLoad [] [testRoot </> "incomplete-cabal" ++ testSuffix </> "some-test-package.cabal"] [] ]
+    , \case [ LoadingModules{}, LoadedModules [(a,_)]
+              , LoadingModules{}, LoadedModules [(a',_)], LoadedModules [(b',_)]
+              ] -> [a',b'] == map ((testRoot </> "incomplete-cabal" ++ testSuffix) </>) ["A.hs","B.hs"] && a == a'
+            _ -> False )
   , ( "adding-module", testRoot </> "reloading", [AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "D.hs") "module D where\nd = ()"
     , [ ReLoad [testRoot </> "reloading" ++ testSuffix </> "D.hs"] [] [] ]
@@ -354,6 +370,32 @@ undoTests
         ]
       , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}]
                 -> True; _ -> False )
+    , ( "undo-invalidated", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right (ReLoad [] [testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"] [])
+        , Right UndoLast
+        ]
+      , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}
+                , LoadingModules{}, LoadedModules{}, ErrorMessage{} ] -> True; _ -> False )
+    , ( "undo-invalidated-other-module", testRoot </> "two-modules"
+      , [ Right $ AddPackages [ testRoot </> "two-modules" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "two-modules" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right (ReLoad [] [testRoot </> "two-modules" ++ testSuffix </> "B.hs"] [])
+        , Right UndoLast
+        ]
+      , \case [ LoadingModules{}, LoadedModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}
+                , LoadingModules{}, LoadedModules{}, ErrorMessage{} ] -> True; _ -> False )
+    , ( "undo-invalidated-revalidate", testRoot </> "simple-refactor"
+      , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right (ReLoad [] [testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"] [])
+        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["x"] False False
+        , Right UndoLast
+        ]
+      , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}
+                , LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}
+                , LoadingModules{}, LoadedModules{} ] -> True; _ -> False )
     , ( "multi-module-undo", testRoot </> "reloading"
         , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
           , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False

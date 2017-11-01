@@ -9,7 +9,7 @@
            , ViewPatterns
            #-}
 -- | Resolves how the daemon should react to individual requests from the client.
-module Language.Haskell.Tools.Daemon.Update (updateClient, reloadModules, initGhcSession) where
+module Language.Haskell.Tools.Daemon.Update (updateClient, updateForFileChanges, initGhcSession) where
 
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
@@ -22,12 +22,14 @@ import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
 import Data.Either (Either(..), either, rights)
 import Data.IORef (readIORef, newIORef)
 import Data.List hiding (insert)
+import qualified Data.Set as Set
 import qualified Data.Map as Map (insert, keys, filter)
 import Data.Maybe
 import Data.Version (Version(..))
 import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
 import System.FSWatch.Slave (watch)
 import System.IO
+import System.FilePath
 import System.IO.Strict as StrictIO (hGetContents)
 import Text.PrettyPrint as PP (text, render)
 
@@ -129,11 +131,11 @@ updateClient' UpdateCtx{..} UndoLast =
          reloadModules response (getUndoAdded lastUndo)
                                 (getUndoChanged lastUndo)
                                 (getUndoRemoved lastUndo) -- reload the reverted files
+         return True
 
-updateClient' UpdateCtx{..} (ReLoad added changed removed) =
-  -- TODO: check for changed cabal files and reload their packages
-  do modify (undoStack .= []) -- clear the undo stack
-     reloadModules response added changed removed
+updateClient' UpdateCtx{..} (ReLoad added changed removed)
+  = do updateForFileChanges response added changed removed
+       return True
 
 updateClient' _ Stop
   = do modify (exiting .= True)
@@ -155,10 +157,11 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
                                then when (not (disableHistory $ sharedOptions options)) $ updateHistory changedMods
                                else liftIO $ response $ DiffInfo (concatMap (either snd (^. _4)) changedMods)
                              isWatching <- gets (isJust . (^. watchProc))
-                             when (not isWatching && not shutdown && not diffMode)
+                             if not isWatching && not shutdown && not diffMode
                               -- if watch is on, then it will automatically
                               -- reload changed files, otherwise we do it manually
-                              $ void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
+                               then void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
+                               else modify (touchedFiles .= Set.fromList (map ((^. sfkFileName) . (^. _1)) (rights changedMods)))
 
         applyChanges changes = do
           forM changes $ \case
@@ -221,11 +224,11 @@ addPackages :: (ResponseMsg -> IO ()) -> [FilePath] -> DaemonSession ()
 addPackages _ [] = return ()
 addPackages resp packagePathes = do
   nonExisting <- filterM ((return . not) <=< liftIO . doesDirectoryExist) packagePathes
-  forM_ packagePathes watchNew -- put a file system watch on each package
   DaemonSessionState {..} <- get
   if (not (null nonExisting))
     then liftIO $ resp $ ErrorMessage $ "The following packages are not found: " ++ concat (intersperse ", " nonExisting)
     else do
+      forM_ packagePathes watchNew -- put a file system watch on each package
       -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
       let existing = (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
@@ -264,8 +267,27 @@ addPackages resp packagePathes = do
                      return True
             [] -> return True
 
+-- | Updates the state of the tool after some files have been changed (possibly by another application)
+updateForFileChanges :: (ResponseMsg -> IO ()) -> [FilePath] -> [FilePath] -> [FilePath] -> DaemonSession ()
+updateForFileChanges resp added changed removed = do
+  -- clear undo stack if the changes are from another application
+  refactoredFiles <- gets (^. touchedFiles)
+  let changeSet = Set.fromList (added ++ changed ++ removed)
+  when (not $ changeSet `Set.isSubsetOf` refactoredFiles)
+    $ modify (undoStack .= []) -- clear the undo stack, if this changeset is not a result of a refactoring
+  -- check for changes in .cabal files
+  modify (touchedFiles .- (Set.\\ changeSet))
+  let reloadedPackages = map takeDirectory
+                           $ filter (\fp -> takeExtension fp == ".cabal")
+                           $ added ++ changed ++ removed
+      packageNotReloaded fp = not $ any (`isPrefixOf` fp) reloadedPackages
+  addPackages resp reloadedPackages -- reload packages where cabal changed
+  reloadModules resp (filter packageNotReloaded added) (filter packageNotReloaded changed)
+                (filter packageNotReloaded removed)
+
 -- | Reloads changed modules to have an up-to-date version loaded
-reloadModules :: (ResponseMsg -> IO ()) -> [FilePath] -> [FilePath] -> [FilePath] -> DaemonSession Bool
+reloadModules :: (ResponseMsg -> IO ()) -> [FilePath] -> [FilePath] -> [FilePath] -> DaemonSession ()
+reloadModules _ [] [] [] = return ()
 reloadModules resp added changed removed = do
   lift $ forM_ removed (\src -> removeTarget (TargetFile src Nothing))
   -- remove targets deleted
@@ -280,7 +302,6 @@ reloadModules resp added changed removed = do
   mcs <- gets (^. refSessMCs)
   let mcsToReload = filter (\mc -> any ((mc ^. mcRoot) `isPrefixOf`) added && isNothing (moduleCollectionPkgId (mc ^. mcId))) mcs
   addPackages resp (map (^. mcRoot) mcsToReload) -- reload packages containing added modules
-  return True
 
 -- | Creates a compressed set of changes in one file
 createUndo :: Eq a => Int -> [Diff [a]] -> [(Int, Int, [a])]

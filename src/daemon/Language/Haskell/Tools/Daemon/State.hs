@@ -6,6 +6,7 @@ module Language.Haskell.Tools.Daemon.State where
 
 import Control.Concurrent
 import Control.Reference
+import Data.Set
 import GHC
 import System.FSWatch.Repr
 
@@ -38,11 +39,12 @@ data DaemonSessionState
                        , _watchThreads :: [ThreadId]
                            -- ^ Extra threads started for handling the
                            -- information from the watch process.
+                       , _touchedFiles :: Set FilePath
                        }
 
 -- | An initial state of a daemon session.
 initSession :: DaemonSessionState
-initSession = DaemonSessionState [] AutoDB id id False [] False [] Nothing []
+initSession = DaemonSessionState [] AutoDB id id False [] False [] Nothing [] empty
 
 resetSession :: DaemonSessionState -> DaemonSessionState
 resetSession DaemonSessionState{..} = initSession { _packageDB, _ghcFlagsSet }
