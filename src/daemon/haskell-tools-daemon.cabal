@@ -79,6 +79,10 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/th-imports-normal/*.hs
                   , examples/Project/has-ghc/*.hs
                   , examples/Project/has-ghc/*.cabal
+                  , examples/Project/incomplete-cabal/*.hs
+                  , examples/Project/incomplete-cabal/*.cabal
+                  , examples/Project/two-modules/*.hs
+                  , examples/Project/two-modules/*.cabal
 
 library
   build-depends:       base                      >= 4.9   && < 5.0
@@ -128,7 +132,7 @@ library
 executable ht-daemon
   ghc-options:         -rtsopts
   build-depends:       base                      >= 4.9 && < 5.0
-                     , haskell-tools-daemon      >= 0.9 && < 0.10
+                     , haskell-tools-daemon
                      , directory                 >= 1.2  && < 1.4
                      , filepath                  >= 1.4  && < 2.0
                      , haskell-tools-builtin-refactorings >= 0.9 && < 0.10

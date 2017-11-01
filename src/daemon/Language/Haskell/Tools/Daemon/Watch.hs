@@ -22,7 +22,7 @@ import System.IO (IO, FilePath)
 import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
 import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..))
 import Language.Haskell.Tools.Daemon.State (DaemonSessionState)
-import Language.Haskell.Tools.Daemon.Update (reloadModules)
+import Language.Haskell.Tools.Daemon.Update (updateForFileChanges)
 
 -- | Starts the watch process and a thread that receives notifications from it. The notification
 -- thread will invoke updates on the daemon state to re-load files.
@@ -40,7 +40,7 @@ createWatchProcess' watchExePath ghcSess daemonSess upClient = do
         let changedFiles = catMaybes $ map getModifiedFile changes
             addedFiles = catMaybes $ map getAddedFile changes
             removedFiles = catMaybes $ map getRemovedFile changes
-            reloadAction = reloadModules upClient addedFiles changedFiles removedFiles
+            reloadAction = updateForFileChanges upClient addedFiles changedFiles removedFiles
             handlers = userExceptionHandlers
                            (upClient . ErrorMessage)
                            (\err hint -> upClient (CompilationProblem err hint))
@@ -59,7 +59,7 @@ createWatchProcess' watchExePath ghcSess daemonSess upClient = do
     getRemovedFile (Rem file) | takeExtension file `elem` sourceExtensions = Just file
     getRemovedFile _ = Nothing
 
-    sourceExtensions = [ ".hs", ".hs-boot" ]
+    sourceExtensions = [ ".hs", ".hs-boot", ".cabal" ]
 
     guessExePath = do exePath <- getExecutablePath
                       return $ takeDirectory exePath </> "hfswatch"
