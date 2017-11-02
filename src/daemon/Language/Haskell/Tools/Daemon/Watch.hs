@@ -10,7 +10,7 @@ import Control.Exception (catches)
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Aeson as A ()
-import Data.Maybe (Maybe(..), catMaybes)
+import Data.Maybe (Maybe(..), catMaybes, isNothing)
 import Data.Tuple (swap)
 import GhcMonad (Session(..), reflectGhc)
 import System.Environment (getExecutablePath)
@@ -31,12 +31,12 @@ createWatchProcess' :: Maybe FilePath -> Session -> MVar DaemonSessionState -> (
 createWatchProcess' watchExePath ghcSess daemonSess upClient = do
     exePath <- case watchExePath of Just exe -> return exe
                                     Nothing -> guessExePath
-    process <- createWatchProcess exePath 100
+    process <- createWatchProcess exePath 500
     initProcess process
   where
     initProcess process = do
       reloaderThread <- forkIO $ forever $ void $ do
-        changes <- waitNotifies process
+        changes <- waitForChanges process
         let changedFiles = catMaybes $ map getModifiedFile changes
             addedFiles = catMaybes $ map getAddedFile changes
             removedFiles = catMaybes $ map getRemovedFile changes
@@ -49,6 +49,13 @@ createWatchProcess' watchExePath ghcSess daemonSess upClient = do
           (void (modifyMVar daemonSess (\st -> swap <$> reflectGhc (runStateT reloadAction st) ghcSess))
              `catches` handlers)
       return $ (Just process, [reloaderThread])
+
+    waitForChanges process = do
+      changes <- waitNotifies process
+      refactoring <- isNothing <$> tryReadMVar daemonSess
+      -- if a refactoring is in progress, we should wait for all the changes to appear
+      if refactoring then (changes ++) <$> waitForChanges process
+                     else return changes
 
     getModifiedFile (Mod file) | takeExtension file `elem` sourceExtensions = Just file
     getModifiedFile _ = Nothing
