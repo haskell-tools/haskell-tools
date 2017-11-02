@@ -112,6 +112,9 @@ type InstanceRule dom = Ann UInstanceRule dom SrcTemplateStage
 -- | The specification of the class instance declaration
 type InstanceHead dom = Ann UInstanceHead dom SrcTemplateStage
 
+-- | Specialize pragma (@ {-# SPECIALISE f :: Int -> b -> b #-} @)
+type SpecializePragma dom = Ann USpecializePragma dom SrcTemplateStage
+
 -- | Overlap pragmas. Can be applied to class declarations and class instance declarations.
 type OverlapPragma dom = Ann UOverlapPragma dom SrcTemplateStage
 

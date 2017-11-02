@@ -81,6 +81,7 @@ $(toASTReferences (makeReferences ''UMinimalFormula))
 $(toASTReferences (makeReferences ''USourceRange))
 $(toASTReferences (makeReferences ''Number))
 $(toASTReferences (makeReferences ''UUnboxedSumPlaceHolder))
+$(toASTReferences (makeReferences ''USpecializePragma))
 
 
 -- * Binds
@@ -122,6 +123,7 @@ $(toASTReferences (makeReferences ''UStmt'))
 $(toASTReferences (makeReferences ''UCompStmt))
 $(toASTReferences (makeReferences ''UListCompBody))
 $(toASTReferences (makeReferences ''UDoKind))
+$(toASTReferences (makeReferences ''UCmd))
 
 -- * Patterns
 $(toASTReferences (makeReferences ''UPattern))
