@@ -261,6 +261,14 @@ reloadingTests =
                          && [pathC',pathB',pathA'] == allPathes
                          && [pathC'',pathB'',pathA''] == allPathes
             _ -> False )
+  , ( "reloading-only-one-module", testRoot </> "reloading"
+    , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]] , return ()
+    , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "A.hs"] [] ]
+    , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
+              , LoadingModules{}, LoadedModules [(pathA',_)]
+              ] -> [pathC,pathB,pathA] == map ((testRoot </> "reloading" ++ testSuffix) </>) ["C.hs","B.hs","A.hs"]
+                     && pathA' == pathA
+            _ -> False )
   , ( "reloading-package", testRoot </> "changing-cabal"
     , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
     , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
@@ -299,6 +307,22 @@ reloadingTests =
     , \case [ LoadingModules{}, LoadedModules [(a,_)]
               , LoadingModules{}, LoadedModules [(a',_)]
               ] -> a == testRoot </> "has-ghc" ++ testSuffix </> "A.hs" && a' == a
+            _ -> False )
+  , ( "reloading-unloadable-project", testRoot </> "load-error"
+    , [ AddPackages [testRoot </> "load-error" ++ testSuffix] ]
+    , writeFile (testRoot </> "load-error" ++ testSuffix </> "A.hs") "module A where\n\na = ()"
+    , [ ReLoad [] [testRoot </> "load-error" ++ testSuffix </> "A.hs"] [] ]
+    , \case [ LoadingModules{}, CompilationProblem{}
+              , LoadingModules{}, LoadedModules [(a,_)]
+              ] -> a == testRoot </> "load-error" ++ testSuffix </> "A.hs"
+            _ -> False )
+  , ( "reloading-unloadable-project-multi-modules", testRoot </> "load-error-multi"
+    , [ AddPackages [testRoot </> "load-error-multi" ++ testSuffix] ]
+    , writeFile (testRoot </> "load-error-multi" ++ testSuffix </> "A.hs") "module A where\n\na = ()"
+    , [ ReLoad [] [testRoot </> "load-error-multi" ++ testSuffix </> "A.hs"] [] ]
+    , \case [ LoadingModules{}, CompilationProblem{}
+              , LoadingModules{}, LoadedModules [(a,_)], LoadedModules [(b,_)]
+              ] -> [a,b] == map ((testRoot </> "load-error-multi" ++ testSuffix) </>) ["A.hs", "B.hs"]
             _ -> False )
   , ( "change-cabal", testRoot </> "two-modules", [], return ()
     , [ AddPackages [testRoot </> "two-modules" ++ testSuffix]

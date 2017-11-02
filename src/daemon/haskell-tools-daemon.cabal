@@ -83,6 +83,7 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/incomplete-cabal/*.cabal
                   , examples/Project/two-modules/*.hs
                   , examples/Project/two-modules/*.cabal
+                  , examples/Project/load-error-multi/*.hs
 
 library
   build-depends:       base                      >= 4.9   && < 5.0

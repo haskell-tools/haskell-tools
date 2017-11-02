@@ -40,6 +40,8 @@ data DaemonSessionState
                            -- ^ Extra threads started for handling the
                            -- information from the watch process.
                        , _touchedFiles :: Set FilePath
+                           -- ^ Marks files as being modified by this process
+                           -- Changes detected on marked files will not invalidate refactoring history.
                        }
 
 -- | An initial state of a daemon session.
