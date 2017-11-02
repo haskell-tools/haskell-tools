@@ -15,6 +15,7 @@ import Control.Applicative ((<|>))
 import Control.Concurrent.MVar
 import Control.Monad.State.Strict
 import Control.Reference
+import Control.Exception
 import Data.Function (on)
 import Data.IORef
 import qualified Data.List as List
@@ -28,6 +29,7 @@ import Data.IntSet (member)
 import Digraph as GHC
 import DynFlags
 import GHC
+import Exception
 import GHCi
 import GhcMonad (modifySession)
 import HscTypes
@@ -50,11 +52,11 @@ import Language.Haskell.Tools.Refactor hiding (ModuleName)
 type DaemonSession a = StateT DaemonSessionState Ghc a
 
 -- | Load packages from the given directories. Loads modules, performs the given callback action, warns for duplicate modules.
-loadPackagesFrom :: (ModSummary -> IO a)
+loadPackagesFrom :: (ModSummary -> IO ())
                       -> ([ModSummary] -> IO ())
                       -> (DaemonSessionState -> FilePath -> IO [FilePath])
                       -> [FilePath]
-                      -> DaemonSession [a]
+                      -> DaemonSession (Maybe SourceError)
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do -- collecting modules to load
      modColls <- liftIO $ getAllModules packages
@@ -64,26 +66,18 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
      mcs' <- liftIO (traversal !~ locateModules $ modColls)
      modify' (refSessMCs .- (++ mcs'))
      mcs <- gets (^. refSessMCs)
-     let alreadyLoadedFilesInOtherPackages
+     let alreadyLoadedFiles
            = concatMap (map (^. sfkFileName) . Map.keys . Map.filter (isJust . (^? typedRecModule)) . (^. mcModules))
                        (filter (\mc -> (mc ^. mcRoot) `notElem` packages) mcs)
      currentTargets <- map targetId <$> (lift getTargets)
      lift $ mapM_ (\t -> when (targetId t `notElem` currentTargets) (addTarget t))
                   (map makeTarget $ List.nubBy ((==) `on` (^. sfkFileName))
                                   $ List.sort $ concatMap getExposedModules mcs')
-     -- actually loading the modules
-     mods <- withLoadFlagsForModules mcs $ do
-       loadVisiblePackages -- need to update package state when setting the list of visible packages
-       modsForColls <- lift $ depanal [] True
-       let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
-           actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoadedFilesInOtherPackages) modsToParse
-       modify' (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
-       dfs <- getSessionDynFlags
-       return actuallyCompiled
-
-     liftIO $ loadCallback mods
-     checkEvaluatedMods mods
-     mapM (reloadModule report) mods
+     loadRes <- gtry (loadModules mcs alreadyLoadedFiles)
+     case loadRes of
+       Right mods -> (compileModules report mods >> return Nothing)
+                        `gcatch` (return . Just)
+       Left err -> return (Just err)
 
   where getExposedModules :: ModuleCollection k -> [k]
         getExposedModules
@@ -117,6 +111,22 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
 
         makeTarget (SourceFileKey "" modName) = Target (TargetModule (GHC.mkModuleName modName)) True Nothing
         makeTarget (SourceFileKey filePath _) = Target (TargetFile filePath Nothing) True Nothing
+
+        loadModules mcs alreadyLoaded = do
+          mods <- withLoadFlagsForModules mcs $ do
+            loadVisiblePackages -- need to update package state when setting the list of visible packages
+            modsForColls <- lift $ depanal [] True
+            let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
+                actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoaded) modsToParse
+            modify' (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
+            dfs <- getSessionDynFlags
+            return actuallyCompiled
+          liftIO $ loadCallback mods
+          return mods
+
+        compileModules report mods = do
+          checkEvaluatedMods mods
+          mapM_ (reloadModule report) mods
 
 -- | Loads the packages that are declared visible (by .cabal file).
 loadVisiblePackages :: DaemonSession ()
@@ -192,22 +202,28 @@ reloadModule report ms = do
   ghcfl <- gets (^. ghcFlagsSet)
   let modName = getModSumName ms
       codeGen = needsGeneratedCode (keyFromMS ms) mcs
+      mc = decideMC ms mcs
+  newm <- withFlagsForModule mc $ lift $ do
+    dfs <- liftIO $ fmap ghcfl $ mc ^. mcFlagSetup $ ms_hspp_opts ms
+    let ms' = ms { ms_hspp_opts = dfs }
+    -- some flags are cached in mod summary, so we need to override
+    parseTyped (if codeGen then forceCodeGen ms' else ms')
+  -- replace the module in the program database
+  modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
+              .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+                   . removeModuleMS ms
+  liftIO $ report ms
+
+-- | Select which module collection we think the module is in
+decideMC :: ModSummary -> [ModuleCollection SourceFileKey] -> ModuleCollection SourceFileKey
+decideMC ms mcs =
   case lookupModuleCollection ms mcs of
-    Just mc -> reloadModuleIn ghcfl codeGen modName mc
-    Nothing -> case mcs of mc:_ -> reloadModuleIn ghcfl codeGen modName mc
-                           []   -> error "reloadModule: module collections empty"
-  where
-    reloadModuleIn ghcfl codeGen modName mc = do
-      newm <- withFlagsForModule mc $ lift $ do
-        dfs <- liftIO $ fmap ghcfl $ mc ^. mcFlagSetup $ ms_hspp_opts ms
-        let ms' = ms { ms_hspp_opts = dfs }
-        -- some flags are cached in mod summary, so we need to override
-        parseTyped (if codeGen then forceCodeGen ms' else ms')
-      -- replace the module in the program database
-      modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
-                  .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
-                       . removeModuleMS ms
-      liftIO $ report ms
+    Just mc -> mc
+    Nothing -> case filter (\mc -> (mc ^. mcRoot) `List.isPrefixOf` fileName) mcs of
+                 mc:_ -> mc
+                 _ -> case mcs of mc:_ -> mc
+                                  []   -> error "reloadModule: module collections empty"
+  where fileName = getModSumOrig ms
 
 -- | Prepares the DynFlags for the compilation of a module
 withFlagsForModule :: ModuleCollection SourceFileKey -> DaemonSession a -> DaemonSession a

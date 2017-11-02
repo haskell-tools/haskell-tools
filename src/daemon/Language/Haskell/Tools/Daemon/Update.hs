@@ -12,7 +12,7 @@
 module Language.Haskell.Tools.Daemon.Update (updateClient, updateForFileChanges, initGhcSession) where
 
 import Control.DeepSeq (force)
-import Control.Exception (evaluate)
+import Control.Exception
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
@@ -21,9 +21,9 @@ import Data.Algorithm.DiffContext (prettyContextDiff, getContextDiff)
 import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
 import Data.Either (Either(..), either, rights)
 import Data.IORef (readIORef, newIORef)
-import Data.List hiding (insert)
+import Data.List as List hiding (insert)
 import qualified Data.Set as Set
-import qualified Data.Map as Map (insert, keys, filter)
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Version (Version(..))
 import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
@@ -47,6 +47,7 @@ import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Utils
+import Language.Haskell.Tools.Daemon.ErrorHandling
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_daemon (version)
@@ -241,12 +242,14 @@ addPackages resp packagePathes = do
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded
       if pkgDBok then do
-        loadPackagesFrom
-          (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)])
-                    >> return (getModSumOrig ms))
-          (resp . LoadingModules . map getModSumOrig)
-          (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
-        mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
+        error <- loadPackagesFrom
+                   (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+                   (resp . LoadingModules . map getModSumOrig)
+                   (\st fp -> maybeToList <$> detectAutogen fp (st ^. packageDB)) packagePathes
+        -- handle source errors here to prevent rollback on the tool state
+        case error of
+          Nothing -> mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
+          Just err -> liftIO $ resp $ uncurry CompilationProblem (getProblems err)
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"
   where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
@@ -275,13 +278,19 @@ updateForFileChanges resp added changed removed = do
   let changeSet = Set.fromList (added ++ changed ++ removed)
   when (not $ changeSet `Set.isSubsetOf` refactoredFiles)
     $ modify (undoStack .= []) -- clear the undo stack, if this changeset is not a result of a refactoring
+  -- check for module collections that failed to load
+  mcs <- gets (^. refSessMCs)
+  let packagesNotLoaded = filter (\mc -> List.all (\m -> isNothing (m ^? modRecMS)) $ Map.elems (mc ^. mcModules)) mcs
+      tryLoadAgain = filter (\r -> List.any (r `isPrefixOf`) (added ++ changed ++ removed)) $ map (^. mcRoot) packagesNotLoaded
   -- check for changes in .cabal files
   modify (touchedFiles .- (Set.\\ changeSet))
-  let reloadedPackages = map takeDirectory
-                           $ filter (\fp -> takeExtension fp == ".cabal")
-                           $ added ++ changed ++ removed
+  let changedPackages = map takeDirectory
+                          $ filter (\fp -> takeExtension fp == ".cabal")
+                          $ added ++ changed ++ removed
+      reloadedPackages = tryLoadAgain ++ changedPackages
       packageNotReloaded fp = not $ any (`isPrefixOf` fp) reloadedPackages
-  addPackages resp reloadedPackages -- reload packages where cabal changed
+  addPackages resp reloadedPackages -- reload packages if needed
+  -- reload the rest of the modules
   reloadModules resp (filter packageNotReloaded added) (filter packageNotReloaded changed)
                 (filter packageNotReloaded removed)
 

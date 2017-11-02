@@ -16,7 +16,7 @@ import System.IO (IO, hPutStrLn, stderr)
 import Bag (bagToList)
 import ErrUtils (ErrMsg(..))
 import GhcMonad (Session(..))
-import HscTypes (srcErrorMessages)
+import HscTypes
 import SrcLoc (SrcSpan(..), isGoodSrcSpan)
 
 import Language.Haskell.Tools.Daemon.GetModules (UnsupportedPackage(..))
@@ -33,10 +33,7 @@ userExceptionHandlers sendError sendCompProblems =
   , Handler (\(PrettyPrintProblem msg) -> sendError ("A problem occurred while pretty printing the result of the refactoring: " ++ msg))
   , Handler (\case (ConvertionProblem rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpanWithFile rng ++ ": " ++ msg)
                    (UnrootedConvertionProblem msg) -> sendError ("An unexpected problem occurred while converting between different program representations: " ++ msg))
-  , Handler (\errs -> let msgs = map (\err -> (errMsgSpan err, show err))
-                                   $ bagToList $ srcErrorMessages errs
-                          hints = nub $ sort $ catMaybes $ map (handleSourceProblem . snd) msgs
-                       in sendCompProblems msgs hints)
+  , Handler (uncurry sendCompProblems . getProblems)
   ]
 
 -- | Handlers for generic exceptions: 'IOException', 'AsyncException', 'SomeException'.
@@ -51,6 +48,12 @@ exceptionHandlers cont sendError =
               Nothing -> do hPutStrLn stderr $ "Unexpected error: " ++ show (ex :: SomeException)
                             sendError $ "Internal error: " ++ show ex
               Just (msg, doContinue) -> sendError msg >> when doContinue cont
+
+getProblems :: SourceError -> ([(SrcSpan, String)], [String])
+getProblems errs = let msgs = map (\err -> (errMsgSpan err, show err))
+                                 $ bagToList $ srcErrorMessages errs
+                       hints = nub $ sort $ catMaybes $ map (handleSourceProblem . snd) msgs
+                    in (msgs, hints)
 
 -- | Hint text and continuation suggestion for different kinds of errors based on pattern matching on error text.
 handleGHCException :: String -> Maybe (String, Bool)
