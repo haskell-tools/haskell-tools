@@ -101,8 +101,9 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
     changeName toChangeOrig origId toChangeWith str name
       | maybe False (`elem` toChange) actualName
           && semanticsDefining name == False
-          && any @[] (\n -> str == occNameString (getOccName n) && not (mergeableFields origId n))
-                     (scopeUpToDef (map (map (^. _1)) $ semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig))
+          && any @[] (\n -> str == occNameString (getOccName (n ^. _1)) && not (mergeableFields origId (n ^. _1))
+                              && notQualified (n ^. _2))
+                     (scopeUpToDef (semanticsScope name) ^? traversal & traversal & filtered (sameNamespace toChangeOrig . (^. _1)))
       = refactError $ "The definition clashes with an existing one at: " ++ shortShowSpanWithFile (getRange name) -- name clash with an external definition
       | maybe False (`elem` toChange) actualName
       = do put True -- state that something is changed in the local state
@@ -120,7 +121,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
       | otherwise = return name -- not the changed name, leave as before
       where toChange = toChangeOrig : toChangeWith
             actualName = fmap getName (semanticsName name)
-            scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`)) sc
+            scopeUpToDef sc = let (inside, outside) = span (null . (toChange `intersect`) . map (^. _1)) sc
                                in inside ++ take 1 outside
             mergeableFields (Just orig) conflict
               | isRecordSelector orig
@@ -129,6 +130,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
                                                    (filter (\dc -> toChangeOrig `notElem` map flSelector (dataConFieldLabels dc)) (tyConDataCons tc))
                  in maybe False (`eqType` funResultTy (idType orig)) (lookup conflict selectorsWithTypes)
             mergeableFields _ _ = False
+            notQualified usage = isNothing usage || any @[] (not . usageQualified) (usage ^? just & traversal)
 
 conflicts :: GHC.Name -> GHC.Name -> [[GHC.Name]] -> Bool
 conflicts overwrites overwritten (scopeBlock : scope)
