@@ -1,7 +1,6 @@
 # Using the command line refactorer
 
-  - If you used stack to install Haskell-tools: `stack exec ht-refact -- [flags] PACKAGE-ROOTS` (where `PACKAGE-ROOTS` stands for the directory containing the cabal file e.g.  `stack exec ht-refact -- .`)
-  - Otherwise, install the `haskell-tools-cli` package with cabal and invoke the program directly: `ht-refact [flags] PACKAGE-ROOTS`.
+  - Running ht-refact: `ht-refact [flags] PACKAGE-ROOTS`. (`PACKAGE-ROOTS` stands for the directories containing the cabal files e.g.  `stack exec ht-refact -- .`)
   - If you don't specify the commands to execute, when the project is loaded the program will start an interactive session. In this session you can use [commands](#commands) to perform refactorings. The source code will be reloaded after each refactoring. When you are finished you can quit the session with the `Exit` command.
   
 ## Options
@@ -26,7 +25,7 @@ When the interactive session is started:
     - `GenerateExports FILE-NAME`
     - `FloatOut SRC-RANGE`
     - `ProjectOrganizeImports`
-  - File names must be specified relative to the project root. Check the notifications when modules are loaded for the correct file pathes.
+  - File names should be specified relative to the project root. Check the notifications when modules are loaded for the correct file pathes.
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format (for example `13:6-14:12`). If the start and the end position is the same you can omit the end (`13:6`). When supplying source ranges, please keep in mind that a tab character causes the insertion of enough spaces to align the current position with the next tab stop. Tab stops are 8 characters apart.
   - Writing `Try` before a refactoring command displays the changes as a unified diff instead of actually changing the source files. You can try out the results of a refactoring before you apply it.
   - When finished, use `Exit` to close the CLI.
