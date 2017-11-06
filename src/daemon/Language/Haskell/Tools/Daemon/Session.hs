@@ -139,16 +139,29 @@ loadVisiblePackages = do
                                      }) -- save the package database
 
 -- | Get the module that is selected for refactoring and all the other modules.
-getFileMods :: FilePath -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                         , [(SourceFileKey, UnnamedModule IdDom)] )
-getFileMods fname
-  = do modMaps <- gets (^? refSessMCs & traversal & mcModules)
-       let modules = mapMaybe (\(k,m) -> fmap (k,) (m ^? typedRecModule)) -- not type checkable modules are ignored
-                       $ concatMap @[] Map.assocs modMaps
-           (selected,others) = List.partition (\(sfk,_) -> (sfk ^. sfkFileName) == fname) modules
-       case selected of [] -> return (Nothing, others)
-                        [m] -> return (Just m, others)
-                        (_:_) -> error "getFileMods: multiple modules selected"
+getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
+                                       , [(SourceFileKey, UnnamedModule IdDom)] )
+getFileMods fnameOrModule = do
+  modMaps <- gets (^? refSessMCs & traversal & mcModules)
+  let modules = mapMaybe (\(k,m) -> (\ms tc -> (ms, (k,tc))) <$> (m ^? modRecMS) <*> (m ^? typedRecModule)) -- not type checkable modules are ignored
+                  $ concatMap @[] Map.assocs modMaps
+      (modSel, modOthers) = List.partition (\(ms,_) -> getModSumName ms == fnameOrModule
+                                                         && (case ms_hsc_src ms of HsSrcFile -> True; _ -> False))
+                                          modules
+      maxSufLength = maximum $ map sufLength modules
+      (fnSel, fnOthers) = if null modules || maxSufLength == 0
+                            then ([], modules)
+                            else List.partition ((== maxSufLength) . sufLength) modules
+      sufLength = length . commonSuffix (splitPath fnameOrModule) . splitPath . getModSumOrig . fst
+      commonSuffix l1 l2 = takeWhile (uncurry (==)) $ zip (reverse l1) (reverse l2)
+      backup = case fnSel of
+                 []      -> return (Nothing, map snd fnOthers)
+                 [(_,m)] -> return (Just m, map snd fnOthers)
+                 _:_     -> error "getFileMods: multiple modules selected"
+  case modSel of
+    []      -> backup
+    [(_,m)] -> return (Just m, map snd modOthers)
+    _:_     -> backup
 
 -- | Reload the modules that have been changed (given by predicate). Pefrom the callback.
 reloadChangedModules :: (ModSummary -> IO a) -> ([ModSummary] -> IO ()) -> (ModSummary -> Bool)
