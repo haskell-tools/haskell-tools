@@ -331,6 +331,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.MergeFields_RenameY", "3:34-3:35", "x")
   , ("Refactor.RenameDefinition.PatternSynonym", "6:9", "ArrowAppl")
   , ("Refactor.RenameDefinition.PatternSynonymTypeSig", "6:9", "ArrowAppl")
+  , ("Refactor.RenameDefinition.QualImport", "5:1", "intercalate")
   ]
 
 wrongRenameDefinitionTests =
@@ -352,6 +353,7 @@ wrongRenameDefinitionTests =
   , ("Refactor.RenameDefinition.MergeFields", "5:16-5:18", "y") -- fld belongs to other type
   , ("Refactor.RenameDefinition.MergeFields", "7:16-7:18", "y3") -- types does not match
   , ("Refactor.RenameDefinition.MergeFields", "7:38-7:40", "x3") -- types does not match
+  , ("Refactor.RenameDefinition.QualImportAlso", "6:1", "intercalate") -- there is a non-qualified import
   ]
 
 extractBindingTests =
