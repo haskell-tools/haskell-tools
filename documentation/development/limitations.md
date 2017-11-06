@@ -19,3 +19,8 @@
 
 - Some semantic information is missing, for example, kinds of type variables, types of variables local to TH splices, fixity of locally defined operators.
   - We don't have the type of each expression. To acquire it, we would need to re-type check the expressions (with the knowledge of the type of names inside).
+
+## Limitations in testing
+
+ - There is not enough memory in a container-based travis machine to run the reloading and refactoring self-tests. Virtual machines are too slow to install the required packages.
+ - OSX VM is too slow to install the required packages to build.
