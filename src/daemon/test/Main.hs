@@ -204,13 +204,19 @@ refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] 
 refactorTests testRoot =
   [ ( "simple-refactor", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+      , PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
+      ]
+    , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], LoadingModules{}, LoadedModules [ (aPath', _) ]]
+              -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
+  , ( "refactor-file", testRoot </> "simple-refactor"
+    , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" "A.hs" "3:1-3:2" ["y"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [ (aPath, _) ], LoadingModules{}, LoadedModules [ (aPath', _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs" && aPath == aPath'; _ -> False )
   , ( "refactor-with-th", testRoot </> "th-imports-normal"
       , [ AddPackages [ testRoot </> "th-imports-normal" ++ testSuffix ]
-        , PerformRefactoring "RenameDefinition" (testRoot </> "th-imports-normal" ++ testSuffix </> "A.hs") "3:6" ["A'"] False False
+        , PerformRefactoring "RenameDefinition" "A" "3:6" ["A'"] False False
         ]
       , \case [ LoadingModules{}, LoadedModules [ (a, _) ], LoadedModules [ (c, _) ], LoadedModules [ (b, _) ]
                 , LoadingModules{}, LoadedModules [ (a', _) ], LoadedModules [ (c', _) ], LoadedModules [ (b', _) ]
@@ -218,7 +224,7 @@ refactorTests testRoot =
               _ -> False )
   , ( "dry-refactor", testRoot </> "reloading"
     , [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["cc"] False True
+      , PerformRefactoring "RenameDefinition" "C" "3:1-3:2" ["cc"] False True
       ]
     , \case [ LoadingModules{}, LoadedModules {}, LoadedModules {}, LoadedModules {}
               , DiffInfo diff'
@@ -228,7 +234,17 @@ refactorTests testRoot =
                     in diff' == diff; _ -> False )
   , ( "hs-boots", testRoot </> "hs-boots"
     , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs") "5:1-5:2" ["aa"] False False
+      , PerformRefactoring "RenameDefinition" "A" "5:1-5:2" ["aa"] False False
+      ]
+    , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _
+              , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
+              , LoadedModules [ (path3, _) ], LoadedModules [ (path4, _) ]
+              ] -> let allPathes = map ((testRoot </> "hs-boots" ++ testSuffix) </>) ["A.hs","B.hs","A.hs-boot","B.hs-boot"]
+                    in sort [path1,path2,path3,path4] == sort allPathes
+            _ -> False )
+  , ( "refactor-boot", testRoot </> "hs-boots"
+    , [ AddPackages [ testRoot </> "hs-boots" ++ testSuffix ]
+      , PerformRefactoring "RenameDefinition" (testRoot </> "hs-boots" ++ testSuffix </> "A.hs-boot") "3:1-3:2" ["aa"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules _, LoadedModules _, LoadedModules _, LoadedModules _
               , LoadingModules{}, LoadedModules [ (path1, _) ], LoadedModules [ (path2, _) ]
@@ -238,7 +254,7 @@ refactorTests testRoot =
             _ -> False )
   , ( "remove-module", testRoot </> "simple-refactor"
     , [ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "1:8-1:9" ["AA"] False False
+      , PerformRefactoring "RenameDefinition" "A" "1:8-1:9" ["AA"] False False
       ]
     , \case [ LoadingModules{},LoadedModules [ (aPath, _) ], LoadingModules{},LoadedModules [ (aaPath, _) ]]
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
@@ -251,7 +267,7 @@ reloadingTests =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "2:1-2:2" ["d"] False False
+      , PerformRefactoring "RenameDefinition" "C" "2:1-2:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC'',_)], LoadedModules [(pathB'',_)], LoadedModules [(pathA'',_)]
               , LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
@@ -273,7 +289,7 @@ reloadingTests =
     , [ AddPackages [ testRoot </> "changing-cabal" ++ testSuffix ]]
     , appendFile (testRoot </> "changing-cabal" ++ testSuffix </> "some-test-package.cabal") ", B"
     , [ AddPackages [testRoot </> "changing-cabal" ++ testSuffix]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "changing-cabal" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
+      , PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["z"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA,_)], LoadingModules{}, LoadedModules [(pathA',_)]
               , LoadedModules [(pathB',_)]
@@ -351,7 +367,7 @@ reloadingTests =
          removeFile (testRoot </> "reloading" ++ testSuffix </> "B.hs")
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"]
                   [testRoot </> "reloading" ++ testSuffix </> "A.hs", testRoot </> "reloading" ++ testSuffix </> "B.hs"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
+      , PerformRefactoring "RenameDefinition" "C" "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathC,_)], LoadedModules [(pathB,_)], LoadedModules [(pathA,_)]
               , LoadingModules{}, LoadedModules [(pathC',_)], LoadingModules{}, LoadedModules [(pathC'',_)] ]
@@ -363,7 +379,7 @@ reloadingTests =
                     , testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2" ]]
     , removeDirectoryRecursive (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2")
     , [ RemovePackages [testRoot </> "multi-packages-dependent" ++ testSuffix </> "package2"]
-      , PerformRefactoring "RenameDefinition" (testRoot </> "multi-packages-dependent" ++ testSuffix </> "package1" </> "A.hs")
+      , PerformRefactoring "RenameDefinition" "A"
                                               "3:1-3:2" ["d"] False False
       ]
     , \case [ LoadingModules{}, LoadedModules [(pathA',_)], LoadedModules [(pathB',_)]
@@ -381,7 +397,7 @@ undoTests
         ] , \case [ LoadingModules{}, LoadedModules{}, ErrorMessage{}] -> True; _ -> False )
     , ( "simple-undo", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
         , Left $ do -- if the test does not succeed, insert a delay here
                     res <- readFile (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs")
                     when (filter (`notElem` ['\r','\n']) res /= "module A wherey = ()")
@@ -396,7 +412,7 @@ undoTests
                 -> True; _ -> False )
     , ( "undo-invalidated", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
         , Right (ReLoad [] [testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"] [])
         , Right UndoLast
         ]
@@ -404,7 +420,7 @@ undoTests
                 , LoadingModules{}, LoadedModules{}, ErrorMessage{} ] -> True; _ -> False )
     , ( "undo-invalidated-other-module", testRoot </> "two-modules"
       , [ Right $ AddPackages [ testRoot </> "two-modules" ++ testSuffix ]
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "two-modules" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
         , Right (ReLoad [] [testRoot </> "two-modules" ++ testSuffix </> "B.hs"] [])
         , Right UndoLast
         ]
@@ -412,9 +428,9 @@ undoTests
                 , LoadingModules{}, LoadedModules{}, ErrorMessage{} ] -> True; _ -> False )
     , ( "undo-invalidated-revalidate", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
         , Right (ReLoad [] [testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"] [])
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["x"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["x"] False False
         , Right UndoLast
         ]
       , \case [ LoadingModules{}, LoadedModules{}, LoadingModules{}, LoadedModules{}
@@ -422,7 +438,7 @@ undoTests
                 , LoadingModules{}, LoadedModules{} ] -> True; _ -> False )
     , ( "multi-module-undo", testRoot </> "reloading"
         , [ Right $ AddPackages [ testRoot </> "reloading" ++ testSuffix ]
-          , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "reloading" ++ testSuffix </> "C.hs") "3:1-3:2" ["d"] False False
+          , Right $ PerformRefactoring "RenameDefinition" "C" "3:1-3:2" ["d"] False False
           , Right UndoLast
           , Left $ do -- if the test does not succeed, insert a delay here
                       resC <- readFile (testRoot </> "reloading" ++ testSuffix </> "C.hs")
@@ -438,8 +454,8 @@ undoTests
                   -> True; _ -> False )
     , ( "multiple-undo", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False
-        , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["z"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["y"] False False
+        , Right $ PerformRefactoring "RenameDefinition" "A" "3:1-3:2" ["z"] False False
         , Right UndoLast
         , Right UndoLast
         , Left $ do -- if the test does not succeed, insert a delay here
@@ -490,7 +506,7 @@ specialTests :: FilePath -> [(String, FilePath, Int -> Maybe FilePath -> DaemonO
 specialTests testRoot =
   [ ( "force-code-gen-with-th", testRoot </> "th-imports-normal", codeGenOpts
       , [ AddPackages [ testRoot </> "th-imports-normal" ++ testSuffix ]
-        , PerformRefactoring "RenameDefinition" (testRoot </> "th-imports-normal" ++ testSuffix </> "A.hs") "3:6" ["A'"] False False
+        , PerformRefactoring "RenameDefinition" "A" "3:6" ["A'"] False False
         ]
       , \case [ LoadingModules{}, LoadedModules [ (a, _) ], LoadedModules [ (c, _) ], LoadedModules [ (b, _) ]
                 , LoadingModules{}, LoadedModules [ (a', _) ], LoadedModules [ (c', _) ], LoadedModules [ (b', _) ]
