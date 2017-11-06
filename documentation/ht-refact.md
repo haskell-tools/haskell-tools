@@ -14,7 +14,6 @@
   - `--generate-code`: Always generate interpreted code for modules. Use in cases of GHC linker-related bugs.
   - `--no-history`: Disables saving the history of performed refactorings. Makes the `Undo` command unusable.
   - `-g OPTIONS`, `--ghc-options OPTIONS`: Pass flags to GHC to use when parsing and type checking modules. Overrides flags specified in cabal files. See the list of [GHC flags](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html). Multiple arguments can be used separated by spaces.
-  - `-d`, `--dry-run`: Don't change the modules, print the unified diff instead.
 
 ## Commands
 When the interactive session is started:
@@ -29,6 +28,7 @@ When the interactive session is started:
     - `ProjectOrganizeImports`
   - File names must be specified relative to the project root. Check the notifications when modules are loaded for the correct file pathes.
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format (for example `13:6-14:12`). If the start and the end position is the same you can omit the end (`13:6`). When supplying source ranges, please keep in mind that a tab character causes the insertion of enough spaces to align the current position with the next tab stop. Tab stops are 8 characters apart.
+  - Writing `Try` before a refactoring command displays the changes as a unified diff instead of actually changing the source files. You can try out the results of a refactoring before you apply it.
   - When finished, use `Exit` to close the CLI.
   - Using `Undo` will take back the last refactoring if the sources were not modified since.
   - The program automatically reloads the changed modules. If you don't use file system watching (`--no-watch`) you can ask the program to re-load your files by using the 3 commands:
