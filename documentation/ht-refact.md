@@ -1,6 +1,6 @@
 # Using the command line refactorer
 
-  - Running ht-refact: `ht-refact [flags] PACKAGE-ROOTS`. (`PACKAGE-ROOTS` stands for the directories containing the cabal files e.g.  `stack exec ht-refact -- .`)
+  - Running ht-refact: `ht-refact [flags] PACKAGE-ROOTS`. (`PACKAGE-ROOTS` stands for the directories containing the cabal files e.g.  `stack exec ht-refact -- .` or `stack exec ht-refact -- pkg1 pkg2`)
   - If you don't specify the commands to execute, when the project is loaded the program will start an interactive session. In this session you can use [commands](#commands) to perform refactorings. The source code will be reloaded after each refactoring. When you are finished you can quit the session with the `Exit` command.
   
 ## Options
@@ -17,20 +17,21 @@
 ## Commands
 When the interactive session is started:
   - Use the [refactorings](refactorings.md):
-    - `RenameDefinition FILE-NAME SRC-RANGE NEW-NAME`
-    - `ExtractBinding FILE-NAME SRC-RANGE NEW-NAME`
-    - `InlineBinding FILE-NAME SRC-RANGE`
-    - `GenerateSignature FILE-NAME SRC-RANGE`
-    - `OrganizeImports FILE-NAME`
-    - `GenerateExports FILE-NAME`
-    - `FloatOut SRC-RANGE`
+    - `RenameDefinition MODULE SRC-RANGE NEW-NAME`
+    - `ExtractBinding MODULE SRC-RANGE NEW-NAME`
+    - `InlineBinding MODULE SRC-RANGE`
+    - `GenerateSignature MODULE SRC-RANGE`
+    - `OrganizeImports MODULE`
+    - `GenerateExports MODULE`
+    - `FloatOut MODULE SRC-RANGE`
     - `ProjectOrganizeImports`
-  - File names should be specified relative to the project root. Check the notifications when modules are loaded for the correct file pathes.
+  - A `MODULE` is the full module name (for example, `Control.Monad`), or a unique suffix of the file path relative to the current directory (`Monad.hs` or `Control/Monad.hs`). Check the notifications when modules are loaded for the full file pathes.
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format (for example `13:6-14:12`). If the start and the end position is the same you can omit the end (`13:6`). When supplying source ranges, please keep in mind that a tab character causes the insertion of enough spaces to align the current position with the next tab stop. Tab stops are 8 characters apart.
   - Writing `Try` before a refactoring command displays the changes as a unified diff instead of actually changing the source files. You can try out the results of a refactoring before you apply it.
   - When finished, use `Exit` to close the CLI.
   - Using `Undo` will take back the last refactoring if the sources were not modified since.
-  - The program automatically reloads the changed modules. If you don't use file system watching (`--no-watch`) you can ask the program to re-load your files by using the 3 commands:
+  - The program automatically reloads the changed modules. If you don't use file system watching (`--no-watch`) you can ask the program to re-load your modules by using the 3 commands, to simulate the modification, addition or deletion of a file:
     - `ChangeFile FILE-NAME`
     - `AddFile FILE-NAME`
     - `RemoveFile FILE-NAME`
+  - Here `FILE-NAME` should be the path to the file relative to current directory.
