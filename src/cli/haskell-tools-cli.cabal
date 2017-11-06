@@ -12,6 +12,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 extra-source-files: examples/example-project/*.hs
+                  , examples/CppHs/Language/Preprocessor/*.hs
+                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
 
 library
   build-depends:       base                      >= 4.10 && < 4.11

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Pull requests and commits to other branches shouldn't try to deploy
-if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-    echo "Skipping deploy"
+# Pull requests shouldn't try to deploy
+if [ "$TRAVIS_EVENT_TYPE" = "pull" ]; then
+    echo "Pull request, skipping deploy"
     exit 0
 fi
 
@@ -26,23 +26,25 @@ echo "$TRAVIS_BRANCH" >> .git/info/sparse-checkout
 git pull origin master
 cd ..
 
-# Clean out existing contents
-rm -rf out/$TRAVIS_BRANCH/api/**
-rm -rf out/$TRAVIS_BRANCH/coverage/**
+# Publish api and coverage info on pushes
+if [ "$TRAVIS_EVENT_TYPE" = "push" ]; then
+    # Clean out existing contents
+    rm -rf out/$TRAVIS_BRANCH/api/**
+    rm -rf out/$TRAVIS_BRANCH/coverage/**
 
-# Move generated haddock documentation
+    # Move generated haddock documentation
+    mkdir -p out/$TRAVIS_BRANCH/api
+    mv .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
 
-mkdir -p out/$TRAVIS_BRANCH/api
-mv .stack-work/install/x86_64-linux/*/*/doc/* out/$TRAVIS_BRANCH/api
+    # Move the test coverage report
+    mkdir -p out/$TRAVIS_BRANCH/coverage
+    mv .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
+fi
 
-# Move the test coverage report
-
-mkdir -p out/$TRAVIS_BRANCH/coverage
-mv .stack-work/install/x86_64-linux/*/*/hpc/combined/all/* out/$TRAVIS_BRANCH/coverage
-
+# On nightly, publish the benchmark results
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
   # Copy the benchmark report
-  mv benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
+  mv -f benchmark.txt out/$TRAVIS_BRANCH/benchmark.txt
 fi
 
 # Create an index page

@@ -49,8 +49,9 @@ packageDBLoc CabalSandboxDB path = do
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
 packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either (\(_ :: SomeException) -> []) id) $ try $ do
      projRoot <- runCommandExpectOK "stack path --allow-different-user --project-root"
+     absPath <- canonicalizePath path
      -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
-     if maybe False (`isPrefixOf` path) projRoot then do
+     if maybe False (`isPrefixOf` absPath) projRoot then do
        globalDB <- runCommandExpectOK "stack path --allow-different-user --global-pkg-db"
        snapshotDB <- runCommandExpectOK "stack path --allow-different-user --snapshot-pkg-db"
        localDB <- runCommandExpectOK "stack path --allow-different-user --local-pkg-db"
@@ -99,8 +100,9 @@ trim :: String -> String
 trim = f . f
    where f = reverse . dropWhile isSpace
 
-choose :: Alternative f => [f a] -> f a
-choose = foldl (<|>) empty
+-- take the first nonempty
+choose :: (Eq (f a), Alternative f) => [f a] -> f a
+choose = fromMaybe empty . find (/= empty)
 
 ifExists :: FilePath -> IO (Maybe FilePath)
 ifExists fp = do exists <- doesDirectoryExist fp

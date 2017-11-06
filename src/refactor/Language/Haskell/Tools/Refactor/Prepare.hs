@@ -24,6 +24,7 @@ import System.FilePath
 
 import CmdLineParser (CmdLineP(..), processArgs)
 import DynFlags
+import Linker
 import FastString (mkFastString)
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
@@ -99,6 +100,8 @@ initGhcFlagsForTest = do initGhcFlags' True
 initGhcFlags' :: Bool -> Ghc ()
 initGhcFlags' needsCodeGen = do
   dflags <- getSessionDynFlags
+  env <- getSession
+  liftIO $ unload env [] -- clear linker state if ghc was used in the same process
   void $ setSessionDynFlags
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
