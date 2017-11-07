@@ -1,4 +1,4 @@
-resolver: nightly-2017-09-28
+resolver: nightly-2017-11-06
 
 ghc-options:
   "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports

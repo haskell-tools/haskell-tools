@@ -58,7 +58,7 @@ allTests isSource testRoot portCounter
           , testGroup "undo-tests"
               $ map (makeUndoTest portCounter) undoTests
           , testGroup "compilation-problem-tests"
-              $ map (makeCompProblemTest portCounter) compProblemTests
+              $ map (makeCompProblemTest portCounter) (compProblemTests isSource)
           , testGroup "special-tests"
               $ map (makeSpecialTest portCounter) (specialTests testRoot)
           -- if not a stack build, we cannot guarantee that stack is on the path
@@ -168,8 +168,8 @@ complexLoadingTests =
               ; _ -> False)
   ]
 
-compProblemTests :: [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
-compProblemTests =
+compProblemTests :: Bool -> [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+compProblemTests isSource =
   [ ( "load-error"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "load-error"] ]
     , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
@@ -189,16 +189,25 @@ compProblemTests =
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModules {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
   , ( "no-such-file"
-    , [ Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False]
+    , [ Right $ SetPackageDB DefaultDB
+      , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False]
     , \case [ ErrorMessage _ ] -> True; _ -> False )
-  ]
-
--- selfLoadingTest :: MVar Int -> TestTree
--- selfLoadingTest port = localOption (mkTimeout ({- 5 min -} 1000 * 1000 * 60 * 5)) $ testCase "self-load" $ do
---     actual <- communicateWithDaemon False port
---                 [ Right $ AddPackages (map (sourceRoot </>) ["ast", "backend-ghc", "prettyprint", "rewrite", "refactor"]) ]
---     assertBool ("The expected result is a nonempty response message list that does not contain errors. Actual result: " ++ show actual)
---                (not (null actual) && all (\case ErrorMessage {} -> False; _ -> True) actual)
+  ] ++ if isSource then
+         [ ( "cabal-sandbox-defaulted"
+           , [ Left $ withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
+             , Right $ SetPackageDB DefaultDB
+             , Right $ AddPackages [testRoot </> "cabal-sandbox"] ]
+           , \case [ErrorMessage{}] -> True; _ -> False )
+         , ( "package-db-conflict"
+           , [ Left $ withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
+             , Right $ AddPackages [testRoot </> "cabal-sandbox", testRoot </> "has-cabal"] ]
+           , \case [ErrorMessage{}] -> True; _ -> False )
+         , ( "package-db-conflict-2"
+           , [ Left $ withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
+             , Right $ AddPackages [testRoot </> "cabal-sandbox"]
+             , Right $ AddPackages [testRoot </> "has-cabal"] ]
+           , \case [LoadingModules{}, LoadedModules{}, ErrorMessage{}] -> True; _ -> False )
+         ] else []
 
 refactorTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
 refactorTests testRoot =
@@ -476,31 +485,31 @@ pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
 pkgDbTests
   = [ ( "cabal-sandbox"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"]]
+      , [ SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"] ]
       , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]] )
     , ( "cabal-sandbox-auto"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [SetPackageDB AutoDB, AddPackages [testRoot </> "cabal-sandbox"]]
+      , [ AddPackages [testRoot </> "cabal-sandbox"] ]
       , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]] )
     , ( "pkg-db-reload"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
-      , [ SetPackageDB AutoDB
-        , AddPackages [testRoot </> "cabal-sandbox"]
+      , [ AddPackages [testRoot </> "cabal-sandbox"]
         , ReLoad [] [testRoot </> "cabal-sandbox" </> "UseGroups.hs"] []]
       , [ LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")]
         , LoadingModules [testRoot </> "cabal-sandbox" </> "UseGroups.hs"]
         , LoadedModules [(testRoot </> "cabal-sandbox" </> "UseGroups.hs", "UseGroups")] ])
     ]
-  where initCabalSandbox = do
-          sandboxExists <- doesDirectoryExist ".cabal-sandbox"
-          when sandboxExists $ tryToExecute "cabal" ["sandbox", "delete"]
-          execute "cabal" ["sandbox", "init"]
-          withCurrentDirectory ("groups-0.4.0.0") $ do
-            execute "cabal" ["sandbox", "init", "--sandbox", ".." </> ".cabal-sandbox"]
-            execute "cabal" ["install"]
+
+initCabalSandbox = do
+  sandboxExists <- doesDirectoryExist ".cabal-sandbox"
+  when sandboxExists $ tryToExecute "cabal" ["sandbox", "delete"]
+  execute "cabal" ["sandbox", "init"]
+  withCurrentDirectory ("groups-0.4.0.0") $ do
+    execute "cabal" ["sandbox", "init", "--sandbox", ".." </> ".cabal-sandbox"]
+    execute "cabal" ["install"]
 
 specialTests :: FilePath -> [(String, FilePath, Int -> Maybe FilePath -> DaemonOptions, [ClientMessage], [ResponseMsg] -> Bool)]
 specialTests testRoot =
@@ -549,7 +558,7 @@ makeComplexLoadTest port (label, dir, inputs, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port daemonOpts (map Right inputs)
+    actual <- communicateWithDaemon False port daemonOpts (map Right (SetPackageDB DefaultDB : inputs))
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -579,7 +588,7 @@ makeUndoTest port (label, dir, inputs, validator) = testCase label $ do
     -- clear the target directory from possible earlier test runs
     when exists $ removeDirectoryRecursive (dir ++ testSuffix)
     copyDir dir (dir ++ testSuffix)
-    actual <- communicateWithDaemon False port daemonOpts inputs
+    actual <- communicateWithDaemon False port daemonOpts (Right (SetPackageDB DefaultDB) : inputs)
     assertBool ("The responses are not the expected: " ++ show actual) (validator actual)
   `finally` removeDirectoryRecursive (dir ++ testSuffix)
 
@@ -645,6 +654,7 @@ daemonOpts n we = DaemonOptions { daemonVersion = False
                                                                       , generateCode = False
                                                                       , disableHistory = False
                                                                       , Options.ghcFlags = Nothing
+                                                                      , projectType = Nothing
                                                                       }
                                 }
 

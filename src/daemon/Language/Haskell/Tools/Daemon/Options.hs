@@ -5,7 +5,8 @@ import Control.Monad.Reader (MonadReader(..))
 import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
 import Options.Applicative
-import Options.Applicative.Types (Parser, ReadM(..))
+import Options.Applicative.Types
+import Language.Haskell.Tools.Daemon.PackageDB
 
 -- | Command line options for the daemon process.
 data DaemonOptions = DaemonOptions { daemonVersion :: Bool
@@ -20,6 +21,7 @@ data SharedDaemonOptions = SharedDaemonOptions { noWatch :: Bool
                                                , generateCode :: Bool
                                                , disableHistory :: Bool
                                                , ghcFlags :: Maybe [String]
+                                               , projectType :: Maybe PackageDB
                                                }
 
 parseDaemonCLI = execParser daemonCLI
@@ -46,7 +48,7 @@ daemonOptionsParser = DaemonOptions <$> version <*> port <*> silent <*> sharedOp
                           <> help "Set to disable messages from daemon.")
 
 sharedOptionsParser :: Parser SharedDaemonOptions
-sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode <*> noHistory <*> ghcFlags
+sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode <*> noHistory <*> ghcFlags <*> pkgDBFlags
   where noWatch = switch (long "no-watch"
                             <> help "Disables file system watching.")
         watch = optional . strOption
@@ -72,3 +74,12 @@ sharedOptionsParser = SharedDaemonOptions <$> noWatch <*> watch <*> generateCode
                                                       '"':rest     -> init rest
                                                       other        -> other
                                return ( splitOn " " str')
+        pkgDBFlags = optional $ option typeParser
+                       (long "project-type"
+                         <> metavar "PROJECT_TYPE"
+                         <> help "Set the project type (cabal, cabal-sandbox, stack, or explicit package database pathes separated by commas).")
+          where typeParser = do str <- readerAsk
+                                case str of "cabal" -> return DefaultDB
+                                            "cabal-sandbox" ->  return CabalSandboxDB
+                                            "stack" -> return StackDB
+                                            pathes -> return $ ExplicitDB (splitOn "," pathes)

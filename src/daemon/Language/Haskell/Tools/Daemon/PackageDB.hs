@@ -6,7 +6,7 @@
 -- package database that cannot be changed after a package is loaded using that package database.
 -- Available package databases are the cabal global, the cabal sandbox, the stack or one that had
 -- been explicitely set by a file path.
-module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), packageDBLoc, detectAutogen) where
+module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), decidePkgDB, packageDBLoc, detectAutogen) where
 
 import Control.Applicative ((<$>), Alternative(..))
 import Control.Exception (SomeException, try)
@@ -22,54 +22,64 @@ import System.FilePath (FilePath, (</>))
 import System.Process (shell, readCreateProcessWithExitCode)
 
 -- | Possible package database configurations.
-data PackageDB = AutoDB -- ^ Decide the package database automatically.
-               | DefaultDB -- ^ Use the global cabal package database (like when using ghc).
+data PackageDB = DefaultDB -- ^ Use the global cabal package database (like when using ghc).
                | CabalSandboxDB -- ^ Use the sandboxed cabal package database.
                | StackDB -- ^ Use the stack package databases (local and snapshot).
-               | ExplicitDB { packageDBPath :: FilePath } -- ^ Set the package database explicitely.
-  deriving (Show, Generic)
+               | ExplicitDB { packageDBPath :: [FilePath] } -- ^ Set the package database explicitely.
+  deriving (Eq, Show, Generic)
 
 instance FromJSON PackageDB
 
+-- | Decide which type of project we are dealing with based on the package folders.
+-- Should only be invoked if the user did not select the project-type.
+decidePkgDB :: [FilePath] -> IO (Maybe PackageDB)
+decidePkgDB [] = return Nothing
+decidePkgDB (firstRoot:packageRoots) = do
+  fstRes <- decidePkgDB' firstRoot
+  res <- mapM decidePkgDB' packageRoots
+  if any (fstRes /=) res || (fstRes == CabalSandboxDB && not (null res))
+    then return Nothing
+    else return (Just fstRes)
+
+decidePkgDB' :: FilePath -> IO PackageDB
+decidePkgDB' root = do isSandbox <- checkSandbox
+                       if isSandbox then return CabalSandboxDB
+                                  else do isStack <- checkStack
+                                          if isStack then return StackDB
+                                                       else return DefaultDB
+  where
+    checkStack =
+      withCurrentDirectory root $ (fmap $ either (\(_ :: SomeException) -> False) id) $ try $ do
+        projRoot <- runCommandExpectOK "stack path --allow-different-user --project-root"
+        absPath <- canonicalizePath root
+        -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
+        return $ maybe False (`isPrefixOf` absPath) projRoot
+    checkSandbox = do
+      hasConfigFile <- doesFileExist (root </> "cabal.config")
+      hasSandboxFile <- doesFileExist (root </> "cabal.sandbox.config")
+      return $ hasConfigFile || hasSandboxFile
+
 -- | Finds the location of the package database based on the configuration.
 packageDBLoc :: PackageDB -> FilePath -> IO [FilePath]
-packageDBLoc AutoDB path = concat <$> sequence [ packageDBLoc StackDB path
-                                               , packageDBLoc CabalSandboxDB path
-                                               , packageDBLoc DefaultDB path
-                                               ]
 packageDBLoc DefaultDB _ = do
   dbs <- runCommandExpectOK "ghc-pkg list base"
   return $ maybe [] (filter (\l -> not (null l) && not (" " `isPrefixOf` l)) . lines) dbs
 packageDBLoc CabalSandboxDB path = do
   hasConfigFile <- doesFileExist (path </> "cabal.config")
-  hasSandboxFile <- doesFileExist (path </> "cabal.sandbox.config")
   config <- if hasConfigFile then readFile (path </> "cabal.config")
-              else if hasSandboxFile then readFile (path </> "cabal.sandbox.config")
-                                     else return ""
+              else readFile (path </> "cabal.sandbox.config")
   return $ map (drop (length "package-db: ")) $ filter ("package-db: " `isPrefixOf`) $ lines config
-packageDBLoc StackDB path = withCurrentDirectory path $ (fmap $ either (\(_ :: SomeException) -> []) id) $ try $ do
-     projRoot <- runCommandExpectOK "stack path --allow-different-user --project-root"
-     absPath <- canonicalizePath path
-     -- we only accept stack projects where the packages are (direct or indirect) subdirectories of the project root
-     if maybe False (`isPrefixOf` absPath) projRoot then do
-       globalDB <- runCommandExpectOK "stack path --allow-different-user --global-pkg-db"
-       snapshotDB <- runCommandExpectOK "stack path --allow-different-user --snapshot-pkg-db"
-       localDB <- runCommandExpectOK "stack path --allow-different-user --local-pkg-db"
-       return $ maybeToList localDB ++ maybeToList snapshotDB ++ maybeToList globalDB
-     else return []
-packageDBLoc (ExplicitDB dir) path = do
-  hasDir <- doesDirectoryExist (path </> dir)
-  if hasDir then return [path </> dir]
-            else return []
+packageDBLoc StackDB path = withCurrentDirectory path $ do
+   -- TODO: group the 3 calls into one for speed, split the output
+   globalDB <- runCommandExpectOK "stack path --allow-different-user --global-pkg-db"
+   snapshotDB <- runCommandExpectOK "stack path --allow-different-user --snapshot-pkg-db"
+   localDB <- runCommandExpectOK "stack path --allow-different-user --local-pkg-db"
+   return $ maybeToList localDB ++ maybeToList snapshotDB ++ maybeToList globalDB
+packageDBLoc (ExplicitDB dirs) path = return dirs
 
 -- | Gets the (probable) location of autogen folder depending on which type of
 -- build we are using.
 detectAutogen :: FilePath -> PackageDB -> IO (Maybe FilePath)
-detectAutogen root AutoDB = do
-  defDB <- detectAutogen root DefaultDB
-  sandboxDB <- detectAutogen root CabalSandboxDB
-  stackDB <- detectAutogen root StackDB
-  return $ choose [ defDB, sandboxDB, stackDB ]
 detectAutogen root DefaultDB = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root (ExplicitDB _) = ifExists (root </> "dist" </> "build" </> "autogen")
 detectAutogen root CabalSandboxDB = ifExists (root </> "dist" </> "build" </> "autogen")

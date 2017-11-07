@@ -70,6 +70,9 @@ runDaemon refactorings mode connStore config@DaemonOptions{..} = withSocketsDo $
        case Options.ghcFlags sharedOptions of
          Just flags -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetGHCFlags flags)
          Nothing -> return ()
+       case projectType sharedOptions of
+         Just t -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetPackageDB t)
+         Nothing -> return ()
        -- set up the file watch
        (wp,th) <- if noWatch sharedOptions
                     then return (Nothing, [])

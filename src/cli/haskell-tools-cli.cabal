@@ -72,7 +72,7 @@ executable ht-test-stackage
                      , split                     >= 0.2 && < 0.3
                      , filepath                  >= 1.4 && < 2.0
                      , optparse-applicative      >= 0.14 && < 0.15
-                     , Glob                      >= 0.8 && < 0.9
+                     , Glob                      >= 0.9 && < 0.10
   ghc-options:         -threaded
   hs-source-dirs:      test-stackage
   main-is:             Main.hs

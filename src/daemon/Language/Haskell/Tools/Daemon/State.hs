@@ -20,14 +20,11 @@ import Language.Haskell.Tools.Refactor
 data DaemonSessionState
   = DaemonSessionState { _refSessMCs :: [ModuleCollection SourceFileKey]
                            -- ^ The package components loaded into the session.
-                       , _packageDB :: PackageDB
-                           -- ^ The package database that is selected.
+                       , _packageDB :: Maybe (PackageDB, Bool)
+                           -- ^ The package database that is selected and a flag to decide if it is forced.
                        , _ghcFlagsSet :: DynFlags -> DynFlags
                            -- ^ GHC flags for compiling modules. Overrides settings in cabal files.
                        , _pkgDbFlags :: DynFlags -> DynFlags
-                       , _packageDBSet :: Bool
-                           -- ^ True if the package database is actually used. The package database
-                           -- cannot be changed if set.
                        , _packageDBLocs :: [FilePath]
                            -- ^ The pathes where the package databases are located.
                        , _exiting :: Bool
@@ -46,7 +43,7 @@ data DaemonSessionState
 
 -- | An initial state of a daemon session.
 initSession :: DaemonSessionState
-initSession = DaemonSessionState [] AutoDB id id False [] False [] Nothing [] empty
+initSession = DaemonSessionState [] Nothing id id [] False [] Nothing [] empty
 
 resetSession :: DaemonSessionState -> DaemonSessionState
 resetSession DaemonSessionState{..} = initSession { _packageDB, _ghcFlagsSet }
