@@ -14,6 +14,8 @@
 - A few of the GHC extensions are unsupported:
   - `ApplicativeDo` changes the GHC representation in an unexpected way. We suggest manually rewriting your monadic logic to applicative.
   - `OverloadedLabels` creates implicit bindings between names that may confuse a lot of refactorings based on names, like Rename Definition.
+- If using on a stack project the packages must be under the project root.
+- The `build-type: custom` attribute of cabal packages is not supported.
 
 ## Limitations for tool developers
 
