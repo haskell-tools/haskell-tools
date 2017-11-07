@@ -124,8 +124,8 @@ processMessage pedantic output (CompilationProblem marks hints)
   = do mapM_ (hPutStrLn output) hints
        mapM_ (\(loc, msg) -> hPutStrLn output (shortShowSpanWithFile loc ++ ": " ++ msg)) marks
        return (if pedantic then Just False else Nothing)
-processMessage _ output (LoadedModules mods)
-  = do mapM (\(fp,name) -> hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") ") mods
+processMessage _ output (LoadedModule fp name)
+  = do hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") "
        return Nothing
 processMessage _ output (DiffInfo diff)
   = do hPutStrLn output diff
