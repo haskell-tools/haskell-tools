@@ -4,66 +4,21 @@ If you decided to create a binding for Haskell Tools Refact, you can use the ht-
 
 First, you should check the [reference implementation](https://github.com/nboldi/haskell-tools-atom), that is developed for the [Atom editor](https://atom.io/).
 
-While writing this guide I assume the following things about your editor. If one or more statement is not true, than check the end of this guide for solutions.
- - It has the concept of projects and source folders inside the project.
- - It supports multi-threading and socket communication.
- - Can put markers in the source code (for signalling the location of errors or warnings).
+## Tasks
+To allow the user to use the haskell-tools system in the editor, a plugin should be written that integrates it to the editor. 
 
-## Components
+ - It should manage a subprocess that runs the ht-daemon server. It should enable the user to start, stop and restart the process. Optionally it should automatically restart the process if terminated.
+ - It should keep a socket connection with the server.
+ - It should keep track of the packages that are loaded into the server. It should allow the user to add new packages as well as to remove them.
+ - It should allow the user to use the [refactorings supported by the server](../refactorings.md). It should send the path of the focused file (absolute filepath) and the selected coordinates. When using the refactorings `RenameDefinition` or `ExtractBinding`, the plugin should allow the user to input a name before calling the refactoring.
+   - It should calculate the logical coordinates of the cursor position when sending refactoring requests. Tab characters should expand to the next tab stop. Tab stops are 8 characters apart.
+   - File contents are rewritten when the refactoring is done. It may appear to the editor as multiple changes, with a file becoming empty in between. Make sure that the cursor position is not changed by this.
+ - When receiving error markers from the server, the plugin should display them on the source files in the editor. It should also mark the files and their parent folders to enable easy identification of the file with the error.
+   - Make sure that markers are associated with files regardless if they are open or not.
+   - Remove markers from files if they are reloaded.
+   - Remove all markers when the server is stopped.
+   - If the location of an error could not be decided, it should appear as a pop-up error message.
+ - It should display the actual status of the haskell-tools server. It can be one of disconnected, ready, loading, compiling, refactoring or error.  
+   - It is convenient for the user to see how many modules have been loaded and how many remain.
 
-The editor integration should have three main component. Both should be singleton objects.
-
-**Server manager**
- - Starts the Haskell Tools engine executable.
- - Stops the server when needed.
- - *Optional:* restarts the server executable if it stopped for some reason.
-
-**Client manager**
- - Maintains a socket connection with the server.
- - Sends messages to the server on user requests, or requests from other components.
-
-**Package manager**
-  - Handles adding and removing packages to the engine.
-  - Uses the client manager to communicate with the engine.
-
-Other optional components that may increase the usability of your integration:
- - Locating the engine executable at the first run.
- - Providing information about the status of the engine.
- - Keeping a history of the refactorings performed.
- - Dialogs for getting input from the user when performing a given refactoring.
- - Displaying markers in the editor when the source code is not correct.
-
-## State
-
- - The integration should store which folders have been added to the engine. It should display this information somehow to the user.
- - It should also store some settings:
-   - The location of the server executable
-   - The port number to use for communication
-
-## When to send messages?
-
- - `KeepAlive` if you need to check if the server is running.
- - `AddPackages` should be sent when the user adds a new package to the project. It should also be sent after Haskell Tool is started. In that case each selected package should be added.
- - `RemovePackages` should be sent when the user removes a package from the project.
- - If the user wants to perform a refactoring, the corresponding `PerformRefactoring` command should be sent. The `refactoring` field should be set to the name of the refactoring. Some refactoring need additional details, for example the name of the extracted definition. These should be asked from the user via input messages. The message should also contain the file that is currently viewed and the selected region (`modulePath` and `editorSelection`).
- - `Stop` message is needed when the user closes the editor or decided to end the refactoring session and executes the Stop Command.
-
- Check the protocol description for details.
-
-## What to do with the responses?
-
- - `KeepAliveResponse`: This is the standard response for `KeepAlive`. Shoud decrement the keep-alive counter.
- - `LoadingModules`: This message precedes all reloading of modules in the server. The client can use it to track the servers progress. All modules that will be re-loaded will appear here. This happens after adding packages and performing refactorings.
- - `LoadedModules`: Notifies the client that the given modules have been reloaded. The client can use it to update the progress of the reloading or check if some module is up-to-date.
- - `ErrorMessage`: This response is returned when the given refactoring cannot be performed out of a user or system error, it might mark the use of an unallowed language element.
- - `CompilationProblem`: This message is sent when the server cannot compile the submitted sources. Should display a marker at the source range given in the message, with the given problem text.
-
-  An example of `CompilationProblem` response message. The first record specifies the location of the problem, the second specifies the message.
-
-  ```json
-  {"tag":"CompilationProblem","errorMarkers":[[{"endCol":22,"startRow":3,"endRow":3,"startCol":1,"file":".../A.hs"},"Failed to load interface for `No.Such.Module'\nUse -v to see a list of the files searched for."]]}
-  ```
-
-  The editor plugin should keep the message even if the given file is closed to show it when it is opened again.
-
-Check the protocol description for details.
+Check the [protocol description](haskell-tools-refactoring-protocol.md) for possible messages between the plugin and the haskell-tools server.
