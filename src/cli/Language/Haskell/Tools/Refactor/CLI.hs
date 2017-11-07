@@ -46,7 +46,7 @@ data CLIOptions = CLIOptions { displayVersion :: Bool
                              , executeCommands :: Maybe String
                              , sharedOptions :: SharedDaemonOptions
                              , packageRoots :: [FilePath]
-                             }
+                             } deriving Show
 
 -- | Entry point with configurable initialization. Mainly for testing, call 'normalRefactorSession'
 -- to use the command-line.

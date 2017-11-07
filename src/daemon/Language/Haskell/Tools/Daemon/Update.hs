@@ -27,7 +27,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Version (Version(..))
-import System.Directory (setCurrentDirectory, removeFile, doesDirectoryExist)
+import System.Directory
 import System.FSWatch.Slave (watch)
 import System.IO
 import System.FilePath
@@ -228,51 +228,52 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
 addPackages :: (ResponseMsg -> IO ()) -> [FilePath] -> DaemonSession ()
 addPackages _ [] = return ()
 addPackages resp packagePathes = do
-  nonExisting <- filterM ((return . not) <=< liftIO . doesDirectoryExist) packagePathes
+  roots <- liftIO $ mapM canonicalizePath packagePathes
+  nonExisting <- filterM ((return . not) <=< liftIO . doesDirectoryExist) roots
   DaemonSessionState {..} <- get
   if (not (null nonExisting))
     then liftIO $ resp $ ErrorMessage $ "The following packages are not found: " ++ concat (intersperse ", " nonExisting)
     else do
-      forM_ packagePathes watchNew -- put a file system watch on each package
+      forM_ roots watchNew -- put a file system watch on each package
       -- clear existing removed packages
       existingMCs <- gets (^. refSessMCs)
-      let existing = (existingMCs ^? traversal & filtered isTheAdded & mcModules & traversal & modRecMS)
+      let existing = (existingMCs ^? traversal & filtered (isTheAdded roots) & mcModules & traversal & modRecMS)
           existingModNames = map ms_mod existing
       needToReload <- (filter (\ms -> not $ ms_mod ms `elem` existingModNames))
                         <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
-      modify' $ refSessMCs .- filter (not . isTheAdded) -- remove the added package from the database
+      modify' $ refSessMCs .- filter (not . isTheAdded roots) -- remove the added package from the database
       forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
       modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
       -- load new modules
-      pkgDBok <- initializePackageDBIfNeeded
+      pkgDBok <- initializePackageDBIfNeeded roots
       if pkgDBok then do
         error <- loadPackagesFrom
                    (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
                    (resp . LoadingModules . map getModSumOrig)
-                   (\st fp -> maybe (return []) (fmap maybeToList . detectAutogen fp . fst) (st ^. packageDB)) packagePathes
+                   (\st fp -> maybe (return []) (fmap maybeToList . detectAutogen fp . fst) (st ^. packageDB)) roots
         -- handle source errors here to prevent rollback on the tool state
         case error of
           Nothing -> mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
           Just err -> liftIO $ resp $ uncurry CompilationProblem (getProblems err)
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"
-  where isTheAdded mc = (mc ^. mcRoot) `elem` packagePathes
-        initializePackageDBIfNeeded = do
-          db <- dbSetup
+  where isTheAdded roots mc = (mc ^. mcRoot) `elem` roots
+        initializePackageDBIfNeeded roots = do
+          db <- dbSetup roots
           case db of
             Nothing -> return False
             Just (pkgDB, _) -> do
-              locs <- liftIO $ packageDBLoc pkgDB (head packagePathes)
+              locs <- liftIO $ packageDBLoc pkgDB (head roots)
               usePackageDB locs
               modify' (packageDBLocs .= locs)
               return True
-        dbSetup = do
+        dbSetup roots = do
           pkgDB <- gets (^. packageDB)
-          case pkgDB of Nothing          -> do db <- liftIO $ decidePkgDB packagePathes
+          case pkgDB of Nothing          -> do db <- liftIO $ decidePkgDB roots
                                                modify (packageDB .= fmap (, False) db)
                                                return (fmap (, False) db)
                         Just (db, True)  -> return pkgDB
-                        Just (db, False) -> do newDB <- liftIO $ decidePkgDB packagePathes
+                        Just (db, False) -> do newDB <- liftIO $ decidePkgDB roots
                                                if newDB == Just db then return pkgDB
                                                                    else return Nothing
 
