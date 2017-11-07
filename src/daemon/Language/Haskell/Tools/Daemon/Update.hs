@@ -212,7 +212,7 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
               return $ Left (RestoreRemoved file origCont, createUnifiedDiff file origCont "")
 
         reloadChanges changedMods
-          = reloadChangedModules (\ms -> response (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+          = reloadChangedModules (\ms -> response (LoadedModule (getModSumOrig ms) (getModSumName ms)))
                                  (\mss -> response (LoadingModules (map getModSumOrig mss)))
                                  (\ms -> getModSumName ms `elem` changedMods)
 
@@ -248,7 +248,7 @@ addPackages resp packagePathes = do
       pkgDBok <- initializePackageDBIfNeeded roots
       if pkgDBok then do
         error <- loadPackagesFrom
-                   (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+                   (\ms -> resp (LoadedModule (getModSumOrig ms) (getModSumName ms)))
                    (resp . LoadingModules . map getModSumOrig)
                    (\st fp -> maybe (return []) (fmap maybeToList . detectAutogen fp . fst) (st ^. packageDB)) roots
         -- handle source errors here to prevent rollback on the tool state
@@ -312,7 +312,7 @@ reloadModules resp added changed removed = do
   modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
   -- reload changed modules
   -- TODO: filter those that are in reloaded packages
-  reloadChangedModules (\ms -> resp (LoadedModules [(getModSumOrig ms, getModSumName ms)]))
+  reloadChangedModules (\ms -> resp (LoadedModule (getModSumOrig ms) (getModSumName ms)))
                        (\mss -> resp (LoadingModules (map getModSumOrig mss)))
                        (\ms -> getModSumOrig ms `elem` changed)
   mcs <- gets (^. refSessMCs)

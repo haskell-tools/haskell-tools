@@ -27,7 +27,7 @@ data ClientMessage
   | AddPackages { addedPathes :: [FilePath] }
     -- ^ Registers packages to the engine. They will be subject to subsequent
     -- refactorings. Will cause the packages to be loaded, resulting in
-    -- LoadingModules, LoadedModules or CompilationProblem responses.
+    -- LoadingModules, LoadedModule or CompilationProblem responses.
   | RemovePackages { removedPathes :: [FilePath] }
     -- ^ Deregisters the given packages from the engine. They will not be
     -- subjects of further refactorings.
@@ -49,7 +49,7 @@ data ClientMessage
     -- ^ Orders the engine to perform the refactoring on the module given
     -- with the selection and details. Successful refactorings will cause re-loading of modules.
     -- If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
-    -- modules are re-loaded, LoadingModules, LoadedModules responses are sent.
+    -- modules are re-loaded, LoadingModules, LoadedModule responses are sent.
   | UndoLast
     -- ^ Asks the daemon to undo the last refactoring.
   | Disconnect
@@ -59,7 +59,7 @@ data ClientMessage
            , removedModules :: [FilePath]
            }
     -- ^ Instructs the engine to re-load a changed module.
-    -- LoadingModules, LoadedModules responses may be sent.
+    -- LoadingModules, LoadedModule responses may be sent.
   | Stop -- TODO: remove
     -- ^ Stops the server. OBSOLATE
   deriving (Show, Generic)
@@ -83,7 +83,9 @@ data ResponseMsg
   | LoadingModules { modulesToLoad :: [FilePath] }
     -- ^ The traversal of the project is done, now the engine is loading the
     -- given modules.
-  | LoadedModules { loadedModules :: [(FilePath, String)] }
+  | LoadedModule { loadedModulePath :: FilePath
+                 , loadedModuleName :: String
+                 }
     -- ^ The engine has loaded the given module.
   | UnusedFlags { unusedFlags :: [String] }
     -- ^ Returns the flags that are not used by the engine.
