@@ -53,9 +53,13 @@ generateTypeSignature topLevelRef localRef vbAccess mod
         findTypeSigFor id = find (\ts -> any (id ==) $ map semanticsId (ts ^? tsName & annList & simpleName))
         bindsWithSigs = catMaybes $ concatMap (\b -> map (\n -> let id = semanticsId n in fmap (id,,b) (findTypeSigFor id typeSigs)) (b ^? bindingName)) bindings
         scopedSigs = hasScopedTypeSignatures mod
-     in flip evalStateT False .
-          (topLevelRef !~ genTypeSig scopedSigs bindsWithSigs vbAccess
-             <=< localRef !~ genTypeSig scopedSigs bindsWithSigs vbAccess) $ mod
+     in do (mod', done) <- flip runStateT False .
+                             (topLevelRef !~ genTypeSig scopedSigs bindsWithSigs vbAccess
+                                <=< localRef !~ genTypeSig scopedSigs bindsWithSigs vbAccess) $ mod
+           if done
+             then return mod'
+             else refactError "No binding without type signature is found at the selection."
+
 
 hasScopedTypeSignatures :: Module dom -> Bool
 hasScopedTypeSignatures mod = "ScopedTypeVariables" `elem` (mod ^? filePragmas & annList & lpPragmas & annList & langExt :: [String])

@@ -2,6 +2,7 @@
            , ConstraintKinds
            , TypeFamilies
            , FlexibleContexts
+           , LambdaCase
            #-}
 module Language.Haskell.Tools.Refactor.Builtin.GenerateExports
   (generateExports, DomGenerateExports, generateExportsRefactoring) where
@@ -30,7 +31,8 @@ generateExports mod = return (modHead & annJust & mhExports & annMaybe
 getTopLevels :: DomGenerateExports dom => Module dom -> [(GHC.Name, Bool)]
 getTopLevels mod = catMaybes $ map (\d -> fmap (,exportContainOthers d)
                                                (foldl (<|>) Nothing $ map semanticsName $ d ^? elementName))
-                                   (mod ^? modDecl & annList)
+                                   (filter (\case TypeSigDecl{} -> False; _ -> True)
+                                      $ mod ^? modDecl & annList)
   where exportContainOthers :: Decl dom -> Bool
         exportContainOthers (DataDecl {}) = True
         exportContainOthers (ClassDecl {}) = True

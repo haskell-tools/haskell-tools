@@ -118,6 +118,7 @@ instance NamedElement UDecl where
                   &+& (declTypeFamily & tfHead & declHeadNames)
                   &+& (declValBind & bindingName)
                   &+& (declName & simpleName)
+                  &+& (declTypeSig & tsName & annList & simpleName)
                   &+& (declPatSyn & patLhs & (patName & simpleName &+& patSynOp & operatorName))
 
 instance NamedElement ULocalBind where
