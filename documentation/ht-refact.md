@@ -13,6 +13,7 @@
   - `--generate-code`: Always generate interpreted code for modules. Use in cases of GHC linker-related bugs.
   - `--no-history`: Disables saving the history of performed refactorings. Makes the `Undo` command unusable.
   - `-g OPTIONS`, `--ghc-options OPTIONS`: Pass flags to GHC to use when parsing and type checking modules. Overrides flags specified in cabal files. See the list of [GHC flags](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html). Multiple arguments can be used separated by spaces.
+  - `--project-type PKG-DB`: Restricts the project type to the given one. `PKG-DB` can be one of the followings. `cabal` for normal cabal projects, `cabal-sandbox` for sandbox-based cabal projects, `stack` for Stack-based projects or a list of comma-separated file pathes to explicitely set the folders where Haskell packages are loaded.
 
 ## Commands
 When the interactive session is started:
@@ -25,7 +26,7 @@ When the interactive session is started:
     - `GenerateExports MODULE`
     - `FloatOut MODULE SRC-RANGE`
     - `ProjectOrganizeImports`
-  - A `MODULE` is the full module name (for example, `Control.Monad`), or a unique suffix of the file path relative to the current directory (`Monad.hs` or `Control/Monad.hs`). Check the notifications when modules are loaded for the full file pathes.
+  - A `MODULE` is the full module name (for example, `Control.Monad`), or a unique suffix of the absolute file path of a module (`Monad.hs` or `Control/Monad.hs`).
   - Source ranges can be given in the `startrow:startcol-endrow:endcol` format (for example `13:6-14:12`). If the start and the end position is the same you can omit the end (`13:6`). When supplying source ranges, please keep in mind that a tab character causes the insertion of enough spaces to align the current position with the next tab stop. Tab stops are 8 characters apart.
   - Writing `Try` before a refactoring command displays the changes as a unified diff instead of actually changing the source files. You can try out the results of a refactoring before you apply it.
   - When finished, use `Exit` to close the CLI.
@@ -34,4 +35,4 @@ When the interactive session is started:
     - `ChangeFile FILE-NAME`
     - `AddFile FILE-NAME`
     - `RemoveFile FILE-NAME`
-  - Here `FILE-NAME` should be the path to the file relative to current directory.
+  - Here `FILE-NAME` should be the absolute file path of the source file.
