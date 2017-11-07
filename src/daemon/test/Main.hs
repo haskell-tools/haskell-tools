@@ -48,22 +48,22 @@ allTests isSource testRoot portCounter
           [ testGroup "simple-tests"
               $ map (makeDaemonTest portCounter) simpleTests
           , testGroup "loading-tests"
-              $ map (makeDaemonTest portCounter) loadingTests
+              $ map (makeDaemonTest portCounter) (loadingTests testRoot)
           , testGroup "complex-loading-tests"
-              $ map (makeComplexLoadTest portCounter) complexLoadingTests
+              $ map (makeComplexLoadTest portCounter) (complexLoadingTests testRoot)
           , testGroup "refactor-tests"
               $ map (makeRefactorTest portCounter) (refactorTests testRoot)
           , testGroup "reload-tests"
-              $ map (makeReloadTest portCounter) reloadingTests
+              $ map (makeReloadTest portCounter) (reloadingTests testRoot)
           , testGroup "undo-tests"
-              $ map (makeUndoTest portCounter) undoTests
+              $ map (makeUndoTest portCounter) (undoTests testRoot)
           , testGroup "compilation-problem-tests"
-              $ map (makeCompProblemTest portCounter) (compProblemTests isSource)
+              $ map (makeCompProblemTest portCounter) (compProblemTests isSource testRoot)
           , testGroup "special-tests"
               $ map (makeSpecialTest portCounter) (specialTests testRoot)
           -- if not a stack build, we cannot guarantee that stack is on the path
           , if isSource
-             then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) pkgDbTests
+             then testGroup "pkg-db-tests" $ map (makePkgDbTest portCounter) (pkgDbTests testRoot)
              else testCase "IGNORED pkg-db-tests" (return ())
           -- cannot execute this when the source is not present
           -- , if isSource then selfLoadingTest portCounter else testCase "IGNORED self-load" (return ())
@@ -77,8 +77,8 @@ simpleTests =
   , ( "keep-alive", [KeepAlive], [KeepAliveResponse] )
   ]
 
-loadingTests :: [(String, [ClientMessage], [ResponseMsg])]
-loadingTests =
+loadingTests :: FilePath -> [(String, [ClientMessage], [ResponseMsg])]
+loadingTests testRoot =
   [ ( "load-package"
     , [AddPackages [testRoot </> "has-cabal"]]
     , [ LoadingModules [testRoot </> "has-cabal" </> "A.hs"]
@@ -152,8 +152,8 @@ loadingTests =
       ])
   ]
 
-complexLoadingTests :: [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
-complexLoadingTests =
+complexLoadingTests :: FilePath -> [(String, FilePath, [ClientMessage], [ResponseMsg] -> Bool)]
+complexLoadingTests testRoot =
   [ ( "paths-module", testRoot </> "paths-module"
     , [AddPackages [testRoot </> "paths-module"]]
     , \case [ LoadingModules [paths, a], LoadedModules{}, LoadedModules{}
@@ -168,8 +168,8 @@ complexLoadingTests =
               ; _ -> False)
   ]
 
-compProblemTests :: Bool -> [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
-compProblemTests isSource =
+compProblemTests :: Bool -> FilePath -> [(String, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+compProblemTests isSource testRoot =
   [ ( "load-error"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "load-error"] ]
     , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
@@ -271,8 +271,8 @@ refactorTests testRoot =
             _ -> False )
   ]
 
-reloadingTests :: [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg] -> Bool)]
-reloadingTests =
+reloadingTests :: FilePath -> [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg] -> Bool)]
+reloadingTests testRoot =
   [ ( "reloading-module", testRoot </> "reloading", [ AddPackages [ testRoot </> "reloading" ++ testSuffix ]]
     , writeFile (testRoot </> "reloading" ++ testSuffix </> "C.hs") "module C where\nc = ()"
     , [ ReLoad [] [testRoot </> "reloading" ++ testSuffix </> "C.hs"] []
@@ -398,8 +398,8 @@ reloadingTests =
             _ -> False )
   ]
 
-undoTests :: [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
-undoTests
+undoTests :: FilePath -> [(String, FilePath, [Either (IO ()) ClientMessage], [ResponseMsg] -> Bool)]
+undoTests testRoot
   = [ ( "nothing-to-undo", testRoot </> "simple-refactor"
       , [ Right $ AddPackages [ testRoot </> "simple-refactor" ++ testSuffix ]
         , Right UndoLast
@@ -481,8 +481,8 @@ undoTests
                 -> True; _ -> False )
     ]
 
-pkgDbTests :: [(String, IO (), [ClientMessage], [ResponseMsg])]
-pkgDbTests
+pkgDbTests :: FilePath -> [(String, IO (), [ClientMessage], [ResponseMsg])]
+pkgDbTests testRoot
   = [ ( "cabal-sandbox"
       , withCurrentDirectory (testRoot </> "cabal-sandbox") initCabalSandbox
       , [ SetPackageDB CabalSandboxDB, AddPackages [testRoot </> "cabal-sandbox"] ]

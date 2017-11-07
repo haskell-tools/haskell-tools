@@ -37,6 +37,7 @@ createWatchProcess' watchExePath ghcSess daemonSess upClient = do
     initProcess process = do
       reloaderThread <- forkIO $ forever $ void $ do
         changes <- waitForChanges process
+        putStrLn $ "changes: " ++ show changes
         let changedFiles = catMaybes $ map getModifiedFile changes
             addedFiles = catMaybes $ map getAddedFile changes
             removedFiles = catMaybes $ map getRemovedFile changes

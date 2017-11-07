@@ -13,7 +13,7 @@ data DaemonOptions = DaemonOptions { daemonVersion :: Bool
                                    , portNumber :: Int
                                    , silentMode :: Bool
                                    , sharedOptions :: SharedDaemonOptions
-                                   }
+                                   } deriving Show
 
 -- | Command line options shared by CLI and daemon.
 data SharedDaemonOptions = SharedDaemonOptions { noWatch :: Bool
@@ -22,7 +22,7 @@ data SharedDaemonOptions = SharedDaemonOptions { noWatch :: Bool
                                                , disableHistory :: Bool
                                                , ghcFlags :: Maybe [String]
                                                , projectType :: Maybe PackageDB
-                                               }
+                                               } deriving Show
 
 parseDaemonCLI = execParser daemonCLI
 
