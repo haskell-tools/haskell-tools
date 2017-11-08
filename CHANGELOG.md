@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 1.0
+ - Improving error handling and documentation
+ - Solved memory leaks in the case of successive refactorings.
+ - Solved various errors related to code generate, reloading.
+
 ## 0.9
  - CLI now uses daemon as a backend. Functionalities are merged.
  - Command-line interfaces refined
