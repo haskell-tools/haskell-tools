@@ -11,11 +11,8 @@
 -- modules. Contains checks for compiling the modules to code when Template Haskell is used.
 module Language.Haskell.Tools.Daemon.Session where
 
-import Control.Applicative ((<|>))
-import Control.Concurrent.MVar
 import Control.Monad.State.Strict
 import Control.Reference
-import Control.Exception
 import Data.Function (on)
 import Data.IORef
 import qualified Data.List as List
@@ -25,7 +22,6 @@ import Data.Maybe
 import System.Directory
 import System.FilePath
 
-import Data.IntSet (member)
 import Digraph as GHC
 import DynFlags
 import GHC
@@ -37,10 +33,7 @@ import Language.Haskell.TH.LanguageExtensions as Exts
 import Linker
 import Module
 import NameCache
-import Outputable
 import Packages
-import UniqDFM
-import UniqFM
 
 import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.ModuleGraph
@@ -119,7 +112,6 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
             let modsToParse = flattenSCCs $ topSortModuleGraph False modsForColls Nothing
                 actuallyCompiled = filter (\ms -> getModSumOrig ms `notElem` alreadyLoaded) modsToParse
             modify' (refSessMCs .- foldl (.) id (map (insertIfMissing . keyFromMS) actuallyCompiled))
-            dfs <- getSessionDynFlags
             return actuallyCompiled
           liftIO $ loadCallback mods
           return mods
@@ -199,11 +191,9 @@ clearModules mods = do
 -- modules need to be reloaded after a change.
 getReachableModules :: ([ModSummary] -> IO ()) -> (ModSummary -> Bool) -> DaemonSession [ModSummary]
 getReachableModules loadCallback selected = do
-  ghcflags <- gets (^. ghcFlagsSet)
-  dbFlags <- gets (^. pkgDbFlags)
   mcs <- gets (^. refSessMCs)
   withLoadFlagsForModules mcs $ do
-    allMods <- lift $ depanal [] True
+    lift $ depanal [] True
     sortedRecompMods <- lift $ dependentModules (return . selected)
     liftIO $ loadCallback sortedRecompMods
     return sortedRecompMods
@@ -213,8 +203,7 @@ reloadModule :: (ModSummary -> IO a) -> ModSummary -> DaemonSession a
 reloadModule report ms = do
   mcs <- gets (^. refSessMCs)
   ghcfl <- gets (^. ghcFlagsSet)
-  let modName = getModSumName ms
-      codeGen = needsGeneratedCode (keyFromMS ms) mcs
+  let codeGen = needsGeneratedCode (keyFromMS ms) mcs
       mc = decideMC ms mcs
   newm <- withFlagsForModule mc $ lift $ do
     dfs <- liftIO $ fmap ghcfl $ mc ^. mcFlagSetup $ ms_hspp_opts ms

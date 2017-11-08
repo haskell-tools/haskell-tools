@@ -43,7 +43,7 @@ makeCliTest (name, dirs, args, input, outputCheck)
       inHandle <- newFileHandle inKnob "<input>" ReadMode
       outKnob <- newKnob (pack [])
       outHandle <- newFileHandle outKnob "<output>" WriteMode
-      res <- normalRefactorSession builtinRefactorings inHandle outHandle (args suffix testdirs)
+      normalRefactorSession builtinRefactorings inHandle outHandle (args suffix testdirs)
       actualOut <- Data.Knob.getContents outKnob
       assertBool ("The result is not what is expected. Output: " ++ (unpack actualOut))
         =<< outputCheck suffix (unpack actualOut)

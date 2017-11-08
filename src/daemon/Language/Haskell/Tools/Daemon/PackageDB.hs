@@ -8,7 +8,7 @@
 -- been explicitely set by a file path.
 module Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..), decidePkgDB, packageDBLoc, detectAutogen) where
 
-import Control.Applicative ((<$>), Alternative(..))
+import Control.Applicative (Alternative(..))
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Aeson (FromJSON(..))
@@ -75,7 +75,7 @@ packageDBLoc StackDB path = withCurrentDirectory path $ do
    snapshotDB <- runCommandExpectOK "stack path --allow-different-user --snapshot-pkg-db"
    localDB <- runCommandExpectOK "stack path --allow-different-user --local-pkg-db"
    return $ maybeToList localDB ++ maybeToList snapshotDB ++ maybeToList globalDB
-packageDBLoc (ExplicitDB dirs) path = return dirs
+packageDBLoc (ExplicitDB dirs) _ = return dirs
 
 -- | Gets the (probable) location of autogen folder depending on which type of
 -- build we are using.

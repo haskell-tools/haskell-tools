@@ -4,8 +4,6 @@ module Language.Haskell.Tools.Daemon.ModuleGraph
   (moduleGraphNodes, getModFromNode, dependentModules, supportingModules) where
 
 import Control.Monad
-import Control.Monad.IO.Class
-import Language.Haskell.Tools.Refactor hiding (ModuleName)
 import qualified Data.Map as Map (fromList, Map, lookup)
 import Data.Maybe (Maybe(..), mapMaybe, catMaybes)
 

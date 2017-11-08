@@ -18,26 +18,17 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
-import Data.List
-import Data.Maybe
 import Data.Tuple
 import Data.Version
 import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import System.IO
-import System.IO.Error
 
-import Bag
-import ErrUtils (ErrMsg(..))
 import GhcMonad (Session(..), reflectGhc)
-import HscTypes
-import SrcLoc
 
 import Language.Haskell.Tools.Daemon.ErrorHandling
-import Language.Haskell.Tools.Daemon.GetModules
 import Language.Haskell.Tools.Daemon.Mode
 import Language.Haskell.Tools.Daemon.Options as Options
 import Language.Haskell.Tools.Daemon.Protocol
-import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Update
 import Language.Haskell.Tools.Daemon.Watch

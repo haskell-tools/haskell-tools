@@ -165,7 +165,7 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
                              if not isWatching && not shutdown && not diffMode
                               -- if watch is on, then it will automatically
                               -- reload changed files, otherwise we do it manually
-                               then void $ reloadChanges (map ((^. sfkModuleName) . (^. _1)) (rights changedMods))
+                               then void $ reloadChanges (map ((^. sfkFileName) . (^. _1)) (rights changedMods))
                                else modify (touchedFiles .= Set.fromList (map ((^. sfkFileName) . (^. _1)) (rights changedMods)))
 
         applyChanges changes = do
@@ -214,7 +214,7 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
         reloadChanges changedMods
           = reloadChangedModules (\ms -> response (LoadedModule (getModSumOrig ms) (getModSumName ms)))
                                  (\mss -> response (LoadingModules (map getModSumOrig mss)))
-                                 (\ms -> getModSumName ms `elem` changedMods)
+                                 (\ms -> getModSumOrig ms `elem` changedMods)
 
         updateHistory :: [Either (UndoRefactor, b) (SourceFileKey, FilePath, UndoRefactor, String)] -> DaemonSession ()
         updateHistory changedMods
@@ -272,7 +272,7 @@ addPackages resp packagePathes = do
           case pkgDB of Nothing          -> do db <- liftIO $ decidePkgDB roots
                                                modify (packageDB .= fmap (, False) db)
                                                return (fmap (, False) db)
-                        Just (db, True)  -> return pkgDB
+                        Just (_, True)   -> return pkgDB
                         Just (db, False) -> do newDB <- liftIO $ decidePkgDB roots
                                                if newDB == Just db then return pkgDB
                                                                    else return Nothing

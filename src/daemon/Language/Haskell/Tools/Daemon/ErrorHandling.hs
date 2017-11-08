@@ -6,16 +6,12 @@ module Language.Haskell.Tools.Daemon.ErrorHandling where
 
 import Control.Exception
 import Control.Monad (Monad(..), when)
-import Control.Monad.State.Strict (Monad(..), when)
-import Control.Reference hiding (modifyMVarMasked_)
 import Data.List
 import Data.Maybe (Maybe(..), catMaybes)
 import Data.Tuple (snd)
-import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import System.IO (IO, hPutStrLn, stderr)
 import Bag (bagToList)
 import ErrUtils (ErrMsg(..))
-import GhcMonad (Session(..))
 import HscTypes
 import SrcLoc (SrcSpan(..), isGoodSrcSpan)
 
@@ -68,7 +64,7 @@ handleGHCException msg | "cannot satisfy" `isInfixOf` msg
              ++ " used package database. Check that you actually compiled this package with all of its components (tests, benchmarks). "
              ++ "If so, make sure that it is installed with the same tools that the project is "
              ++ "configured for (cabal/stack/cabal sandbox). The error message: " ++ msg, True)
-handleGHCException msg = Nothing
+handleGHCException _ = Nothing
 
 -- | Hint text and continuation suggestion for different kinds of source problems based on pattern matching on error text.
 handleSourceProblem :: String -> Maybe String

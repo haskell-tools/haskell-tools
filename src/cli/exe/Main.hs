@@ -1,11 +1,9 @@
 module Main where
 
-import Control.Monad (Monad(..), (=<<))
-import Control.Monad.Reader (MonadReader(..))
-import Data.List (init)
+import Control.Monad ((=<<))
 import Data.Semigroup ((<>))
 import Options.Applicative
-import Options.Applicative.Types (Parser, ReadM(..))
+import Options.Applicative.Types (Parser)
 import System.Exit (exitSuccess, exitFailure)
 import System.IO (IO, stdout, stdin)
 

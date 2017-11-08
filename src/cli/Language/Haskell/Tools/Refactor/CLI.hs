@@ -82,7 +82,7 @@ processUserInput refactorings input output chan = do
 -- | Perform a command received from the user. The resulting boolean states if the user may continue
 -- (True), or the session is over (False).
 processCommand :: Bool -> [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> String -> IO Bool
-processCommand shutdown refactorings output chan "" = return True
+processCommand _ _ _ _ "" = return True
 processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
     ["Exit"] -> writeChan chan Disconnect >> return False
