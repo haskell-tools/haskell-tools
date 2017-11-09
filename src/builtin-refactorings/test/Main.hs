@@ -378,6 +378,7 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.AssocOpRightAssoc", "3:5-3:12", "g")
   , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
   , ("Refactor.ExtractBinding.SiblingDefs", "7:9-7:10", "a")
+  , ("Refactor.ExtractBinding.Case", "3:26-3:31", "g")
   ]
 
 wrongExtractBindingTests =
