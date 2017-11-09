@@ -189,6 +189,9 @@ instance HsHasName n => HsHasName (HsTyVarBndr n) where
   hsGetNames p (UserTyVar n) = hsGetNames p n
   hsGetNames p (KindedTyVar n _) = hsGetNames p n
 
+instance HsHasName n => HsHasName (Match n b) where
+  hsGetNames p (Match _ pats _ _) = concatMap (hsGetNames p) pats
+
 instance HsHasName n => HsHasName (Stmt n b) where
   hsGetNames p (LetStmt binds) = hsGetNames p binds
   hsGetNames p (BindStmt pat _ _ _ _) = hsGetNames p pat

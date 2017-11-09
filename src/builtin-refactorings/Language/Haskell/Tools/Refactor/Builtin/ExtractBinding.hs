@@ -27,6 +27,9 @@ import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 
+import Debug.Trace
+import Outputable
+
 extractBindingRefactoring :: (ExtractBindingDomain dom, HasModuleInfo dom) => RefactoringChoice dom
 extractBindingRefactoring = NamingRefactoring "ExtractBinding" (\loc s -> localRefactoring (extractBinding' loc s))
 
