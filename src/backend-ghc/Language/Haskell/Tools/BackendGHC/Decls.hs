@@ -38,7 +38,7 @@ import Language.Haskell.Tools.BackendGHC.Utils
 
 import Language.Haskell.Tools.AST (Ann, AnnMaybeG, AnnListG, getRange, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo)
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, mkNoSemanticInfo)
 
 trfDecls :: TransformName n r => [LHsDecl n] -> Trf (AnnListG AST.UDecl (Dom r) RangeStage)
 trfDecls decls = addToCurrentScope decls $ makeIndentedListNewlineBefore atTheEnd (mapM trfDecl decls)
@@ -209,6 +209,9 @@ trfSig (InlineSig name prag)
   = AST.UPragmaDecl <$> annContNoSema (AST.UInlinePragmaDecl <$> trfInlinePragma name prag)
 trfSig (SpecSig name (map hsib_body -> types) (inl_act -> phase))
   = AST.UPragmaDecl <$> annContNoSema (AST.USpecializeDecl <$> trfSpecializePragma name types phase)
+trfSig (CompleteMatchSig _ names typeConstraint)
+  = AST.UPragmaDecl <$> annContNoSema (AST.UCompletePragma <$> trfAnnList ", " trfName' (unLoc names)
+                                                           <*> trfMaybe " :: " "" trfName typeConstraint)
 trfSig s = unhandledElement "signature" s
 
 trfSpecializePragma :: TransformName n r
@@ -601,10 +604,12 @@ trfRuleBndr = trfLocNoSema $ \case (RuleBndr n) -> AST.URuleVar <$> trfName n
                                    (RuleBndrSig n k) -> AST.USigRuleVar <$> trfName n <*> trfType (hsib_body $ hswc_body k)
 
 trfMinimalFormula :: TransformName n r => Located (BooleanFormula (Located n)) -> Trf (Ann AST.UMinimalFormula (Dom r) RangeStage)
-trfMinimalFormula = trfLocNoSema trfMinimalFormula'
+trfMinimalFormula = trfLocCorrect (pure mkNoSemanticInfo)
+                      (\sp -> if isGoodSrcSpan sp then pure sp else srcLocSpan <$> before AnnClose) trfMinimalFormula'
 
 trfMinimalFormula' :: TransformName n r => BooleanFormula (Located n) -> Trf (AST.UMinimalFormula (Dom r) RangeStage)
 trfMinimalFormula' (Var name) = AST.UMinimalName <$> trfName name
-trfMinimalFormula' (And formulas) = AST.UMinimalAnd <$> trfAnnList " & " trfMinimalFormula' formulas
+trfMinimalFormula' (And formulas) -- empty Minimal pragma is mapped to an empty list
+  = AST.UMinimalAnd <$> makeListBefore " " " , " atTheEnd (mapM (trfLocNoSema trfMinimalFormula') formulas)
 trfMinimalFormula' (Or formulas) = AST.UMinimalOr <$> trfAnnList " | " trfMinimalFormula' formulas
 trfMinimalFormula' (Parens formula) = AST.UMinimalParen <$> trfMinimalFormula formula

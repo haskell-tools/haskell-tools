@@ -210,7 +210,6 @@ type FixitySignature dom = Ann UFixitySignature dom SrcTemplateStage
 -- | A type signature (@ f :: Int -> Int @)
 type TypeSignature dom = Ann UTypeSignature dom SrcTemplateStage
 
-
 -- * Types
 
 -- | Haskell types

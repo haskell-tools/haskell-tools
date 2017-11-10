@@ -396,6 +396,9 @@ data UTopLevelPragma dom stage
                       , _pragmaFileName :: AnnMaybeG UStringNode dom stage
                       } -- ^ A pragma for maintaining line numbers in generated sources (@ {-# LINE 123 "somefile" #-} @)
   | USpecializeDecl   { _specializePragma :: Ann USpecializePragma dom stage }
+  | UCompletePragma   { _pragmaObjects :: AnnListG UName dom stage
+                      , _pragmaSignature :: AnnMaybeG UName dom stage
+                      } -- ^ The COMPLETE pragma is used to inform the pattern match checker that a certain set of patterns is complete (@ {-# COMPLETE T :: [] #-} @).
 
 data USpecializePragma dom stage
   = USpecializePragma { _pragmaPhase :: AnnMaybeG UPhaseControl dom stage
