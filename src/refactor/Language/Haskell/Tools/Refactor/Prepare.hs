@@ -185,13 +185,14 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   srcBuffer <- if hasCppExtension
                     then liftIO $ hGetStringBuffer (getModSumOrig ms)
                     else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
-  (if hasCppExtension then prepareASTCpp else prepareAST) srcBuffer . placeComments (fst annots) (getNormalComments $ snd annots)
-    <$> (addTypeInfos (typecheckedSource tc)
-           =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
-                   runTrf (fst annots) (getPragmaComments $ snd annots)
-                     $ trfModuleRename ms parseTrf
-                         (fromJust $ tm_renamed_source tc)
-                         (pm_parsed_source p)))
+  withTempSession (\e -> e { hsc_dflags = ms_hspp_opts modSum }) 
+    $ (if hasCppExtension then prepareASTCpp else prepareAST) srcBuffer . placeComments (fst annots) (getNormalComments $ snd annots)
+        <$> (addTypeInfos (typecheckedSource tc)
+               =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
+                       runTrf (fst annots) (getPragmaComments $ snd annots)
+                         $ trfModuleRename ms parseTrf
+                             (fromJust $ tm_renamed_source tc)
+                             (pm_parsed_source p)))
 
 data UnsupportedExtension = UnsupportedExtension String
   deriving Show

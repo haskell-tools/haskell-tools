@@ -97,6 +97,10 @@ loadingTests testRoot =
     , [AddPackages [testRoot </> "no-cabal"]]
     , [ LoadingModules [testRoot </> "no-cabal" </> "A.hs"]
       , LoadedModule (testRoot </> "no-cabal" </> "A.hs") "A"] )
+  , ( "th-typecheck"
+    , [AddPackages [testRoot </> "th-typecheck"]]
+    , [ LoadingModules [testRoot </> "th-typecheck" </> "A.hs"]
+      , LoadedModule (testRoot </> "th-typecheck" </> "A.hs") "A"] )
   , ( "source-dir"
     , [AddPackages [testRoot </> "source-dir"]]
     , [ LoadingModules [testRoot </> "source-dir" </> "src" </> "A.hs"]
