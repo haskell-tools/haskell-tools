@@ -6,12 +6,11 @@ module Language.Haskell.Tools.BackendGHC.Binds where
 
 import ApiAnnotation as GHC (AnnKeywordId(..))
 import Bag as GHC (bagToList)
-import BasicTypes as GHC (FixityDirection(..), Fixity(..))
 import BasicTypes as GHC
 import HsBinds as GHC
 import HsExpr as GHC
 import HsPat as GHC (LPat)
-import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..))
+import HsTypes as GHC
 import Name as GHC (isSymOcc)
 import PlaceHolder as GHC (NameOrRdrName)
 import SrcLoc as GHC
@@ -34,7 +33,14 @@ trfBind :: TransformName n r => Located (HsBind n) -> Trf (Ann AST.UValueBind (D
 trfBind = trfLocNoSema trfBind'
 
 trfBind' :: TransformName n r => HsBind n -> Trf (AST.UValueBind (Dom r) RangeStage)
--- a value binding (not a function)
+-- A value binding with a strcitness annotation
+trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = L _ [L _ (Match { m_ctxt = FunRhs { mc_strictness = SrcStrict }, m_pats = [], m_grhss = GRHSs [L _ (GRHS [] expr)] (L _ locals) })]} })
+  = do bangLoc <- focusBeforeLoc (srcSpanStart $ getLoc id) $ tokenLoc AnnBang
+       AST.USimpleBind <$> annLocNoSema (pure $ combineSrcSpans bangLoc (getLoc id))
+                             (AST.UBangPat <$> copyAnnot AST.UVarPat (define $ trfName id))
+                       <*> addEmptyScope (addToScope locals (annLocNoSema (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UUnguardedRhs <$> trfExpr expr)))
+                       <*> addEmptyScope (trfWhereLocalBinds (getLoc expr) locals)
+-- A value binding (not a function)
 trfBind' (FunBind { fun_id = id, fun_matches = MG { mg_alts = L _ [L _ (Match { m_pats = [], m_grhss = GRHSs [L _ (GRHS [] expr)] (L _ locals) })]} })
   = AST.USimpleBind <$> copyAnnot AST.UVarPat (define $ trfName id)
                     <*> addEmptyScope (addToScope locals (annLocNoSema (combineSrcSpans (getLoc expr) <$> tokenLoc AnnEqual) (AST.UUnguardedRhs <$> trfExpr expr)))
