@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, TypeApplications #-}
 -- | Defines operation on AST lists.
 -- AST lists carry source information so simple list modification is not enough.
 module Language.Haskell.Tools.Refactor.Utils.Lists where
@@ -6,6 +6,8 @@ module Language.Haskell.Tools.Refactor.Utils.Lists where
 import Control.Applicative ((<$>))
 import Control.Reference
 import Data.List (findIndices)
+import Data.Char (isSpace)
+import Data.Maybe (fromMaybe)
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.Prepare
@@ -33,10 +35,16 @@ filterListSt pred = filterListIndexedSt (const pred)
 
 -- | A version of filterListIndexed that cares about keeping non-removable code elements (like preprocessor pragmas)
 filterListIndexedSt :: SourceInfoTraversal e => (Int -> Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> LocalRefactor dom (AnnList e dom)
+filterListIndexedSt pred ls@(AnnListG _ elems)
+  | all (uncurry pred) (zip [0..] elems)
+  = return ls
 filterListIndexedSt pred (AnnListG (NodeInfo sema src) elems)
   = do mapM_ removeChild removedElems
        mapM_ removeSeparator removedSeparators
-       return $ AnnListG (NodeInfo sema (srcTmpIndented .- fmap filterIndents $ srcTmpSeparators .- filterSeparators $ src)) filteredElems
+       return $ AnnListG (NodeInfo sema (srcTmpIndented .- fmap filterIndents
+                                          $ srcTmpSeparators .- filterSeparators
+                                          $ srcTmpListBefore .- (++ movedBefore)
+                                          $ src)) filteredElems
   where elementsKept = findIndices (uncurry pred) (zip [0..] elems)
         filteredElems = sublist elementsKept elems
         removedSeparators :: [([SourceTemplateTextElem], SrcSpan)]
@@ -46,7 +54,11 @@ filterListIndexedSt pred (AnnListG (NodeInfo sema src) elems)
         removedElems = notSublist elementsKept elems
         filterIndents = sublist elementsKept
         filterSeparators = take (length elementsKept - 1) . sublist elementsKept
-
+        -- if only one element remains we want to keep the whitespace before the first element
+        movedBefore = case elementsKept of 
+                        [e] | e > 0 && any @[] isStayingText (removedSeparators ^? traversal & _1 & traversal) && maybe True (not . and) (src ^. srcTmpIndented)
+                           -> concatMap (takeWhile isSpace . (^. sourceTemplateText)) . reverse . takeWhile (not . isStayingText) . reverse $ (src ^? srcTmpSeparators & traversal & _1) !! (e - 1)
+                        _  -> ""
 
 -- | Selects the given indices from a list
 sublist :: [Int] -> [a] -> [a]

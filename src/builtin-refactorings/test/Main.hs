@@ -263,6 +263,7 @@ organizeImportTests =
   , "CPP.ConditionalImport"
   , "CPP.ConditionalImportBegin"
   , "CPP.ConditionalImportEnd"
+  , "CPP.ConditionalSubImport"
   , "CPP.ConditionalImportHalfRemoved"
   , "CPP.ConditionalImportMulti"
   , "CPP.ConditionalImportOrder"

@@ -214,8 +214,8 @@ neededImports exportedModules usedNames prelInsts prelFamInsts imps = neededImpo
 narrowImportSpecs :: forall dom . OrganizeImportsDomain dom
                   => Bool -> [GHC.Name] -> [(GHC.Name, Bool)] -> IESpecList dom -> LocalRefactor dom (IESpecList dom)
 narrowImportSpecs noNarrowSubspecs usedNames exportedNames
-  = (if noNarrowSubspecs then return else return . (annList .- narrowImportSubspecs neededNames exportedNames))
-       >=> return . filterList isNeededSpec
+  = (if noNarrowSubspecs then return else annList !~ narrowImportSubspecs neededNames exportedNames)
+       >=> filterListSt isNeededSpec
   where neededNames = usedNames ++ map fst exportedNames
 
         isNeededSpec :: IESpec dom -> Bool
@@ -227,10 +227,10 @@ narrowImportSpecs noNarrowSubspecs usedNames exportedNames
             || (case ie ^? ieSubspec&annJust of Just SubAll -> True; _ -> False)
 
 -- | Reduces the number of definitions imported from a sub-specifier.
-narrowImportSubspecs :: OrganizeImportsDomain dom => [GHC.Name] -> [(GHC.Name, Bool)] -> IESpec dom -> IESpec dom
-narrowImportSubspecs neededNames exportedNames ss | noNarrowingForThis = ss
+narrowImportSubspecs :: OrganizeImportsDomain dom => [GHC.Name] -> [(GHC.Name, Bool)] -> IESpec dom -> LocalRefactor dom (IESpec dom)
+narrowImportSubspecs neededNames exportedNames ss | noNarrowingForThis = return ss
   | otherwise
-  = ieSubspec & annJust & essList .- filterList (\n -> (semanticsName (n ^. simpleName)) `elem` map Just neededNames) $ ss
+  = ieSubspec & annJust & essList !~ filterListSt (\n -> (semanticsName (n ^. simpleName)) `elem` map Just neededNames) $ ss
   where noNarrowingForThis = case semanticsName (ss ^. ieName&simpleName) of
                                Just name -> lookup name exportedNames == Just True
                                _ -> False
