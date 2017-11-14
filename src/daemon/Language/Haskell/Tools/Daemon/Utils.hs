@@ -59,36 +59,29 @@ removeModuleMS ms = Map.filterWithKey (\k _ -> stay k)
   where stay k = getModSumName ms /= (k ^. sfkModuleName) || (fn /= getModSumOrig ms && fn /= "")
           where fn = k ^. sfkFileName
 
--- | Check if we already generated code for the given module. Based on both module name and source
--- file name.
-hasGeneratedCode :: SourceFileKey -> [ModuleCollection SourceFileKey] -> Bool
-hasGeneratedCode key = maybe False (\case ModuleCodeGenerated {} -> True; _ -> False)
-                         . lookupSFKInSCs key
-
 -- | Check if the given module needs code generation. Finds the module if no source file name is
 -- present and module names check or if both module names and source file names check.
-needsGeneratedCode :: SourceFileKey -> [ModuleCollection SourceFileKey] -> Bool
-needsGeneratedCode key mcs = maybe False (\case ModuleCodeGenerated {} -> True; ModuleNotLoaded True _ -> True; _ -> False)
-                              $ lookupSFKInSCs key mcs <|> lookupSFKInSCs (sfkFileName .= "" $ key) mcs
+needsGeneratedCode :: SourceFileKey -> [ModuleCollection SourceFileKey] -> CodeGenPolicy
+needsGeneratedCode key mcs = fromMaybe NoCodeGen 
+                               $ (^? modRecCodeGen)
+                                   =<< (lookupSFKInSCs key mcs <|> lookupSFKInSCs (sfkFileName .= "" $ key) mcs)
 
 -- | Marks the given module for code generation. Finds the module if no source file name is
 -- present and module names check or if both module names and source file names check.
 -- Idempotent operation.
-codeGeneratedFor :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
-codeGeneratedFor key = map (mcModules .- Map.adjust setCodeGen (sfkFileName .= "" $ key) . Map.adjust setCodeGen key)
-  where setCodeGen (ModuleTypeChecked mod ms) = ModuleCodeGenerated mod ms
-        setCodeGen (ModuleNotLoaded _ exp) = ModuleNotLoaded True exp
-        setCodeGen m = m
+codeGeneratedFor :: SourceFileKey -> CodeGenPolicy -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
+codeGeneratedFor key codeGen = map (mcModules .- Map.adjust (modRecCodeGen .= codeGen) (sfkFileName .= "" $ key) 
+                                 . Map.adjust (modRecCodeGen .= codeGen) key)
 
 -- | Check if the given module has been already loaded. Based on both module name and source
 -- file name.
-isAlreadyLoaded :: SourceFileKey -> [ModuleCollection SourceFileKey] -> Bool
-isAlreadyLoaded key = maybe False (\case (_, ModuleNotLoaded {}) -> False; _ -> True)
-                         . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
+isAlreadyLoaded :: SourceFileKey -> CodeGenPolicy -> [ModuleCollection SourceFileKey] -> Bool
+isAlreadyLoaded key codeGen = maybe False (\(_, mc) -> isLoaded mc && (mc ^? modRecCodeGen) < Just codeGen)
+                                . find ((key ==) . fst) . concatMap (Map.assocs . (^. mcModules))
 
 -- | Insert a module with a source file key to our database if it wasn't there already
 insertIfMissing :: SourceFileKey -> [ModuleCollection SourceFileKey] -> [ModuleCollection SourceFileKey]
 insertIfMissing sfk mods
   = case lookupSFKInSCs sfk mods of
       Just _ -> mods
-      Nothing -> element 0 & mcModules .- Map.insert sfk (ModuleNotLoaded False False) $ mods
+      Nothing -> element 0 & mcModules .- Map.insert sfk (ModuleNotLoaded NoCodeGen False) $ mods

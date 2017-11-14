@@ -209,10 +209,12 @@ reloadModule report ms = do
     dfs <- liftIO $ fmap ghcfl $ mc ^. mcFlagSetup $ ms_hspp_opts ms
     let ms' = ms { ms_hspp_opts = dfs }
     -- some flags are cached in mod summary, so we need to override
-    parseTyped (if codeGen then forceCodeGen ms' else ms')
+    parseTyped (case codeGen of NoCodeGen -> ms'
+                                InterpretedCode -> forceCodeGen ms'
+                                GeneratedCode -> forceAsmGen ms')
   -- replace the module in the program database
   modify' $ refSessMCs & traversal & filtered (\c -> (c ^. mcId) == (mc ^. mcId)) & mcModules
-              .- Map.insert (keyFromMS ms) ((if codeGen then ModuleCodeGenerated else ModuleTypeChecked) newm ms)
+              .- Map.insert (keyFromMS ms) (ModuleTypeChecked newm ms codeGen)
                    . removeModuleMS ms
   liftIO $ report ms
 
@@ -260,31 +262,42 @@ checkEvaluatedMods changed = do
     -- of entire ASTs
     let lookupFlags ms = maybe return (^. mcFlagSetup) mc $ ms_hspp_opts ms
           where mc = lookupModuleCollection ms mcs
-    modsNeedCode <- lift (getEvaluatedMods changed lookupFlags)
+    (modsNeedCode, modsNeedAsm) <- lift (getEvaluatedMods changed lookupFlags)
     -- specify the need of code generation for later loading
-    forM_ modsNeedCode (\ms -> modify $ refSessMCs .- codeGeneratedFor (keyFromMS ms))
-    let reloaded = filter (\ms -> isAlreadyLoaded (keyFromMS ms) mcs) modsNeedCode
-    clearModules reloaded
+    forM_ modsNeedCode (\ms -> modify $ refSessMCs .- codeGeneratedFor (keyFromMS ms) InterpretedCode)
+    forM_ modsNeedAsm (\ms -> modify $ refSessMCs .- codeGeneratedFor (keyFromMS ms) GeneratedCode)
+    let interpreted = filter (\ms -> isAlreadyLoaded (keyFromMS ms) InterpretedCode mcs) 
+                             modsNeedCode
+        codeGenerated = filter (\ms -> isAlreadyLoaded (keyFromMS ms) GeneratedCode mcs) modsNeedAsm
+    clearModules (interpreted ++ codeGenerated)
     -- reload modules that have already been loaded
-    forM_ reloaded (\ms -> codeGenForModule mcs ms)
+    forM_ interpreted (codeGenForModule mcs InterpretedCode)
+    forM_ codeGenerated (codeGenForModule mcs GeneratedCode)
 
 -- | Re-load the module with code generation enabled. Must be used when the module had already been loaded,
 -- but code generation were not enabled by then.
-codeGenForModule :: [ModuleCollection SourceFileKey] -> ModSummary -> DaemonSession ()
-codeGenForModule mcs ms
+codeGenForModule :: [ModuleCollection SourceFileKey] -> CodeGenPolicy -> ModSummary -> DaemonSession ()
+codeGenForModule mcs codeGen ms
 -- we don't need to update anything, just re-compile (we don't store the typed AST) and generate the code
-  = withFlagsForModule mc $ lift $ void $ parseTyped (forceCodeGen ms)
+  = withFlagsForModule mc $ lift $ void $ parseTyped (case codeGen of InterpretedCode -> forceCodeGen ms
+                                                                      GeneratedCode -> forceAsmGen ms
+                                                                      _ -> ms)
   where mc = fromMaybe (error $ "codeGenForModule: The following module is not found: " ++ getModSumName ms)
                $ lookupModuleCollection ms mcs
 
 -- | Check which modules can be reached from the module, if it uses template haskell.
 -- A definition that needs code generation can be inside a module that does not uses the
 -- TemplateHaskell extension.
-getEvaluatedMods :: [ModSummary] -> (ModSummary -> IO DynFlags) -> Ghc [ModSummary]
+getEvaluatedMods :: [ModSummary] -> (ModSummary -> IO DynFlags) -> Ghc ([ModSummary],[ModSummary])
 -- We cannot really get the modules that need to be linked, because we cannot rename splice content if the
 -- module is not type checked and that is impossible if the splice cannot be evaluated.
 getEvaluatedMods changed additionalFlags
   = do let changedModulePathes = map getModSumOrig changed
        -- some flags are stored only in the module collection and are not recorded in the summary
-       supportingModules (\ms -> (\flags -> getModSumOrig ms `elem` changedModulePathes && TemplateHaskell `xopt` flags)
-                                    <$> liftIO (additionalFlags ms))
+       eval <- supportingModules (\ms -> (\flags -> getModSumOrig ms `elem` changedModulePathes && TemplateHaskell `xopt` flags)
+                                           <$> liftIO (additionalFlags ms))
+       asm <- supportingModules (\ms -> (\flags -> getModSumOrig ms `elem` changedModulePathes 
+                                                     && (StaticPointers `xopt` flags || UnboxedTuples `xopt` flags || UnboxedSums `xopt` flags))
+                                           <$> liftIO (additionalFlags ms))
+       let asmOrigs = map getModSumOrig asm
+       return (filter (\ms -> getModSumOrig ms `notElem` asmOrigs) eval, asm)

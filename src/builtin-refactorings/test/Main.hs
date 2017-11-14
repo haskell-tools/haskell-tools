@@ -132,8 +132,6 @@ languageTests =
   , "Expr.EmptyCase"
   , "Expr.FunSection"
   , "Expr.If"
-  -- , "Expr.ImplicitParams"
-  , "Expr.ImplicitParamsOrder"
   , "Expr.LambdaCase"
   , "Expr.ListComp"
   , "Expr.MultiwayIf"

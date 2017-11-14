@@ -32,7 +32,7 @@ modCollToSfk ModuleCollection{..} = ModuleCollection{ _mcModules = Map.mapKeys (
 
 -- | The state of a module.
 data ModuleRecord
-      = ModuleNotLoaded { _recModuleWillNeedCode :: Bool
+      = ModuleNotLoaded { _modRecCodeGen :: CodeGenPolicy
                         , _recModuleExposed :: Bool
                         }
       | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
@@ -43,10 +43,15 @@ data ModuleRecord
                       }
       | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom
                           , _modRecMS :: ModSummary
+                          , _modRecCodeGen :: CodeGenPolicy
                           }
-      | ModuleCodeGenerated { _typedRecModule :: UnnamedModule IdDom
-                            , _modRecMS :: ModSummary
-                            }
+
+isLoaded :: ModuleRecord -> Bool
+isLoaded ModuleTypeChecked{} = True
+isLoaded _ = False
+
+data CodeGenPolicy = NoCodeGen | InterpretedCode | GeneratedCode
+  deriving (Eq, Ord, Show)
 
 -- | An alias for module names
 type ModuleNameStr = String
@@ -75,4 +80,3 @@ instance Show ModuleRecord where
   show mr@(ModuleParsed {}) = "ModuleParsed (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
   show mr@(ModuleRenamed {}) = "ModuleRenamed (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
   show mr@(ModuleTypeChecked {}) = "ModuleTypeChecked (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"
-  show mr@(ModuleCodeGenerated {}) = "ModuleCodeGenerated (" ++ (GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod $ fromJust $ mr ^? modRecMS) ++ ")"

@@ -97,7 +97,12 @@ loadingTests testRoot =
     , [AddPackages [testRoot </> "no-cabal"]]
     , [ LoadingModules [testRoot </> "no-cabal" </> "A.hs"]
       , LoadedModule (testRoot </> "no-cabal" </> "A.hs") "A"] )
-  , ( "th-typecheck"
+  , ( "code-gen"
+    , [AddPackages [testRoot </> "code-gen"]]
+    , [ LoadingModules [testRoot </> "code-gen" </> "B.hs", testRoot </> "code-gen" </> "A.hs"]
+      , LoadedModule (testRoot </> "code-gen" </> "B.hs") "B"
+      , LoadedModule (testRoot </> "code-gen" </> "A.hs") "A" ] )
+  ,( "th-typecheck"
     , [AddPackages [testRoot </> "th-typecheck"]]
     , [ LoadingModules [testRoot </> "th-typecheck" </> "A.hs"]
       , LoadedModule (testRoot </> "th-typecheck" </> "A.hs") "A"] )

@@ -180,7 +180,7 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
               let newCont = prettyPrint m
               when (not diffMode) $ do
                 modify' $ refSessMCs & traversal & filtered (\mc' -> (mc' ^. mcId) == (mc ^. mcId)) & mcModules
-                            .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded False False)
+                            .- Map.insert (SourceFileKey loc n) (ModuleNotLoaded NoCodeGen False)
                 liftIO $ withBinaryFile loc WriteMode $ \handle -> do
                   hSetEncoding handle utf8
                   hPutStr handle newCont

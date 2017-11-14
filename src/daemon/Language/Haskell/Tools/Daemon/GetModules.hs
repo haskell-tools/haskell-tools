@@ -67,7 +67,7 @@ getModules root
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
                                return [ModuleCollection (DirectoryMC root) root [root] [] (modKeys mods) return return []]
-  where modKeys mods = Map.fromList $ map (, ModuleNotLoaded False True) mods
+  where modKeys mods = Map.fromList $ map (, ModuleNotLoaded NoCodeGen True) mods
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
 modulesFromDirectory :: FilePath -> FilePath -> IO [String]
@@ -112,7 +112,7 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readGenericPackag
                                 (loadFlagsFromBuildInfo bi)
                                 (map (\(Dependency pkgName _) -> LibraryMC (unPackageName pkgName)) (targetBuildDepends bi))
                   else Nothing
-          where modRecord mn = ( moduleName mn, ModuleNotLoaded False (needsToCompile tmc mn) )
+          where modRecord mn = ( moduleName mn, ModuleNotLoaded NoCodeGen (needsToCompile tmc mn) )
         moduleName = concat . intersperse "." . components
         setupFlags = either (\deps -> error $ "Missing dependencies: " ++ show deps) fst
                        . finalizePD [] (ComponentRequestedSpec True True) (const True) buildPlatform

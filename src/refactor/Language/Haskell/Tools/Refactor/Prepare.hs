@@ -168,16 +168,12 @@ type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 -- | Get the typed representation from a type-correct program.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
-  let needCodeGen = StaticPointers `xopt` ms_hspp_opts modSum
-                     || UnboxedTuples `xopt` ms_hspp_opts modSum
-                     || UnboxedSums `xopt` ms_hspp_opts modSum
-      hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
-      hasApplicativeDo = ApplicativeDo `xopt` ms_hspp_opts modSum
-      hasOverloadedLabels = OverloadedLabels `xopt` ms_hspp_opts modSum
-      ms = if needCodeGen then forceAsmGen (modSumNormalizeFlags modSum) else (modSumNormalizeFlags modSum)
-  when hasApplicativeDo $ liftIO $ throwIO $ UnsupportedExtension "ApplicativeDo"
-  when hasOverloadedLabels $ liftIO $ throwIO $ UnsupportedExtension "OverloadedLabels"
-  modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod modSum) (hsc_mod_graph s) }
+  let hasCppExtension = Cpp `xopt` ms_hspp_opts modSum
+      ms = modSumNormalizeFlags modSum
+  when (ApplicativeDo `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "ApplicativeDo"
+  when (OverloadedLabels `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "OverloadedLabels"
+  when (ImplicitParams `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "ImplicitParams"
+  modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod ms) (hsc_mod_graph s) }
   p <- parseModule ms
   tc <- typecheckModule p
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
@@ -185,7 +181,7 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   srcBuffer <- if hasCppExtension
                     then liftIO $ hGetStringBuffer (getModSumOrig ms)
                     else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
-  withTempSession (\e -> e { hsc_dflags = ms_hspp_opts modSum }) 
+  withTempSession (\e -> e { hsc_dflags = ms_hspp_opts ms }) 
     $ (if hasCppExtension then prepareASTCpp else prepareAST) srcBuffer . placeComments (fst annots) (getNormalComments $ snd annots)
         <$> (addTypeInfos (typecheckedSource tc)
                =<< (do parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
