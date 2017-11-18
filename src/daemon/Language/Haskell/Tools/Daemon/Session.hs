@@ -49,7 +49,7 @@ loadPackagesFrom :: (ModSummary -> IO ())
                       -> ([ModSummary] -> IO ())
                       -> (DaemonSessionState -> FilePath -> IO [FilePath])
                       -> [FilePath]
-                      -> DaemonSession (Maybe SourceError)
+                      -> DaemonSession [SourceError]
 loadPackagesFrom report loadCallback additionalSrcDirs packages =
   do -- collecting modules to load
      modColls <- liftIO $ getAllModules packages
@@ -68,9 +68,10 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
                                   $ List.sort $ concatMap getExposedModules mcs')
      loadRes <- gtry (loadModules mcs alreadyLoadedFiles)
      case loadRes of
-       Right mods -> (compileModules report mods >> return Nothing)
-                        `gcatch` (return . Just)
-       Left err -> return (Just err)
+       Right mods -> do 
+         modify (refSessMCs & traversal & filtered (\mc -> (mc ^. mcId) `elem` map (^. mcId) modColls) & mcLoadDone .= True)
+         compileModules report mods
+       Left err -> return [err]
 
   where getExposedModules :: ModuleCollection k -> [k]
         getExposedModules
@@ -117,8 +118,16 @@ loadPackagesFrom report loadCallback additionalSrcDirs packages =
           return mods
 
         compileModules report mods = do
-          checkEvaluatedMods mods
-          mapM_ (reloadModule report) mods
+            checkEvaluatedMods mods
+            compileWhileOk mods
+          where compileWhileOk [] = return []
+                compileWhileOk (mod:mods) 
+                  = do res <- gtry (reloadModule report mod)
+                       case res of
+                          Left err -> do dependents <- lift $ dependentModules (return . (ms_mod mod ==) . ms_mod)
+                                         (err :) <$> compileWhileOk (filter ((`notElem` map ms_mod dependents) . ms_mod) mods)
+                          Right _ -> compileWhileOk mods
+        
 
 -- | Loads the packages that are declared visible (by .cabal file).
 loadVisiblePackages :: DaemonSession ()

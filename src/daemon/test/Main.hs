@@ -352,11 +352,11 @@ reloadingTests testRoot =
             _ -> False )
   , ( "reloading-unloadable-project-multi-modules", testRoot </> "load-error-multi"
     , [ AddPackages [testRoot </> "load-error-multi" ++ testSuffix] ]
-    , writeFile (testRoot </> "load-error-multi" ++ testSuffix </> "A.hs") "module A where\n\na = ()"
-    , [ ReLoad [] [testRoot </> "load-error-multi" ++ testSuffix </> "A.hs"] [] ]
-    , \case [ LoadingModules{}, CompilationProblem{}
-              , LoadingModules{}, LoadedModule a _, LoadedModule b _
-              ] -> [a,b] == map ((testRoot </> "load-error-multi" ++ testSuffix) </>) ["A.hs", "B.hs"]
+    , writeFile (testRoot </> "load-error-multi" ++ testSuffix </> "B.hs") "module B where\n\nimport A\n\nb = a"
+    , [ ReLoad [] [testRoot </> "load-error-multi" ++ testSuffix </> "B.hs"] [] ]
+    , \case [ LoadingModules{}, LoadedModule a _, LoadedModule d _, CompilationProblem{}
+              , LoadingModules{}, LoadedModule b _, LoadedModule c _
+              ] -> [a,b,c,d] == map ((testRoot </> "load-error-multi" ++ testSuffix) </>) ["A.hs", "B.hs","C.hs","D.hs"]
             _ -> False )
   , ( "change-cabal", testRoot </> "two-modules", [], return ()
     , [ AddPackages [testRoot </> "two-modules" ++ testSuffix]

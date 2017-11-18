@@ -1,3 +1,5 @@
 module B where
 
-b = ()
+import No.Such.Module
+
+b = a

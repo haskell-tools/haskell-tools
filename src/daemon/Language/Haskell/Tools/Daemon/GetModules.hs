@@ -66,7 +66,7 @@ getModules root
        case find (\p -> takeExtension p == ".cabal") files of
           Just cabalFile -> modulesFromCabalFile root cabalFile
           Nothing        -> do mods <- modulesFromDirectory root root
-                               return [ModuleCollection (DirectoryMC root) root [root] [] (modKeys mods) return return []]
+                               return [ModuleCollection (DirectoryMC root) False root [root] [] (modKeys mods) return return []]
   where modKeys mods = Map.fromList $ map (, ModuleNotLoaded NoCodeGen True) mods
 
 -- | Load the module giving a directory. All modules loaded from the folder and subfolders.
@@ -103,7 +103,7 @@ modulesFromCabalFile root cabal = (getModules . setupFlags <$> readGenericPackag
           = let bi = getBuildInfo tmc
                 packageName = pkgName $ package pkg
              in if buildable bi
-                  then Just $ ModuleCollection (mkModuleCollKey packageName tmc)
+                  then Just $ ModuleCollection (mkModuleCollKey packageName tmc) False
                                 root
                                 (map (normalise . (root </>)) $ hsSourceDirs bi)
                                 (map (\(mn, fs) -> (moduleName mn, fs)) $ getModuleSourceFiles tmc)

@@ -44,7 +44,7 @@ import Packages (initPackages)
 import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (decidePkgDB, packageDBLoc, detectAutogen)
 import Language.Haskell.Tools.Daemon.Protocol
-import Language.Haskell.Tools.Daemon.Representation
+import Language.Haskell.Tools.Daemon.Representation as HT
 import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Utils
@@ -247,14 +247,14 @@ addPackages resp packagePathes = do
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded roots
       if pkgDBok then do
-        error <- loadPackagesFrom
-                   (\ms -> resp (LoadedModule (getModSumOrig ms) (getModSumName ms)))
-                   (resp . LoadingModules . map getModSumOrig)
-                   (\st fp -> maybe (return []) (fmap maybeToList . detectAutogen fp . fst) (st ^. packageDB)) roots
-        -- handle source errors here to prevent rollback on the tool state
-        case error of
-          Nothing -> mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
-          Just err -> liftIO $ resp $ uncurry CompilationProblem (getProblems err)
+        errs <- loadPackagesFrom
+                  (\ms -> resp (LoadedModule (getModSumOrig ms) (getModSumName ms)))
+                  (resp . LoadingModules . map getModSumOrig)
+                  (\st fp -> maybe (return []) (fmap maybeToList . detectAutogen fp . fst) (st ^. packageDB)) roots
+        mapM_ (liftIO . resp . uncurry CompilationProblem . getProblems) errs -- handle source errors here to prevent rollback on the tool state
+        when (null errs)
+          $ mapM_ (reloadModule (\_ -> return ())) needToReload -- don't report consequent reloads (not expected)
+           
       else liftIO $ resp $ ErrorMessage $ "Attempted to load two packages with different package DB. "
                                             ++ "Stack, cabal-sandbox and normal packages cannot be combined"
   where isTheAdded roots mc = (mc ^. mcRoot) `elem` roots
@@ -287,7 +287,7 @@ updateForFileChanges resp added changed removed = do
     $ modify (undoStack .= []) -- clear the undo stack, if this changeset is not a result of a refactoring
   -- check for module collections that failed to load
   mcs <- gets (^. refSessMCs)
-  let packagesNotLoaded = filter (\mc -> List.all (\m -> isNothing (m ^? modRecMS)) $ Map.elems (mc ^. mcModules)) mcs
+  let packagesNotLoaded = filter (not . (^. mcLoadDone)) mcs
       tryLoadAgain = filter (\r -> List.any (r `isPrefixOf`) (added ++ changed ++ removed)) $ map (^. mcRoot) packagesNotLoaded
   -- check for changes in .cabal files
   modify (touchedFiles .- (Set.\\ changeSet))

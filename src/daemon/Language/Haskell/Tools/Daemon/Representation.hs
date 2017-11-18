@@ -18,6 +18,7 @@ import Language.Haskell.Tools.Refactor
 -- | The modules of a library, executable, test or benchmark. A package contains one or more module collection.
 data ModuleCollection k
   = ModuleCollection { _mcId :: ModuleCollectionId
+                     , _mcLoadDone :: Bool
                      , _mcRoot :: FilePath
                      , _mcSourceDirs :: [FilePath]
                      , _mcModuleFiles :: [(ModuleNameStr, FilePath)]
@@ -68,8 +69,8 @@ instance Eq (ModuleCollection k) where
   (==) = (==) `on` _mcId
 
 instance Show k => Show (ModuleCollection k) where
-  show (ModuleCollection id root srcDirs mapping mods _ _ deps)
-    = "ModuleCollection (" ++ show id ++ ") " ++ root ++ " " ++ show srcDirs ++ " " ++ show mapping
+  show (ModuleCollection id loaded root srcDirs mapping mods _ _ deps)
+    = "ModuleCollection (" ++ show id ++ ") " ++ show loaded ++ " " ++ root ++ " " ++ show srcDirs ++ " " ++ show mapping
         ++ " (" ++ show mods ++ ") " ++ show deps
 
 makeReferences ''ModuleCollection

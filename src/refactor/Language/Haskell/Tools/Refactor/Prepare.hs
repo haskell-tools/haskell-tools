@@ -173,7 +173,6 @@ parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   when (ApplicativeDo `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "ApplicativeDo"
   when (OverloadedLabels `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "OverloadedLabels"
   when (ImplicitParams `xopt` ms_hspp_opts modSum) $ liftIO $ throwIO $ UnsupportedExtension "ImplicitParams"
-  modifySession $ \s -> s { hsc_mod_graph = filter (\m -> ms_mod m /= ms_mod ms) (hsc_mod_graph s) }
   p <- parseModule ms
   tc <- typecheckModule p
   void $ GHC.loadModule tc -- when used with loadModule, the module will be loaded twice
