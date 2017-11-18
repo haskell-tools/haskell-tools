@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Pull requests shouldn't try to deploy
-if [ "$TRAVIS_EVENT_TYPE" = "pull" ]; then
+if [ "$TRAVIS_EVENT_TYPE" = "pull_request" ]; then
     echo "Pull request, skipping deploy"
     exit 0
 fi
