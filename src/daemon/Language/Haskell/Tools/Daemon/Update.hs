@@ -128,7 +128,7 @@ updateClient' UpdateCtx{..} UndoLast | disableHistory $ sharedOptions options
 updateClient' UpdateCtx{..} UndoLast =
   do undos <- gets (^. undoStack)
      case undos of
-       [] -> do liftIO $ response $ ErrorMessage "There is nothing to undo."
+       [] -> do liftIO $ response $ ErrorMessage "There is nothing to undo. Please note that the refactoring history is cleared after manual changes in the refactored files."
                 return True
        lastUndo:_ -> do
          modify (undoStack .- tail)
