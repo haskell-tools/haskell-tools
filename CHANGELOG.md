@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 1.0
+ - Implemented the first version of Organize Extensions refactoring.
  - Improving error handling and documentation
  - Solved memory leaks in the case of successive refactorings.
  - Solved various errors related to code generate, reloading.
