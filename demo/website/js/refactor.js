@@ -151,6 +151,7 @@ $(function() {
 
     createGeneralCommandNoDetails("GenerateSignature", 'Generate Type Signature', 'S');
     createGeneralCommandNoDetails("OrganizeImports", 'Organize Imports', 'O');
+    createGeneralCommandNoDetails("OrganizeExtensions", 'Organize Extensions', 'X');
     createGeneralCommandNoDetails("GenerateExports", 'Generate Exports', 'E');
     createGeneralCommand("RenameDefinition", 'Rename Definition', 'R', renameDetails);
     createGeneralCommand("ExtractBinding", 'Extract Binding', 'B', extractBindingDetails);

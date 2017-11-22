@@ -19,7 +19,7 @@
 
 <div class='header'>
     <div class='demoanim'>
-      <img id="demoanimation" data-demoname="Demo" src="img/demoanimation.gif" title="This example demonstrates three refactorings applied on the example taken from https://www.haskell.org/" />
+      <a href="#demo"><img id="demoanimation" data-demoname="Demo" src="img/demoanimation.gif" title="This example demonstrates three refactorings applied on the example taken from https://www.haskell.org/" /></a>
     </div>
     <a name="home"></a>
     <div class='headerleft'>
@@ -60,10 +60,10 @@
       </div>
       <div class="featurebox">
         <div class="featurecaption">
-          GHC 8.0.2
+          GHC 8.2.1
           <button class="featurebutton" type="button" data-demoname="Features.GHC8">Try it out</button>
         </div>
-        <div class="featuretext">The tool is already on GHC 8.0.2 and will be updated immediately when a new GHC version arrives.</div>
+        <div class="featuretext">The tool is already on GHC 8.2.1 and will be updated immediately when a new GHC version arrives.</div>
       </div>
       <div class="featurebox">
         <div class="featurecaption">
@@ -148,6 +148,14 @@
         <div class="featuretext">When you are constantly changing the code of your module import lists can quickly become very long and messy. The organize imports refactoring helps you to keep this in check by sorting your imports and narrowing them to only import the definitions you want to use. Removes imports that are redundant and marks those that might also be.
           <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/organize-imports.md'>Learn more</a></div>
       </div>
+      <div class="featurebox">
+        <div class="featurecaption">
+          Organize extensions
+        <button class="featurebutton" type="button" data-demoname="Refactors.OrganizeExtensions">Try it out</button>
+        </div>
+        <div class="featuretext">Extensions in LANGUAGE pragmas are removed even rarer that imports. This refactoring helps you keep them minimal.
+          <a href='https://github.com/haskell-tools/haskell-tools/blob/master/documentation/refactorings/organize-extensions.md'>Learn more</a></div>
+      </div>
     </div>
     <div class="spacer"></div>
       <div class="featurebox extrafeaturebox">
@@ -186,6 +194,7 @@
     <button class="refactorbutton" type="button" data-refactor="GenerateSignature">Generate type signature (S)</button>
     <button class="refactorbutton" type="button" data-refactor="OrganizeImports">Organize Imports (O)</button>
     <button class="refactorbutton" type="button" data-refactor="GenerateExports">Generate Exports (E)</button>
+    <button class="refactorbutton" type="button" data-refactor="OrganizeExtensions">OrganizeExtensions (X)</button>
   </div>
 </div>
 
