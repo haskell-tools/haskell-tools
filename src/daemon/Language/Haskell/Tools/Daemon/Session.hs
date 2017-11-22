@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell
-           , TupleSections
-           , TypeApplications
-           , MultiWayIf
-           , FlexibleContexts
-           , BangPatterns
-           , StandaloneDeriving
-           #-}
+{-# LANGUAGE FlexibleContexts, MultiWayIf, TypeApplications #-}
 -- | Common operations for managing Daemon-tools sessions, for example loading whole packages or
 -- re-loading modules when they are changed. Maintains the state of the compilation with loaded
 -- modules. Contains checks for compiling the modules to code when Template Haskell is used.

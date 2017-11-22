@@ -1,9 +1,7 @@
 -- | Generation of type-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkTyForall@ creates the annotated version of the @TyForall@ AST constructor.
-{-# LANGUAGE OverloadedStrings
-           , TypeFamilies
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Types where
 
 import Data.String (IsString(..), String)

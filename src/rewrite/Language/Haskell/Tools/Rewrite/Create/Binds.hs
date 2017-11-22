@@ -1,9 +1,7 @@
 -- | Generation of binding-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkMatch@ creates the annotated version of the @UMatch@ constructor.
-{-# LANGUAGE OverloadedStrings
-           , TypeFamilies
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Binds where
 
 import Data.String (IsString(..))

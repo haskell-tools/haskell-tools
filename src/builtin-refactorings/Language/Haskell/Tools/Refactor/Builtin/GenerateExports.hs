@@ -1,9 +1,4 @@
-{-# LANGUAGE TupleSections
-           , ConstraintKinds
-           , TypeFamilies
-           , FlexibleContexts
-           , LambdaCase
-           #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, LambdaCase, TupleSections, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.GenerateExports
   (generateExports, DomGenerateExports, generateExportsRefactoring) where
 

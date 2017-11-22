@@ -1,7 +1,4 @@
-{-# LANGUAGE TemplateHaskell
-           , RecordWildCards
-           , NamedFieldPuns
-           #-}
+{-# LANGUAGE RecordPuns, RecordWildCards, TemplateHaskell #-}
 module Language.Haskell.Tools.Daemon.State where
 
 import Control.Concurrent

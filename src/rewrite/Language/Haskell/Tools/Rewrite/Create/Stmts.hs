@@ -1,8 +1,6 @@
 -- | Generation of statement-level AST fragments for refactorings.
 -- The bindings defined here are the AST constructor names with an "mk" prefix.
-{-# LANGUAGE OverloadedStrings 
-           , TypeFamilies 
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Stmts where
 
 import Language.Haskell.Tools.AST (UCompStmt(..), UListCompBody(..), UStmt'(..))

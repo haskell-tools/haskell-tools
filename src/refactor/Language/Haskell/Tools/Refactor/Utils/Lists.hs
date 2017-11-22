@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, TypeApplications #-}
+{-# LANGUAGE TypeApplications #-}
 -- | Defines operation on AST lists.
 -- AST lists carry source information so simple list modification is not enough.
 module Language.Haskell.Tools.Refactor.Utils.Lists where
@@ -7,7 +7,6 @@ import Control.Applicative ((<$>))
 import Control.Reference
 import Data.List (findIndices)
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe)
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.Prepare
@@ -55,7 +54,7 @@ filterListIndexedSt pred (AnnListG (NodeInfo sema src) elems)
         filterIndents = sublist elementsKept
         filterSeparators = take (length elementsKept - 1) . sublist elementsKept
         -- if only one element remains we want to keep the whitespace before the first element
-        movedBefore = case elementsKept of 
+        movedBefore = case elementsKept of
                         [e] | e > 0 && any @[] isStayingText (removedSeparators ^? traversal & _1 & traversal) && maybe True (not . and) (src ^. srcTmpIndented)
                            -> concatMap (takeWhile isSpace . (^. sourceTemplateText)) . reverse . takeWhile (not . isStayingText) . reverse $ (src ^? srcTmpSeparators & traversal & _1) !! (e - 1)
                         _  -> ""
@@ -112,3 +111,14 @@ zipWithSeparators (AnnListG (NodeInfo _ src) elems)
   | otherwise
   = zip (([], noSrcSpan) : seps ++ repeat (_2 .= noSrcSpan $ last seps)) elems
   where seps = src ^. srcTmpSeparators
+
+-- sortList :: Ord a => (Ann e dom -> a) -> AnnList e dom -> AnnList e dom
+-- sortList comp (AnnListG annot elems) 
+--   = AnnListG ( .- permuteList permute $ annot) sortedElems
+--   where (permute, sortedElems) = unzip (sortBy (comp . snd)) indElems
+--         indElems = zip [0..] elems
+-- 
+-- permuteList :: [Int] -> [a] -> [a]
+-- permuteList permute = map snd . sortBy fst . zip permute
+ 
+ 

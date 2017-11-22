@@ -1,12 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ViewPatterns
-           , FlexibleContexts
-           , ScopedTypeVariables
-           , TypeApplications
-           , TupleSections
-           , TypeFamilies
-           , BangPatterns
-           #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
 -- | Functions that convert the module-related elements (modules, imports, exports) of the GHC AST to corresponding elements in the Haskell-tools AST representation
 -- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
 module Language.Haskell.Tools.BackendGHC.Modules where
@@ -14,6 +6,7 @@ module Language.Haskell.Tools.BackendGHC.Modules where
 import Control.Monad.Reader
 import Control.Reference hiding (element)
 import Data.Generics.Uniplate.Data ()
+import Data.Char (isLetter, isSpace)
 import Data.List as List
 import Data.Map as Map (fromList, lookup)
 import Data.Maybe
@@ -124,12 +117,12 @@ trfFilePragmas = do pragmas <- asks pragmaComms
 trfLanguagePragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
 trfLanguagePragma lstr@(L l _) = annLocNoSema (pure l) (AST.ULanguagePragma <$> makeList ", " (pure $ srcSpanStart $ getLoc $ last pragmaElems)
                                                                                               (mapM (trfLocNoSema (pure . AST.ULanguageExtension)) extensions))
-  where pragmaElems = splitLocated lstr
+  where pragmaElems = splitLocatedOn (\c -> isSpace c || c == ',') lstr
         extensions = filter ((\sp -> srcSpanStart sp /= srcSpanEnd sp) . getLoc)
                        $ map (removeEnd . removeLang . removeStart) pragmaElems
-        removeStart pr@(L l txt) = if "{-#" `isPrefixOf` txt then L (updateStart (updateCol (+3)) l) (drop 3 txt) else pr
-        removeLang pr@(L l txt) = if "LANGUAGE" `isPrefixOf` txt then L (updateStart (updateCol (+8)) l) (drop 8 txt) else pr
-        removeEnd pr@(L l txt) = if "#-}" `isSuffixOf` txt then L (updateEnd (updateCol (subtract 3)) l) (reverse $ drop 3 $ reverse $ txt) else pr
+        removeStart pr@(L l txt) = if "{-#"      `isPrefixOf` txt then L (updateStart (updateCol (+3)) l) (drop 3 txt) else pr
+        removeLang  pr@(L l txt) = if "LANGUAGE" `isPrefixOf` txt then L (updateStart (updateCol (+8)) l) (drop 8 txt) else pr
+        removeEnd   pr@(L l txt) = if "#-}"      `isSuffixOf` txt then L (updateEnd   (updateCol (subtract 3)) l) (reverse $ drop 3 $ reverse $ txt) else pr
 
 trfOptionsPragma :: Located String -> Trf (Ann AST.UFilePragma (Dom r) RangeStage)
 trfOptionsPragma (L l str) = annLocNoSema (pure l) (AST.UOptionsPragma <$> annContNoSema (pure $ AST.UStringNode str))

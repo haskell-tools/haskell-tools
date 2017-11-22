@@ -1,9 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ViewPatterns
-           , ScopedTypeVariables
-           , TypeApplications
-           , AllowAmbiguousTypes
-           #-}
+{-# LANGUAGE AllowAmbiguousTypes, LambdaCase, ScopedTypeVariables, TypeApplications, ViewPatterns #-}
 -- | Functions that convert the expression-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Exprs where
 

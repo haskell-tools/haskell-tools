@@ -1,9 +1,7 @@
 -- | Generation of pattern-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkVarPat@ creates the annotated version of the @VarPat@ AST constructor.
-{-# LANGUAGE OverloadedStrings 
-           , TypeFamilies
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Patterns where
 
 import Language.Haskell.Tools.AST (UFieldWildcard(..), UPatternField(..), UPattern(..))

@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase
            , TypeApplications
-           , TupleSections
            , ScopedTypeVariables
            #-}
 module Main where

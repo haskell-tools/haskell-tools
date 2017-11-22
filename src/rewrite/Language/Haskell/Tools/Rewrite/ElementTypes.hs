@@ -106,6 +106,9 @@ type FieldDecl dom = Ann UFieldDecl dom SrcTemplateStage
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
 type Deriving dom = Ann UDeriving dom SrcTemplateStage
 
+-- | A deriving strategy (@stock@, @newtype@ or @anyclass@)
+type DeriveStrategy dom = Ann UDeriveStrategy dom SrcTemplateStage
+
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
 type InstanceRule dom = Ann UInstanceRule dom SrcTemplateStage
 
@@ -330,6 +333,7 @@ type StringNode dom = Ann UStringNode dom SrcTemplateStage
 
 type MaybeContext dom = AnnMaybe UContext dom
 type MaybeDeriving dom = AnnMaybe UDeriving dom
+type MaybeDeriveStrategy dom = AnnMaybe UDeriveStrategy dom
 type MaybeLocalBinds dom = AnnMaybe ULocalBinds dom
 type MaybeTypeFamilySpec dom = AnnMaybe UTypeFamilySpec dom
 type MaybeKindConstraint dom = AnnMaybe UKindConstraint dom

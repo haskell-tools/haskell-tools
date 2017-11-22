@@ -1,11 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable
-           , StandaloneDeriving
-           , TemplateHaskell
-           , UndecidableInstances
-           , FlexibleContexts
-           , FlexibleInstances
-           , BangPatterns
-           #-}
+{-# LANGUAGE BangPatterns, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving, TemplateHaskell, TypeSynonymInstances, UndecidableInstances #-}
 module Language.Haskell.Tools.AST.SemaInfoTypes
   ( -- types
     NoSemanticInfo, ScopeInfo, NameInfo, CNameInfo, ModuleInfo, ImportInfo, ImplicitFieldInfo

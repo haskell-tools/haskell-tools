@@ -1,12 +1,4 @@
-{-# LANGUAGE TupleSections
-           , NamedFieldPuns
-           , LambdaCase
-           , TemplateHaskell
-           , FlexibleContexts
-           , TypeApplications
-           , RankNTypes
-           , BangPatterns
-           #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, RankNTypes, RecordPuns, TupleSections, TypeApplications #-}
 -- | Collecting modules contained in a module collection (library, executable, testsuite or
 -- benchmark). Gets names, source file locations, compilation and load flags for these modules.
 module Language.Haskell.Tools.Daemon.GetModules where

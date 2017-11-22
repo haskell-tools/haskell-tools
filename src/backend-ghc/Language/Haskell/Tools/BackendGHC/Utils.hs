@@ -470,16 +470,20 @@ trfScopedSequence _ [] = pure []
 
 -- | Splits a given string at whitespaces while calculating the source location of the fragments
 splitLocated :: Located String -> [Located String]
-splitLocated (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing
+splitLocated = splitLocatedOn isSpace
+
+-- | Splits a given string while calculating the source location of the fragments
+splitLocatedOn :: (Char -> Bool) -> Located String -> [Located String]
+splitLocatedOn pred (L (RealSrcSpan l) str) = splitLocated' str (realSrcSpanStart l) Nothing
   where splitLocated' :: String -> RealSrcLoc -> Maybe (RealSrcLoc, String) -> [Located String]
-        splitLocated' (c:rest) currLoc (Just (startLoc, str)) | isSpace c
+        splitLocated' (c:rest) currLoc (Just (startLoc, str)) | pred c
           = L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str) : splitLocated' rest (advanceSrcLoc currLoc c) Nothing
-        splitLocated' (c:rest) currLoc Nothing | isSpace c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing
+        splitLocated' (c:rest) currLoc Nothing | pred c = splitLocated' rest (advanceSrcLoc currLoc c) Nothing
         splitLocated' (c:rest) currLoc (Just (startLoc, str)) = splitLocated' rest (advanceSrcLoc currLoc c) (Just (startLoc, c:str))
         splitLocated' (c:rest) currLoc Nothing = splitLocated' rest (advanceSrcLoc currLoc c) (Just (currLoc, [c]))
         splitLocated' [] currLoc (Just (startLoc, str)) = [L (RealSrcSpan $ mkRealSrcSpan startLoc currLoc) (reverse str)]
         splitLocated' [] _ Nothing = []
-splitLocated _ = convProblem "splitLocated: unhelpful span given"
+splitLocatedOn _ _ = convProblem "splitLocated: unhelpful span given"
 
 compareSpans :: SrcSpan -> SrcSpan -> Ordering
 compareSpans (RealSrcSpan a) (RealSrcSpan b)

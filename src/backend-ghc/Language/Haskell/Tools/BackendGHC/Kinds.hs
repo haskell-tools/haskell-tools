@@ -1,6 +1,4 @@
-{-# LANGUAGE ViewPatterns
-           , TypeFamilies
-           #-}
+{-# LANGUAGE TypeFamilies, ViewPatterns #-}
 -- | Functions that convert the kind-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Kinds where
 

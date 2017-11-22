@@ -1,7 +1,5 @@
 -- | Utility methods for generating parts of the AST for refactorings
-{-# LANGUAGE FlexibleInstances
-           , TypeFamilies
-           #-}
+{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Utils where
 
 import Language.Haskell.Tools.AST

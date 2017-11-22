@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveGeneric
-           , OverloadedStrings
-           , DeriveAnyClass
-           #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, OverloadedStrings #-}
 -- | This module declares the messages that can be sent from the client to the
 -- daemon engine and from the engine to the client.
 module Language.Haskell.Tools.Daemon.Protocol where

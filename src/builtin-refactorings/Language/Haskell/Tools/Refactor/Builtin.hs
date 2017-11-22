@@ -9,10 +9,11 @@ import Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature (GenerateSi
 import Language.Haskell.Tools.Refactor.Builtin.InlineBinding (inlineBindingRefactoring)
 import Language.Haskell.Tools.Refactor.Builtin.OrganizeImports (OrganizeImportsDomain, organizeImportsRefactoring, projectOrganizeImportsRefactoring)
 import Language.Haskell.Tools.Refactor.Builtin.RenameDefinition (DomainRenameDefinition, renameDefinitionRefactoring)
+import Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions (OrganizeExtensionsDomain, organizeExtensionsRefactoring, projectOrganizeExtensionsRefactoring)
 
 builtinRefactorings :: ( DomGenerateExports dom, OrganizeImportsDomain dom
                        , DomainRenameDefinition dom, ExtractBindingDomain dom
-                       , GenerateSignatureDomain dom
+                       , GenerateSignatureDomain dom, OrganizeExtensionsDomain dom
                        ) => [RefactoringChoice dom]
 builtinRefactorings
   = [ organizeImportsRefactoring
@@ -23,4 +24,6 @@ builtinRefactorings
     , generateExportsRefactoring
     , floatOutRefactoring
     , extractBindingRefactoring
+    , organizeExtensionsRefactoring
+    , projectOrganizeExtensionsRefactoring
     ]

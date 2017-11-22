@@ -1,7 +1,4 @@
- {-# LANGUAGE StandaloneDeriving
-            , DeriveGeneric
-            , LambdaCase
-            #-}
+ {-# LANGUAGE DeriveGeneric, LambdaCase, StandaloneDeriving #-}
 module Language.Haskell.Tools.Debug where
 
 import Control.Monad (Monad(..), (=<<), forM_)

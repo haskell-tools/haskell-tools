@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings
            , DeriveGeneric
            , TypeApplications
-           , TupleSections
            , ScopedTypeVariables
            , LambdaCase
            , TemplateHaskell

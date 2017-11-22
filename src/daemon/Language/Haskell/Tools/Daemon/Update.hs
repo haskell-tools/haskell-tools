@@ -1,14 +1,4 @@
-{-# OPTIONS_GHC -O0 #-} -- this is needed because of an optimization bug in GHC 8.2.1: https://ghc.haskell.org/trac/ghc/ticket/13413
-{-# LANGUAGE LambdaCase
-           , MultiWayIf
-           , TypeApplications
-           , TypeFamilies
-           , RecordWildCards
-           , FlexibleContexts
-           , BangPatterns
-           , ViewPatterns
-           , TupleSections
-           #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiWayIf, RecordWildCards, TupleSections, TypeApplications, TypeFamilies #-}
 -- | Resolves how the daemon should react to individual requests from the client.
 module Language.Haskell.Tools.Daemon.Update (updateClient, updateForFileChanges, initGhcSession) where
 

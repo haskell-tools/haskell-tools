@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase
-           , ViewPatterns
            , TypeFamilies
            #-}
 module Main where

@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveGeneric
-           , ScopedTypeVariables
-           , MultiWayIf
-           #-}
+{-# LANGUAGE DeriveGeneric, MultiWayIf, ScopedTypeVariables #-}
 -- | Setting the package database to use when compiling modules. The daemon must have one single
 -- package database that cannot be changed after a package is loaded using that package database.
 -- Available package databases are the cabal global, the cabal sandbox, the stack or one that had

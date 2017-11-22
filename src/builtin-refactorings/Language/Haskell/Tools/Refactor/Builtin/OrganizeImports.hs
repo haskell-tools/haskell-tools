@@ -1,11 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ScopedTypeVariables
-           , FlexibleContexts
-           , TypeFamilies
-           , ConstraintKinds
-           , TupleSections
-           , TypeApplications
-           #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, LambdaCase, ScopedTypeVariables, TupleSections, TypeApplications, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.OrganizeImports
   ( organizeImports, OrganizeImportsDomain, projectOrganizeImports
   , organizeImportsRefactoring, projectOrganizeImportsRefactoring

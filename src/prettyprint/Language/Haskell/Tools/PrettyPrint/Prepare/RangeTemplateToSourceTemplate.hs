@@ -1,6 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , FlexibleContexts
-           #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- | This module converts range templates into source templates.
 -- Basically it reads the source file and attaches parts of the source file to the AST elements that have the range of the given source code fragment.
 module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplateToSourceTemplate where

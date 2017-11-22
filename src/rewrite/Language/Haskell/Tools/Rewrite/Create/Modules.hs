@@ -1,9 +1,7 @@
 -- | Generation of UModule-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkModule@ creates the annotated version of the @UModule@ AST constructor.
-{-# LANGUAGE OverloadedStrings
-           , TypeFamilies
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Modules where
 
 import Data.String (IsString(..), String)

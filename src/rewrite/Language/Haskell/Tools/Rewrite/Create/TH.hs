@@ -1,7 +1,5 @@
 -- | Generation of Template Haskell AST fragments for refactorings.
-{-# LANGUAGE OverloadedStrings
-           , TypeFamilies 
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.TH where
 
 import Data.String (IsString(..), String)

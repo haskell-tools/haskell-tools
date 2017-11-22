@@ -1,7 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ViewPatterns
-           , ScopedTypeVariables
-           #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns #-}
 -- | Functions that convert the declarations of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Decls where
 
@@ -153,7 +150,7 @@ trfDecl = trfLocNoSema $ \case
     -> AST.UTypeInstDecl <$> between AnnInstance AnnEqual (makeInstanceRuleTyVars con pats) <*> trfType rhs
   ValD bind -> trfVal bind
   SigD sig -> trfSig sig
-  DerivD (DerivDecl t _ overlap) -> AST.UDerivDecl <$> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
+  DerivD (DerivDecl t strat overlap) -> AST.UDerivDecl <$> trfDerivingStrategy strat <*> trfMaybeDefault " " "" trfOverlap (after AnnInstance) overlap <*> trfInstanceRule (hsib_body t)
   RuleD (HsRules _ rules) -> AST.UPragmaDecl <$> annContNoSema (AST.URulePragma <$> makeIndentedList (before AnnClose) (mapM trfRewriteRule rules))
   RoleAnnotD (RoleAnnotDecl name roles) -> AST.URoleDecl <$> trfQualifiedName False name <*> makeList " " atTheEnd (mapM trfRole roles)
   DefD (DefaultDecl types) -> AST.UDefaultDecl <$> makeList "," (after AnnOpenP) (mapM trfType types)

@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+
 -- | The transformation monad carries the necessary information that is passed top-down
 -- during the conversion from GHC AST to our representation.
 module Language.Haskell.Tools.BackendGHC.Monad where

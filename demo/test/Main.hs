@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, LambdaCase #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Main where
 
 import Control.Concurrent (killThread, forkIO)

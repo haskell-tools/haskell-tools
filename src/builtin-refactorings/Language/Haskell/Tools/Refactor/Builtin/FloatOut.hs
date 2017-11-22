@@ -1,11 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ConstraintKinds
-           , FlexibleContexts
-           , ViewPatterns
-           , TypeApplications
-           , ScopedTypeVariables
-           , TypeFamilies
-           #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.FloatOut
   (floatOut, FloatOutDefinition, floatOutRefactoring) where
 

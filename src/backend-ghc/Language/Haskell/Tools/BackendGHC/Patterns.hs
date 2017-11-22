@@ -1,8 +1,4 @@
-{-# LANGUAGE LambdaCase
-           , ViewPatterns
-           , ScopedTypeVariables
-           , AllowAmbiguousTypes
-           #-}
+{-# LANGUAGE AllowAmbiguousTypes, ScopedTypeVariables, ViewPatterns #-}
 -- | Functions that convert the pattern-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Patterns where
 

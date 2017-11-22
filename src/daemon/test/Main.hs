@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, LambdaCase, ScopedTypeVariables, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving #-}
 module Main where
 
 import Control.Concurrent

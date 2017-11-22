@@ -62,7 +62,8 @@ data UDecl dom stage
                           } -- ^ Instance declaration (@ instance X T [where f = ...] @)
   | UPatternSynonymDecl   { _declPatSyn :: Ann UPatternSynonym dom stage
                           } -- ^ Pattern synonyms (@ pattern Arrow t1 t2 = App "->" [t1, t2] @)
-  | UDerivDecl            { _declOverlap :: AnnMaybeG UOverlapPragma dom stage
+  | UDerivDecl            { _declDerivStrat :: AnnMaybeG UDeriveStrategy dom stage
+                          , _declOverlap :: AnnMaybeG UOverlapPragma dom stage
                           , _declInstRule :: Ann UInstanceRule dom stage
                           } -- ^ Standalone deriving declaration (@ deriving instance X T @)
   | UFixityDecl           { _declFixity :: Ann UFixitySignature dom stage

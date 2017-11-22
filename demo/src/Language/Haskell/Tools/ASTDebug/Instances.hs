@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleContexts
            , FlexibleInstances
            , MultiParamTypeClasses
-           , StandaloneDeriving
-           , DeriveGeneric
            , UndecidableInstances
            , TypeFamilies
            #-}

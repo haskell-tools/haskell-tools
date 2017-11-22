@@ -1,13 +1,4 @@
-
-{-# LANGUAGE ViewPatterns
-           , ScopedTypeVariables
-           , RankNTypes
-           , FlexibleContexts
-           , TypeApplications
-           , ConstraintKinds
-           , TypeFamilies
-           , MultiWayIf
-           #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
   (extractBinding', ExtractBindingDomain, tryItOut, extractBindingRefactoring) where
 
@@ -27,8 +18,6 @@ import Data.Maybe
 
 import Language.Haskell.Tools.Refactor
 
-import Debug.Trace
-import Outputable
 
 extractBindingRefactoring :: (ExtractBindingDomain dom, HasModuleInfo dom) => RefactoringChoice dom
 extractBindingRefactoring = NamingRefactoring "ExtractBinding" (\loc s -> localRefactoring (extractBinding' loc s))

@@ -1,8 +1,5 @@
-{-# LANGUAGE LambdaCase
-           , TupleSections
-           , FlexibleContexts
+{-# LANGUAGE FlexibleContexts
            , TypeFamilies
-           , StandaloneDeriving
            , RecordWildCards
            , ScopedTypeVariables
            #-}

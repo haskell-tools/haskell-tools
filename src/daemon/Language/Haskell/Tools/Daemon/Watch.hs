@@ -1,6 +1,4 @@
-{-# LANGUAGE RecordWildCards
-           , ScopedTypeVariables
-           #-}
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 -- | Controls the file system watching in the daemon. The file system watching must run in a
 -- separate process to prevent blocking because of file operations interfering with watch.
 module Language.Haskell.Tools.Daemon.Watch where

@@ -1,9 +1,7 @@
 -- | Generation of declaration-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkTypeSignature@ creates the annotated version of the @UTypeSignature@ AST constructor.
-{-# LANGUAGE OverloadedStrings
-           , TypeFamilies
-           #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 module Language.Haskell.Tools.Rewrite.Create.Decls where
 
 import Language.Haskell.Tools.AST
@@ -16,9 +14,10 @@ mkTypeDecl :: DeclHead dom -> Type dom -> Decl dom
 mkTypeDecl dh typ = mkAnn (child <> " :: " <> child) $ UTypeDecl dh typ
 
 -- | Creates a standalone deriving declaration (@ deriving instance X T @)
-mkStandaloneDeriving :: Maybe (OverlapPragma dom) -> InstanceRule dom -> Decl dom
-mkStandaloneDeriving overlap instRule = mkAnn ("deriving instance" <> child <> child)
-                                          $ UDerivDecl (mkAnnMaybe (after " " opt) overlap) instRule
+mkStandaloneDeriving :: Maybe (DeriveStrategy dom) -> Maybe (OverlapPragma dom) -> InstanceRule dom -> Decl dom
+mkStandaloneDeriving strat overlap instRule 
+  = mkAnn ("deriving instance" <> child <> child <> child)
+      $ UDerivDecl (mkAnnMaybe (after " " opt) strat) (mkAnnMaybe (after " " opt) overlap) instRule
 
 -- | Creates a fixity declaration (@ infixl 5 +, - @)
 mkFixityDecl :: FixitySignature dom -> Decl dom

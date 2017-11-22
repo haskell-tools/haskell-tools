@@ -1,9 +1,4 @@
-{-# LANGUAGE StandaloneDeriving
-           , TypeSynonymInstances
-           , FlexibleInstances
-           , FlexibleContexts
-           , UndecidableInstances
-           #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, StandaloneDeriving, UndecidableInstances #-}
 -- | A module for showing GHC's syntax tree representation.
 module Language.Haskell.Tools.Debug.DebugGhcAST where
 

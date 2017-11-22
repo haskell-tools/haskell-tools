@@ -1,7 +1,5 @@
 
-{-# LANGUAGE LambdaCase
-           , ViewPatterns
-           , TypeFamilies
+{-# LANGUAGE TypeFamilies
            , RecordWildCards
            , DeriveGeneric
            #-}

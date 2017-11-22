@@ -1,12 +1,4 @@
-{-# LANGUAGE FlexibleContexts
-           , LambdaCase
-           , RankNTypes
-           , ScopedTypeVariables
-           , TypeFamilies
-           , FlexibleInstances
-           , UndecidableInstances
-           , PatternSynonyms
-           #-}
+{-# LANGUAGE FlexibleContexts, PatternSynonyms, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeSynonymInstances, UndecidableInstances #-}
 
 -- | Helper functions for using the AST.
 module Language.Haskell.Tools.AST.Helpers where
