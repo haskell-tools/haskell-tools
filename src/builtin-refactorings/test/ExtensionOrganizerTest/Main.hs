@@ -1,20 +1,20 @@
 module Main where
 
 import Test.Tasty (TestTree, testGroup, defaultMain)
-import Test.Tasty.HUnit
+import Test.Tasty.HUnit (assertEqual, testCase)
 
-import SrcLoc
 import GHC hiding (loadModule, ModuleName)
 import GHC.Paths (libdir)
-import Language.Haskell.TH.LanguageExtensions
+import Language.Haskell.TH.LanguageExtensions (Extension)
+import SrcLoc (SrcSpan(..), srcSpanEndLine)
 
 import Data.List (sort)
-import qualified Data.Map.Strict as SMap
-import System.FilePath
+import qualified Data.Map.Strict as SMap (Map, map)
+import System.FilePath (FilePath, addExtension, (</>))
 
+import ExtensionOrganizerTest.AnnotationParser (getExtensionAnnotations)
 import Language.Haskell.Tools.Refactor hiding (ModuleName)
 import Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
-import ExtensionOrganizerTest.AnnotationParser
 
 import Control.Reference (_1, (.-))
 

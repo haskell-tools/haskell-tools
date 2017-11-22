@@ -2,8 +2,8 @@
              
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 {-# ANN module "HLint: ignore Redundant bracket" #-}
 

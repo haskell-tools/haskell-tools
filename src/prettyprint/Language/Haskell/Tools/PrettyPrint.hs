@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, RecordPuns, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, NamedFieldPuns, UndecidableInstances #-}
 
 -- | Pretty printing the AST
 module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree, PrettyPrintProblem(..)) where

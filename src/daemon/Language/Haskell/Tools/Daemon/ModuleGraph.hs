@@ -3,7 +3,7 @@
 module Language.Haskell.Tools.Daemon.ModuleGraph
   (moduleGraphNodes, getModFromNode, dependentModules, supportingModules) where
 
-import Control.Monad
+import Control.Monad (Monad(..), Functor(..), filterM)
 import qualified Data.Map as Map (fromList, Map, lookup)
 import Data.Maybe (Maybe(..), mapMaybe, catMaybes)
 

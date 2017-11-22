@@ -2,28 +2,28 @@
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.Utils.Monadic where
 
-import Control.Monad.Reader
+import Control.Monad.Reader (Monad(..), ReaderT(..), MonadReader(..))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Except
-import Control.Monad.Writer
+import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Writer (Monad(..), WriterT(..), MonadWriter(..))
 import Control.Reference hiding (element)
 import Data.Either
 import Data.Function (on)
 import Data.List
-import Data.List.Split
+import Data.List.Split (splitOn)
 import Data.Maybe
 
 import GHC hiding (mkModuleName, moduleNameString)
-import qualified Module as GHC
+import qualified Module as GHC (Module(..), moduleNameString)
 import qualified Name as GHC
-import qualified PrelNames as GHC
-import qualified TyCon as GHC
-import qualified TysWiredIn as GHC
+import qualified PrelNames as GHC (basicKnownKeyNames)
+import qualified TyCon as GHC (TyCon(..))
+import qualified TysWiredIn as GHC (wiredInTyCons)
 
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.PrettyPrint.Prepare
 import Language.Haskell.Tools.Refactor.Monad
-import Language.Haskell.Tools.Refactor.Representation
+import Language.Haskell.Tools.Refactor.Representation (RefactorChange(..), ModuleDom, UnnamedModule)
 import Language.Haskell.Tools.Rewrite
 
 -- | Performs the given refactoring, transforming it into a Ghc action

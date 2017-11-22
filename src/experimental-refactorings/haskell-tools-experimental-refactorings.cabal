@@ -1,5 +1,5 @@
 name:                haskell-tools-experimental-refactorings
-version:             0.9.0.0
+version:             1.0.0.0
 synopsis:            Refactoring Tool for Haskell
 description:         Contains experimental refactorings implemented in the Haskell-tools framework for tutorial purposes, or to be added later to the set of mature refactorings.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -37,11 +37,11 @@ library
                      , template-haskell          >= 2.12 && < 2.13
                      , ghc                       >= 8.2  && < 8.3
                      , Cabal                     >= 2.0 && < 2.1
-                     , haskell-tools-ast         >= 0.9  && < 0.10
-                     , haskell-tools-backend-ghc >= 0.9  && < 0.10
-                     , haskell-tools-rewrite     >= 0.9  && < 0.10
-                     , haskell-tools-prettyprint >= 0.9  && < 0.10
-                     , haskell-tools-refactor    >= 0.9  && < 0.10
+                     , haskell-tools-ast         >= 1.0  && < 1.1
+                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
+                     , haskell-tools-rewrite     >= 1.0  && < 1.1
+                     , haskell-tools-prettyprint >= 1.0  && < 1.1
+                     , haskell-tools-refactor    >= 1.0  && < 1.1
   default-language:    Haskell2010
 
 test-suite haskell-tools-experimental-refactorings-test
@@ -66,10 +66,10 @@ test-suite haskell-tools-experimental-refactorings-test
                      , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 2.0 && < 2.1
-                     , haskell-tools-ast         >= 0.9  && < 0.10
-                     , haskell-tools-backend-ghc >= 0.9  && < 0.10
-                     , haskell-tools-rewrite     >= 0.9  && < 0.10
-                     , haskell-tools-prettyprint >= 0.9  && < 0.10
-                     , haskell-tools-refactor    >= 0.9  && < 0.10
+                     , haskell-tools-ast         >= 1.0  && < 1.1
+                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
+                     , haskell-tools-rewrite     >= 1.0  && < 1.1
+                     , haskell-tools-prettyprint >= 1.0  && < 1.1
+                     , haskell-tools-refactor    >= 1.0  && < 1.1
                      , haskell-tools-experimental-refactorings
   default-language:    Haskell2010

@@ -8,10 +8,6 @@
            , AllowAmbiguousTypes
            , TypeApplications
            , TypeFamilies
-           , BangPatterns
-           , StandaloneDeriving
-           , DeriveGeneric
-           , DeriveAnyClass
            #-}
 module Language.Haskell.Tools.BackendGHC.Utils where
 
@@ -32,7 +28,7 @@ import InstEnv as GHC (ClsInst(..), instanceDFunId, instEnvElts)
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
-import Outputable
+import Outputable (Outputable(..), showSDocUnsafe)
 import SrcLoc
 
 import Control.Exception (Exception, throw)

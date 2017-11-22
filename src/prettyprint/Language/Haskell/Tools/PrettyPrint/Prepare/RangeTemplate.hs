@@ -3,11 +3,11 @@
 -- had been cut from the parent nodes, but the annotations still contain ranges instead of text.
 module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate where
 
-import Control.Exception
+import Control.Exception (Exception, throw)
 import Control.Reference
-import Data.Data
+import Data.Data (Data)
 import Language.Haskell.Tools.AST
-import SrcLoc
+import SrcLoc (SrcSpan(..), RealSrcSpan)
 
 instance SourceInfo RngTemplateStage where
   data SpanInfo RngTemplateStage = RangeTemplateNode { _rngTemplateNodeRange :: RealSrcSpan

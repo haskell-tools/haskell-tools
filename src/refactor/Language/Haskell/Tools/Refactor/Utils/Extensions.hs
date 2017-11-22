@@ -2,9 +2,9 @@
 
 module Language.Haskell.Tools.Refactor.Utils.Extensions where
 
-import qualified Language.Haskell.TH.LanguageExtensions as GHC
-import Language.Haskell.Extension (KnownExtension(..))
 import Control.Reference ((^.), _1, _2, _3)
+import Language.Haskell.Extension (KnownExtension(..))
+import qualified Language.Haskell.TH.LanguageExtensions as GHC (Extension(..))
 
 
 

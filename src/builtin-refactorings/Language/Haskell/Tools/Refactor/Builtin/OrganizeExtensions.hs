@@ -7,18 +7,18 @@ module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
 
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (unregularExts, isSupported, fullyHandledExtensions)
 
 import Language.Haskell.Tools.Refactor hiding (LambdaCase)
 import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension)
 
-import GHC
+import GHC (Ghc(..))
 
-import Data.Char
-import Data.List
-import Data.Function (on)
-import qualified Data.Map.Strict as SMap
 import Control.Reference
+import Data.Char (isAlpha)
+import Data.Function (on)
+import Data.List
+import qualified Data.Map.Strict as SMap (keys, empty)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.

@@ -8,7 +8,7 @@ import BasicTypes as GHC
 import HsBinds as GHC
 import HsExpr as GHC
 import HsPat as GHC (LPat)
-import HsTypes as GHC
+import HsTypes as GHC (SrcStrictness(..), HsWildCardBndrs(..), HsImplicitBndrs(..))
 import Name as GHC (isSymOcc)
 import PlaceHolder as GHC (NameOrRdrName)
 import SrcLoc as GHC

@@ -2,8 +2,8 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TupleSectionsChecker where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkTupleSections :: CheckNode Expr
 chkTupleSections = conditional chkTupleSections' TupleSections

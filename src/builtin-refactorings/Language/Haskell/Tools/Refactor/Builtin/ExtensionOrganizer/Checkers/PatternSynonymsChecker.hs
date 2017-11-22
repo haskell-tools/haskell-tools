@@ -2,8 +2,8 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.PatternSynonymsChecker where
 
+import Language.Haskell.Tools.Refactor (PatternSignature, PatternSynonym)
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor
 
 -- NOTE: Here we implicitly constrained the type with ExtDomain.
 --       but we don't really need any.

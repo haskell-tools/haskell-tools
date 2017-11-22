@@ -2,8 +2,8 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkUnboxedTuplesExpr :: CheckNode Expr
 chkUnboxedTuplesExpr = conditional chkUnboxedTuplesExpr' UnboxedTuples

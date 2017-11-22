@@ -2,10 +2,10 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap where
 
-import Language.Haskell.TH.LanguageExtensions
+import Language.Haskell.TH.LanguageExtensions (Extension)
 import SrcLoc (SrcSpan)
 
-import qualified Data.Map.Strict as SMap
+import qualified Data.Map.Strict as SMap (Map)
 
 
 infix 6 :||:
