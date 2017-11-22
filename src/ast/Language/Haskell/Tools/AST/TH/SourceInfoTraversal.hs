@@ -2,10 +2,10 @@
 -- | Generating instances for traversal on semantic information
 module Language.Haskell.Tools.AST.TH.SourceInfoTraversal where
 
-import Control.Monad
-import Language.Haskell.TH.Ppr
+import Control.Monad (Monad(..), mapM, replicateM)
+import Language.Haskell.TH.Ppr (pprint)
 import Language.Haskell.TH.Syntax
-import Language.Haskell.Tools.AST.Ann
+import Language.Haskell.Tools.AST.Ann (SourceInfoTraversal(..))
 
 -- | Generate the instances for semantic information
 deriveSourceInfoTraversal :: Name -> Q [Dec]

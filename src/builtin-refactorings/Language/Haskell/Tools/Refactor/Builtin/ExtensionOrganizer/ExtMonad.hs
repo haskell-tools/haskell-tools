@@ -8,17 +8,17 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   , module Control.Monad.Reader
   ) where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 
-import GHC
+import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions
 import SrcLoc (SrcSpan)
 
-import qualified Data.Map.Strict as SMap
-import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.State
+import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
 
 
 {-# ANN module "HLint: ignore Use mappend" #-}

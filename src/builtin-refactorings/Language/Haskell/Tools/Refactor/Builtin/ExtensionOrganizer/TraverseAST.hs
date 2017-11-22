@@ -5,11 +5,11 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
   , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   ) where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
-import Language.Haskell.Tools.Refactor as Refact
 import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.Refactor as Refact
 
 import Control.Reference ((!~), (&), (&+&))
 

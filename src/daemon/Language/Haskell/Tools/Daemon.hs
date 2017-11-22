@@ -4,26 +4,26 @@
 module Language.Haskell.Tools.Daemon where
 
 import Control.Concurrent.MVar
-import Control.Exception
+import Control.Exception (catches)
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
-import Data.Tuple
-import Data.Version
+import Data.Tuple (swap)
+import Data.Version (showVersion)
 import Network.Socket hiding (send, sendTo, recv, recvFrom, KeepAlive)
 import System.IO
 
 import GhcMonad (Session(..), reflectGhc)
 
-import Language.Haskell.Tools.Daemon.ErrorHandling
-import Language.Haskell.Tools.Daemon.Mode
-import Language.Haskell.Tools.Daemon.Options as Options
-import Language.Haskell.Tools.Daemon.Protocol
-import Language.Haskell.Tools.Daemon.State
-import Language.Haskell.Tools.Daemon.Update
-import Language.Haskell.Tools.Daemon.Watch
-import Language.Haskell.Tools.Refactor
-import Paths_haskell_tools_daemon
+import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
+import Language.Haskell.Tools.Daemon.Mode (WorkingMode(..), socketMode)
+import Language.Haskell.Tools.Daemon.Options as Options (SharedDaemonOptions(..), DaemonOptions(..))
+import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..))
+import Language.Haskell.Tools.Daemon.State (DaemonSessionState(..), initSession, exiting)
+import Language.Haskell.Tools.Daemon.Update (updateClient, initGhcSession)
+import Language.Haskell.Tools.Daemon.Watch (createWatchProcess', stopWatch)
+import Language.Haskell.Tools.Refactor (IdDom, RefactoringChoice)
+import Paths_haskell_tools_daemon (version)
 
 -- | Starts the daemon process. This will not return until the daemon stops. You can use this entry
 -- point when the other endpoint of the client connection is not needed, for example, when you use

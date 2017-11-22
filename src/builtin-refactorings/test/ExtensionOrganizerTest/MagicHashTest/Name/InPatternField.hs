@@ -1,5 +1,5 @@
 {-# LANGUAGE MagicHash,
-             RecordPuns
+             NamedFieldPuns
              #-}
 
 module InPatternField where

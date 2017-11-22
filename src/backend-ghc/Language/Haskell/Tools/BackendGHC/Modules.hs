@@ -5,8 +5,8 @@ module Language.Haskell.Tools.BackendGHC.Modules where
 
 import Control.Monad.Reader
 import Control.Reference hiding (element)
+import Data.Char (isSpace)
 import Data.Generics.Uniplate.Data ()
-import Data.Char (isLetter, isSpace)
 import Data.List as List
 import Data.Map as Map (fromList, lookup)
 import Data.Maybe

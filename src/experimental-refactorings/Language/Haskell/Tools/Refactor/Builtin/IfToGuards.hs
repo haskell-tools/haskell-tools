@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleContexts, ViewPatterns, TypeFamilies #-}
+{-# LANGUAGE RankNTypes, FlexibleContexts, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.IfToGuards (ifToGuards, tryItOut) where
 
 import Control.Reference ((^.), (.-), (&))

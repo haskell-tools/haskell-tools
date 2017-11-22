@@ -5,8 +5,8 @@ module Language.Haskell.Tools.Refactor.Utils.Lists where
 
 import Control.Applicative ((<$>))
 import Control.Reference
-import Data.List (findIndices)
 import Data.Char (isSpace)
+import Data.List (findIndices)
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.Prepare

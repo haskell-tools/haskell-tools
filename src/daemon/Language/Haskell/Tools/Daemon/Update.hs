@@ -3,7 +3,7 @@
 module Language.Haskell.Tools.Daemon.Update (updateClient, updateForFileChanges, initGhcSession) where
 
 import Control.DeepSeq (force)
-import Control.Exception
+import Control.Exception (evaluate)
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Reference hiding (modifyMVarMasked_)
@@ -13,14 +13,14 @@ import qualified Data.ByteString.Char8 as StrictBS (unpack, readFile)
 import Data.Either (Either(..), either, rights)
 import Data.IORef (readIORef, newIORef)
 import Data.List as List hiding (insert)
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map as Map (insert, keys, filter)
 import Data.Maybe
+import qualified Data.Set as Set (fromList, isSubsetOf, (\\))
 import Data.Version (Version(..))
 import System.Directory
 import System.FSWatch.Slave (watch)
+import System.FilePath (FilePath, takeDirectory, takeExtension)
 import System.IO
-import System.FilePath
 import System.IO.Strict as StrictIO (hGetContents)
 import Text.PrettyPrint as PP (text, render)
 
@@ -29,8 +29,7 @@ import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad (GhcMonad(..), Session(..), modifySession)
 import HscTypes (hsc_mod_graph)
-import Linker (unload)
-import Packages (initPackages)
+import Language.Haskell.Tools.Daemon.ErrorHandling (getProblems)
 import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (decidePkgDB, packageDBLoc, detectAutogen)
 import Language.Haskell.Tools.Daemon.Protocol
@@ -38,9 +37,10 @@ import Language.Haskell.Tools.Daemon.Representation as HT
 import Language.Haskell.Tools.Daemon.Session
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Utils
-import Language.Haskell.Tools.Daemon.ErrorHandling
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.Refactor
+import Linker (unload)
+import Packages (initPackages)
 import Paths_haskell_tools_daemon (version)
 
 -- | Context for responding to a user request.

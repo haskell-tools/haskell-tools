@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, FlexibleContexts, ConstraintKinds, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, ConstraintKinds, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.DollarApp3 where
 
 import Language.Haskell.Tools.Refactor

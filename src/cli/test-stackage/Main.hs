@@ -114,7 +114,7 @@ testPackage noLoad noClean sourceDirectory logDirectory resolver pack = do
   return (res, problem)
   where load = if noLoad
                  then []
-                 else [ Right $ (either (\(e :: SomeException) -> return ()) return =<<)
+                 else [ Right $ (either (\(_ :: SomeException) -> return ()) return =<<)
                               $ try (removeDirectoryRecursive (sourceDirectory </> pack))
                       , Left ("cabal get -d " ++ sourceDirectory ++ " " ++ pack, ".", GetFailure) ]
         init = [ Right (forM_ [sourceDirectory,logDirectory] (createDirectoryIfMissing True)) ]

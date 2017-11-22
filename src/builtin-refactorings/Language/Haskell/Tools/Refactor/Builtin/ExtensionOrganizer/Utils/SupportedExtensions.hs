@@ -1,6 +1,6 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions where
 
-import Language.Haskell.TH.LanguageExtensions
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
 
 unregularExts :: String -> String
 unregularExts "CPP" = "Cpp"

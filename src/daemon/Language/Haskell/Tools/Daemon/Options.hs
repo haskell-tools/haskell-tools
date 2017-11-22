@@ -4,9 +4,9 @@ module Language.Haskell.Tools.Daemon.Options
 import Control.Monad.Reader (MonadReader(..))
 import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
+import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Options.Applicative
-import Options.Applicative.Types
-import Language.Haskell.Tools.Daemon.PackageDB
+import Options.Applicative.Types (ReadM(..), Parser, readerAsk)
 
 -- | Command line options for the daemon process.
 data DaemonOptions = DaemonOptions { daemonVersion :: Bool

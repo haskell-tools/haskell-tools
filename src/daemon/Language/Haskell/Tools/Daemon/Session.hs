@@ -7,29 +7,29 @@ module Language.Haskell.Tools.Daemon.Session where
 import Control.Monad.State.Strict
 import Control.Reference
 import Data.Function (on)
-import Data.IORef
+import Data.IORef (writeIORef, readIORef)
 import qualified Data.List as List
-import Data.List.Split
+import Data.List.Split (splitOn)
 import qualified Data.Map as Map
 import Data.Maybe
-import System.Directory
+import System.Directory (doesFileExist)
 import System.FilePath
 
-import Digraph as GHC
-import DynFlags
+import Digraph as GHC (flattenSCCs)
+import DynFlags (DynFlags(..), xopt)
+import Exception (gtry)
 import GHC
-import Exception
-import GHCi
+import GHCi (purgeLookupSymbolCache)
 import GhcMonad (modifySession)
 import HscTypes
-import Language.Haskell.TH.LanguageExtensions as Exts
-import Linker
+import Language.Haskell.TH.LanguageExtensions as Exts (Extension(..))
+import Linker (unload)
 import Module
-import NameCache
-import Packages
+import NameCache (NameCache(..))
+import Packages (initPackages)
 
-import Language.Haskell.Tools.Daemon.GetModules
-import Language.Haskell.Tools.Daemon.ModuleGraph
+import Language.Haskell.Tools.Daemon.GetModules (getAllModules, setupLoadFlags)
+import Language.Haskell.Tools.Daemon.ModuleGraph (supportingModules, dependentModules)
 import Language.Haskell.Tools.Daemon.Representation
 import Language.Haskell.Tools.Daemon.State
 import Language.Haskell.Tools.Daemon.Utils

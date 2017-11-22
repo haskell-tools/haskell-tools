@@ -1,8 +1,8 @@
 module ExtensionOrganizerTest.AnnotationParser where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad -- for Ord Extension
 import Data.List
-import qualified Data.Map.Strict as SMap
+import qualified Data.Map.Strict as SMap (Map, empty, insertWith)
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad (Extension, LogicalRelation(..)) -- for Ord Extension
 
 {-# ANN module "HLint: ignore Use zipWith" #-}
 

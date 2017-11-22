@@ -2,16 +2,16 @@
 -- | Handlers for common errors in Haskell-tools daemon.
 module Language.Haskell.Tools.Daemon.ErrorHandling where
 
+import Bag (bagToList)
 import Control.Exception
 import Control.Monad (Monad(..), when)
 import Data.List
 import Data.Maybe (Maybe(..), catMaybes)
 import Data.Tuple (snd)
-import System.IO (IO, hPutStrLn, stderr)
-import Bag (bagToList)
 import ErrUtils (ErrMsg(..))
-import HscTypes
+import HscTypes (SourceError, srcErrorMessages)
 import SrcLoc (SrcSpan(..), isGoodSrcSpan)
+import System.IO (IO, hPutStrLn, stderr)
 
 import Language.Haskell.Tools.Daemon.GetModules (UnsupportedPackage(..))
 import Language.Haskell.Tools.Refactor

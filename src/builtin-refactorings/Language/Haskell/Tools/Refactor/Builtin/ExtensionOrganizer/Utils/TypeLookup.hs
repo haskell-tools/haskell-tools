@@ -3,15 +3,15 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
 
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST (HasNameInfo'(..), HasNameInfo(..), simpleName)
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Reference ((^.))
 
 import qualified GHC
-import qualified TyCoRep as GHC
+import qualified TyCoRep as GHC (Type(..), TyThing(..))
 
 
 chkSynonym :: CheckNode Type

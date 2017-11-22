@@ -23,17 +23,17 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker where
 
+import Control.Reference ((^.), (!~), (&))
+import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.Refactor as Refact hiding (Enum)
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad as Ext
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
-import Control.Reference ((^.), (!~), (&))
-import Language.Haskell.Tools.Refactor as Refact hiding (Enum)
-import Language.Haskell.Tools.AST
 
-import qualified Data.Map as Map
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Maybe (MaybeT(..))
+import qualified Data.Map as Map (fromList, lookup)
 
+import qualified GHC (Name(..), isNewTyCon)
 import qualified Name as GHC (Name)
-import qualified GHC
 import PrelNames
 import THNames (liftClassName)
 

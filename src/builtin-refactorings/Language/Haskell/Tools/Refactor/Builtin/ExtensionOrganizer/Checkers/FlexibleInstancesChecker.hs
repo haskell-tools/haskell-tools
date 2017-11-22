@@ -2,15 +2,15 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 import Control.Reference ((^.), (!~), biplateRef)
 import Language.Haskell.Tools.Refactor as Refact
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup (lookupSynDefM)
 
 
+import Control.Monad.Trans.Maybe (MaybeT(..))
+import Data.Data (Data(..))
 import Data.List (nub)
-import Data.Data
-import Control.Monad.Trans.Maybe
 
 import Name as GHC (isTyVarName, isTyConName, isWiredInName)
 

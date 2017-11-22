@@ -14,16 +14,16 @@ import System.FilePath
 
 import CmdLineParser (CmdLineP(..), processArgs)
 import DynFlags
-import Linker
 import FastString (mkFastString)
 import GHC hiding (loadModule)
 import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad
 import HscTypes (HscEnv(..), ModSummary(..))
+import Linker (unload)
+import Outputable (Outputable(..), showSDocUnsafe)
 import Packages (initPackages)
 import SrcLoc
-import Outputable
 import StringBuffer (hGetStringBuffer)
 
 import Language.Haskell.Tools.AST as AST
