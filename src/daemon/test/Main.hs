@@ -27,7 +27,7 @@ import SrcLoc (SrcSpan(..), mkSrcSpan, mkSrcLoc)
 import Language.Haskell.Tools.Daemon (runDaemon')
 import Language.Haskell.Tools.Daemon.Options as Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
-import Language.Haskell.Tools.Daemon.Protocol (UndoRefactor(..), ResponseMsg(..), ClientMessage(..))
+import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
 pORT_NUM_START = 4100
@@ -197,6 +197,9 @@ compProblemTests isSource testRoot =
       , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
     , \case [LoadingModules {}, LoadedModule {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
+  , ( "warning"
+    , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "warning"] ]
+    , \case [LoadingModules{}, LoadedModule {}, CompilationProblem [Marker _ Warning _] []] -> True; _ -> False)
   , ( "no-such-file"
     , [ Right $ SetPackageDB DefaultDB
       , Right $ PerformRefactoring "RenameDefinition" (testRoot </> "simple-refactor" ++ testSuffix </> "A.hs") "3:1-3:2" ["y"] False False]
@@ -701,6 +704,8 @@ deriving instance Eq UndoRefactor
 deriving instance Eq ResponseMsg
 instance FromJSON UndoRefactor
 instance FromJSON ResponseMsg
+instance FromJSON Marker
+instance FromJSON Severity
 instance ToJSON ClientMessage
 instance ToJSON PackageDB
 

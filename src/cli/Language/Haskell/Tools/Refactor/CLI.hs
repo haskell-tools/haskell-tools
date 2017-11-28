@@ -119,7 +119,7 @@ processMessage :: Bool -> Handle -> ResponseMsg -> IO (Maybe Bool)
 processMessage _ output (ErrorMessage msg) = hPutStrLn output msg >> return (Just False)
 processMessage pedantic output (CompilationProblem marks hints)
   = do mapM_ (hPutStrLn output) hints
-       mapM_ (\(loc, msg) -> hPutStrLn output (shortShowSpanWithFile loc ++ ": " ++ msg)) marks
+       mapM_ (hPutStrLn output . show) marks
        return (if pedantic then Just False else Nothing)
 processMessage _ output (LoadedModule fp name)
   = do hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") "

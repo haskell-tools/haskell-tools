@@ -13,11 +13,12 @@ import HscTypes (SourceError, srcErrorMessages)
 import SrcLoc (SrcSpan(..), isGoodSrcSpan)
 import System.IO (IO, hPutStrLn, stderr)
 
+import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.GetModules (UnsupportedPackage(..))
 import Language.Haskell.Tools.Refactor
 
 -- Handlers for exceptions specific to our application.
-userExceptionHandlers :: (String -> IO a) -> ([(SrcSpan, String)] -> [String] -> IO a) -> [Handler a]
+userExceptionHandlers :: (String -> IO a) -> ([Marker] -> [String] -> IO a) -> [Handler a]
 userExceptionHandlers sendError sendCompProblems =
   [ Handler (\(UnsupportedPackage e) -> sendError ("There are unsupported elements in your package: " ++ e ++ " please correct them before loading them into Haskell-tools."))
   , Handler (\(UnsupportedExtension e) -> sendError ("The extension you use is not supported: " ++ e ++ ". Please check your source and cabal files for the use of that language extension."))
@@ -43,10 +44,10 @@ exceptionHandlers cont sendError =
                             sendError $ "Internal error: " ++ show ex
               Just (msg, doContinue) -> sendError msg >> when doContinue cont
 
-getProblems :: SourceError -> ([(SrcSpan, String)], [String])
-getProblems errs = let msgs = map (\err -> (errMsgSpan err, show err))
+getProblems :: SourceError -> ([Marker], [String])
+getProblems errs = let msgs = map (\err -> Marker (errMsgSpan err) Error (show err))
                                  $ bagToList $ srcErrorMessages errs
-                       hints = nub $ sort $ catMaybes $ map (handleSourceProblem . snd) msgs
+                       hints = nub $ sort $ catMaybes $ map (handleSourceProblem . message) msgs
                     in (msgs, hints)
 
 -- | Hint text and continuation suggestion for different kinds of errors based on pattern matching on error text.

@@ -11,6 +11,7 @@ import GHC.Generics (Generic)
 import FastString (unpackFS)
 import SrcLoc
 
+import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB)
 
 -- | The messages expected from the client.
@@ -71,7 +72,7 @@ data ResponseMsg
   | ErrorMessage { errorMsg :: String }
     -- ^ An error message marking internal problems or user mistakes.
     -- TODO: separate internal problems and user mistakes.
-  | CompilationProblem { errorMarkers :: [(SrcSpan, String)]
+  | CompilationProblem { markers :: [Marker]
                        , errorHints :: [String]
                        }
     -- ^ A response that tells there are errors in the source code given.
@@ -90,7 +91,20 @@ data ResponseMsg
     -- ^ The engine has closed the connection.
   deriving (Show, Generic)
 
+data Marker = Marker { location :: SrcSpan
+                     , severity :: Severity
+                     , message :: String
+                     } deriving (Generic, Eq)
+
+instance Show Marker where
+  show marker = show (severity marker) ++ " at " ++ shortShowSpanWithFile (location marker) ++ ": " ++ message marker
+
+data Severity = Error | Warning | Info 
+  deriving (Show, Generic, Eq)
+
 instance ToJSON ResponseMsg
+instance ToJSON Marker
+instance ToJSON Severity
 
 instance ToJSON SrcSpan where
   toJSON (RealSrcSpan sp) = object [ "file" A..= unpackFS (srcSpanFile sp)
