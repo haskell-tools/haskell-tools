@@ -56,7 +56,7 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== renamed source:"
     
     (rnSrc, tcSrc) <- ((\t -> (tm_renamed_source t, typecheckedSource t)) <$> typecheckModule p)
-                         `gcatch` \(_ :: SomeException) -> forcedTypecheck ms p
+                         `gcatch` \(_ :: SomeException) -> forcedTypecheck ms ps
     liftIO $ putStrLn $ show rnSrc
     
     -- liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
