@@ -18,12 +18,19 @@ import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import StringBuffer (hGetStringBuffer)
+import Outputable
+import HscMain
 import HscTypes
 import TcRnDriver
 import TcRnTypes
 import TcRnMonad
 import Data.IORef
+import UniqSupply
 import DynFlags
+import ErrUtils
+import Bag
+import RdrName
+import Exception
 
 import Language.Haskell.Tools.AST (NodeInfo(..))
 import Language.Haskell.Tools.BackendGHC
@@ -46,6 +53,9 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== parsed source:"
     ms <- loadModule workingDir moduleName
     
+    dfs <- getSessionDynFlags
+    -- setSessionDynFlags (dfs `dopt_set` Opt_D_dump_rn_trace `dopt_set` Opt_D_dump_tc_trace)
+    
     p <- parseModule ms
     let annots = pm_annotations $ p
     liftIO $ putStrLn $ show (pm_parsed_source p)
@@ -56,7 +66,7 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== renamed source:"
     
     (rnSrc, tcSrc) <- ((\t -> (tm_renamed_source t, typecheckedSource t)) <$> typecheckModule p)
-                         `gcatch` \(_ :: SomeException) -> forcedTypecheck ms ps
+                         `gcatch` \(e :: SomeException) -> forcedTypecheck ms p
     liftIO $ putStrLn $ show rnSrc
     
     -- liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
@@ -126,7 +136,7 @@ forcedTypecheck ms p = do
   env <- getSession
   store <- liftIO $ newIORef (error "not found")
   let hpm = HsParsedModule (pm_parsed_source p) (pm_extra_src_files p) (pm_annotations p)
-  (_, Just (gblEnv, lclEnv)) <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv 
+  (msgs, Just (gblEnv, lclEnv)) <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv 
   let finalizeModule = do gbl <- getGblEnv
                           liftIO $ writeIORef store ( (,,,) <$> tcg_rn_decls gbl
                                                             <*> return (tcg_rn_imports gbl)
@@ -136,5 +146,5 @@ forcedTypecheck ms p = do
   liftIO $ modifyIORef (tcg_th_modfinalizers gblEnv) (finalizeModule :)
   let gblEnv' = gblEnv { tcg_rn_exports = Just [], tcg_rn_decls = Just emptyRnGroup }
   liftIO $ initTcRnIf 'a' env gblEnv' lclEnv $ void (tcRnModuleTcRnM env HsSrcFile hpm (ms_mod ms, getLoc (pm_parsed_source p)))
-                                                 `gcatch` \(_ :: SomeException) -> return ()
+                                                 `gcatch` \(e :: SomeException) -> return ()
   liftIO $ readIORef store
