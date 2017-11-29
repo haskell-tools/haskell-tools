@@ -1,15 +1,18 @@
- {-# LANGUAGE ScopedTypeVariables, DeriveGeneric, LambdaCase, StandaloneDeriving, TypeApplications, DataKinds, TypeFamilies, FlexibleContexts #-}
+ {-# LANGUAGE FlexibleInstances, ScopedTypeVariables, DeriveGeneric, LambdaCase, StandaloneDeriving, TypeApplications, DataKinds, TypeFamilies, FlexibleContexts #-}
 module Language.Haskell.Tools.Debug where
 
 import Control.Monad (Monad(..), (=<<), forM_)
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Reference ((^.))
+import Control.Monad.State
+import Control.Reference
 import Data.List.Split (splitOn)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Generics.ClassyPlate
 import GHC.Generics (Generic(..))
 import qualified Generics.SYB as SYB
 import System.FilePath (pathSeparator, (</>), (<.>))
+import Criterion
+import Criterion.Main
 
 import DynFlags (xopt)
 import GHC hiding (loadModule)
@@ -17,7 +20,7 @@ import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import StringBuffer (hGetStringBuffer)
 
-import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.AST as HT
 import Language.Haskell.Tools.BackendGHC
 import Language.Haskell.Tools.Debug.DebugGhcAST ()
 import Language.Haskell.Tools.Debug.RangeDebug (srcInfoDebug)
@@ -28,25 +31,52 @@ import Language.Haskell.Tools.Refactor as HT
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
 
-printAST :: forall src dom . Domain dom => Ann UModule src dom -> IO (Ann UModule src dom)
--- printAST mod = bottomUpM @PrintNode printNode {- . topDown @IdNode idNode . descend @IdNode idNode . smartTraverse @IdNode idNode $ -} mod
+classyPlate :: Ann UModule IdDom RngTemplateStage -> Int
+classyPlate mod = flip execState 0 $ bottomUpM @IdNode idNode mod
 
-printAST = SYB.everywhereM printElems
-  where printElems :: Ann elem src dom -> IO (Ann elem src dom)
-        printElems e = print e >> return e
+uniPlate :: Ann UModule IdDom RngTemplateStage -> Int
+uniPlate = flip execState 0 . (biplateRef !| exprId)
 
-class PrintNode t where
-  printNode :: t -> IO t
+{-# NOINLINE exprId #-}
+exprId :: Ann UExpr IdDom RngTemplateStage -> State Int (Ann UExpr IdDom RngTemplateStage)
+exprId e = modify (+1) >> return e
 
-instance Show (elem src dom) => PrintNode (Ann elem src dom) where
-  printNode e = print e >> return e
+class IdNode t where
+  idNode :: t -> State Int t
 
-type instance AppSelector PrintNode a = PrintNodeSelector a
+instance IdNode (Ann UExpr IdDom RngTemplateStage) where
+  idNode = exprId
 
-type family PrintNodeSelector t where
-  PrintNodeSelector (Ann elem src dom) = 'True
-  PrintNodeSelector _ = 'False
 
+type instance AppSelector IdNode a = IdNodeSelector a
+
+type family IdNodeSelector t where
+  IdNodeSelector (Ann UExpr IdDom RngTemplateStage) = 'True
+  IdNodeSelector _ = 'False
+
+testPerformance :: String -> String -> IO ()
+testPerformance workingDir moduleName = 
+  runGhc (Just libdir) $ do
+    initGhcFlags
+    useDirs [workingDir]
+    ms <- loadModule workingDir moduleName
+    p <- parseModule ms
+    t <- typecheckModule p
+    let annots = pm_annotations $ tm_parsed_module t
+        hasCPP = Cpp `xopt` ms_hspp_opts ms
+    parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
+    transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename ms parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
+    sourceOrigin <- if hasCPP then liftIO $ hGetStringBuffer (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName <.> "hs")
+                              else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
+    let commented = fixRanges $ placeComments (fst annots) (getNormalComments $ snd annots) $ fixMainRange sourceOrigin transformed   
+    let cutUp = cutUpRanges commented
+    liftIO $ print $ classyPlate cutUp
+    liftIO $ print $ uniPlate cutUp
+    liftIO $ defaultMain [ bench "uniplate" $ whnf classyPlate cutUp
+                         , bench "classyplate" $ whnf uniPlate cutUp
+                         ]
+    
+    
 -- | Should be only used for testing
 demoRefactor :: String -> String -> [String] -> String -> IO ()
 demoRefactor command workingDir args moduleName =
@@ -88,7 +118,6 @@ demoRefactor command workingDir args moduleName =
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ srcInfoDebug cutUp
     liftIO $ putStrLn $ show $ getLocIndices cutUp
-    liftIO $ printAST cutUp
 
     liftIO $ putStrLn $ show $ mapLocIndices sourceOrigin (getLocIndices cutUp)
     liftIO $ putStrLn "=========== sourced:"

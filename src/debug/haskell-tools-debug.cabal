@@ -30,6 +30,8 @@ library
                      , haskell-tools-builtin-refactorings >= 1.0 && < 1.1
                      , classyplate 
                      , syb
+                     , criterion
+                     , mtl
   default-language:    Haskell2010
 
 executable ht-debug
