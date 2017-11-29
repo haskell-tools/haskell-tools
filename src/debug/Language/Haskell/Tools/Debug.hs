@@ -1,4 +1,4 @@
- {-# LANGUAGE DeriveGeneric, LambdaCase, StandaloneDeriving #-}
+ {-# LANGUAGE ScopedTypeVariables, DeriveGeneric, LambdaCase, StandaloneDeriving, TypeApplications, DataKinds, TypeFamilies, FlexibleContexts #-}
 module Language.Haskell.Tools.Debug where
 
 import Control.Monad (Monad(..), (=<<), forM_)
@@ -6,7 +6,9 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Reference ((^.))
 import Data.List.Split (splitOn)
 import Data.Maybe (Maybe(..), fromJust)
+import Data.Generics.ClassyPlate
 import GHC.Generics (Generic(..))
+import qualified Generics.SYB as SYB
 import System.FilePath (pathSeparator, (</>), (<.>))
 
 import DynFlags (xopt)
@@ -15,15 +17,35 @@ import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import StringBuffer (hGetStringBuffer)
 
-import Language.Haskell.Tools.AST (NodeInfo(..))
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.BackendGHC
 import Language.Haskell.Tools.Debug.DebugGhcAST ()
 import Language.Haskell.Tools.Debug.RangeDebug (srcInfoDebug)
 import Language.Haskell.Tools.Debug.RangeDebugInstances ()
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)
 import Language.Haskell.Tools.PrettyPrint.Prepare
-import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor as HT
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+
+
+printAST :: forall src dom . Domain dom => Ann UModule src dom -> IO (Ann UModule src dom)
+-- printAST mod = bottomUpM @PrintNode printNode {- . topDown @IdNode idNode . descend @IdNode idNode . smartTraverse @IdNode idNode $ -} mod
+
+printAST = SYB.everywhereM printElems
+  where printElems :: Ann elem src dom -> IO (Ann elem src dom)
+        printElems e = print e >> return e
+
+class PrintNode t where
+  printNode :: t -> IO t
+
+instance Show (elem src dom) => PrintNode (Ann elem src dom) where
+  printNode e = print e >> return e
+
+type instance AppSelector PrintNode a = PrintNodeSelector a
+
+type family PrintNodeSelector t where
+  PrintNodeSelector (Ann elem src dom) = 'True
+  PrintNodeSelector _ = 'False
 
 -- | Should be only used for testing
 demoRefactor :: String -> String -> [String] -> String -> IO ()
@@ -53,6 +75,7 @@ demoRefactor command workingDir args moduleName =
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
     liftIO $ putStrLn $ srcInfoDebug parseTrf
+    
     liftIO $ putStrLn "=========== typed:"
     transformed <- addTypeInfos (typecheckedSource t) =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename ms parseTrf (fromJust $ tm_renamed_source t) (pm_parsed_source p))
     liftIO $ putStrLn $ srcInfoDebug transformed
@@ -65,6 +88,7 @@ demoRefactor command workingDir args moduleName =
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ srcInfoDebug cutUp
     liftIO $ putStrLn $ show $ getLocIndices cutUp
+    liftIO $ printAST cutUp
 
     liftIO $ putStrLn $ show $ mapLocIndices sourceOrigin (getLocIndices cutUp)
     liftIO $ putStrLn "=========== sourced:"
