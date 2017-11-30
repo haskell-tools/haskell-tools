@@ -26,22 +26,20 @@ import qualified Data.Map.Strict as SMap (keys, empty)
 
 --       Pretty easy now. Chcek wheter it is already in the ExtMap.
 
-type OrganizeExtensionsDomain dom = (HasModuleInfo dom, ExtDomain dom)
-
-organizeExtensionsRefactoring :: OrganizeExtensionsDomain dom => RefactoringChoice dom
+organizeExtensionsRefactoring :: RefactoringChoice
 organizeExtensionsRefactoring = ModuleRefactoring "OrganizeExtensions" (localRefactoring organizeExtensions)
 
-projectOrganizeExtensionsRefactoring :: OrganizeExtensionsDomain dom => RefactoringChoice dom
+projectOrganizeExtensionsRefactoring :: RefactoringChoice
 projectOrganizeExtensionsRefactoring = ProjectRefactoring "ProjectOrganizeExtensions" projectOrganizeExtensions
 
-projectOrganizeExtensions :: forall dom . OrganizeExtensionsDomain dom => ProjectRefactoring dom
+projectOrganizeExtensions :: ProjectRefactoring
 projectOrganizeExtensions =
   mapM (\(k, m) -> ContentChanged . (k,) <$> localRefactoringRes id m (organizeExtensions m))
 
 tryOut :: String -> String -> IO ()
 tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 
-organizeExtensions :: ExtDomain dom => LocalRefactoring dom
+organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
   let isRedundant e = extName `notElem` foundExts && extName `elem` handledExts
@@ -56,7 +54,7 @@ organizeExtensions moduleAST = do
     $ moduleAST
 
 -- | Reduces default extension list (keeps unsupported extensions)
-reduceExtensions :: ExtDomain dom => UnnamedModule dom -> Ghc [Extension]
+reduceExtensions :: UnnamedModule -> Ghc [Extension]
 reduceExtensions = \moduleAST -> do
   let expanded = expandDefaults moduleAST
       (xs, ys) = partition isSupported expanded
@@ -82,20 +80,20 @@ reduceExtensions = \moduleAST -> do
 
 
 -- | Collects extensions induced by the source code (with location info)
-collectExtensions :: ExtDomain dom => UnnamedModule dom -> Ghc ExtMap
+collectExtensions :: UnnamedModule -> Ghc ExtMap
 collectExtensions moduleAST = do
   let expanded = expandDefaults moduleAST
   flip execStateT SMap.empty . flip runReaderT expanded . traverseModule $ moduleAST
 
 -- | Collects default extension list, and expands each extension
-expandDefaults :: UnnamedModule dom -> [Extension]
+expandDefaults :: UnnamedModule -> [Extension]
 expandDefaults = nub . concatMap expandExtension . collectDefaultExtensions
 
 -- | Collects extensions enabled by default
-collectDefaultExtensions :: UnnamedModule dom -> [Extension]
+collectDefaultExtensions :: UnnamedModule -> [Extension]
 collectDefaultExtensions = map toExt . getExtensions
   where
-  getExtensions :: UnnamedModule dom -> [String]
+  getExtensions :: UnnamedModule -> [String]
   getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
 
 toExt :: String -> Extension

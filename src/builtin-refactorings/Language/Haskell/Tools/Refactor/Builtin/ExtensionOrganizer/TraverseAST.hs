@@ -422,26 +422,26 @@ type GuardedCaseRhsG uexpr dom = Ann (UGuardedCaseRhs' uexpr) dom SrcTemplateSta
 
 type PromotedG t dom = Ann (UPromoted t) dom  SrcTemplateStage
 
-traverseAlt :: CheckUNode uexpr -> CheckNode (AltG uexpr)
+traverseAlt :: CheckUNode uexpr -> CheckNode (AltG uexpr IdDom)
 traverseAlt f = (altPattern !~ traversePattern)
                >=> (altRhs !~ traverseCaseRhs f)
                >=> (altBinds & annJust !~ traverseLocalBinds)
 
-traverseCaseRhs :: CheckUNode uexpr -> CheckNode (CaseRhsG uexpr)
+traverseCaseRhs :: CheckUNode uexpr -> CheckNode (CaseRhsG uexpr IdDom)
 traverseCaseRhs f = (rhsCaseExpr !~ f)
                    >=> (rhsCaseGuards & annList !~ traverseGuardedCaseRhs f)
 
-traverseGuardedCaseRhs :: CheckUNode uexpr -> CheckNode (GuardedCaseRhsG uexpr)
+traverseGuardedCaseRhs :: CheckUNode uexpr -> CheckNode (GuardedCaseRhsG uexpr IdDom)
 traverseGuardedCaseRhs f = (caseGuardStmts & annList !~ traverseRhsGuard)
                           >=> (caseGuardExpr !~ f)
 
-traverseStmt :: CheckUNode uexpr -> CheckNode (StmtG uexpr)
+traverseStmt :: CheckUNode uexpr -> CheckNode (StmtG uexpr IdDom)
 traverseStmt f = (stmtPattern !~ traversePattern)
                 >=> (stmtExpr !~ f)
                 >=> (stmtBinds & annList !~ traverseLocalBind)
                 >=> (cmdStmtBinds & annList !~ traverseStmt f)
 
-traversePromoted :: CheckUNode t -> CheckNode (PromotedG t)
+traversePromoted :: CheckUNode t -> CheckNode (PromotedG t IdDom)
 traversePromoted f = (promotedConName !~ traverseName)
                  >=> (promotedElements & annList !~ f)
 

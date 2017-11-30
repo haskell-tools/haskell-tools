@@ -6,10 +6,10 @@ import Language.Haskell.Tools.Refactor
 tryItOut :: String -> IO ()
 tryItOut moduleName = tryRefactor (\_ -> localRefactoring dataToNewtype) moduleName ""
 
-dataToNewtype :: LocalRefactoring dom
+dataToNewtype :: LocalRefactoring
 dataToNewtype = return . (modDecl & annList .- changeDeclaration)
 
-changeDeclaration :: Decl dom -> Decl dom
+changeDeclaration :: Decl -> Decl
 changeDeclaration dd@(DataDecl DataKeyword _ _ (AnnList [ConDecl _ (AnnList [_])]) _)
   = declNewtype .= mkNewtypeKeyword $ dd
 changeDeclaration decl = decl

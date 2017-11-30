@@ -2,403 +2,403 @@ module Language.Haskell.Tools.Rewrite.ElementTypes where
 
 import Language.Haskell.Tools.AST
 
-type AnnList node dom = AnnListG node dom SrcTemplateStage
-type AnnMaybe node dom = AnnMaybeG node dom SrcTemplateStage
+type AnnList node = AnnListG node IdDom SrcTemplateStage
+type AnnMaybe node = AnnMaybeG node IdDom SrcTemplateStage
 
 -- * Modules
 
 -- | The representation of a haskell module, that is a separate compilation unit.
 -- It may or may not have a header.
-type Module dom = Ann UModule dom SrcTemplateStage
+type Module = Ann UModule IdDom SrcTemplateStage
 
 -- | Module declaration with name and (optional) exports
-type ModuleHead dom = Ann UModuleHead dom SrcTemplateStage
+type ModuleHead = Ann UModuleHead IdDom SrcTemplateStage
 
 -- | A list of export specifications surrounded by parentheses
-type ExportSpecs dom = Ann UExportSpecs dom SrcTemplateStage
+type ExportSpecs = Ann UExportSpecs IdDom SrcTemplateStage
 
 -- | Export specifier
-type ExportSpec dom = Ann UExportSpec dom SrcTemplateStage
+type ExportSpec = Ann UExportSpec IdDom SrcTemplateStage
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
-type IESpec dom = Ann UIESpec dom SrcTemplateStage
+type IESpec = Ann UIESpec IdDom SrcTemplateStage
 
 -- | Marks how related names will be imported or exported with a given name
-type SubSpec dom = Ann USubSpec dom SrcTemplateStage
+type SubSpec = Ann USubSpec IdDom SrcTemplateStage
 
 -- | Pragmas that must be used after the module head
-type ModulePragma dom = Ann UModulePragma dom SrcTemplateStage
+type ModulePragma = Ann UModulePragma IdDom SrcTemplateStage
 
 -- | Pragmas that must be used before defining the module
-type FilePragma dom = Ann UFilePragma dom SrcTemplateStage
+type FilePragma = Ann UFilePragma IdDom SrcTemplateStage
 
 -- | An import declaration: @import Module.Name@
-type ImportDecl dom = Ann UImportDecl dom SrcTemplateStage
+type ImportDecl = Ann UImportDecl IdDom SrcTemplateStage
 
 -- | Restriction on the imported names
-type ImportSpec dom = Ann UImportSpec dom SrcTemplateStage
+type ImportSpec = Ann UImportSpec IdDom SrcTemplateStage
 
 -- | Marks the import as qualified: @qualified@
-type ImportQualified dom = Ann UImportQualified dom SrcTemplateStage
+type ImportQualified = Ann UImportQualified IdDom SrcTemplateStage
 
 -- | Marks the import as source: @{-\# SOURCE \#-}@
-type ImportSource dom = Ann UImportSource dom SrcTemplateStage
+type ImportSource = Ann UImportSource IdDom SrcTemplateStage
 
 -- | Marks the import as safe: @safe@
-type ImportSafe dom = Ann UImportSafe dom SrcTemplateStage
+type ImportSafe = Ann UImportSafe IdDom SrcTemplateStage
 
 -- | Marks an imported name to belong to the type namespace: @type@
-type TypeNamespace dom = Ann UTypeNamespace dom SrcTemplateStage
+type TypeNamespace = Ann UTypeNamespace IdDom SrcTemplateStage
 
 -- | Renaming imports (@ as A @)
-type ImportRenaming dom = Ann UImportRenaming dom SrcTemplateStage
+type ImportRenaming = Ann UImportRenaming IdDom SrcTemplateStage
 
 -- | The name of a module
-type ModuleName dom = Ann UModuleName dom SrcTemplateStage
+type ModuleName = Ann UModuleName IdDom SrcTemplateStage
 
 -- | The name of the enabled language extension, for example (@ LambdaCase @)
-type LanguageExtension dom = Ann ULanguageExtension dom SrcTemplateStage
+type LanguageExtension = Ann ULanguageExtension IdDom SrcTemplateStage
 
 -- * Declarations
 
 -- | Haskell declaration
-type Decl dom = Ann UDecl dom SrcTemplateStage
+type Decl = Ann UDecl IdDom SrcTemplateStage
 
 -- | The list of declarations that can appear in a typeclass
-type ClassBody dom = Ann UClassBody dom SrcTemplateStage
+type ClassBody = Ann UClassBody IdDom SrcTemplateStage
 
 -- | Members of a class declaration
-type ClassElement dom = Ann UClassElement dom SrcTemplateStage
+type ClassElement = Ann UClassElement IdDom SrcTemplateStage
 
 -- The declared (possibly parameterized) type (@ A x :+: B y @).
-type DeclHead dom = Ann UDeclHead dom SrcTemplateStage
+type DeclHead = Ann UDeclHead IdDom SrcTemplateStage
 
 -- | Instance body is the implementation of the class functions (@ where a x = 1; b x = 2 @)
-type InstBody dom = Ann UInstBody dom SrcTemplateStage
+type InstBody = Ann UInstBody IdDom SrcTemplateStage
 
 -- | Declarations inside an instance declaration.
-type InstBodyDecl dom = Ann UInstBodyDecl dom SrcTemplateStage
+type InstBodyDecl = Ann UInstBodyDecl IdDom SrcTemplateStage
 
 -- | GADT constructor declaration (@ D1 :: { val :: Int } -> T String @)
-type GadtConDecl dom = Ann UGadtConDecl dom SrcTemplateStage
+type GadtConDecl = Ann UGadtConDecl IdDom SrcTemplateStage
 
 -- | Type of GADT constructors (can be record types: @{ val :: Int }@)
-type GadtConType dom = Ann UGadtConType dom SrcTemplateStage
+type GadtConType = Ann UGadtConType IdDom SrcTemplateStage
 
 -- | Marker for a field wildcard. Only needed to attach semantic information in a type-safe way.
-type FieldWildcard dom = Ann UFieldWildcard dom SrcTemplateStage
+type FieldWildcard = Ann UFieldWildcard IdDom SrcTemplateStage
 
 -- | A list of functional dependencies: @ | a -> b, c -> d @ separated by commas
-type FunDeps dom = Ann UFunDeps dom SrcTemplateStage
+type FunDeps = Ann UFunDeps IdDom SrcTemplateStage
 
 -- | A functional dependency, given on the form @l1 ... ln -> r1 ... rn@
-type FunDep dom = Ann UFunDep dom SrcTemplateStage
+type FunDep = Ann UFunDep IdDom SrcTemplateStage
 
 -- | A constructor declaration for a datatype
-type ConDecl dom = Ann UConDecl dom SrcTemplateStage
+type ConDecl = Ann UConDecl IdDom SrcTemplateStage
 
 -- | The @data@ or the @newtype@ keyword to define ADTs.
-type DataOrNewtypeKeyword dom = Ann UDataOrNewtypeKeyword dom SrcTemplateStage
+type DataOrNewtypeKeyword = Ann UDataOrNewtypeKeyword IdDom SrcTemplateStage
 
 -- | Field declaration (@ fld :: Int @)
-type FieldDecl dom = Ann UFieldDecl dom SrcTemplateStage
+type FieldDecl = Ann UFieldDecl IdDom SrcTemplateStage
 
 -- | A deriving clause following a data type declaration. (@ deriving Show @ or @ deriving (Show, Eq) @)
-type Deriving dom = Ann UDeriving dom SrcTemplateStage
+type Deriving = Ann UDeriving IdDom SrcTemplateStage
 
 -- | A deriving strategy (@stock@, @newtype@ or @anyclass@)
-type DeriveStrategy dom = Ann UDeriveStrategy dom SrcTemplateStage
+type DeriveStrategy = Ann UDeriveStrategy IdDom SrcTemplateStage
 
 -- | The instance declaration rule, which is, roughly, the part of the instance declaration before the where keyword.
-type InstanceRule dom = Ann UInstanceRule dom SrcTemplateStage
+type InstanceRule = Ann UInstanceRule IdDom SrcTemplateStage
 
 -- | The specification of the class instance declaration
-type InstanceHead dom = Ann UInstanceHead dom SrcTemplateStage
+type InstanceHead = Ann UInstanceHead IdDom SrcTemplateStage
 
 -- | Specialize pragma (@ {-# SPECIALISE f :: Int -> b -> b #-} @)
-type SpecializePragma dom = Ann USpecializePragma dom SrcTemplateStage
+type SpecializePragma = Ann USpecializePragma IdDom SrcTemplateStage
 
 -- | Overlap pragmas. Can be applied to class declarations and class instance declarations.
-type OverlapPragma dom = Ann UOverlapPragma dom SrcTemplateStage
+type OverlapPragma = Ann UOverlapPragma IdDom SrcTemplateStage
 
 -- | Type equations as found in closed type families (@ T A = S @)
-type TypeEqn dom = Ann UTypeEqn dom SrcTemplateStage
+type TypeEqn = Ann UTypeEqn IdDom SrcTemplateStage
 
 -- | Top level pragmas
-type TopLevelPragma dom = Ann UTopLevelPragma dom SrcTemplateStage
+type TopLevelPragma = Ann UTopLevelPragma IdDom SrcTemplateStage
 
 -- | A rewrite rule (@ "map/map" forall f g xs. map f (map g xs) = map (f.g) xs @)
-type Rule dom = Ann URule dom SrcTemplateStage
+type Rule = Ann URule IdDom SrcTemplateStage
 
 -- | A variable for a rewrite rule. With or without type signature.
-type RuleVar dom = Ann URuleVar dom SrcTemplateStage
+type RuleVar = Ann URuleVar IdDom SrcTemplateStage
 
 -- | Annotation allows you to connect an expression to any declaration.
-type AnnotationSubject dom = Ann UAnnotationSubject dom SrcTemplateStage
+type AnnotationSubject = Ann UAnnotationSubject IdDom SrcTemplateStage
 
 -- | Formulas of minimal annotations declaring which functions should be defined.
-type MinimalFormula dom = Ann UMinimalFormula dom SrcTemplateStage
+type MinimalFormula = Ann UMinimalFormula IdDom SrcTemplateStage
 
 -- | In-AST source ranges (for generated pragmas)
-type SourceRange dom = Ann USourceRange dom SrcTemplateStage
+type SourceRange = Ann USourceRange IdDom SrcTemplateStage
 
 -- | Open type and data families
-type TypeFamily dom = Ann UTypeFamily dom SrcTemplateStage
+type TypeFamily = Ann UTypeFamily IdDom SrcTemplateStage
 
 -- | Type family specification with kinds specification and injectivity.
-type TypeFamilySpec dom = Ann UTypeFamilySpec dom SrcTemplateStage
+type TypeFamilySpec = Ann UTypeFamilySpec IdDom SrcTemplateStage
 
 -- | Injectivity annotation for type families (@ = r | r -> a @)
-type InjectivityAnn dom = Ann UInjectivityAnn dom SrcTemplateStage
+type InjectivityAnn = Ann UInjectivityAnn IdDom SrcTemplateStage
 
 -- | Pattern synonyms: @ pattern Arrow t1 t2 = App "->" [t1, t2] @
-type PatternSynonym dom = Ann UPatternSynonym dom SrcTemplateStage
+type PatternSynonym = Ann UPatternSynonym IdDom SrcTemplateStage
 
 -- | Right-hand side of pattern synonym
-type PatSynRhs dom = Ann UPatSynRhs dom SrcTemplateStage
+type PatSynRhs = Ann UPatSynRhs IdDom SrcTemplateStage
 
 -- | Left hand side of a pattern synonym
-type PatSynLhs dom = Ann UPatSynLhs dom SrcTemplateStage
+type PatSynLhs = Ann UPatSynLhs IdDom SrcTemplateStage
 
 -- | Where clause of pattern synonym (explicit expression direction)
-type PatSynWhere dom = Ann UPatSynWhere dom SrcTemplateStage
+type PatSynWhere = Ann UPatSynWhere IdDom SrcTemplateStage
 
 -- | Pattern type signature declaration (@ pattern Succ :: Int -> Int @)
-type PatternSignature dom = Ann UPatternTypeSignature dom SrcTemplateStage
+type PatternSignature = Ann UPatternTypeSignature IdDom SrcTemplateStage
 
 -- | Role annotations for types
-type Role dom = Ann URole dom SrcTemplateStage
+type Role = Ann URole IdDom SrcTemplateStage
 
 -- | Call conventions of foreign functions
-type CallConv dom = Ann UCallConv dom SrcTemplateStage
+type CallConv = Ann UCallConv IdDom SrcTemplateStage
 
 -- | Safety annotations for foreign calls
-type Safety dom = Ann USafety dom SrcTemplateStage
+type Safety = Ann USafety IdDom SrcTemplateStage
 
 -- | A @CONLIKE@ modifier for an @INLINE@ pragma.
-type ConlikeAnnot dom = Ann UConlikeAnnot dom SrcTemplateStage
+type ConlikeAnnot = Ann UConlikeAnnot IdDom SrcTemplateStage
 
 -- | Controls the activation of a rewrite rule (@ [1] @)
-type PhaseControl dom = Ann UPhaseControl dom SrcTemplateStage
+type PhaseControl = Ann UPhaseControl IdDom SrcTemplateStage
 
 -- * Binds
 
 -- | Value binding for top-level and local bindings
-type ValueBind dom = Ann UValueBind dom SrcTemplateStage
+type ValueBind = Ann UValueBind IdDom SrcTemplateStage
 
 -- | Clause of function binding
-type Match dom = Ann UMatch dom SrcTemplateStage
+type Match = Ann UMatch IdDom SrcTemplateStage
 
 -- | Something on the left side of the match
-type MatchLhs dom = Ann UMatchLhs dom SrcTemplateStage
+type MatchLhs = Ann UMatchLhs IdDom SrcTemplateStage
 
 -- | Right hand side of a value binding (possible with guards): (@ = 3 @ or @ | x == 1 = 3; | otherwise = 4 @)
-type Rhs dom = Ann URhs dom SrcTemplateStage
+type Rhs = Ann URhs IdDom SrcTemplateStage
 
 -- | A guarded right-hand side of a value binding (@ | x > 3 = 2 @)
-type GuardedRhs dom = Ann UGuardedRhs dom SrcTemplateStage
+type GuardedRhs = Ann UGuardedRhs IdDom SrcTemplateStage
 
 -- | Guards for value bindings and pattern matches (@ Just v <- x, v > 1 @)
-type RhsGuard dom = Ann URhsGuard dom SrcTemplateStage
+type RhsGuard = Ann URhsGuard IdDom SrcTemplateStage
 
 -- | Bindings that are enabled in local blocks (where or let).
-type LocalBind dom = Ann ULocalBind dom SrcTemplateStage
+type LocalBind = Ann ULocalBind IdDom SrcTemplateStage
 
 -- | Local bindings attached to a declaration (@ where x = 42 @)
-type LocalBinds dom = Ann ULocalBinds dom SrcTemplateStage
+type LocalBinds = Ann ULocalBinds IdDom SrcTemplateStage
 
 -- | A fixity signature (@ infixl 5 +, - @).
-type FixitySignature dom = Ann UFixitySignature dom SrcTemplateStage
+type FixitySignature = Ann UFixitySignature IdDom SrcTemplateStage
 
 -- | A type signature (@ f :: Int -> Int @)
-type TypeSignature dom = Ann UTypeSignature dom SrcTemplateStage
+type TypeSignature = Ann UTypeSignature IdDom SrcTemplateStage
 
 -- * Types
 
 -- | Haskell types
-type Type dom = Ann UType dom SrcTemplateStage
+type Type = Ann UType IdDom SrcTemplateStage
 
 -- | Type variable declarations (with possible kind annotation)
-type TyVar dom = Ann UTyVar dom SrcTemplateStage
+type TyVar = Ann UTyVar IdDom SrcTemplateStage
 
 -- One or more assertions
-type Context dom = Ann UContext dom SrcTemplateStage
+type Context = Ann UContext IdDom SrcTemplateStage
 
 -- | A single assertion in the context
-type Assertion dom = Ann UAssertion dom SrcTemplateStage
+type Assertion = Ann UAssertion IdDom SrcTemplateStage
 
 -- * Kinds
 
 -- | Kind constraint (@ :: * -> * @)
-type KindConstraint dom = Ann UKindConstraint dom SrcTemplateStage
+type KindConstraint = Ann UKindConstraint IdDom SrcTemplateStage
 
 -- | Haskell kinds
-type Kind dom = Ann UKind dom SrcTemplateStage
+type Kind = Ann UKind IdDom SrcTemplateStage
 
 -- | Values promoted to the kind level
-type PromotedKind dom = Ann (UPromoted UKind) dom SrcTemplateStage
+type PromotedKind = Ann (UPromoted UKind) IdDom SrcTemplateStage
 
 -- * Expressions
 
 -- | Haskell expressions
-type Expr dom = Ann UExpr dom SrcTemplateStage
+type Expr = Ann UExpr IdDom SrcTemplateStage
 
 -- | Clause of case expression (@ Just x -> x + 1 @)
-type Alt dom = Ann UAlt dom SrcTemplateStage
+type Alt = Ann UAlt IdDom SrcTemplateStage
 
 -- | Right hand side of a match (possible with guards): (@ -> 3 @ or @ | x == 1 -> 3; | otherwise -> 4 @)
-type CaseRhs dom = Ann UCaseRhs dom SrcTemplateStage
+type CaseRhs = Ann UCaseRhs IdDom SrcTemplateStage
 
 -- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)
-type GuardedCaseRhs dom = Ann UGuardedCaseRhs dom SrcTemplateStage
+type GuardedCaseRhs = Ann UGuardedCaseRhs IdDom SrcTemplateStage
 
 -- | Field update expressions
-type FieldUpdate dom = Ann UFieldUpdate dom SrcTemplateStage
+type FieldUpdate = Ann UFieldUpdate IdDom SrcTemplateStage
 
 -- | An element of a tuple section that can be an expression or missing (indicating a value from a parameter)
-type TupSecElem dom = Ann UTupSecElem dom SrcTemplateStage
+type TupSecElem = Ann UTupSecElem IdDom SrcTemplateStage
 
 -- | Pragmas that can be applied to expressions
-type ExprPragma dom = Ann UExprPragma dom SrcTemplateStage
+type ExprPragma = Ann UExprPragma IdDom SrcTemplateStage
 
 -- | Special expressions for arrows
-type Cmd dom = Ann UCmd dom SrcTemplateStage
+type Cmd = Ann UCmd IdDom SrcTemplateStage
 
 -- | Clause of case expression for commands
-type CmdAlt dom = Ann UCmdAlt dom SrcTemplateStage
+type CmdAlt = Ann UCmdAlt IdDom SrcTemplateStage
 
 -- | Arrow directions
-type ArrowApp dom = Ann UArrowAppl dom SrcTemplateStage
+type ArrowApp = Ann UArrowAppl IdDom SrcTemplateStage
 
 -- * Statements
 
 -- | A statement in a do-notation
-type Stmt dom = Ann UStmt dom SrcTemplateStage
+type Stmt = Ann UStmt IdDom SrcTemplateStage
 
 -- | Keywords @do@ or @mdo@ to start a do-block
-type DoKind dom = Ann UDoKind dom SrcTemplateStage
+type DoKind = Ann UDoKind IdDom SrcTemplateStage
 
 -- | List comprehension statement
-type CompStmt dom = Ann UCompStmt dom SrcTemplateStage
+type CompStmt = Ann UCompStmt IdDom SrcTemplateStage
 
 -- | Body of a list comprehension: (@ | x <- [1..10] @)
-type ListCompBody dom = Ann UListCompBody dom SrcTemplateStage
+type ListCompBody = Ann UListCompBody IdDom SrcTemplateStage
 
 -- | A do-notation for arrows
-type CmdStmt dom = Ann UCmdStmt dom SrcTemplateStage
+type CmdStmt = Ann UCmdStmt IdDom SrcTemplateStage
 
 -- * Patterns
 
 -- | Representation of patterns for pattern bindings
-type Pattern dom = Ann UPattern dom SrcTemplateStage
+type Pattern = Ann UPattern IdDom SrcTemplateStage
 
 -- Field specification of a record pattern
-type PatternField dom = Ann UPatternField dom SrcTemplateStage
+type PatternField = Ann UPatternField IdDom SrcTemplateStage
 
 -- * Template Haskell
 
 -- | A template haskell splice
-type Splice dom = Ann USplice dom SrcTemplateStage
+type Splice = Ann USplice IdDom SrcTemplateStage
 
 -- | Template Haskell bracket expressions
-type Bracket dom = Ann UBracket dom SrcTemplateStage
+type Bracket = Ann UBracket IdDom SrcTemplateStage
 
 -- | Template haskell quasi-quotation: @[quoter|str]@
-type QuasiQuote dom = Ann UQuasiQuote dom SrcTemplateStage
+type QuasiQuote = Ann UQuasiQuote IdDom SrcTemplateStage
 
 -- * Literals
 
 -- | Haskell literals
-type Literal dom = Ann ULiteral dom SrcTemplateStage
+type Literal = Ann ULiteral IdDom SrcTemplateStage
 
 -- * Names
 
 -- | A definition that functions as an operator
-type Operator dom = Ann UOperator dom SrcTemplateStage
+type Operator = Ann UOperator IdDom SrcTemplateStage
 
 -- | A definition that functions as a name
-type Name dom = Ann UName dom SrcTemplateStage
+type Name = Ann UName IdDom SrcTemplateStage
 
 -- | Possible qualified names. Contains also implicit names.
 -- Linear implicit parameter: @%x@. Non-linear implicit parameter: @?x@.
-type QualifiedName dom = Ann UQualifiedName dom SrcTemplateStage
+type QualifiedName = Ann UQualifiedName IdDom SrcTemplateStage
 
 -- | Parts of a qualified name.
-type NamePart dom = Ann UNamePart dom SrcTemplateStage
+type NamePart = Ann UNamePart IdDom SrcTemplateStage
 
 -- | Program elements formatted as string literals (import packages, pragma texts)
-type StringNode dom = Ann UStringNode dom SrcTemplateStage
+type StringNode = Ann UStringNode IdDom SrcTemplateStage
 
 -- * Optional AST elements
 
-type MaybeContext dom = AnnMaybe UContext dom
-type MaybeDeriving dom = AnnMaybe UDeriving dom
-type MaybeDeriveStrategy dom = AnnMaybe UDeriveStrategy dom
-type MaybeLocalBinds dom = AnnMaybe ULocalBinds dom
-type MaybeTypeFamilySpec dom = AnnMaybe UTypeFamilySpec dom
-type MaybeKindConstraint dom = AnnMaybe UKindConstraint dom
-type MaybeClassBody dom = AnnMaybe UClassBody dom
-type MaybeInstBody dom = AnnMaybe UInstBody dom
-type MaybeExpr dom = AnnMaybe UExpr dom
-type MaybeExportSpecs dom = AnnMaybe UExportSpecs dom
-type MaybeImportQualified dom = AnnMaybe UImportQualified dom
-type MaybeImportSource dom = AnnMaybe UImportSource dom
-type MaybeImportSafe dom = AnnMaybe UImportSafe dom
-type MaybeImportSpec dom = AnnMaybe UImportSpec dom
-type MaybeModuleHead dom = AnnMaybe UModuleHead dom
-type MaybeModulePragma dom = AnnMaybe UModulePragma dom
-type MaybeSubSpec dom = AnnMaybe USubSpec dom
-type MaybeStringNode dom = AnnMaybe UStringNode dom
-type MaybeImportRenaming dom = AnnMaybe UImportRenaming dom
-type MaybeSafety dom = AnnMaybe USafety dom
-type MaybePhaseControl dom = AnnMaybe UPhaseControl dom
-type MaybeConlikeAnnot dom = AnnMaybe UConlikeAnnot dom
-type MaybeFunDeps dom = AnnMaybe UFunDeps dom
+type MaybeContext = AnnMaybe UContext
+type MaybeDeriving = AnnMaybe UDeriving
+type MaybeDeriveStrategy = AnnMaybe UDeriveStrategy
+type MaybeLocalBinds = AnnMaybe ULocalBinds
+type MaybeTypeFamilySpec = AnnMaybe UTypeFamilySpec
+type MaybeKindConstraint = AnnMaybe UKindConstraint
+type MaybeClassBody = AnnMaybe UClassBody
+type MaybeInstBody = AnnMaybe UInstBody
+type MaybeExpr = AnnMaybe UExpr
+type MaybeExportSpecs = AnnMaybe UExportSpecs
+type MaybeImportQualified = AnnMaybe UImportQualified
+type MaybeImportSource = AnnMaybe UImportSource
+type MaybeImportSafe = AnnMaybe UImportSafe
+type MaybeImportSpec = AnnMaybe UImportSpec
+type MaybeModuleHead = AnnMaybe UModuleHead
+type MaybeModulePragma = AnnMaybe UModulePragma
+type MaybeSubSpec = AnnMaybe USubSpec
+type MaybeStringNode = AnnMaybe UStringNode
+type MaybeImportRenaming = AnnMaybe UImportRenaming
+type MaybeSafety = AnnMaybe USafety
+type MaybePhaseControl = AnnMaybe UPhaseControl
+type MaybeConlikeAnnot = AnnMaybe UConlikeAnnot
+type MaybeFunDeps = AnnMaybe UFunDeps
 
 
 -- * AST elements with multiplicity
 
-type MatchList dom = AnnList UMatch dom
-type DeclList dom = AnnList UDecl dom
-type PatternList dom = AnnList UPattern dom
-type OperatorList dom = AnnList UOperator dom
-type NameList dom = AnnList UName dom
-type LocalBindList dom = AnnList ULocalBind dom
-type IESpecList dom = AnnList UIESpec dom
-type RhsGuardList dom = AnnList URhsGuard dom
-type GuardedRhsList dom = AnnList UGuardedRhs dom
-type GuardedCaseRhsList dom = AnnList UGuardedCaseRhs dom
-type ConDeclList dom = AnnList UConDecl dom
-type TypeEqnList dom = AnnList UTypeEqn dom
-type TypeList dom = AnnList UType dom
-type FieldDeclList dom = AnnList UFieldDecl dom
-type ExprList dom = AnnList UExpr dom
-type FieldUpdateList dom = AnnList UFieldUpdate dom
-type GadtConDeclList dom = AnnList UGadtConDecl dom
-type ClassElementList dom = AnnList UClassElement dom
-type InstBodyDeclList dom = AnnList UInstBodyDecl dom
-type InstanceHeadList dom = AnnList UInstanceHead dom
-type AltList dom = AnnList UAlt dom
-type StmtList dom = AnnList UStmt dom
-type KindList dom = AnnList UKind dom
-type TyVarList dom = AnnList UTyVar dom
-type ListCompBodyList dom = AnnList UListCompBody dom
-type ExportSpecList dom = AnnList UExportSpec dom
-type FilePragmaList dom = AnnList UFilePragma dom
-type ImportDeclList dom = AnnList UImportDecl dom
-type PatternFieldList dom = AnnList UPatternField dom
-type AssertionList dom = AnnList UAssertion dom
-type CompStmtList dom = AnnList UCompStmt dom
-type RuleList dom = AnnList URule dom
-type RuleVarList dom = AnnList URuleVar dom
-type RoleList dom = AnnList URole dom
-type MinimalFormulaList dom = AnnList UMinimalFormula dom
-type FunDepList dom = AnnList UFunDep dom
-type TupSecElemList dom = AnnList UTupSecElem dom
-type CmdList dom = AnnList UCmd dom
-type CmdAltList dom = AnnList UCmdAlt dom
-type CmdStmtList dom = AnnList UCmdStmt dom
-type LanguageExtensionList dom = AnnList ULanguageExtension dom
-type StringNodeList dom = AnnList UStringNode dom
-type NamePartList dom = AnnList UNamePart dom
-type DerivingList dom = AnnList UDeriving dom
+type MatchList = AnnList UMatch
+type DeclList = AnnList UDecl
+type PatternList = AnnList UPattern
+type OperatorList = AnnList UOperator
+type NameList = AnnList UName
+type LocalBindList = AnnList ULocalBind
+type IESpecList = AnnList UIESpec
+type RhsGuardList = AnnList URhsGuard
+type GuardedRhsList = AnnList UGuardedRhs
+type GuardedCaseRhsList = AnnList UGuardedCaseRhs
+type ConDeclList = AnnList UConDecl
+type TypeEqnList = AnnList UTypeEqn
+type TypeList = AnnList UType
+type FieldDeclList = AnnList UFieldDecl
+type ExprList = AnnList UExpr
+type FieldUpdateList = AnnList UFieldUpdate
+type GadtConDeclList = AnnList UGadtConDecl
+type ClassElementList = AnnList UClassElement
+type InstBodyDeclList = AnnList UInstBodyDecl
+type InstanceHeadList = AnnList UInstanceHead
+type AltList = AnnList UAlt
+type StmtList = AnnList UStmt
+type KindList = AnnList UKind
+type TyVarList = AnnList UTyVar
+type ListCompBodyList = AnnList UListCompBody
+type ExportSpecList = AnnList UExportSpec
+type FilePragmaList = AnnList UFilePragma
+type ImportDeclList = AnnList UImportDecl
+type PatternFieldList = AnnList UPatternField
+type AssertionList = AnnList UAssertion
+type CompStmtList = AnnList UCompStmt
+type RuleList = AnnList URule
+type RuleVarList = AnnList URuleVar
+type RoleList = AnnList URole
+type MinimalFormulaList = AnnList UMinimalFormula
+type FunDepList = AnnList UFunDep
+type TupSecElemList = AnnList UTupSecElem
+type CmdList = AnnList UCmd
+type CmdAltList = AnnList UCmdAlt
+type CmdStmtList = AnnList UCmdStmt
+type LanguageExtensionList = AnnList ULanguageExtension
+type StringNodeList = AnnList UStringNode
+type NamePartList = AnnList UNamePart
+type DerivingList = AnnList UDeriving
