@@ -13,27 +13,27 @@ import Language.Haskell.Tools.Refactor.Prepare (correctRefactorSpan, readSrcSpan
 import Language.Haskell.Tools.Refactor.Representation (RefactorChange, ModuleDom)
 
 -- | The signature and behavior of one refactoring that can be executed.
-data RefactoringChoice dom
+data RefactoringChoice
   = NamingRefactoring { refactoringName :: String
-                      , namingRefactoring :: RealSrcSpan -> String -> Refactoring dom
+                      , namingRefactoring :: RealSrcSpan -> String -> Refactoring
                       }
   | SelectionRefactoring { refactoringName :: String
-                         , selectionRefactoring :: RealSrcSpan -> Refactoring dom
+                         , selectionRefactoring :: RealSrcSpan -> Refactoring
                          }
   | ModuleRefactoring { refactoringName :: String
-                      , moduleRefactoring :: Refactoring dom
+                      , moduleRefactoring :: Refactoring
                       }
   | ProjectRefactoring { refactoringName :: String
-                       , projectRefactoring :: ProjectRefactoring dom
+                       , projectRefactoring :: ProjectRefactoring
                        }
 
 -- | Executes a given command (choosen from the set of available refactorings) on the selected
 -- module and given other modules.
-performCommand :: [RefactoringChoice dom] -- ^ The set of available refactorings
+performCommand :: [RefactoringChoice] -- ^ The set of available refactorings
                     -> [String] -- ^ The refactoring command
-                    -> Either FilePath (ModuleDom dom) -- ^ The module in which the refactoring is performed
-                    -> [ModuleDom dom] -- ^ Other modules
-                    -> Ghc (Either String [RefactorChange dom])
+                    -> Either FilePath ModuleDom -- ^ The module in which the refactoring is performed
+                    -> [ModuleDom] -- ^ Other modules
+                    -> Ghc (Either String [RefactorChange])
 performCommand refactorings (name:args) mod mods =
     case (refactoring, mod, args) of
       (Just (NamingRefactoring _ trf), Right mod, (sp:newName:_))
@@ -54,5 +54,5 @@ performCommand refactorings (name:args) mod mods =
   where refactoring = find ((== name) . refactoringName) refactorings
 
 -- | Gets the name of possible refactorings.
-refactorCommands :: [RefactoringChoice dom] -> [String]
+refactorCommands :: [RefactoringChoice] -> [String]
 refactorCommands = map refactoringName

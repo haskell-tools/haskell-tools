@@ -83,6 +83,7 @@ extra-source-files: examples/Project/has-cabal/*.hs
                   , examples/Project/th-typecheck/*.hs
                   , examples/Project/code-gen/*.hs
                   , examples/Project/code-gen/*.cabal
+                  , examples/Project/warning/*.hs
 
 library
   build-depends:       base                      >= 4.9   && < 5.0

@@ -33,13 +33,13 @@ data ModuleRecord
       = ModuleNotLoaded { _modRecCodeGen :: CodeGenPolicy
                         , _recModuleExposed :: Bool
                         }
-      | ModuleParsed { _parsedRecModule :: UnnamedModule (Dom RdrName)
+      | ModuleParsed { _parsedRecModule :: UnnamedModule
                      , _modRecMS :: ModSummary
                      }
-      | ModuleRenamed { _renamedRecModule :: UnnamedModule (Dom GHC.Name)
+      | ModuleRenamed { _renamedRecModule :: UnnamedModule
                       , _modRecMS :: ModSummary
                       }
-      | ModuleTypeChecked { _typedRecModule :: UnnamedModule IdDom
+      | ModuleTypeChecked { _typedRecModule :: UnnamedModule
                           , _modRecMS :: ModSummary
                           , _modRecCodeGen :: CodeGenPolicy
                           }

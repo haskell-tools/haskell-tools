@@ -39,7 +39,7 @@ miscRefactorTests =
   , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
   ]
 
-makeMiscRefactorTest :: (String, UnnamedModule IdDom -> LocalRefactoring IdDom) -> TestTree
+makeMiscRefactorTest :: (String, UnnamedModule -> LocalRefactoring) -> TestTree
 makeMiscRefactorTest (moduleName, refact)
   = testCase moduleName $
       do expected <- loadExpected True rootDir moduleName
@@ -47,7 +47,7 @@ makeMiscRefactorTest (moduleName, refact)
          assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                       (mapRight standardizeLineEndings res)
 
-testRefactor :: (UnnamedModule IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
+testRefactor :: (UnnamedModule -> LocalRefactoring) -> String -> IO (Either String String)
 testRefactor refact moduleName
   = runGhc (Just libdir) $ do
       initGhcFlags

@@ -11,31 +11,31 @@ import SrcLoc (RealSrcSpan)
 class NamedElement d => BindingElem d where
 
   -- | Accesses a type signature definition in a local or top-level definition
-  sigBind :: Simple Partial (Ann d dom SrcTemplateStage) (TypeSignature dom)
+  sigBind :: Simple Partial (Ann d IdDom SrcTemplateStage) TypeSignature
 
   -- | Accesses a value or function definition in a local or top-level definition
-  valBind :: Simple Partial (Ann d dom SrcTemplateStage) (ValueBind dom)
+  valBind :: Simple Partial (Ann d IdDom SrcTemplateStage) ValueBind
 
   -- | Accesses a type signature definition in a local or top-level definition
-  fixitySig :: Simple Partial (Ann d dom SrcTemplateStage) (FixitySignature dom)
+  fixitySig :: Simple Partial (Ann d IdDom SrcTemplateStage) FixitySignature
 
   -- | Creates a new definition from a type signature
-  createTypeSig :: TypeSignature dom -> Ann d dom SrcTemplateStage
+  createTypeSig :: TypeSignature -> Ann d IdDom SrcTemplateStage
 
   -- | Creates a new definition from a value or function definition
-  createBinding :: ValueBind dom -> Ann d dom SrcTemplateStage
+  createBinding :: ValueBind -> Ann d IdDom SrcTemplateStage
 
   -- | Creates a new fixity signature
-  createFixitySig :: FixitySignature dom -> Ann d dom SrcTemplateStage
+  createFixitySig :: FixitySignature -> Ann d IdDom SrcTemplateStage
 
   -- | Checks if a given definition is a type signature
-  isTypeSig :: Ann d dom SrcTemplateStage -> Bool
+  isTypeSig :: Ann d IdDom SrcTemplateStage -> Bool
 
   -- | Checks if a given definition is a function or value binding
-  isBinding :: Ann d dom SrcTemplateStage -> Bool
+  isBinding :: Ann d IdDom SrcTemplateStage -> Bool
 
   -- | Checks if a given definition is a fixity signature
-  isFixitySig :: Ann d dom SrcTemplateStage -> Bool
+  isFixitySig :: Ann d IdDom SrcTemplateStage -> Bool
 
 instance BindingElem UDecl where
   sigBind = declTypeSig
@@ -65,11 +65,11 @@ instance BindingElem ULocalBind where
   isFixitySig LocalFixity {} = True
   isFixitySig _ = False
 
-getValBindInList :: (BindingElem d) => RealSrcSpan -> AnnListG d dom SrcTemplateStage -> Maybe (ValueBind dom)
+getValBindInList :: BindingElem d => RealSrcSpan -> AnnList d -> Maybe ValueBind
 getValBindInList sp ls = case ls ^? valBindsInList & filtered (isInside sp) of
   [] -> Nothing
   [n] -> Just n
   _ -> error "getValBindInList: Multiple nodes"
 
-valBindsInList :: BindingElem d => Simple Traversal (AnnListG d dom SrcTemplateStage) (ValueBind dom)
+valBindsInList :: BindingElem d => Simple Traversal (AnnList d) ValueBind
 valBindsInList = annList & valBind

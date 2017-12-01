@@ -55,7 +55,7 @@ import Language.Haskell.Tools.Refactor.Builtin
 type ClientId = Int
 
 data RefactorSessionState
-  = RefactorSessionState { _refSessMods :: Map.Map (String, String, FilePath) (UnnamedModule IdDom)
+  = RefactorSessionState { _refSessMods :: Map.Map (String, String, FilePath) UnnamedModule
                          , _actualMod :: Maybe (String, String, FilePath)
                          , _isDisconnecting :: Bool
                          }

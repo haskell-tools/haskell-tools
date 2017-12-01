@@ -18,7 +18,7 @@ import GhcMonad (Session(..), reflectGhc)
 import Language.Haskell.Tools.Daemon.ErrorHandling (userExceptionHandlers, exceptionHandlers)
 import Language.Haskell.Tools.Daemon.Mode (WorkingMode(..), socketMode)
 import Language.Haskell.Tools.Daemon.Options as Options (SharedDaemonOptions(..), DaemonOptions(..))
-import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..))
+import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.State (DaemonSessionState(..), initSession, exiting)
 import Language.Haskell.Tools.Daemon.Update (updateClient, initGhcSession)
 import Language.Haskell.Tools.Daemon.Watch (createWatchProcess', stopWatch)
@@ -28,14 +28,14 @@ import Paths_haskell_tools_daemon (version)
 -- | Starts the daemon process. This will not return until the daemon stops. You can use this entry
 -- point when the other endpoint of the client connection is not needed, for example, when you use
 -- socket connection to connect to the daemon process.
-runDaemon' :: [RefactoringChoice IdDom] -> DaemonOptions -> IO ()
+runDaemon' :: [RefactoringChoice] -> DaemonOptions -> IO ()
 runDaemon' refactorings args = do store <- newEmptyMVar
                                   runDaemon refactorings socketMode store args
 
 -- | Starts the daemon process. This will not return until the daemon stops.
 -- The daemon process is parameterized by the refactorings you can use in it. This entry point gives
 -- back the other endpoint of the connection so it can be used to run the daemon in the same process.
-runDaemon :: [RefactoringChoice IdDom] -> WorkingMode a -> MVar a -> DaemonOptions -> IO ()
+runDaemon :: [RefactoringChoice] -> WorkingMode a -> MVar a -> DaemonOptions -> IO ()
 runDaemon _ _ _ DaemonOptions{..} | daemonVersion
   = putStrLn $ showVersion version
 runDaemon refactorings mode connStore config@DaemonOptions{..} = withSocketsDo $
@@ -45,23 +45,23 @@ runDaemon refactorings mode connStore config@DaemonOptions{..} = withSocketsDo $
        conn <- daemonConnect mode portNumber
        putMVar connStore conn
        when (not silentMode) $ putStrLn $ "Connection established"
-       ghcSess <- initGhcSession (generateCode sharedOptions)
+       (ghcSess, warnMVar) <- initGhcSession (generateCode sharedOptions)
        state <- newMVar initSession
        -- set the ghc flags given by command line
        case Options.ghcFlags sharedOptions of
-         Just flags -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetGHCFlags flags)
+         Just flags -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) warnMVar (SetGHCFlags flags)
          Nothing -> return ()
        case projectType sharedOptions of
-         Just t -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) (SetPackageDB t)
+         Just t -> void $ respondTo config refactorings ghcSess state (daemonSend mode conn) warnMVar (SetPackageDB t)
          Nothing -> return ()
        -- set up the file watch
        (wp,th) <- if noWatch sharedOptions
                     then return (Nothing, [])
                     else createWatchProcess'
-                           (watchExe sharedOptions) ghcSess state (daemonSend mode conn)
+                           (watchExe sharedOptions) ghcSess state warnMVar (daemonSend mode conn)
        modifyMVarMasked_ state ( \s -> return s { _watchProc = wp, _watchThreads = th })
        -- start the server loop
-       serverLoop refactorings mode conn config ghcSess state
+       serverLoop refactorings mode conn config ghcSess state warnMVar
        -- free allocated resources
        case wp of Just watchProcess -> stopWatch watchProcess th
                   Nothing -> return ()
@@ -69,19 +69,19 @@ runDaemon refactorings mode connStore config@DaemonOptions{..} = withSocketsDo $
 
 -- | Starts the server loop, receiving requests from the client and updated the server state
 -- according to these.
-serverLoop :: [RefactoringChoice IdDom] -> WorkingMode a -> a -> DaemonOptions -> Session
-                -> MVar DaemonSessionState -> IO ()
-serverLoop refactorings mode conn options ghcSess state =
+serverLoop :: [RefactoringChoice] -> WorkingMode a -> a -> DaemonOptions -> Session
+                -> MVar DaemonSessionState -> MVar [Marker] -> IO ()
+serverLoop refactorings mode conn options ghcSess state warnMVar =
   do msgs <- daemonReceive mode conn
      continue <- mapM respondToMsg msgs
      sessionData <- readMVar state
      when (not (sessionData ^. exiting) && all (== True) continue)
-       $ serverLoop refactorings mode conn options ghcSess state
-   `catches` exceptionHandlers (serverLoop refactorings mode conn options ghcSess state)
+       $ serverLoop refactorings mode conn options ghcSess state warnMVar
+   `catches` exceptionHandlers (serverLoop refactorings mode conn options ghcSess state warnMVar)
                                (daemonSend mode conn . ErrorMessage)
   where respondToMsg (Right req)
           = do when (not (silentMode options)) $ putStrLn $ "Message received: " ++ show req
-               respondTo options refactorings ghcSess state (daemonSend mode conn) req
+               respondTo options refactorings ghcSess state (daemonSend mode conn) warnMVar req
            `catches` userExceptionHandlers
                         (\s -> daemonSend mode conn (ErrorMessage s) >> return True)
                         (\err hint -> daemonSend mode conn (CompilationProblem err hint) >> return True)
@@ -89,7 +89,7 @@ serverLoop refactorings mode conn options ghcSess state =
                                      return True
 
 -- | Responds to a client request by modifying the daemon and GHC state accordingly.
-respondTo :: DaemonOptions -> [RefactoringChoice IdDom] -> Session -> MVar DaemonSessionState
-               -> (ResponseMsg -> IO ()) -> ClientMessage -> IO Bool
-respondTo options refactorings ghcSess state next req
-  = modifyMVar state (\st -> swap <$> reflectGhc (runStateT (updateClient options refactorings next req) st) ghcSess)
+respondTo :: DaemonOptions -> [RefactoringChoice] -> Session -> MVar DaemonSessionState
+               -> (ResponseMsg -> IO ()) -> MVar [Marker] -> ClientMessage -> IO Bool
+respondTo options refactorings ghcSess state next warnMVar req
+  = modifyMVar state (\st -> swap <$> reflectGhc (runStateT (updateClient options warnMVar refactorings next req) st) ghcSess)

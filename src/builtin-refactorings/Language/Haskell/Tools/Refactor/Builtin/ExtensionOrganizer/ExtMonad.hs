@@ -33,13 +33,9 @@ deriving instance Read Extension
 
 
 type ExtMonad        = ReaderT [Extension] (StateT ExtMap Ghc)
-type ExtDomain dom   = (HasNameInfo dom)
 
-type CheckNode  elem     = forall dom . CheckNode' elem dom
-type CheckNode' elem dom = ExtDomain dom => elem dom -> ExtMonad (elem dom)
-
-type CheckUNode  uelem     = forall dom . CheckUNode' uelem dom
-type CheckUNode' uelem dom = ExtDomain dom => Ann uelem dom SrcTemplateStage -> ExtMonad (Ann uelem dom SrcTemplateStage)
+type CheckNode elem = elem -> ExtMonad elem
+type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -> ExtMonad (Ann uelem IdDom SrcTemplateStage)
 
 addOccurence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]

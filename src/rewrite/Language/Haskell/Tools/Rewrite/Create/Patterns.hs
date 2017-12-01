@@ -10,85 +10,85 @@ import Language.Haskell.Tools.Rewrite.Create.Utils (mkAnn, mkAnnList)
 import Language.Haskell.Tools.Rewrite.ElementTypes
 
 -- | Pattern name binding
-mkVarPat :: Name dom -> Pattern dom
+mkVarPat :: Name -> Pattern
 mkVarPat = mkAnn child . UVarPat
 
 -- | Literal pattern
-mkLitPat :: Literal dom -> Pattern dom
+mkLitPat :: Literal -> Pattern
 mkLitPat = mkAnn child . ULitPat
 
 -- | Infix constructor application pattern (@ a :+: b @)
-mkInfixAppPat :: Pattern dom -> Operator dom -> Pattern dom -> Pattern dom
+mkInfixAppPat :: Pattern -> Operator -> Pattern -> Pattern
 mkInfixAppPat lhs op rhs = mkAnn (child <> " " <> child <> " " <> child) $ UInfixAppPat lhs op rhs
 
 -- | Constructor application pattern (@ Point x y @)
-mkAppPat :: Name dom -> [Pattern dom] -> Pattern dom
+mkAppPat :: Name -> [Pattern] -> Pattern
 mkAppPat n pat = mkAnn (child <> child) $ UAppPat n (mkAnnList (after " " $ separatedBy " " list) pat)
 
 -- | Tuple pattern (@ (x,y) @)
-mkTuplePat :: [Pattern dom] -> Pattern dom
+mkTuplePat :: [Pattern] -> Pattern
 mkTuplePat pats = mkAnn ("(" <> child <> ")") $ UTuplePat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Unboxed tuple pattern (@ (\# x, y \#) @)
-mkUnboxTuplePat :: [Pattern dom] -> Pattern dom
+mkUnboxTuplePat :: [Pattern] -> Pattern
 mkUnboxTuplePat pats = mkAnn ("(# " <> child <> " #)") $ UUnboxTuplePat (mkAnnList (separatedBy ", " list) pats)
 
 -- | List pattern (@ [1,2,a,x] @)
-mkListPat :: [Pattern dom] -> Pattern dom
+mkListPat :: [Pattern] -> Pattern
 mkListPat pats = mkAnn ("[" <> child <> "]") $ UListPat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Parallel array pattern (@ [:1,2,a,x:] @)
-mkParArrayPat :: [Pattern dom] -> Pattern dom
+mkParArrayPat :: [Pattern] -> Pattern
 mkParArrayPat pats = mkAnn ("[:" <> child <> ":]") $ UParArrPat (mkAnnList (separatedBy ", " list) pats)
 
 -- | Parenthesised patterns
-mkParenPat :: Pattern dom -> Pattern dom
+mkParenPat :: Pattern -> Pattern
 mkParenPat = mkAnn ("(" <> child <> ")") . UParenPat
 
 -- | Record pattern (@ Point { x = 3, y } @)
-mkRecPat :: Name dom -> [PatternField dom] -> Pattern dom
+mkRecPat :: Name -> [PatternField] -> Pattern
 mkRecPat name flds = mkAnn (child <> "{ " <> child <> " }") $ URecPat name (mkAnnList (separatedBy ", " list) flds)
 
 -- | As-pattern (explicit name binding) (@ ls\@(hd:_) @)
-mkAsPat :: Name dom -> Pattern dom -> Pattern dom
+mkAsPat :: Name -> Pattern -> Pattern
 mkAsPat name pat = mkAnn (child <> "@" <> child) $ UAsPat name pat
 
 -- | Wildcard pattern: (@ _ @)
-mkWildPat :: Pattern dom
+mkWildPat :: Pattern
 mkWildPat = mkAnn "_" UWildPat
 
 -- | Irrefutable pattern (@ ~(x:_) @)
-mkIrrefutablePat :: Pattern dom -> Pattern dom
+mkIrrefutablePat :: Pattern -> Pattern
 mkIrrefutablePat = mkAnn ("~" <> child) . UIrrefutablePat
 
 -- | Bang pattern (@ !x @)
-mkBangPat :: Pattern dom -> Pattern dom
+mkBangPat :: Pattern -> Pattern
 mkBangPat = mkAnn ("!" <> child) . UBangPat
 
 -- | Pattern with explicit type signature (@ x :: Int @)
-mkTypeSigPat :: Pattern dom -> Type dom -> Pattern dom
+mkTypeSigPat :: Pattern -> Type -> Pattern
 mkTypeSigPat pat typ = mkAnn (child <> " :: " <> child) $ UTypeSigPat pat typ
 
 -- | View pattern (@ f -> Just 1 @)
-mkViewPat :: Expr dom -> Pattern dom -> Pattern dom
+mkViewPat :: Expr -> Pattern -> Pattern
 mkViewPat name pat = mkAnn (child <> " -> " <> child) $ UViewPat name pat
 
 -- | Splice patterns: @$(generateX inp)@
-mkSplicePat :: Splice dom -> Pattern dom
+mkSplicePat :: Splice -> Pattern
 mkSplicePat = mkAnn child . USplicePat
 
 -- | Quasi-quoted patterns: @[| 1 + 2 |]@
-mkQuasiQuotePat :: QuasiQuote dom -> Pattern dom
+mkQuasiQuotePat :: QuasiQuote -> Pattern
 mkQuasiQuotePat = mkAnn child . UQuasiQuotePat
 
 -- | Named field pattern (@ p = Point 3 2 @)
-mkPatternField :: Name dom -> Pattern dom -> PatternField dom
+mkPatternField :: Name -> Pattern -> PatternField
 mkPatternField name pat = mkAnn (child <> " = " <> child) $ UNormalFieldPattern name pat
 
 -- | Named field pun (@ p @)
-mkFieldPunPattern :: Name dom -> PatternField dom
+mkFieldPunPattern :: Name -> PatternField
 mkFieldPunPattern name = mkAnn child $ UFieldPunPattern name
 
 -- | Wildcard field pattern (@ .. @)
-mkFieldWildcardPattern :: PatternField dom
+mkFieldWildcardPattern :: PatternField
 mkFieldWildcardPattern = mkAnn child $ UFieldWildcardPattern $ mkAnn ".." FldWildcard

@@ -133,8 +133,8 @@ loadVisiblePackages = do
                                      }) -- save the package database
 
 -- | Get the module that is selected for refactoring and all the other modules.
-getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule IdDom)
-                                       , [(SourceFileKey, UnnamedModule IdDom)] )
+getFileMods :: String -> DaemonSession ( Maybe (SourceFileKey, UnnamedModule)
+                                       , [(SourceFileKey, UnnamedModule)] )
 getFileMods fnameOrModule = do
   modMaps <- gets (^? refSessMCs & traversal & mcModules)
   let modules = mapMaybe (\(k,m) -> (\ms tc -> (ms, (k,tc))) <$> (m ^? modRecMS) <*> (m ^? typedRecModule)) -- not type checkable modules are ignored

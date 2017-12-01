@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiWayIf, ScopedTypeVariables, TupleSections, TypeApplications, TypeFamilies, ViewPatterns #-}
 module Language.Haskell.Tools.Refactor.Builtin.RenameDefinition
-  (renameDefinition, renameDefinition', DomainRenameDefinition, renameDefinitionRefactoring) where
+  (renameDefinition, renameDefinition', renameDefinitionRefactoring) where
 
 import DataCon (dataConFieldLabels, FieldLbl(..), dataConFieldType)
 import qualified GHC
@@ -19,25 +19,22 @@ import Data.List.Split (splitOn)
 import Data.Maybe
 import Language.Haskell.Tools.Refactor
 
-renameDefinitionRefactoring :: DomainRenameDefinition dom => RefactoringChoice dom
+renameDefinitionRefactoring :: RefactoringChoice
 renameDefinitionRefactoring = NamingRefactoring "RenameDefinition" renameDefinition'
 
-type DomainRenameDefinition dom = ( HasNameInfo dom, HasScopeInfo dom, HasDefiningInfo dom
-                                  , HasImplicitFieldsInfo dom, HasModuleInfo dom )
-
-renameDefinition' :: forall dom . DomainRenameDefinition dom => RealSrcSpan -> String -> Refactoring dom
+renameDefinition' :: RealSrcSpan -> String -> Refactoring
 renameDefinition' sp str mod mods
-  = case (getNodeContaining sp (snd mod) :: Maybe (QualifiedName dom)) >>= (fmap getName . semanticsName) of
+  = case (getNodeContaining sp (snd mod) :: Maybe QualifiedName) >>= (fmap getName . semanticsName) of
       Just name -> do let sameNames = bindsWithSameName name (snd mod ^? biplateRef)
                       renameDefinition name sameNames str mod mods
-        where bindsWithSameName :: GHC.Name -> [FieldWildcard dom] -> [GHC.Name]
+        where bindsWithSameName :: GHC.Name -> [FieldWildcard] -> [GHC.Name]
               bindsWithSameName name wcs = catMaybes $ map ((lookup name) . semanticsImplicitFlds) wcs
       Nothing -> case getNodeContaining sp (snd mod) of
                    Just modName -> renameModule (any @[] (sp `isInside`) ((snd mod) ^? modImports&annList&importAs))
                                                 (modName ^. moduleNameString) str mod mods
                    Nothing -> refactError "No name is selected"
 
-renameModule :: forall dom . DomainRenameDefinition dom => Bool -> String -> String -> Refactoring dom
+renameModule :: Bool -> String -> String -> Refactoring
 renameModule isAlias from to m mods
     | any (nameConflict to) (map snd $ m:mods) = refactError "Name conflict when renaming module"
     | isJust (validModuleName to) = refactError $ "The given name is not a valid module name: " ++ fromJust (validModuleName to)
@@ -50,25 +47,25 @@ renameModule isAlias from to m mods
           = ModuleCreated to res mod
         alterChange _ _ c = c
 
-        replaceModuleNames :: LocalRefactoring dom
+        replaceModuleNames :: LocalRefactoring
         replaceModuleNames = modNames & filtered (\e -> (e ^. moduleNameString) == from) != mkModuleName to
           where modNames = modHead & annJust & (mhName &+& mhExports & annJust & espExports & annList & exportModuleName)
                              &+& modImports & annList & ( importModule
                                                             &+& importAs & annJust & importRename )
 
-        alterNormalNames :: LocalRefactoring dom
+        alterNormalNames :: LocalRefactoring
         alterNormalNames mod =
-           biplateRef @_ @(QualifiedName dom) & filtered (\e -> concat (intersperse "." (e ^? qualifiers&annList&simpleNameStr)) == from)
+           biplateRef @_ @QualifiedName & filtered (\e -> concat (intersperse "." (e ^? qualifiers&annList&simpleNameStr)) == from)
              !- (\e -> mkQualifiedName (splitOn "." to) (e ^. unqualifiedName&simpleNameStr)) $ mod
 
-        nameConflict :: String -> Module dom -> Bool
+        nameConflict :: String -> Module -> Bool
         nameConflict to mod
           = let modName = mod ^? modHead&annJust&mhName&moduleNameString
                 imports = mod ^? modImports&annList
                 importNames = map (\imp -> fromMaybe (imp ^. importModule) (imp ^? importAs&annJust&importRename) ^. moduleNameString) imports
              in modName == Just to || to `elem` importNames
 
-renameDefinition :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> Refactoring dom
+renameDefinition :: GHC.Name -> [GHC.Name] -> String -> Refactoring
 renameDefinition toChangeOrig toChangeWith newName mod mods
     = do nameCls <- classifyName toChangeOrig
          (changedModules,defFound) <- runStateT (catMaybes <$> mapM (renameInAModule toChangeOrig toChangeWith newName) (mod:mods)) False
@@ -76,7 +73,7 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
             | not defFound -> refactError "The definition to rename was not found. Maybe it is in another package."
             | otherwise -> return $ map ContentChanged changedModules
   where
-    renameInAModule :: DomainRenameDefinition dom => GHC.Name -> [GHC.Name] -> String -> ModuleDom dom -> StateT Bool Refactor (Maybe (ModuleDom dom))
+    renameInAModule :: GHC.Name -> [GHC.Name] -> String -> ModuleDom -> StateT Bool Refactor (Maybe ModuleDom)
     renameInAModule toChangeOrig toChangeWith newName (name, mod)
       = mapStateT (localRefactoringRes (\f (a,s) -> (fmap (\(n,r) -> (n, f r)) a,s)) mod) $
           do origTT <- GHC.lookupName toChangeOrig
@@ -87,8 +84,8 @@ renameDefinition toChangeOrig toChangeWith newName mod mods
              if isChanged then return $ Just (name, res)
                           else return Nothing
 
-    changeName :: DomainRenameDefinition dom => GHC.Name -> Maybe Id -> [GHC.Name] -> String -> QualifiedName dom
-                                                         -> StateT Bool (StateT Bool (LocalRefactor dom)) (QualifiedName dom)
+    changeName :: GHC.Name -> Maybe Id -> [GHC.Name] -> String -> QualifiedName
+                           -> StateT Bool (StateT Bool LocalRefactor) QualifiedName
     changeName toChangeOrig origId toChangeWith str name
       | maybe False (`elem` toChange) actualName
           && semanticsDefining name == False

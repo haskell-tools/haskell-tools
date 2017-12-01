@@ -28,7 +28,7 @@ import Language.Haskell.Tools.Daemon.Protocol (ResponseMsg(..), ClientMessage(..
 import Language.Haskell.Tools.Refactor
 import Paths_haskell_tools_cli (version)
 -- | Normal entry point of the cli.
-normalRefactorSession :: [RefactoringChoice IdDom] -> Handle -> Handle -> CLIOptions -> IO Bool
+normalRefactorSession :: [RefactoringChoice] -> Handle -> Handle -> CLIOptions -> IO Bool
 normalRefactorSession refactorings input output options@CLIOptions{..}
   = do hSetBuffering stdout LineBuffering -- to synch our output with GHC's
        hSetBuffering stderr LineBuffering -- to synch our output with GHC's
@@ -47,7 +47,7 @@ data CLIOptions = CLIOptions { displayVersion :: Bool
 
 -- | Entry point with configurable initialization. Mainly for testing, call 'normalRefactorSession'
 -- to use the command-line.
-refactorSession :: [RefactoringChoice IdDom] -> ServerInit -> Handle -> Handle -> CLIOptions -> IO Bool
+refactorSession :: [RefactoringChoice] -> ServerInit -> Handle -> Handle -> CLIOptions -> IO Bool
 refactorSession _ _ _ output CLIOptions{..} | displayVersion
   = do hPutStrLn output $ showVersion version
        return True
@@ -68,7 +68,7 @@ refactorSession refactorings init input output CLIOptions{..} = do
 type ServerInit = MVar (Chan ResponseMsg, Chan ClientMessage) -> IO ()
 
 -- | Reads commands from standard input and executes them.
-processUserInput :: [RefactoringChoice IdDom] -> Handle -> Handle -> Chan ClientMessage -> IO ()
+processUserInput :: [RefactoringChoice] -> Handle -> Handle -> Chan ClientMessage -> IO ()
 processUserInput refactorings input output chan = do
     cmd <- hGetLine input
     continue <- processCommand False refactorings output chan cmd
@@ -78,7 +78,7 @@ processUserInput refactorings input output chan = do
 
 -- | Perform a command received from the user. The resulting boolean states if the user may continue
 -- (True), or the session is over (False).
-processCommand :: Bool -> [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> String -> IO Bool
+processCommand :: Bool -> [RefactoringChoice] -> Handle -> Chan ClientMessage -> String -> IO Bool
 processCommand _ _ _ _ "" = return True
 processCommand shutdown refactorings output chan cmd = do
   case splitOn " " cmd of
@@ -119,7 +119,7 @@ processMessage :: Bool -> Handle -> ResponseMsg -> IO (Maybe Bool)
 processMessage _ output (ErrorMessage msg) = hPutStrLn output msg >> return (Just False)
 processMessage pedantic output (CompilationProblem marks hints)
   = do mapM_ (hPutStrLn output) hints
-       mapM_ (\(loc, msg) -> hPutStrLn output (shortShowSpanWithFile loc ++ ": " ++ msg)) marks
+       mapM_ (hPutStrLn output . show) marks
        return (if pedantic then Just False else Nothing)
 processMessage _ output (LoadedModule fp name)
   = do hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") "
@@ -139,7 +139,7 @@ processMessage _ _ Disconnected = return (Just True)
 processMessage _ _ _ = return Nothing
 
 -- | Perform the commands specified by the user as a command line argument.
-performCmdOptions :: [RefactoringChoice IdDom] -> Handle -> Chan ClientMessage -> [String] -> IO ()
+performCmdOptions :: [RefactoringChoice] -> Handle -> Chan ClientMessage -> [String] -> IO ()
 performCmdOptions refactorings output chan cmds = do
     continue <- mapM (\(shutdown, cmd) -> processCommand shutdown refactorings output chan cmd)
                      (zip lastIsShutdown cmds)
