@@ -8,12 +8,14 @@ import Control.Reference
 import Data.List.Split (splitOn)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Generics.ClassyPlate
+import Data.Generics.Uniplate.Operations
 import GHC.Generics (Generic(..))
 import qualified Generics.SYB as SYB
 import System.FilePath (pathSeparator, (</>), (<.>))
 import Criterion
 import Criterion.Main
 
+import Debug.Trace
 import DynFlags (xopt)
 import GHC hiding (loadModule)
 import GHC.Paths ( libdir )
@@ -30,12 +32,38 @@ import Language.Haskell.Tools.PrettyPrint.Prepare
 import Language.Haskell.Tools.Refactor as HT
 import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
+optimal :: Ann UModule IdDom RngTemplateStage -> Int
+optimal mod = flip execState 0 $ traverseModule mod
+  where traverseModule = modDecl & annList !~ traverseDecl
+        traverseDecl = declValBind !~ traverseValueBind
+        traverseValueBind = (valBindRhs &+& funBindMatches & annList & matchRhs) !~ traverseRhs
+        traverseRhs = rhsExpr !~ traverseExpr
+        traverseExpr e = exprId e >> (innerExpressions !~ traverseExpr) e
+         where innerExpressions = (tupleElems & annList)
+                                 &+& (listElems & annList)
+                                 &+& innerExpr
+                                 &+& exprCond
+                                 &+& exprThen
+                                 &+& exprElse
+                                 &+& exprRhs
+                                 &+& exprLhs
+                                 &+& exprInner
+                                 &+& exprFun
+                                 &+& exprCase
+                                 &+& exprArg
+                                 &+& enumToFix
+                                 &+& (enumTo & annJust)
+                                 &+& (enumThen & annJust)
+                                 &+& compExpr
+
+syb :: Ann UModule IdDom RngTemplateStage -> Int
+syb mod = flip execState 0 $ SYB.everywhereM (SYB.mkM exprId) mod
 
 classyPlate :: Ann UModule IdDom RngTemplateStage -> Int
 classyPlate mod = flip execState 0 $ bottomUpM @IdNode idNode mod
 
 uniPlate :: Ann UModule IdDom RngTemplateStage -> Int
-uniPlate = flip execState 0 . (biplateRef !| exprId)
+uniPlate = flip execState 0 . (transformBiM exprId)
 
 {-# NOINLINE exprId #-}
 exprId :: Ann UExpr IdDom RngTemplateStage -> State Int (Ann UExpr IdDom RngTemplateStage)
@@ -70,10 +98,14 @@ testPerformance workingDir moduleName =
                               else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
     let commented = fixRanges $ placeComments (fst annots) (getNormalComments $ snd annots) $ fixMainRange sourceOrigin transformed   
     let cutUp = cutUpRanges commented
+    liftIO $ print $ optimal cutUp
     liftIO $ print $ classyPlate cutUp
     liftIO $ print $ uniPlate cutUp
-    liftIO $ defaultMain [ bench "uniplate" $ whnf classyPlate cutUp
+    liftIO $ print $ syb cutUp
+    liftIO $ defaultMain [ bench "optimal" $ whnf optimal cutUp
+                         , bench "uniplate" $ whnf classyPlate cutUp
                          , bench "classyplate" $ whnf uniPlate cutUp
+                         , bench "syb" $ whnf syb cutUp
                          ]
     
     
