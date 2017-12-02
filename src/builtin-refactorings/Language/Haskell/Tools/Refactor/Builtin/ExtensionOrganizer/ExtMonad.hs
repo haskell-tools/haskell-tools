@@ -34,7 +34,7 @@ deriving instance Read Extension
 
 type ExtMonad        = ReaderT [Extension] (StateT ExtMap Ghc)
 
-type CheckNode elem = elem -> ExtMonad elem
+type CheckNode  elem  = elem -> ExtMonad elem
 type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -> ExtMonad (Ann uelem IdDom SrcTemplateStage)
 
 addOccurence' :: (Ord k, HasRange a) =>

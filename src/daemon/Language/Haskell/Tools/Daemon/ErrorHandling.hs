@@ -7,7 +7,6 @@ import Control.Exception
 import Control.Monad (Monad(..), when)
 import Data.List
 import Data.Maybe (Maybe(..), catMaybes)
-import Data.Tuple (snd)
 import ErrUtils (ErrMsg(..))
 import HscTypes (SourceError, srcErrorMessages)
 import SrcLoc (SrcSpan(..), isGoodSrcSpan)
