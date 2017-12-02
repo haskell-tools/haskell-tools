@@ -33,7 +33,6 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Data.Map as Map (fromList, lookup)
 
 import qualified GHC (Name(..), isNewTyCon)
-import qualified Name as GHC (Name)
 import PrelNames
 import THNames (liftClassName)
 

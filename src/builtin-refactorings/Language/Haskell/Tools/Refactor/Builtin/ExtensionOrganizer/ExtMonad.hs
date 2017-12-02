@@ -14,7 +14,6 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions
-import SrcLoc (SrcSpan)
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -36,6 +35,9 @@ type ExtMonad = ReaderT [Extension] (StateT ExtMap Ghc)
 
 type CheckNode  elem  = elem -> ExtMonad elem
 type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -> ExtMonad (Ann uelem IdDom SrcTemplateStage)
+
+class Checkable node where
+  check :: CheckNode node
 
 addOccurence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]
