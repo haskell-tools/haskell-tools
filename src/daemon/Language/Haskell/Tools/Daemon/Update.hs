@@ -47,14 +47,14 @@ import Paths_haskell_tools_daemon (version)
 
 -- | Context for responding to a user request.
 data UpdateCtx = UpdateCtx { options :: DaemonOptions
-                           , refactorings :: [RefactoringChoice IdDom]
+                           , refactorings :: [RefactoringChoice]
                            , response :: ResponseMsg -> IO ()
                            , warnMVar :: MVar [Marker]
                            }
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a
 -- client.
-updateClient :: DaemonOptions -> MVar [Marker] -> [RefactoringChoice IdDom] -> (ResponseMsg -> IO ()) -> ClientMessage
+updateClient :: DaemonOptions -> MVar [Marker] -> [RefactoringChoice] -> (ResponseMsg -> IO ()) -> ClientMessage
                   -> DaemonSession Bool
 updateClient options warnMVar refactors resp = updateClient' (UpdateCtx options refactors resp warnMVar)
 

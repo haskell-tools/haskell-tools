@@ -13,48 +13,48 @@ import Language.Haskell.Tools.Rewrite.ElementTypes
 
 -- | The representation of a haskell module, that is a separate compilation unit.
 -- It may or may not have a header.
-mkModule :: [FilePragma dom] -> Maybe (ModuleHead dom) -> [ImportDecl dom] -> [Decl dom] -> Module dom
+mkModule :: [FilePragma] -> Maybe ModuleHead -> [ImportDecl] -> [Decl] -> Module
 mkModule filePrags head imps decls 
   = mkAnn (child <> child <> child <> child) 
       $ UModule (mkAnnList (followedBy "\n" $ separatedBy "\n" list) filePrags) (mkAnnMaybe opt head)
                 (mkAnnList (after "\n" $ indented list) imps) (mkAnnList (after "\n" $ indented list) decls)
                
 -- | Module declaration with name and (optional) exports
-mkModuleHead :: ModuleName dom -> Maybe (ModulePragma dom) -> Maybe (ExportSpecs dom) -> ModuleHead dom
+mkModuleHead :: ModuleName -> Maybe ModulePragma -> Maybe ExportSpecs -> ModuleHead
 mkModuleHead n pr es = mkAnn ("module " <> child <> child <> child <> " where") 
                          $ UModuleHead n (mkAnnMaybe (after "\n" opt) pr) (mkAnnMaybe opt es)
 
 -- | A list of export specifications surrounded by parentheses
-mkExportSpecs :: [ExportSpec dom] -> ExportSpecs dom
+mkExportSpecs :: [ExportSpec] -> ExportSpecs
 mkExportSpecs = mkAnn ("(" <> child <> ")") . UExportSpecs . mkAnnList (separatedBy ", " list)
 
 -- | Export a name and related names
-mkExportSpec :: IESpec dom -> ExportSpec dom
+mkExportSpec :: IESpec -> ExportSpec
 mkExportSpec = mkAnn child . UDeclExport
 
 -- | The export of an imported module (@ module A @)
-mkModuleExport :: ModuleName dom -> ExportSpec dom
+mkModuleExport :: ModuleName -> ExportSpec
 mkModuleExport = mkAnn ("module " <> child) . UModuleExport
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
-mkIESpec :: Name dom -> Maybe (SubSpec dom) -> IESpec dom
+mkIESpec :: Name -> Maybe SubSpec -> IESpec
 mkIESpec name ss = mkAnn (child <> child <> child) (UIESpec noth name (mkAnnMaybe (after "(" $ followedBy ")" opt) ss))
 
 -- | Marks a pattern synonym to be imported or exported
-mkPatternIESpec :: Name dom -> IESpec dom
+mkPatternIESpec :: Name -> IESpec
 mkPatternIESpec name = mkAnn (child <> child) (UIESpec (justVal $ mkAnn child UImportPattern) name noth)
 
 -- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
-mkSubList :: [Name dom] -> SubSpec dom
+mkSubList :: [Name] -> SubSpec
 mkSubList = mkAnn child . USubSpecList . mkAnnList (separatedBy ", " list)
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-mkSubAll :: SubSpec dom
+mkSubAll :: SubSpec
 mkSubAll = mkAnn ".." USubSpecAll
 
 -- | An import declaration: @import Module.Name@         
-mkImportDecl :: Bool -> Bool -> Bool -> Maybe String -> ModuleName dom -> Maybe (ModuleName dom) -> Maybe (ImportSpec dom) 
-                  -> ImportDecl dom       
+mkImportDecl :: Bool -> Bool -> Bool -> Maybe String -> ModuleName -> Maybe ModuleName -> Maybe ImportSpec
+                  -> ImportDecl       
 mkImportDecl source qualified safe pkg name rename spec
   = mkAnn ("import " <> child <> child <> child <> child <> child <> child <> child) $
       UImportDecl (if source then justVal (mkAnn "{-# SOURCE #-} " UImportSource) else noth)
@@ -64,39 +64,39 @@ mkImportDecl source qualified safe pkg name rename spec
                   name (mkAnnMaybe opt (fmap (mkAnn (" as " <> child) . UImportRenaming) rename)) (mkAnnMaybe opt spec)
 
 -- | Restrict the import definition to ONLY import the listed names
-mkImportSpecList :: [IESpec dom] -> ImportSpec dom
+mkImportSpecList :: [IESpec] -> ImportSpec
 mkImportSpecList = mkAnn ("(" <> child <> ")") . UImportSpecList . mkAnnList (separatedBy ", " list)
 
 -- | Restrict the import definition to DONT import the listed names
-mkImportHidingList :: [IESpec dom] -> ImportSpec dom
+mkImportHidingList :: [IESpec] -> ImportSpec
 mkImportHidingList = mkAnn (" hiding (" <> child <> ")") . UImportSpecHiding . mkAnnList (separatedBy ", " list)
 
 -- | The name of a module
-mkModuleName :: String -> ModuleName dom
+mkModuleName :: String -> ModuleName
 mkModuleName s = mkAnn (fromString s) (UModuleName s)
 
 -- * Pragmas
 
 -- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
-mkLanguagePragma :: [String] -> FilePragma dom
+mkLanguagePragma :: [String] -> FilePragma
 mkLanguagePragma extensions 
   = mkAnn ("{-# LANGUAGE " <> child <> " #-}") $ ULanguagePragma 
       $ mkAnnList (separatedBy ", " list) (map (\ext -> mkAnn (fromString ext) (ULanguageExtension ext)) extensions)
 
 -- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
-mkOptionsGHC :: String -> FilePragma dom
+mkOptionsGHC :: String -> FilePragma
 mkOptionsGHC opts 
   = mkAnn ("{-# OPTIONS_GHC " <> child <> " #-}") $ UOptionsPragma 
       $ mkStringNode opts
 
 -- | A warning pragma attached to the module
-mkModuleWarningPragma :: [String] -> ModulePragma dom
+mkModuleWarningPragma :: [String] -> ModulePragma
 mkModuleWarningPragma msg 
   = mkAnn ("{-# WARNING " <> child <> " #-}") $ UModuleWarningPragma 
       $ mkAnnList (separatedBy " " list) $ map mkStringNode msg
 
 -- | A deprecated pragma attached to the module
-mkModuleDeprecatedPragma :: [String] -> ModulePragma dom
+mkModuleDeprecatedPragma :: [String] -> ModulePragma
 mkModuleDeprecatedPragma msg 
   = mkAnn ("{-# DEPRECATED " <> child <> " #-}") $ UModuleDeprecatedPragma 
       $ mkAnnList (separatedBy " " list) $ map mkStringNode msg

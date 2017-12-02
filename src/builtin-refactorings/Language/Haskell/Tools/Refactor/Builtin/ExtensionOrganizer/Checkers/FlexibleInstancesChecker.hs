@@ -33,7 +33,7 @@ chkFlexibleInstances' d@(Refact.StandaloneDeriving _ _ rule) = checkedReturn rul
 chkFlexibleInstances' d@(InstanceDecl rule _)                = checkedReturn rule d
 chkFlexibleInstances' d = return d
 
-checkedReturn :: ExtDomain dom => InstanceRule dom -> a -> ExtMonad a
+checkedReturn :: InstanceRule -> a -> ExtMonad a
 checkedReturn rule x = chkInstanceRule rule >> return x
 
 -- this check DOES transform the AST for its internal computations
@@ -141,11 +141,10 @@ chkTyVars vars = do
         chkListType (ListType v) = chkSingleTyVar v
         chkListType _            = return False
 
-        chkOnlyApp :: (MonadState ([Name dom],[Name dom]) (m1 m2),
+        chkOnlyApp :: (MonadState ([Name],[Name]) (m1 m2),
                        MonadTrans m1,
-                       MonadState ExtMap m2,
-                       ExtDomain dom) =>
-                       Type dom -> MaybeT (m1 m2) Bool
+                       MonadState ExtMap m2) =>
+                       Type -> MaybeT (m1 m2) Bool
         chkOnlyApp (TypeApp f v@(VarType _)) = do
           isTyVar <- chkSingleTyVar v
           if isTyVar
@@ -168,15 +167,15 @@ chkTyVars vars = do
 
         tyVarSemNameM x = MaybeT . return . semanticsName $ x ^. simpleName
 
-rmTypeMisc :: Type dom -> ExtMonad (Type dom)
+rmTypeMisc :: CheckNode Type
 rmTypeMisc = rmTParens >=> rmTKinded
 
-rmTKinded :: Type dom -> ExtMonad (Type dom)
+rmTKinded :: CheckNode Type
 rmTKinded kt@(KindedType t _) = addOccurence_ KindSignatures kt >> return t
 rmTKinded x                   = return x
 
 -- removes Parentheses from the AST
 -- the structure is reserved
-rmTParens :: Type dom -> ExtMonad (Type dom)
+rmTParens :: CheckNode Type
 rmTParens (ParenType x) = return x
 rmTParens x             = return x

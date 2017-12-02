@@ -25,45 +25,45 @@ class Monad m => RefactorMonad m where
   liftGhc :: Ghc a -> m a
 
 -- | A refactoring that only affects one module
-type LocalRefactoring dom = UnnamedModule dom -> LocalRefactor dom (UnnamedModule dom)
+type LocalRefactoring = UnnamedModule -> LocalRefactor UnnamedModule
 
 -- | The type of a refactoring
-type Refactoring dom = ModuleDom dom -> [ModuleDom dom] -> Refactor [RefactorChange dom]
+type Refactoring = ModuleDom -> [ModuleDom] -> Refactor [RefactorChange]
 
 -- | The type of a refactoring that affects the whole project.
-type ProjectRefactoring dom = [ModuleDom dom] -> Refactor [RefactorChange dom]
+type ProjectRefactoring = [ModuleDom] -> Refactor [RefactorChange]
 
 -- | The refactoring monad for a given module
-type LocalRefactor dom = LocalRefactorT dom Refactor
+type LocalRefactor = LocalRefactorT Refactor
 
 -- | The refactoring monad for the whole project
 type Refactor = ExceptT String Ghc
 
 -- | Input and output information for the refactoring
 -- TODO: use multiple states instead of Either
-newtype LocalRefactorT dom m a
+newtype LocalRefactorT m a
   = LocalRefactorT { fromRefactorT :: WriterT [Either GHC.Name (SrcSpan, String, String)]
-                                              (ReaderT (RefactorCtx dom) m) a
+                                              (ReaderT RefactorCtx m) a
                    }
-  deriving ( Functor, Applicative, Monad, MonadReader (RefactorCtx dom)
+  deriving ( Functor, Applicative, Monad, MonadReader RefactorCtx
            , MonadWriter [Either GHC.Name (SrcSpan, String, String)]
            , MonadIO, HasDynFlags, ExceptionMonad, GhcMonad )
 
 -- | The information a refactoring can use
-data RefactorCtx dom
+data RefactorCtx
   = RefactorCtx { refModuleName :: GHC.Module -- ^ The name of the module being refactored. Used for accessing implicit imports.
-                , refCtxRoot :: Ann UModule dom SrcTemplateStage
-                , refCtxImports :: [Ann UImportDecl dom SrcTemplateStage]
+                , refCtxRoot :: Ann UModule IdDom SrcTemplateStage
+                , refCtxImports :: [Ann UImportDecl IdDom SrcTemplateStage]
                 }
 
-instance MonadTrans (LocalRefactorT dom) where
+instance MonadTrans LocalRefactorT where
   lift = LocalRefactorT . lift . lift
 
 instance RefactorMonad Refactor where
   refactError = throwE
   liftGhc = lift
 
-instance RefactorMonad (LocalRefactor dom) where
+instance RefactorMonad LocalRefactor where
   refactError = lift . refactError
   liftGhc = lift . liftGhc
 

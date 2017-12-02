@@ -13,10 +13,10 @@ import Unique (getUnique)
 tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . dollarApp)
 
-dollarApp :: (HasImportInfo dom, HasModuleInfo dom) => RealSrcSpan -> LocalRefactoring dom
+dollarApp :: RealSrcSpan -> LocalRefactoring
 dollarApp sp = nodesContained sp !~ replaceExpr
 
-replaceExpr :: (HasImportInfo dom, HasModuleInfo dom) => Expr dom -> LocalRefactor dom (Expr dom)
+replaceExpr :: Expr -> LocalRefactor Expr
 replaceExpr (App fun (Paren arg)) = mkInfixApp fun <$> referenceOperator dollarName <*> pure arg
 replaceExpr e = pure e
 

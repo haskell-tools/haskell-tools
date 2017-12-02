@@ -36,7 +36,7 @@ import Language.Haskell.Tools.Refactor.Utils.Monadic (runRefactor)
 
 
 -- | A quick function to try the refactorings
-tryRefactor :: (RealSrcSpan -> Refactoring IdDom) -> String -> String -> IO ()
+tryRefactor :: (RealSrcSpan -> Refactoring) -> String -> String -> IO ()
 tryRefactor refact moduleName span
   = runGhc (Just libdir) $ do
       initGhcFlags
@@ -48,7 +48,7 @@ tryRefactor refact moduleName span
                   Left err -> liftIO $ putStrLn err
 
 -- | Adjust the source range to be applied to the refactored module
-correctRefactorSpan :: UnnamedModule dom -> RealSrcSpan -> RealSrcSpan
+correctRefactorSpan :: UnnamedModule -> RealSrcSpan -> RealSrcSpan
 correctRefactorSpan mod sp = mkRealSrcSpan (updateSrcFile fileName $ realSrcSpanStart sp)
                                            (updateSrcFile fileName $ realSrcSpanEnd sp)
   where fileName = case srcSpanStart $ getRange mod of RealSrcLoc loc -> srcLocFile loc

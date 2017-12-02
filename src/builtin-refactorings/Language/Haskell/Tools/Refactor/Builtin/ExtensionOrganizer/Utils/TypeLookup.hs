@@ -3,7 +3,7 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
 
 
-import Language.Haskell.Tools.AST (HasNameInfo'(..), HasNameInfo(..), simpleName)
+import Language.Haskell.Tools.AST (simpleName)
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
@@ -24,7 +24,7 @@ chkSynonym t = do
                           Nothing -> return t
                           Just _  -> addOccurence TypeSynonymInstances t
 
-lookupSynDefM :: HasNameInfo dom => Type dom -> MaybeT ExtMonad GHC.TyCon
+lookupSynDefM :: Type -> MaybeT ExtMonad GHC.TyCon
 lookupSynDefM t = do
   tything <- lookupType t
   liftMaybe $ lookupSynDef tything
@@ -51,14 +51,14 @@ tyconFromGHCType _ = Nothing
 
 -- NOTE: Return false if the type is certainly not a newtype
 --       Returns true if it is a newtype or it could not have been looked up
-isNewtype :: HasNameInfo dom => Type dom -> ExtMonad Bool
+isNewtype :: Type -> ExtMonad Bool
 isNewtype t = do
   tycon <- runMaybeT . lookupType $ t
   return $! maybe True isNewtypeTyCon tycon
 
 
 
-lookupType :: HasNameInfo dom => Type dom -> MaybeT ExtMonad GHC.TyThing
+lookupType :: Type -> MaybeT ExtMonad GHC.TyThing
 lookupType t = do
   name  <- liftMaybe . nameFromType $ t
   sname <- liftMaybe . getSemName   $ name
@@ -67,7 +67,7 @@ lookupType t = do
 
 -- NOTE: gives just name if the type being scrutinised can be newtype
 --       else it gives nothing
-nameFromType :: Type dom -> Maybe (Name dom)
+nameFromType :: Type -> Maybe Name
 nameFromType (TypeApp f _)    = nameFromType f
 nameFromType (ParenType x)    = nameFromType x
 nameFromType (KindedType t _) = nameFromType t
@@ -78,5 +78,5 @@ isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
 
-getSemName :: HasNameInfo dom => Name dom -> Maybe GHC.Name
+getSemName :: Name -> Maybe GHC.Name
 getSemName x = semanticsName (x ^. simpleName)

@@ -14,16 +14,16 @@ import Language.Haskell.Tools.Rewrite as AST
 
 import SrcLoc (srcSpanStart)
 
-replaceWithJust :: Ann e dom SrcTemplateStage -> AnnMaybe e dom -> AnnMaybe e dom
+replaceWithJust :: Ann e IdDom SrcTemplateStage -> AnnMaybe e -> AnnMaybe e
 replaceWithJust e = annMaybe .= Just e
 
-replaceWithNothing :: AnnMaybe e dom -> AnnMaybe e dom
+replaceWithNothing :: AnnMaybe e -> AnnMaybe e
 replaceWithNothing = annMaybe .= Nothing
 
 -- | Remove the container (where or let) when the last binding is removed.
-removeEmptyBnds :: Simple Traversal (Module dom) (ValueBind dom)
-                     -> Simple Traversal (Module dom) (Expr dom)
-                     -> AST.Module dom -> AST.Module dom
+removeEmptyBnds :: Simple Traversal Module ValueBind
+                     -> Simple Traversal Module Expr
+                     -> AST.Module -> AST.Module
 removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- removeEmptyLetsAndStmts)
   where removeEmptyBindsAndGuards sb@(SimpleBind _ _ _)
           = (valBindLocals .- removeIfEmpty) . (valBindRhs .- removeEmptyGuards) $ sb

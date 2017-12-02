@@ -16,10 +16,10 @@ import Outputable
 import Language.Haskell.Tools.AST as AST
 
 -- | A type for the input and result of refactoring a module
-type UnnamedModule dom = Ann AST.UModule dom SrcTemplateStage
+type UnnamedModule = Ann AST.UModule IdDom SrcTemplateStage
 
 -- | The name of the module and the AST
-type ModuleDom dom = (SourceFileKey, UnnamedModule dom)
+type ModuleDom = (SourceFileKey, UnnamedModule)
 
 -- | Module name and marker to separate .hs-boot module definitions. Specifies a source file in a working directory.
 data SourceFileKey = SourceFileKey { _sfkFileName :: FilePath
@@ -28,13 +28,13 @@ data SourceFileKey = SourceFileKey { _sfkFileName :: FilePath
   deriving (Eq, Ord, Show)
 
 -- | Change in the project, modification or removal of a module.
-data RefactorChange dom = ContentChanged { fromContentChanged :: ModuleDom dom }
-                        | ModuleRemoved { removedModuleName :: String }
-                        | ModuleCreated { createdModuleName :: String
-                                        , createdModuleContent :: UnnamedModule dom
-                                        , sameLocation :: SourceFileKey
-                                        }
-instance Show (RefactorChange dom) where
+data RefactorChange = ContentChanged { fromContentChanged :: ModuleDom }
+                    | ModuleRemoved { removedModuleName :: String }
+                    | ModuleCreated { createdModuleName :: String
+                                    , createdModuleContent :: UnnamedModule
+                                    , sameLocation :: SourceFileKey
+                                    }
+instance Show RefactorChange where
   show (ContentChanged (n, _)) = "ContentChanged (" ++ show n  ++ ")"
   show (ModuleRemoved n) = "ModuleRemoved " ++ n
   show (ModuleCreated n _ other) = "ModuleCreated " ++ n ++ " (" ++ show other ++ ")"
