@@ -56,19 +56,19 @@ deriving instance Domain dom => Show (TreeDebugNode dom)
 data SemanticInfoType dom
   = DefaultInfoType { semaInfoTypeRng :: SrcSpan
                     }
-  | NameInfoType { semaInfoTypeName :: SemanticInfo' dom SameInfoNameCls
+  | NameInfoType { semaInfoTypeName :: SemanticInfo' dom SemaInfoNameCls
                  , semaInfoTypeRng :: SrcSpan
                  }
-  | ExprInfoType { semaInfoTypeExpr :: SemanticInfo' dom SameInfoExprCls
+  | ExprInfoType { semaInfoTypeExpr :: SemanticInfo' dom SemaInfoExprCls
                  , semaInfoTypeRng :: SrcSpan
                  }
-  | ImportInfoType { semaInfoTypeImport :: SemanticInfo' dom SameInfoImportCls
+  | ImportInfoType { semaInfoTypeImport :: SemanticInfo' dom SemaInfoImportCls
                    , semaInfoTypeRng :: SrcSpan
                    }
-  | ModuleInfoType { semaInfoTypeModule :: SemanticInfo' dom SameInfoModuleCls
+  | ModuleInfoType { semaInfoTypeModule :: SemanticInfo' dom SemaInfoModuleCls
                    , semaInfoTypeRng :: SrcSpan
                    }
-  | ImplicitFieldInfoType { semaInfoTypeImplicitFld :: SemanticInfo' dom SameInfoWildcardCls
+  | ImplicitFieldInfoType { semaInfoTypeImplicitFld :: SemanticInfo' dom SemaInfoWildcardCls
                           , semaInfoTypeRng :: SrcSpan
                           }
 
@@ -78,9 +78,9 @@ deriving instance Domain dom => Show (SemanticInfoType dom)
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
 
-type AssocSema dom = ( AssocData (SemanticInfo' dom SameInfoModuleCls), AssocData (SemanticInfo' dom SameInfoImportCls)
-                     , AssocData (SemanticInfo' dom SameInfoNameCls), AssocData (SemanticInfo' dom SameInfoExprCls)
-                     , AssocData (SemanticInfo' dom SameInfoWildcardCls) )
+type AssocSema dom = ( AssocData (SemanticInfo' dom SemaInfoModuleCls), AssocData (SemanticInfo' dom SemaInfoImportCls)
+                     , AssocData (SemanticInfo' dom SemaInfoNameCls), AssocData (SemanticInfo' dom SemaInfoExprCls)
+                     , AssocData (SemanticInfo' dom SemaInfoWildcardCls) )
 
 astDebug :: (ASTDebug e dom st, AssocSema dom) => e dom st -> String
 astDebug ast = toList (astDebugToJson (astDebug' ast))
