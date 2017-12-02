@@ -28,6 +28,11 @@ library
                      , haskell-tools-refactor    >= 1.0 && < 1.1
                      , haskell-tools-prettyprint >= 1.0 && < 1.1
                      , haskell-tools-builtin-refactorings >= 1.0 && < 1.1
+                     , uniplate 
+                     , classyplate 
+                     , syb
+                     , criterion
+                     , mtl
   default-language:    Haskell2010
 
 executable ht-debug
