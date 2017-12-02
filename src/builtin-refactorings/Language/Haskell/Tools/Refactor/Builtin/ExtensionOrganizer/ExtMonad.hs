@@ -36,6 +36,9 @@ type ExtMonad        = ReaderT [Extension] (StateT ExtMap Ghc)
 type CheckNode elem = elem -> ExtMonad elem
 type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -> ExtMonad (Ann uelem IdDom SrcTemplateStage)
 
+class Checkable node where
+  check :: CheckNode node
+
 addOccurence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]
 addOccurence' key node = SMap.insertWith (++) key [getRange node]
