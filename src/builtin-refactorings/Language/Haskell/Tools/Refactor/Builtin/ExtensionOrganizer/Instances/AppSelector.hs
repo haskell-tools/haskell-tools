@@ -20,6 +20,9 @@ type family HasChecker node where
   HasChecker Literal          = 'True
   HasChecker NamePart         = 'True
   HasChecker Kind             = 'True
+  HasChecker Splice           = 'True
+  HasChecker QuasiQuote       = 'True
+  HasChecker Bracket          = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node

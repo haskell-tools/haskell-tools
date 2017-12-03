@@ -45,3 +45,12 @@ instance Checkable NamePart where
 
 instance Checkable Kind where
   check = chkMagicHashKind
+
+instance Checkable Splice where
+  check = chkTemplateHaskellSplice
+
+instance Checkable QuasiQuote where
+  check = chkTemplateHaskellQuasiQuote
+
+instance Checkable Bracket where
+  check = chkTemplateHaskellBracket
