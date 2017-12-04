@@ -75,10 +75,10 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 
 
-  other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
+  other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.RecordWildCardsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
@@ -183,6 +183,8 @@ test-suite ht-extension-organizer-test
 benchmark ht-extension-organizer-benchmark
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
+  other-modules:       ExtensionOrganizerBenchmark.ManualTraversal
+                     , ExtensionOrganizerBenchmark.UniPlateTraversal
   hs-source-dirs:      benchmark
   main-is:             ExtensionOrganizerBenchmark/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11

@@ -9,4 +9,4 @@ else
   benchmarks=$@
 fi
 
-stack bench --benchmark-arguments "ExtensionOrganizerBenchmark/$benchmarks --output ExtensionOrganizerBenchmark.html" haskell-tools-builtin-refactorings:ht-extension-organizer-benchmark
+stack bench --benchmark-arguments "Traversal/$benchmarks --time-limit 10 --output ExtensionOrganizerBenchmark.html" haskell-tools-builtin-refactorings:ht-extension-organizer-benchmark
