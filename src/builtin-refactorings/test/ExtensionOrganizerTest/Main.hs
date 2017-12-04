@@ -58,15 +58,9 @@ spanToLine (RealSrcSpan s) = srcSpanEndLine s
 simplifyExtMap :: ExtMap -> SimpleMap
 simplifyExtMap = SMap.map (map spanToLine)
 
-loadModuleAST :: FilePath -> ModuleName -> Ghc TypedModule
-loadModuleAST dir moduleName = do
-  useFlags ["-w"]
-  modSummary <- loadModule (testRoot </> dir) moduleName
-  parseTyped modSummary
-
 getExtensionsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtensionsFrom dir moduleName = runGhc (Just libdir) $ do
-  modAST <- loadModuleAST dir moduleName
+  modAST <- loadModuleAST (testRoot </> dir) moduleName
   exts <- collectExtensions modAST
   return $! simplifyExtMap exts
 
@@ -74,7 +68,6 @@ getExtAnnotsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtAnnotsFrom dir moduleName = do
   s <- readFile $ addExtension (mkModulePath dir moduleName) ".hs"
   return $! getExtensionAnnotations s
-
 
 mkTest :: FilePath -> ModuleName -> TestTree
 mkTest dir moduleName = testCase moduleName $ mkAssertion dir moduleName

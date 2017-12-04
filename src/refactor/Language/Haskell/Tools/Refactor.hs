@@ -35,7 +35,7 @@ import Language.Haskell.Tools.BackendGHC (SpliceInsertionProblem(..), Convertion
 import Language.Haskell.Tools.PrettyPrint (PrettyPrintProblem(..))
 import Language.Haskell.Tools.PrettyPrint.Prepare
 import Language.Haskell.Tools.Refactor.Monad
-import Language.Haskell.Tools.Refactor.Prepare
+import Language.Haskell.Tools.Refactor.Prepare hiding (ModuleName)
 import Language.Haskell.Tools.Refactor.Refactoring
 import Language.Haskell.Tools.Refactor.Representation
 import Language.Haskell.Tools.Refactor.Utils.BindingElem
