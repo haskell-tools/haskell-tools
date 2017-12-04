@@ -14,7 +14,6 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions
-import SrcLoc (SrcSpan)
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -32,14 +31,13 @@ deriving instance Read Extension
 -- type Asd a = forall m . (MonadReader [Extension] m, MonadState ExtMap m, GhcMonad m) => m a
 
 
-type ExtMonad        = ReaderT [Extension] (StateT ExtMap Ghc)
-type ExtDomain dom   = (HasNameInfo dom)
+type ExtMonad = ReaderT [Extension] (StateT ExtMap Ghc)
 
-type CheckNode  elem     = forall dom . CheckNode' elem dom
-type CheckNode' elem dom = ExtDomain dom => elem dom -> ExtMonad (elem dom)
+type CheckNode  elem  = elem -> ExtMonad elem
+type CheckUNode uelem = Ann uelem IdDom SrcTemplateStage -> ExtMonad (Ann uelem IdDom SrcTemplateStage)
 
-type CheckUNode  uelem     = forall dom . CheckUNode' uelem dom
-type CheckUNode' uelem dom = ExtDomain dom => Ann uelem dom SrcTemplateStage -> ExtMonad (Ann uelem dom SrcTemplateStage)
+class Checkable node where
+  check :: CheckNode node
 
 addOccurence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]

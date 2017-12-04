@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies #-}
 module Language.Haskell.Tools.Refactor.Builtin.FloatOut
-  (floatOut, FloatOutDefinition, floatOutRefactoring) where
+  (floatOut, floatOutRefactoring) where
 
 import Control.Monad.State
 import Control.Reference
@@ -12,12 +12,10 @@ import Language.Haskell.Tools.Refactor
 import Name as GHC (Name, NamedThing(..), occNameString)
 import SrcLoc (RealSrcSpan)
 
-floatOutRefactoring :: (FloatOutDefinition dom, HasModuleInfo dom) => RefactoringChoice dom
+floatOutRefactoring :: RefactoringChoice
 floatOutRefactoring = SelectionRefactoring "FloatOut" (localRefactoring . floatOut)
 
-type FloatOutDefinition dom = (HasNameInfo dom, HasScopeInfo dom)
-
-floatOut :: FloatOutDefinition dom => RealSrcSpan -> LocalRefactoring dom
+floatOut :: RealSrcSpan -> LocalRefactoring
 floatOut sp mod
   = do (mod', st) <- runStateT (nodesContaining sp !~ extractAndInsert sp $ mod) NotEncountered
        case st of NotEncountered -> refactError "No definition is selected. The selection range must be inside the definition."
@@ -25,16 +23,16 @@ floatOut sp mod
                                     return $ modDecl & annListElems .- (++ map toTopLevel bnds) $ removeEmpties mod'
                   Inserted -> -- already inserted to a local scope
                                return (removeEmpties mod')
-  where toTopLevel :: LocalBind dom -> Decl dom
+  where toTopLevel :: LocalBind -> Decl
         toTopLevel (LocalValBind vb) = mkValueBinding vb
         toTopLevel (LocalTypeSig sg) = mkTypeSigDecl sg
         toTopLevel (LocalFixity fx) = mkFixityDecl fx
 
         removeEmpties = removeEmptyBnds (nodesContaining sp) (nodesContaining sp)
 
-data FloatState dom = NotEncountered | Extracted [LocalBind dom] | Inserted
+data FloatState = NotEncountered | Extracted [LocalBind] | Inserted
 
-extractAndInsert :: FloatOutDefinition dom => RealSrcSpan -> LocalBindList dom -> StateT (FloatState dom) (LocalRefactor dom) (LocalBindList dom)
+extractAndInsert :: RealSrcSpan -> LocalBindList -> StateT FloatState LocalRefactor LocalBindList
 extractAndInsert sp locs
   | hasSharedSig = refactError "Cannot float out a definition, since it has a signature shared with other bindings that stay in the scope."
   | not (null nameConflicts) = refactError $ "Cannot float out a definition, since it would cause a name conflicts in the target scope: "
@@ -57,7 +55,7 @@ extractAndInsert sp locs
         nameConflicts = concat $ map fst conflicts
         implicitConflicts = concat $ map snd conflicts
 
-checkConflict :: forall dom . FloatOutDefinition dom => LocalBind dom -> ([String], [String])
+checkConflict :: LocalBind -> ([String], [String])
 checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
   where bndNames = bnd ^? elementName
         getConflict bndName = filter ((== nameStr) . Just) $ map (occNameString . getOccName) outerScope
@@ -66,8 +64,8 @@ checkConflict bnd = (concatMap @[] getConflict bndNames, implicits)
         implicits = map (occNameString . getOccName)
                         (concatMap getPossibleImplicits bndNames `intersect` getQNames (bnd ^? biplateRef))
 
-        getQNames :: [QualifiedName dom] -> [GHC.Name]
+        getQNames :: [QualifiedName] -> [GHC.Name]
         getQNames = catMaybes . map semanticsName
 
-        getPossibleImplicits :: QualifiedName dom -> [GHC.Name]
+        getPossibleImplicits :: QualifiedName -> [GHC.Name]
         getPossibleImplicits qn = concat (map (map (^. _1)) $ take 2 $ semanticsScope qn) \\ catMaybes (map semanticsName bndNames)

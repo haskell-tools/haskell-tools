@@ -15,13 +15,13 @@ import SrcLoc (SrcSpan)
 import Data.Either (Either(..))
 
 -- | Remove a separator from the AST while keeping the textual parts of it that should not be removed (like preprocessor pragmas).
-removeSeparator :: ([SourceTemplateTextElem], SrcSpan) -> LocalRefactor dom ()
+removeSeparator :: ([SourceTemplateTextElem], SrcSpan) -> LocalRefactor ()
 removeSeparator (txts, range) = tell [Right (range, intercalate lineEnd staying, lineEnd)]
   where staying = catMaybes $ map (\case StayingText str _ -> Just str; _ -> Nothing) txts
         lineEnd = head $ (catMaybes $ map (\case StayingText _ lnEnd -> Just lnEnd; _ -> Nothing) txts) ++ [""]
 
 -- | Remove an element from the AST while keeping the textual parts of it that should not be removed (like preprocessor pragmas).
-removeChild :: (SourceInfoTraversal e) => e dom SrcTemplateStage -> LocalRefactor dom ()
+removeChild :: (SourceInfoTraversal e) => e dom SrcTemplateStage -> LocalRefactor ()
 removeChild e = tell $ map Right $ keptText e
 
 -- | Extracts all text elements that should be kept

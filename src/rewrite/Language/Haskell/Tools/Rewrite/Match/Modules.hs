@@ -7,75 +7,75 @@ import Language.Haskell.Tools.Rewrite.ElementTypes
 
 -- | The representation of a haskell module, that is a separate compilation unit.
 -- It may or may not have a header.
-pattern Module :: FilePragmaList dom -> MaybeModuleHead dom
-              -> ImportDeclList dom -> DeclList dom -> Module dom
+pattern Module :: FilePragmaList -> MaybeModuleHead
+              -> ImportDeclList -> DeclList -> Module
 pattern Module filePrags head imps decls  <- Ann _ (UModule filePrags head imps decls )
 
 -- | Module declaration with name and (optional) exports
-pattern ModuleHead :: ModuleName dom -> MaybeModulePragma dom -> MaybeExportSpecs dom -> ModuleHead dom
+pattern ModuleHead :: ModuleName -> MaybeModulePragma -> MaybeExportSpecs -> ModuleHead
 pattern ModuleHead n pr es <- Ann _ (UModuleHead n pr es)
 
 -- | A list of export specifications surrounded by parentheses
-pattern ExportSpecs :: ExportSpecList dom -> ExportSpecs dom
+pattern ExportSpecs :: ExportSpecList -> ExportSpecs
 pattern ExportSpecs specs <- Ann _ (UExportSpecs specs)
 
 -- | Export a name and related names
-pattern ExportSpec :: IESpec dom -> ExportSpec dom
+pattern ExportSpec :: IESpec -> ExportSpec
 pattern ExportSpec ieSpec <- Ann _ (UDeclExport ieSpec)
 
 -- | The export of an imported module (@ module A @)
-pattern ModuleExport :: ModuleName dom -> ExportSpec dom
+pattern ModuleExport :: ModuleName -> ExportSpec
 pattern ModuleExport name <- Ann _ (UModuleExport name)
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
-pattern IESpec :: Name dom -> MaybeSubSpec dom -> IESpec dom
+pattern IESpec :: Name -> MaybeSubSpec -> IESpec
 pattern IESpec name ss <- Ann _ (UIESpec _ name ss)
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
-pattern SubAll :: SubSpec dom
+pattern SubAll :: SubSpec
 pattern SubAll <- Ann _ USubSpecAll
 
 -- | @(a,b,c)@: a class exported with some of its methods, or a datatype exported with some of its constructors.
-pattern SubList :: NameList dom -> SubSpec dom
+pattern SubList :: NameList -> SubSpec
 pattern SubList names <- Ann _ (USubSpecList names)
 
 
-pattern ImportDecl :: MaybeImportSource dom -> MaybeImportQualified dom 
-                        -> MaybeImportSafe dom -> MaybeStringNode dom
-                        -> ModuleName dom -> MaybeImportRenaming dom
-                        -> MaybeImportSpec dom -> ImportDecl dom       
+pattern ImportDecl :: MaybeImportSource -> MaybeImportQualified 
+                        -> MaybeImportSafe -> MaybeStringNode
+                        -> ModuleName -> MaybeImportRenaming
+                        -> MaybeImportSpec -> ImportDecl       
 pattern ImportDecl source qualified safe pkg name rename spec <- Ann _ (UImportDecl source qualified safe pkg name rename spec)
 
-pattern ImportRenaming :: ModuleName dom -> ImportRenaming dom
+pattern ImportRenaming :: ModuleName -> ImportRenaming
 pattern ImportRenaming name <- Ann _ (UImportRenaming name)
 
-pattern ImportSpecList :: IESpecList dom -> ImportSpec dom
+pattern ImportSpecList :: IESpecList -> ImportSpec
 pattern ImportSpecList ieSpecs <- Ann _ (UImportSpecList ieSpecs)
 
-pattern ImportHidingList :: IESpecList dom -> ImportSpec dom
+pattern ImportHidingList :: IESpecList -> ImportSpec
 pattern ImportHidingList hidings <- Ann _ (UImportSpecHiding hidings)
 
-pattern ModuleName :: String -> ModuleName dom
+pattern ModuleName :: String -> ModuleName
 pattern ModuleName s <- Ann _ (UModuleName s)
 
 -- * Pragmas
 
 -- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
-pattern LanguagePragma :: LanguageExtensionList dom -> FilePragma dom
+pattern LanguagePragma :: LanguageExtensionList -> FilePragma
 pattern LanguagePragma exts <- Ann _ (ULanguagePragma exts)
 
 -- | @OPTIONS@ pragma, possibly qualified with a tool, e.g. OPTIONS_GHC
-pattern OptionsPragma :: String -> FilePragma dom
+pattern OptionsPragma :: String -> FilePragma
 pattern OptionsPragma opt <- Ann _ (UOptionsPragma (Ann _ (UStringNode opt)))
 
 -- | The name of the enabled language extension, for example (@ LambdaCase @)
-pattern LanguageExtension :: String -> LanguageExtension dom
+pattern LanguageExtension :: String -> LanguageExtension
 pattern LanguageExtension ext <- Ann _ (ULanguageExtension ext)
 
 -- | A warning pragma attached to the module
-pattern ModuleWarningPragma :: StringNodeList dom -> ModulePragma dom
+pattern ModuleWarningPragma :: StringNodeList -> ModulePragma
 pattern ModuleWarningPragma msgs <- Ann _ (UModuleWarningPragma msgs)
 
 -- | A deprecated pragma attached to the module
-pattern ModuleDeprecatedPragma :: StringNodeList dom -> ModulePragma dom
+pattern ModuleDeprecatedPragma :: StringNodeList -> ModulePragma
 pattern ModuleDeprecatedPragma msgs <- Ann _ (UModuleDeprecatedPragma msgs)

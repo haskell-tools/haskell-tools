@@ -24,23 +24,20 @@ import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.PrettyPrint.Prepare
 import Language.Haskell.Tools.Refactor.Monad
 import Language.Haskell.Tools.Refactor.Representation (RefactorChange(..), ModuleDom, UnnamedModule)
-import Language.Haskell.Tools.Rewrite
+import Language.Haskell.Tools.Rewrite as HT
 
 -- | Performs the given refactoring, transforming it into a Ghc action
-runRefactor :: ModuleDom dom -> [ModuleDom dom] -> Refactoring dom -> Ghc (Either String [RefactorChange dom])
+runRefactor :: ModuleDom -> [ModuleDom] -> Refactoring -> Ghc (Either String [RefactorChange])
 runRefactor mod mods trf = runExceptT $ trf mod mods
 
 -- | Wraps a refactoring that only affects one module. Performs the per-module finishing touches.
-localRefactoring :: HasModuleInfo dom => LocalRefactoring dom -> Refactoring dom
+localRefactoring :: LocalRefactoring -> Refactoring
 localRefactoring ref (name, mod) _
   = (\m -> [ContentChanged (name, m)]) <$> localRefactoringRes id mod (ref mod)
 
 -- | Transform the result of the local refactoring
-localRefactoringRes :: HasModuleInfo dom
-                    => ((UnnamedModule dom -> UnnamedModule dom) -> a -> a)
-                          -> UnnamedModule dom
-                          -> LocalRefactor dom a
-                          -> Refactor a
+localRefactoringRes :: ((UnnamedModule -> UnnamedModule) -> a -> a)
+                          -> UnnamedModule -> LocalRefactor a -> Refactor a
 localRefactoringRes access mod trf
   = let init = RefactorCtx (semanticsModule $ mod ^. semantics) mod (mod ^? modImports&annList)
      in flip runReaderT init $ do (mod, recorded) <- runWriterT (fromRefactorT trf)
@@ -116,13 +113,13 @@ insertText inserted p
    takeWhatPrecedes _ _ _ _ elems = return elems
 
 -- | Adds the imports that bring names into scope that are needed by the refactoring
-addGeneratedImports :: [GHC.Name] -> Ann UModule dom SrcTemplateStage -> Ann UModule dom SrcTemplateStage
+addGeneratedImports :: [GHC.Name] -> HT.Module -> HT.Module
 addGeneratedImports names m = modImports&annListElems .- (++ addImports names) $ m
-  where addImports :: [GHC.Name] -> [Ann UImportDecl dom SrcTemplateStage]
+  where addImports :: [GHC.Name] -> [HT.ImportDecl]
         addImports names = map createImport $ groupBy ((==) `on` GHC.nameModule) $ filter (isJust . GHC.nameModule_maybe) $ nub $ sort names
 
         -- TODO: group names like constructors into correct IESpecs
-        createImport :: [GHC.Name] -> Ann UImportDecl dom SrcTemplateStage
+        createImport :: [GHC.Name] -> HT.ImportDecl
         -- works on groupby result, so list is nonempty
         createImport names = mkImportDecl False True False Nothing (mkModuleName $ GHC.moduleNameString $ GHC.moduleName $ GHC.nameModule $ head names)
                                           Nothing (Just $ mkImportSpecList (map (\n -> mkIESpec (mkUnqualName' n) Nothing) names))
@@ -142,15 +139,15 @@ qualifiedName name = case GHC.nameModule_maybe name of
   Just mod -> GHC.moduleNameString (GHC.moduleName mod) ++ "." ++ GHC.occNameString (GHC.nameOccName name)
   Nothing -> GHC.occNameString (GHC.nameOccName name)
 
-referenceName :: (HasImportInfo dom, HasModuleInfo dom) => GHC.Name -> LocalRefactor dom (Ann UName dom SrcTemplateStage)
+referenceName :: GHC.Name -> LocalRefactor (Ann UName IdDom SrcTemplateStage)
 referenceName = referenceName' mkQualName'
 
-referenceOperator :: (HasImportInfo dom, HasModuleInfo dom) => GHC.Name -> LocalRefactor dom (Ann UOperator dom SrcTemplateStage)
+referenceOperator :: GHC.Name -> LocalRefactor (Ann UOperator IdDom SrcTemplateStage)
 referenceOperator = referenceName' mkQualOp'
 
 -- | Create a name that references the definition. Generates an import if the definition is not yet imported.
-referenceName' :: (HasImportInfo dom, HasModuleInfo dom)
-               => ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> LocalRefactor dom (Ann nt dom SrcTemplateStage)
+referenceName' :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name 
+                    -> LocalRefactor (Ann nt IdDom SrcTemplateStage)
 referenceName' makeName name
   | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
   = return $ makeName [] name -- imported from prelude
@@ -168,11 +165,12 @@ referenceName' makeName name
   where moduleParts = maybe [] (splitOn "." . GHC.moduleNameString . GHC.moduleName) . GHC.nameModule_maybe
 
 -- | Reference the name by the shortest suitable import
-referenceBy :: ([String] -> GHC.Name -> Ann nt dom SrcTemplateStage) -> GHC.Name -> [Ann UImportDecl dom SrcTemplateStage] -> Ann nt dom SrcTemplateStage
+referenceBy :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name 
+                 -> [Ann UImportDecl IdDom SrcTemplateStage] -> Ann nt IdDom SrcTemplateStage
 referenceBy makeName name imps =
   let prefixes = map importQualifier imps
    in makeName (minimumBy (compare `on` (length . concat)) prefixes) name
-  where importQualifier :: Ann UImportDecl dom SrcTemplateStage -> [String]
+  where importQualifier :: Ann UImportDecl IdDom SrcTemplateStage -> [String]
         importQualifier imp
           = if isJust (imp ^? importQualified&annJust)
               then case imp ^? importAs&annJust&importRename of

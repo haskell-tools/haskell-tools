@@ -17,10 +17,11 @@ import SrcLoc (SrcSpan, noSrcSpan)
 
 -- | Filters the elements of the list. By default it removes the separator before the element.
 -- Of course, if the first element is removed, the following separator is removed as well.
-filterList :: SourceInfoTraversal e => (Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> AnnList e dom
+filterList :: SourceInfoTraversal e => (Ann e IdDom SrcTemplateStage -> Bool) -> AnnList e -> AnnList e
 filterList pred = filterListIndexed (const pred)
 
-filterListIndexed :: SourceInfoTraversal e => (Int -> Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> AnnList e dom
+filterListIndexed :: SourceInfoTraversal e => (Int -> Ann e IdDom SrcTemplateStage -> Bool) 
+                                                -> AnnList e -> AnnList e
 filterListIndexed pred (AnnListG (NodeInfo sema src) elems)
   =  AnnListG (NodeInfo sema (srcTmpIndented .- fmap filterIndents $ srcTmpSeparators .- filterSeparators $ src)) filteredElems
   where elementsKept = findIndices (uncurry pred) (zip [0..] elems)
@@ -29,11 +30,13 @@ filterListIndexed pred (AnnListG (NodeInfo sema src) elems)
         filterSeparators = take (length elementsKept - 1) . sublist elementsKept
 
 -- | A version of filterList that cares about keeping non-removable code elements (like preprocessor pragmas)
-filterListSt :: SourceInfoTraversal e => (Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> LocalRefactor dom (AnnList e dom)
+filterListSt :: SourceInfoTraversal e => (Ann e IdDom SrcTemplateStage -> Bool) -> AnnList e 
+                                           -> LocalRefactor (AnnList e)
 filterListSt pred = filterListIndexedSt (const pred)
 
 -- | A version of filterListIndexed that cares about keeping non-removable code elements (like preprocessor pragmas)
-filterListIndexedSt :: SourceInfoTraversal e => (Int -> Ann e dom SrcTemplateStage -> Bool) -> AnnList e dom -> LocalRefactor dom (AnnList e dom)
+filterListIndexedSt :: SourceInfoTraversal e => (Int -> Ann e IdDom SrcTemplateStage -> Bool) 
+                                                  -> AnnList e -> LocalRefactor (AnnList e)
 filterListIndexedSt pred ls@(AnnListG _ elems)
   | all (uncurry pred) (zip [0..] elems)
   = return ls
@@ -69,9 +72,9 @@ notSublist indices = map snd . filter ((`notElem` indices) . fst) . zip [0..]
 
 -- | Inserts the element in the places where the two positioning functions (one checks the element before, one the element after)
 -- allows the placement.
-insertWhere :: Bool -> Ann e dom SrcTemplateStage -> (Maybe (Ann e dom SrcTemplateStage) -> Bool)
-                 -> (Maybe (Ann e dom SrcTemplateStage) -> Bool) -> AnnList e dom
-                 -> AnnList e dom
+insertWhere :: Bool -> Ann e IdDom SrcTemplateStage -> (Maybe (Ann e IdDom SrcTemplateStage) -> Bool)
+                 -> (Maybe (Ann e IdDom SrcTemplateStage) -> Bool) -> AnnList e
+                 -> AnnList e
 insertWhere indented e before after al
   = let index = insertIndex before after (al ^? annList)
      in case index of
@@ -85,7 +88,8 @@ insertWhere indented e before after al
         isEmptyAnnList = (null :: [x] -> Bool) $ (al ^? annList)
 
 -- | Checks where the element will be inserted given the two positioning functions.
-insertIndex :: (Maybe (Ann e dom SrcTemplateStage) -> Bool) -> (Maybe (Ann e dom SrcTemplateStage) -> Bool) -> [Ann e dom SrcTemplateStage] -> Maybe Int
+insertIndex :: (Maybe (Ann e IdDom SrcTemplateStage) -> Bool) -> (Maybe (Ann e IdDom SrcTemplateStage) -> Bool) 
+                 -> [Ann e IdDom SrcTemplateStage] -> Maybe Int
 insertIndex before after []
   | before Nothing && after Nothing = Just 0
   | otherwise = Nothing
@@ -104,7 +108,7 @@ insertIndex before after list@(first:_)
 
 -- | Gets the elements and separators from a list. The first separator is zipped to the second element.
 -- To the first element, the "" string is zipped.
-zipWithSeparators :: AnnList e dom -> [(([SourceTemplateTextElem], SrcSpan), Ann e dom SrcTemplateStage)]
+zipWithSeparators :: AnnList e -> [(([SourceTemplateTextElem], SrcSpan), Ann e IdDom SrcTemplateStage)]
 zipWithSeparators (AnnListG (NodeInfo _ src) elems)
   | [] <- src ^. srcTmpSeparators
   = zip (([], noSrcSpan) : repeat ([NormalText $ src ^. srcTmpDefaultSeparator], noSrcSpan)) elems

@@ -33,7 +33,6 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Data.Map as Map (fromList, lookup)
 
 import qualified GHC (Name(..), isNewTyCon)
-import qualified Name as GHC (Name)
 import PrelNames
 import THNames (liftClassName)
 
@@ -144,7 +143,7 @@ chkDataInstance d@(DataInstance keyw _ _ derivs) = do
 chkDataInstance d = return d
 
 
-separateByKeyword :: DataOrNewtypeKeyword dom -> CheckNode Deriving
+separateByKeyword :: DataOrNewtypeKeyword -> CheckNode Deriving
 separateByKeyword keyw derivs
   | isNewtypeDecl keyw = chkByStrat chkClassForNewtype derivs
   | otherwise          = chkByStrat chkClassForData    derivs
@@ -153,7 +152,7 @@ separateByKeyword keyw derivs
                                _               -> False
 
 
-getStrategy :: Deriving dom -> Maybe (DeriveStrategy dom)
+getStrategy :: Deriving -> Maybe DeriveStrategy
 getStrategy d = d ^. (deriveStrategy & annMaybe)
 
 addExtension :: (MonadState ExtMap m, HasRange node) =>
@@ -167,7 +166,7 @@ addStockExtension x
   | Just sname <- nameFromStock x = addExtension sname x
   | otherwise = return x
 
-chkByStrat :: CheckNode' InstanceHead dom -> CheckNode' Deriving dom
+chkByStrat :: CheckNode InstanceHead -> CheckNode Deriving
 chkByStrat checker d
   | Just strat <- getStrategy d = do
     addOccurence DerivingStrategies d
@@ -175,17 +174,17 @@ chkByStrat checker d
   | otherwise =
     chkDerivingClause checker d
 
-chkStrat :: DeriveStrategy dom -> CheckNode' InstanceHead dom
+chkStrat :: DeriveStrategy -> CheckNode InstanceHead
 chkStrat (_element -> UStockStrategy)    = addStockExtension
 chkStrat (_element -> UNewtypeStrategy)  = addOccurence GeneralizedNewtypeDeriving
 chkStrat (_element -> UAnyClassStrategy) = addOccurence DeriveAnyClass
 
-chkDerivingClause :: CheckNode' InstanceHead dom -> CheckNode' Deriving dom
+chkDerivingClause :: CheckNode InstanceHead -> CheckNode Deriving
 chkDerivingClause checker d@(DerivingOne   x)  = checker x               >> return d
 chkDerivingClause checker d@(DerivingMulti xs) = (annList !~ checker) xs >> return d
 
 -- checks whether the class is stock, and if it is, returns its name
-nameFromStock :: HasNameInfo dom => InstanceHead dom -> Maybe GHC.Name
+nameFromStock :: InstanceHead -> Maybe GHC.Name
 nameFromStock x
   | InstanceHead name <- skipParens x,
     Just sname <- getSemName name,
@@ -214,7 +213,7 @@ chkClassForNewtype x
          | otherwise             -> return ()
       return x
 
-skipParens :: InstanceHead dom -> InstanceHead dom
+skipParens :: InstanceHead -> InstanceHead
 skipParens (ParenInstanceHead x) = skipParens x
 skipParens x = x
 
@@ -236,18 +235,18 @@ chkStandaloneDeriving d@(Refact.StandaloneDeriving strat _ (decompRule -> (cls,t
     return d
 chkStandaloneDeriving d = return d
 
-decompRule :: InstanceRule dom -> (InstanceHead dom, Type dom)
+decompRule :: InstanceRule -> (InstanceHead, Type)
 decompRule instRule = (cls, ty)
   where ihead = instRule  ^. irHead
         cls   = getClassCon   ihead
         ty    = rightmostType ihead
 
-getClassCon :: InstanceHead dom -> InstanceHead dom
+getClassCon :: InstanceHead -> InstanceHead
 getClassCon (AppInstanceHead f _) = getClassCon f
 getClassCon (ParenInstanceHead x) = getClassCon x
 getClassCon x = x
 
-rightmostType :: InstanceHead dom -> Type dom
+rightmostType :: InstanceHead -> Type
 rightmostType ihead
   | AppInstanceHead _ tyvar <- skipParens ihead = tyvar
 
@@ -262,7 +261,7 @@ rightmostType ihead
   This is desirable since the underlying type might be a newtype
   in which case GeneralizedNewtypeDeriving might be necessary.
 -}
-isSynNewType :: HasNameInfo dom => Type dom -> ExtMonad Bool
+isSynNewType :: Type -> ExtMonad Bool
 isSynNewType t = do
   mtycon <- runMaybeT . lookupType $ t
   case mtycon of

@@ -11,8 +11,8 @@ import SrcLoc (RealSrcSpan)
 tryItOut :: String -> String -> IO ()
 tryItOut = tryRefactor (localRefactoring . helloRefactor)
 
-helloRefactor :: Domain dom => RealSrcSpan -> LocalRefactoring dom
+helloRefactor :: RealSrcSpan -> LocalRefactoring
 helloRefactor sp = return . (nodesContained sp .- helloExpr)
 
-helloExpr :: Expr dom -> Expr dom
+helloExpr :: Expr -> Expr
 helloExpr e = trace ("\n### Hello: " ++ prettyPrint e) $ e

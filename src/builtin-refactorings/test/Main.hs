@@ -518,7 +518,7 @@ checkCorrectlyTransformed command workingDir moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                     (mapRight standardizeLineEndings res)
 
-testRefactor :: (UnnamedModule IdDom -> LocalRefactoring IdDom) -> String -> IO (Either String String)
+testRefactor :: (UnnamedModule -> LocalRefactoring) -> String -> IO (Either String String)
 testRefactor refact moduleName
   = runGhc (Just libdir) $ do
       initGhcFlags
