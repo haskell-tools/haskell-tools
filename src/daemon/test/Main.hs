@@ -184,7 +184,7 @@ compProblemTests isSource testRoot =
     , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
   , ( "source-error"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "source-error"] ]
-    , \case [LoadingModules{}, CompilationProblem {}] -> True; _ -> False)
+    , \case [LoadingModules{}, LoadedModule{}, CompilationProblem {}] -> True; _ -> False)
   , ( "reload-error"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "empty"]
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\nimport No.Such.Module"
@@ -196,7 +196,7 @@ compProblemTests isSource testRoot =
       , Left $ appendFile (testRoot </> "empty" </> "A.hs") "\n\naa = 3 + ()"
       , Right $ ReLoad [] [testRoot </> "empty" </> "A.hs"] []
       , Left $ writeFile (testRoot </> "empty" </> "A.hs") "module A where"]
-    , \case [LoadingModules {}, LoadedModule {}, LoadingModules {}, CompilationProblem {}] -> True; _ -> False)
+    , \case [LoadingModules {}, LoadedModule {}, LoadingModules {}, LoadedModule{}, CompilationProblem {}] -> True; _ -> False)
   , ( "warning"
     , [ Right $ SetPackageDB DefaultDB, Right $ AddPackages [testRoot </> "warning"] ]
     , \case [LoadingModules{}, LoadedModule {}, CompilationProblem [Marker _ Warning _] []] -> True; _ -> False)
@@ -281,6 +281,13 @@ refactorTests testRoot =
               -> aPath == testRoot </> "simple-refactor" ++ testSuffix </> "A.hs"
                    && aaPath == testRoot </> "simple-refactor" ++ testSuffix </> "AA.hs"
             _ -> False )
+  , ( "refactor-type-error", testRoot </> "source-error"
+    , [ AddPackages [testRoot </> "source-error"] 
+      , PerformRefactoring "RenameDefinition" (testRoot </> "source-error" ++ testSuffix </> "A.hs") "3:1-3:2" ["aa"] False False
+      ]
+    , \case [ LoadingModules{}, LoadedModule{}, CompilationProblem {}
+              , LoadingModules{}, LoadedModule{}, CompilationProblem {}
+              ] -> True; _ -> False)
   ]
 
 reloadingTests :: FilePath -> [(String, FilePath, [ClientMessage], IO (), [ClientMessage], [ResponseMsg] -> Bool)]

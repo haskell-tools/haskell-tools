@@ -22,7 +22,7 @@ import Language.Haskell.Tools.Daemon.Protocol
 import Language.Haskell.Tools.Daemon.State (DaemonSessionState(..), initSession, exiting)
 import Language.Haskell.Tools.Daemon.Update (updateClient, initGhcSession)
 import Language.Haskell.Tools.Daemon.Watch (createWatchProcess', stopWatch)
-import Language.Haskell.Tools.Refactor (IdDom, RefactoringChoice)
+import Language.Haskell.Tools.Refactor (RefactoringChoice(..))
 import Paths_haskell_tools_daemon (version)
 
 -- | Starts the daemon process. This will not return until the daemon stops. You can use this entry

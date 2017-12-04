@@ -177,6 +177,7 @@ trfExpr' (ExplicitSum tag arity expr _)
                        <*> trfExpr expr
                        <*> makeList " | " (before AnnClose) (mapM makePlaceholder locsAfter)
   where makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)
+trfExpr' EWildPat = return AST.UHole
 trfExpr' t = unhandledElement "expression" t
 
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnListG AST.UFieldUpdate (Dom r) RangeStage)

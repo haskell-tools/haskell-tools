@@ -303,6 +303,8 @@ mkLeftHighAppl = mkAnn "-<<" ULeftHighApp
 mkRightHighAppl :: ArrowApp
 mkRightHighAppl = mkAnn ">>-" URightHighApp
 
-
+-- | A hole expression @_@
+mkHole :: Expr
+mkHole = mkAnn "_" UHole
 
 
