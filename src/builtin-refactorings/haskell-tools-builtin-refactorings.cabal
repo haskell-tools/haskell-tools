@@ -83,7 +83,7 @@ library
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
-                     , classyplate
+                     , classyplate               >= 0.3  && < 0.4
                      , ghc-paths                 >= 0.1  && < 0.2
                      , containers                >= 0.5  && < 0.6
                      , directory                 >= 1.2  && < 1.4
