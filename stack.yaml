@@ -19,5 +19,4 @@ packages:
 extra-deps:
   - fswatch-0.1.0.2
   - knob-0.1.1
-  - archive: https://github.com/nboldi/classyplate/archive/master.zip
-
+  - classyplate-0.3.0.2

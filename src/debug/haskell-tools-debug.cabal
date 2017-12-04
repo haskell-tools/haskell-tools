@@ -28,8 +28,8 @@ library
                      , haskell-tools-refactor    >= 1.0 && < 1.1
                      , haskell-tools-prettyprint >= 1.0 && < 1.1
                      , haskell-tools-builtin-refactorings >= 1.0 && < 1.1
-                     , uniplate 
-                     , classyplate 
+                     , uniplate
+                     , classyplate               >= 0.3  && < 0.4
                      , syb
                      , criterion
                      , mtl
