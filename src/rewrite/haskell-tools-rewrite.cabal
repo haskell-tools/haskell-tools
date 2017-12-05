@@ -54,8 +54,8 @@ test-suite haskell-tools-rewrite-tests
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.10 && < 4.11
-                     , tasty                     >= 0.11 && < 0.12
-                     , tasty-hunit               >= 0.9 && < 0.10
+                     , tasty                     >= 0.11 && < 0.13
+                     , tasty-hunit               >= 0.9 && < 0.11
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
                      , haskell-tools-ast         >= 1.0 && < 1.1
