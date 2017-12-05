@@ -38,6 +38,8 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests lambdaCaseTest
   , mkTests tupleSectionsTest
   , mkNestedTests magicHashTest
+  , mkTests functionalDependenciesTest
+  , mkTests defaultSignaturesTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -228,3 +230,15 @@ magicHashLiteralTest :: TestSuite
 magicHashLiteralTest = (mhLiteralRoot, mhLiteralModules)
 mhLiteralRoot = "Literal"
 mhLiteralModules = [ "InExpr" ]
+
+
+functionalDependenciesTest :: TestSuite
+functionalDependenciesTest = (fdRoot, fdModules)
+fdRoot = "FunctionalDependenciesTest"
+fdModules = [ "Basic" ]
+
+
+defaultSignaturesTest :: TestSuite
+defaultSignaturesTest = (dsRoot, dsModules)
+dsRoot = "DefaultSignaturesTest"
+dsModules = [ "Basic" ]

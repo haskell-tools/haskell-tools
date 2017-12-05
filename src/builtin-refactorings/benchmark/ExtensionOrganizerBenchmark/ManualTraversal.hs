@@ -2,8 +2,8 @@
 
 module ExtensionOrganizerBenchmark.ManualTraversal where
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable()
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Refactor as Refact
@@ -17,44 +17,6 @@ import Control.Reference ((!~), (&), (&+&))
          We need Decl level checking for instance heads, in order to distinguish
          class instances from data and type family instances.
 -}
-chkDecl :: CheckNode Decl
-chkDecl = chkFlexibleInstances >=> chkDerivings
-
-chkPattern :: CheckNode Pattern
-chkPattern = chkBangPatterns
-         >=> chkViewPatterns
-         >=> chkUnboxedTuplesPat
-
-chkExpr :: CheckNode Expr
-chkExpr = chkTupleSections
-      >=> chkUnboxedTuplesExpr
-      >=> chkLambdaCase
-
-chkType :: CheckNode Type
-chkType = chkUnboxedTuplesType
-
-chkPatternField :: CheckNode PatternField
-chkPatternField = chkRecordWildCardsPatField
-
-chkFieldUpdate :: CheckNode FieldUpdate
-chkFieldUpdate = chkRecordWildCardsFieldUpdate
-
-chkPatternSynonym :: CheckNode PatternSynonym
-chkPatternSynonym = chkPatternSynonymsSyn
-
-chkPatternSignature :: CheckNode PatternSignature
-chkPatternSignature = chkPatternSynonymsTypeSig
-
-chkLiteral :: CheckNode Literal
-chkLiteral = chkMagicHashLiteral
-
-chkNamePart :: CheckNode NamePart
-chkNamePart = chkMagicHashNamePart
-          >=> chkTemplateHaskellhNamePart
-
-chkKind :: CheckNode Kind
-chkKind = chkMagicHashKind
-
 
 traverseModule :: CheckNode UnnamedModule
 traverseModule = (modDecl & annList !~ traverseDecl)
@@ -79,7 +41,7 @@ traverseSubSpec :: CheckNode SubSpec
 traverseSubSpec = essList & annList !~ traverseName
 
 traverseDecl :: CheckNode Decl
-traverseDecl = chkDecl
+traverseDecl = check
                >=> (declValBind !~ traverseValueBind)
                >=> (declBody & annJust !~ traverseClassBody)
                >=> (declSplice !~ traverseSplice)
@@ -165,7 +127,7 @@ traverseRuleVar = (ruleVarName !~ traverseName)
               >=> (ruleVarType !~ traverseType)
 
 traversePatternSignature :: CheckNode PatternSignature
-traversePatternSignature = chkPatternSignature
+traversePatternSignature = check
                        >=> (patSigName & annList !~ traverseName)
                        >=> (patSigType !~ traverseType)
 
@@ -257,7 +219,7 @@ traverseInlinePragma = return {- nnerName !~ traverseName
 
 
 traversePatternSynonym :: CheckNode PatternSynonym
-traversePatternSynonym = chkPatternSynonym
+traversePatternSynonym = check
                          >=> (patRhs !~ traverseInnerRhs)
                          >=> (patLhs !~ traverseInnerLhs)
 
@@ -342,7 +304,7 @@ traverseValueBind = (valBindPat !~ traversePattern)
 
 
 traversePattern :: CheckNode Pattern
-traversePattern = chkPattern
+traversePattern = check
                   >=> (innerPattern !~ traversePattern)
                   >=> (innerLiteral !~ traverseLiteral)
                   >=> (patternOperator !~ traverseOperator)
@@ -363,13 +325,13 @@ traversePattern = chkPattern
   innerLiteral = patternLiteral &+& patternLit
 
 traversePatternField :: CheckNode PatternField
-traversePatternField = chkPatternField
+traversePatternField = check
                        >=> (fieldPatternName !~ traverseName)
                        >=> (fieldPattern !~ traversePattern)
 
 -- TODO: TemplateHaskell?
 traverseExpr :: CheckNode Expr
-traverseExpr = chkExpr
+traverseExpr = check
               >=> (innerExpressions !~ traverseExpr)
               >=> (innerPatterns !~ traversePattern)
               >=> (exprFunBind & annList !~ traverseLocalBind)
@@ -446,7 +408,7 @@ traverseTupSecElem :: CheckNode TupSecElem
 traverseTupSecElem = tupSecExpr !~ traverseExpr
 
 traverseFieldUpdate :: CheckNode FieldUpdate
-traverseFieldUpdate = chkFieldUpdate
+traverseFieldUpdate = check
                       >=> (fieldName &+& fieldUpdateName !~ traverseName)
                       >=> (fieldValue !~ traverseExpr)
 
@@ -485,23 +447,23 @@ traverseCmd = (innerExpressions !~ traverseExpr)
 -}
 
 traverseSplice :: CheckNode Splice
-traverseSplice = chkTemplateHaskellSplice
+traverseSplice = check
                  >=> (spliceId !~ traverseName)
                  >=> (spliceExpr !~ traverseExpr)
 
 traverseBracket :: CheckNode Bracket
-traverseBracket = chkTemplateHaskellBracket
+traverseBracket = check
                   >=> (bracketExpr !~ traverseExpr)
                   >=> (bracketPattern !~ traversePattern)
                   >=> (bracketType !~ traverseType)
                   >=> (bracketDecl & annList !~ traverseDecl)
 
 traverseQuasiQuote :: CheckNode QuasiQuote
-traverseQuasiQuote = chkTemplateHaskellQuasiQuote
+traverseQuasiQuote = check
                      >=> (qqExprName !~ traverseName)
 
 traverseType :: CheckNode Type
-traverseType = chkType
+traverseType = check
               >=> (typeBounded & annList !~ traverseTyVar)
               >=> (innerType !~ traverseType)
               >=> (innerName !~ traverseName)
@@ -533,7 +495,7 @@ traverseKindContraint :: CheckNode KindConstraint
 traverseKindContraint = kindConstr !~ traverseKind
 
 traverseKind :: CheckNode Kind
-traverseKind = chkKind
+traverseKind = check
            >=> (innerKind !~ traverseKind)
            >=> (kindVar !~ traverseName)
            >=> (kindAppOp !~ traverseOperator)
@@ -573,10 +535,10 @@ traverseQualifiedName = unqualifiedName !~ traverseNamePart
                    >=> qualifiers & annList !~ traverseNamePart
 
 traverseNamePart :: CheckNode NamePart
-traverseNamePart = chkNamePart
+traverseNamePart = check
 
 traverseLiteral :: CheckNode Literal
-traverseLiteral = chkLiteral
+traverseLiteral = check
 
 traverseOperator :: CheckNode Operator
 traverseOperator = operatorName !~ traverseQualifiedName

@@ -54,3 +54,9 @@ instance Checkable QuasiQuote where
 
 instance Checkable Bracket where
   check = chkTemplateHaskellBracket
+
+instance Checkable FunDepList where
+  check = chkFunDeps
+
+instance Checkable ClassElement where
+  check = chkDefaultSigs
