@@ -1,6 +1,6 @@
 module Refactor.OrganizeImports.Class where
 
-import Decl.TypeClass (C(f))
-import Decl.TypeInstance
+import Refactor.OrganizeImports.TypeClass (C(f))
+import Refactor.OrganizeImports.TypeInstance
 
 test = f A
