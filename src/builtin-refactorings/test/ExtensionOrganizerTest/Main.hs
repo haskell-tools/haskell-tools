@@ -42,6 +42,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests defaultSignaturesTest
   , mkTests recursiveDoTest
   , mkTests arrowsTest
+  , mkTests parallelListCompTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -258,3 +259,18 @@ arrowsTest :: TestSuite
 arrowsTest = (arrRoot, arrModules)
 arrRoot = "ArrowsTest"
 arrModules = [ "Basic" ]
+
+
+parallelListCompTest :: TestSuite
+parallelListCompTest = (pcRoot, pcModules)
+pcRoot = "ParallelListCompTest"
+pcModules = [ "InCaseRhs"
+            , "InCompStmt"
+            , "InExpr"
+            , "InFieldUpdate"
+            , "InPattern"
+            , "InRhs"
+            , "InRhsGuard"
+            , "InStmt"
+            , "InTupSecElem"
+            ]

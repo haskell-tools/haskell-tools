@@ -22,6 +22,7 @@ instance Checkable Expr where
       >=> chkLambdaCase
       >=> chkRecursiveDoExpr
       >=> chkArrowsExpr
+      >=> chkParallelListComp
 
 instance Checkable Type where
   check = chkUnboxedTuplesType

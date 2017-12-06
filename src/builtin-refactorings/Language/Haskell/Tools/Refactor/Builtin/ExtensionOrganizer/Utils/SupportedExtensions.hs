@@ -21,7 +21,7 @@ syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
                       , PatternSynonyms, TupleSections, LambdaCase, QuasiQuotes
                       , ViewPatterns, MagicHash, UnboxedTuples
                       , FunctionalDependencies, DefaultSignatures
-                      , RecursiveDo, Arrows ]
+                      , RecursiveDo, Arrows, ParallelListComp ]
 
 derivingExtensions :: [Extension]
 derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
