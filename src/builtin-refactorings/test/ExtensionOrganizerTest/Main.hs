@@ -40,6 +40,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkNestedTests magicHashTest
   , mkTests functionalDependenciesTest
   , mkTests defaultSignaturesTest
+  , mkTests recursiveDoTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -242,3 +243,11 @@ defaultSignaturesTest :: TestSuite
 defaultSignaturesTest = (dsRoot, dsModules)
 dsRoot = "DefaultSignaturesTest"
 dsModules = [ "Basic" ]
+
+
+recursiveDoTest :: TestSuite
+recursiveDoTest = (rdRoot, rdModules)
+rdRoot = "RecursiveDoTest"
+rdModules = [ "MDo"
+            , "RecStmt"
+            ]

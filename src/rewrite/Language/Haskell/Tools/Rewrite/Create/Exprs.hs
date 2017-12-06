@@ -55,6 +55,11 @@ mkCase expr cases = mkAnn ("case " <> child <> " of " <> child) $ UCase expr (mk
 mkDoBlock :: [Stmt] -> Expr
 mkDoBlock stmts = mkAnn (child <> " " <> child) $ UDo (mkAnn "do" UDoKeyword) (mkAnnList (indented list) stmts)
 
+-- | Create a mdo-notation expressions (@ mdo x <- act1; act2 @)
+mkMDoBlock :: [Stmt] -> Expr
+mkMDoBlock stmts = mkAnn (child <> " " <> child) $ UDo (mkAnn "mdo" UMDoKeyword) (mkAnnList (indented list) stmts)
+
+
 -- | Create a tuple expression (@ (e1, e2, e3) @)
 mkTuple :: [Expr] -> Expr
 mkTuple exprs = mkAnn ("(" <> child <> ")") $ UTuple (mkAnnList (separatedBy ", " list) exprs)
@@ -65,13 +70,13 @@ mkUnboxedTuple exprs = mkAnn ("(# " <> child <> " #)") $ UTuple (mkAnnList (sepa
 
 -- | Create a tuple section, enabled with @TupleSections@ (@ (a,,b) @). One of the elements must be missing.
 mkTupleSection :: [Maybe Expr] -> Expr
-mkTupleSection elems 
+mkTupleSection elems
   = let tupSecs = map (maybe (mkAnn "" Missing) (mkAnn child . Present)) elems
      in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (separatedBy ", " list) tupSecs)
 
 -- | Create a unboxed tuple section, enabled with @TupleSections@ (@ (\#a,,b\#) @). One of the elements must be missing.
 mkTupleUnboxedSection :: [Maybe Expr] -> Expr
-mkTupleUnboxedSection elems 
+mkTupleUnboxedSection elems
   = let tupSecs = map (maybe (mkAnn "" Missing) (mkAnn child . Present)) elems
      in mkAnn ("(" <> child <> ")") $ UTupleSection (mkAnnList (separatedBy ", " list) tupSecs)
 
@@ -110,19 +115,19 @@ mkEnum from step to = mkAnn ("[" <> child <> child <> ".." <> child <> "]") $ UE
 -- | Create a parallel array enumeration (@ [: 1,3 .. 10 :] @)
 mkParArrayEnum :: Expr -> Maybe (Expr) -> Expr -> Expr
 mkParArrayEnum from step to
-  = mkAnn ("[: " <> child <> child <> ".." <> child <> " :]") 
+  = mkAnn ("[: " <> child <> child <> ".." <> child <> " :]")
       $ UParArrayEnum from (mkAnnMaybe (after "," opt) step) to
 
 -- | Create a list comprehension (@ [ (x, y) | x <- xs | y <- ys ] @)
 mkListComp :: Expr -> [ListCompBody] -> Expr
-mkListComp expr stmts 
-  = mkAnn ("[ " <> child <> " | " <> child <> " ]") 
+mkListComp expr stmts
+  = mkAnn ("[ " <> child <> " | " <> child <> " ]")
       $ UListComp expr $ mkAnnList (separatedBy " | " list) stmts
 
 -- | Create a parallel array comprehensions @ [: (x, y) | x <- xs , y <- ys :] @ enabled by @ParallelArrays@
 mkParArrayComp :: Expr -> [ListCompBody] -> Expr
-mkParArrayComp expr stmts 
-  = mkAnn ("[: " <> child <> " | " <> child <> " :]") 
+mkParArrayComp expr stmts
+  = mkAnn ("[: " <> child <> " | " <> child <> " :]")
       $ UParArrayComp expr $ mkAnnList (separatedBy " | " list) stmts
 
 -- | Create a explicit type signature (@ x :: Int @)
@@ -204,7 +209,7 @@ mkCaseRhs = mkAnn (" -> " <> child) . UUnguardedCaseRhs
 mkGuardedCaseRhss :: [GuardedCaseRhs] -> CaseRhs
 mkGuardedCaseRhss = mkAnn child . UGuardedCaseRhss . mkAnnList (indented list)
 
--- | Creates a guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
+-- | Creates a guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)
 mkGuardedCaseRhs :: [RhsGuard] -> Expr -> GuardedCaseRhs
 mkGuardedCaseRhs guards expr = mkAnn (" | " <> child <> " -> " <> child) $ UGuardedCaseRhs (mkAnnList (separatedBy ", " list) guards) expr
 
@@ -212,17 +217,17 @@ mkGuardedCaseRhs guards expr = mkAnn (" | " <> child <> " -> " <> child) $ UGuar
 
 -- | Creates a @CORE@ pragma for adding notes to expressions.
 mkCorePragma :: String -> ExprPragma
-mkCorePragma = mkAnn ("{-# CORE " <> child <> " #-}") . UCorePragma 
+mkCorePragma = mkAnn ("{-# CORE " <> child <> " #-}") . UCorePragma
                  . mkAnn ("\"" <> child <> "\"") . UStringNode
 
 -- | Creates an @SCC@ pragma for defining cost centers for profiling
 mkSccPragma :: String -> ExprPragma
-mkSccPragma = mkAnn ("{-# SCC " <> child <> " #-}") . USccPragma 
+mkSccPragma = mkAnn ("{-# SCC " <> child <> " #-}") . USccPragma
                 . mkAnn ("\"" <> child <> "\"") . UStringNode
 
 -- | Creates a pragma that describes if an expression was generated from a code fragment by an external tool (@ {-\# GENERATED "Happy.y" 1:15-1:25 \#-} @)
 mkGeneratedPragma :: SourceRange -> ExprPragma
-mkGeneratedPragma = mkAnn ("{-# GENERATED " <> child <> " #-}") . UGeneratedPragma 
+mkGeneratedPragma = mkAnn ("{-# GENERATED " <> child <> " #-}") . UGeneratedPragma
 
 -- | Create a in-AST source ranges (for generated pragmas)
 mkSourceRange :: String -> Integer -> Integer -> Integer -> Integer -> SourceRange
@@ -236,13 +241,13 @@ mkSourceRange file fromLine fromCol toLine toCol
 
 -- | An arrow application command (@ f -< x + 1 @)
 mkArrowAppCmd :: Expr -> ArrowApp -> Expr -> Cmd
-mkArrowAppCmd lhs arrow rhs 
+mkArrowAppCmd lhs arrow rhs
   = mkAnn (child <> " " <> child <> " " <> child)
       $ UArrowAppCmd lhs arrow rhs
 
 -- | A form command (@ (|untilA (increment -< x+y) (within 0.5 -< x)|) @)
 mkArrowFromCmd :: Expr -> [Cmd] -> Cmd
-mkArrowFromCmd expr cmds 
+mkArrowFromCmd expr cmds
   = mkAnn ("(| " <> child <> child <> " |)")
       $ UArrowFormCmd expr $ mkAnnList (after " " $ separatedBy " " list) cmds
 
@@ -256,7 +261,7 @@ mkInfixCmd :: Cmd -> Name -> Cmd -> Cmd
 mkInfixCmd lhs op rhs = mkAnn (child <> " " <> child <> " " <> child)
                           $ UInfixCmd lhs op rhs
 
--- | A lambda command 
+-- | A lambda command
 mkLambdaCmd :: [Pattern] -> Cmd -> Cmd
 mkLambdaCmd args cmd = mkAnn ("\\" <> child <> " -> " <> child)
                          $ ULambdaCmd (mkAnnList (separatedBy " " list) args) cmd
@@ -267,20 +272,20 @@ mkParenCmd cmd = mkAnn ("(" <> child <> ")") $ UParenCmd cmd
 
 -- | A pattern match command
 mkCaseCmd :: Expr -> [CmdAlt] -> Cmd
-mkCaseCmd expr alts 
-  = mkAnn ("case " <> child <> " of " <> child) 
+mkCaseCmd expr alts
+  = mkAnn ("case " <> child <> " of " <> child)
       $ UCaseCmd expr $ mkAnnList (indented list) alts
 
 -- | An if command (@ if f x y then g -< x+1 else h -< y+2 @)
 mkIfCmd :: Expr -> Cmd -> Cmd -> Cmd
-mkIfCmd pred then_ else_ 
-  = mkAnn ("if " <> child <> " then " <> child <> " else " <> child) 
+mkIfCmd pred then_ else_
+  = mkAnn ("if " <> child <> " then " <> child <> " else " <> child)
       $ UIfCmd pred then_ else_
 
 -- | A local binding command (@ let z = x+y @)
 mkLetCmd :: [LocalBind] -> Cmd -> Cmd
 mkLetCmd binds cmd
-  = mkAnn ("let " <> child <> " in " <> child) 
+  = mkAnn ("let " <> child <> " in " <> child)
       $ ULetCmd (mkAnnList (indented list) binds) cmd
 
 -- | A do-notation in a command
@@ -302,7 +307,3 @@ mkLeftHighAppl = mkAnn "-<<" ULeftHighApp
 -- | Right arrow high application: @>>-@
 mkRightHighAppl :: ArrowApp
 mkRightHighAppl = mkAnn ">>-" URightHighApp
-
-
-
-

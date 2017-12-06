@@ -25,6 +25,7 @@ type family HasChecker node where
   HasChecker Bracket          = 'True
   HasChecker FunDepList       = 'True
   HasChecker ClassElement     = 'True
+  HasChecker Stmt             = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node

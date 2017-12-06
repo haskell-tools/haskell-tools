@@ -19,7 +19,8 @@ fullyHandledExtensions = syntacticExtensions
 syntacticExtensions :: [Extension]
 syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
                       , PatternSynonyms, TupleSections, LambdaCase, QuasiQuotes
-                      , ViewPatterns, MagicHash, UnboxedTuples]
+                      , ViewPatterns, MagicHash, UnboxedTuples
+                      , FunctionalDependencies, DefaultSignatures ]
 
 derivingExtensions :: [Extension]
 derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor

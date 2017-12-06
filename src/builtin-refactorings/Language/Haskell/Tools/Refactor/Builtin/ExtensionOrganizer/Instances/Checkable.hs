@@ -20,6 +20,7 @@ instance Checkable Expr where
   check = chkTupleSections
       >=> chkUnboxedTuplesExpr
       >=> chkLambdaCase
+      >=> chkRecursiveDoExpr
 
 instance Checkable Type where
   check = chkUnboxedTuplesType
@@ -60,3 +61,6 @@ instance Checkable FunDepList where
 
 instance Checkable ClassElement where
   check = chkDefaultSigs
+
+instance Checkable Stmt where
+  check = chkRecursiveDoStmt
