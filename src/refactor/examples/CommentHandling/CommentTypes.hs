@@ -1,4 +1,4 @@
-module Refactor.CommentHandling.CommentTypes where
+module CommentHandling.CommentTypes where
 
 -- | 1
 -- 2

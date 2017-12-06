@@ -1,4 +1,4 @@
-module Refactor.CommentHandling.Crosslinking where
+module CommentHandling.Crosslinking where
 
 import Control.Monad
 -- | forward

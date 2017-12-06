@@ -1,4 +1,4 @@
-module Refactor.CommentHandling.BlockComments where
+module CommentHandling.BlockComments where
 
 {-| 1 -}
 {- 2 -}
