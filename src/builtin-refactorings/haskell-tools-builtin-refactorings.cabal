@@ -78,7 +78,8 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 
 
-  other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
+  other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker

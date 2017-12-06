@@ -41,6 +41,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests functionalDependenciesTest
   , mkTests defaultSignaturesTest
   , mkTests recursiveDoTest
+  , mkTests arrowsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -251,3 +252,9 @@ rdRoot = "RecursiveDoTest"
 rdModules = [ "MDo"
             , "RecStmt"
             ]
+
+
+arrowsTest :: TestSuite
+arrowsTest = (arrRoot, arrModules)
+arrRoot = "ArrowsTest"
+arrModules = [ "Basic" ]

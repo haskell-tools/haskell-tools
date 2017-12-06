@@ -2,6 +2,7 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
   ( module X
   ) where
 
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker                 as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker           as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker      as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker              as X

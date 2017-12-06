@@ -21,6 +21,7 @@ instance Checkable Expr where
       >=> chkUnboxedTuplesExpr
       >=> chkLambdaCase
       >=> chkRecursiveDoExpr
+      >=> chkArrowsExpr
 
 instance Checkable Type where
   check = chkUnboxedTuplesType
@@ -64,3 +65,6 @@ instance Checkable ClassElement where
 
 instance Checkable Stmt where
   check = chkRecursiveDoStmt
+
+instance Checkable Cmd where
+  check = chkArrowsCmd
