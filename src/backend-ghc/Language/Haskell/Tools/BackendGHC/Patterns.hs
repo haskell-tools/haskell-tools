@@ -11,10 +11,12 @@ import HsPat as GHC
 import HsTypes as GHC (HsWildCardBndrs(..), HsImplicitBndrs(..), HsConDetails(..))
 import Language.Haskell.Tools.BackendGHC.GHCUtils (getFieldOccName)
 import SrcLoc as GHC
+import Control.Monad.Reader
 
 import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
-import Language.Haskell.Tools.BackendGHC.Literals (trfLiteral', trfOverloadedLit)
-import Language.Haskell.Tools.BackendGHC.Monad (Trf, define)
+import Language.Haskell.Tools.AST.SemaInfoTypes
+import Language.Haskell.Tools.BackendGHC.Literals
+import Language.Haskell.Tools.BackendGHC.Monad
 import Language.Haskell.Tools.BackendGHC.Names (TransformName(..), trfOperator, trfName)
 import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice, trfQuasiQuotation')
 import Language.Haskell.Tools.BackendGHC.Types (trfType)
@@ -56,10 +58,10 @@ trfPattern' (ConPatIn name (InfixCon left right)) = AST.UInfixAppPat <$> trfPatt
 trfPattern' (ViewPat expr pat _) = AST.UViewPat <$> trfExpr expr <*> trfPattern pat
 trfPattern' (SplicePat qq@(HsQuasiQuote {})) = AST.UQuasiQuotePat <$> annContNoSema (trfQuasiQuotation' qq)
 trfPattern' (SplicePat splice) = AST.USplicePat <$> trfSplice splice
-trfPattern' (LitPat lit) = AST.ULitPat <$> annContNoSema (trfLiteral' lit)
+trfPattern' (LitPat lit) = AST.ULitPat <$> annCont (pure $ RealLiteralInfo (monoLiteralType lit)) (trfLiteral' lit)
 trfPattern' (SigPatIn pat (hsib_body . hswc_body -> typ)) = AST.UTypeSigPat <$> trfPattern pat <*> trfType typ
-trfPattern' (NPat (ol_val . unLoc -> lit) _ _ _) = AST.ULitPat <$> annContNoSema (trfOverloadedLit lit)
-trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat <$> define (trfName id) <*> annLocNoSema (pure l) (trfOverloadedLit (ol_val lit))
+trfPattern' (NPat (ol_val . unLoc -> lit) _ _ _) = AST.ULitPat <$> annCont (asks contRange >>= pure . PreLiteralInfo) (trfOverloadedLit lit)
+trfPattern' (NPlusKPat id (L l lit) _ _ _ _) = AST.UNPlusKPat <$> define (trfName id) <*> annLoc (asks contRange >>= pure . PreLiteralInfo) (pure l) (trfOverloadedLit (ol_val lit))
 trfPattern' (CoPat _ pat _) = trfPattern' pat -- coercion pattern introduced by GHC
 trfPattern' (SumPat pat tag arity _)
   = do sepsBefore <- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))
