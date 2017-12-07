@@ -14,6 +14,7 @@ import SrcLoc as GHC
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Names as AST
+import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Literals as AST
 
 -- * Annotation type resolution
 
@@ -59,6 +60,7 @@ deriving instance Data IdDom
 type SemanticInfo (domain :: *) (node :: * -> * -> *) = SemanticInfo' domain (SemaInfoClassify node)
 
 data SameInfoNameCls
+data SameInfoLitCls
 data SameInfoExprCls
 data SameInfoImportCls
 data SameInfoModuleCls
@@ -67,15 +69,17 @@ data SameInfoWildcardCls
 
 type family SemaInfoClassify (node :: * -> * -> *) where
   SemaInfoClassify UQualifiedName = SameInfoNameCls
+  SemaInfoClassify ULiteral       = SameInfoLitCls
   SemaInfoClassify UExpr          = SameInfoExprCls
   SemaInfoClassify UImportDecl    = SameInfoImportCls
   SemaInfoClassify AST.UModule    = SameInfoModuleCls
   SemaInfoClassify UFieldWildcard = SameInfoWildcardCls
-  SemaInfoClassify a             = SameInfoDefaultCls
+  SemaInfoClassify a              = SameInfoDefaultCls
 
 type family SemanticInfo' (domain :: *) (nodecls :: *)
 
 type instance SemanticInfo' (Dom n) SameInfoNameCls = NameInfo n
+type instance SemanticInfo' (Dom n) SameInfoLitCls = PreLiteralInfo
 type instance SemanticInfo' (Dom n) SameInfoExprCls = ScopeInfo
 type instance SemanticInfo' (Dom n) SameInfoImportCls = ImportInfo n
 type instance SemanticInfo' (Dom n) SameInfoModuleCls = ModuleInfo GHC.Name
@@ -84,6 +88,7 @@ type instance SemanticInfo' (Dom n) SameInfoDefaultCls = NoSemanticInfo
 
 type instance SemanticInfo' IdDom SameInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SameInfoExprCls = ScopeInfo
+type instance SemanticInfo' IdDom SameInfoLitCls = LiteralInfo
 type instance SemanticInfo' IdDom SameInfoImportCls = ImportInfo GHC.Id
 type instance SemanticInfo' IdDom SameInfoModuleCls = ModuleInfo GHC.Id
 type instance SemanticInfo' IdDom SameInfoWildcardCls = ImplicitFieldInfo
@@ -98,12 +103,14 @@ type Domain d = ( Typeable d
                 , Data d
                 , SemanticInfo' d SameInfoDefaultCls ~ NoSemanticInfo
                 , Data (SemanticInfo' d SameInfoNameCls)
+                , Data (SemanticInfo' d SameInfoLitCls)
                 , Data (SemanticInfo' d SameInfoExprCls)
                 , Data (SemanticInfo' d SameInfoImportCls)
                 , Data (SemanticInfo' d SameInfoModuleCls)
                 , Data (SemanticInfo' d SameInfoWildcardCls)
                 , Show (SemanticInfo' d SameInfoNameCls)
                 , Show (SemanticInfo' d SameInfoExprCls)
+                , Show (SemanticInfo' d SameInfoLitCls)
                 , Show (SemanticInfo' d SameInfoImportCls)
                 , Show (SemanticInfo' d SameInfoModuleCls)
                 , Show (SemanticInfo' d SameInfoWildcardCls)
@@ -341,6 +348,7 @@ class ApplySemaChange cls where
   appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
 
 instance ApplySemaChange SameInfoNameCls where appSemaChange = trfSemaNameCls
+instance ApplySemaChange SameInfoLitCls where appSemaChange = trfSemaLitCls
 instance ApplySemaChange SameInfoExprCls where appSemaChange = trfSemaExprCls
 instance ApplySemaChange SameInfoImportCls where appSemaChange = trfSemaImportCls
 instance ApplySemaChange SameInfoModuleCls where appSemaChange = trfSemaModuleCls
@@ -355,6 +363,7 @@ class ApplySemaChange (SemaInfoClassify a)
 -- | A transformation on the possible semantic informations for a given domain
 data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SameInfoNameCls -> f (SemanticInfo' dom2 SameInfoNameCls)
                                    , trfSemaExprCls :: SemanticInfo' dom1 SameInfoExprCls -> f (SemanticInfo' dom2 SameInfoExprCls)
+                                   , trfSemaLitCls :: SemanticInfo' dom1 SameInfoLitCls -> f (SemanticInfo' dom2 SameInfoLitCls)
                                    , trfSemaImportCls :: SemanticInfo' dom1 SameInfoImportCls -> f (SemanticInfo' dom2 SameInfoImportCls)
                                    , trfSemaModuleCls :: SemanticInfo' dom1 SameInfoModuleCls -> f (SemanticInfo' dom2 SameInfoModuleCls)
                                    , trfSemaWildcardCls :: SemanticInfo' dom1 SameInfoWildcardCls -> f (SemanticInfo' dom2 SameInfoWildcardCls)
