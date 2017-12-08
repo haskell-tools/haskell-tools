@@ -15,6 +15,7 @@ import SrcLoc as GHC
 
 import Control.Monad.Reader (Monad(..), mapM, asks)
 import Data.List
+import Data.Function (on)
 
 import Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
 import Language.Haskell.Tools.BackendGHC.GHCUtils (occName, fromSrcText)
@@ -160,7 +161,7 @@ trfFixitySig (FixitySig names (Fixity _ prec dir))
                                    then makeJust <$> (annLocNoSema (return precLoc) $ pure $ AST.Precedence prec)
                                                                                          -- names cannot be empty
                                    else nothing "" " " (return $ srcSpanStart $ getLoc $ head names))
-                            <*> (nonemptyAnnList . nub <$> mapM trfOperator names)
+                            <*> (nonemptyAnnList . nubBy ((==) `on` AST.getRange) <$> mapM trfOperator names)
   where transformDir InfixL = directionChar (pure AST.AssocLeft)
         transformDir InfixR = directionChar (pure AST.AssocRight)
         transformDir InfixN = annLocNoSema (srcLocSpan . srcSpanEnd <$> tokenLoc AnnInfix) (pure AST.AssocNone)

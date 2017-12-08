@@ -43,13 +43,13 @@ extractAndInsert sp locs
                               Extracted binds -> put Inserted >> (return $ annListElems .- (++ binds) $ locs)
                               Inserted -> return locs
   where selected = locs ^? annList & filtered (isInside sp)
-        floated = normalizeElements $ selected ++ (locs ^? annList & filtered (nameIsSelected . (^? elementName)))
-          where nameIsSelected [n] = n `elem` concatMap (^? elementName) selected
+        floated = normalizeElements $ selected ++ (locs ^? annList & filtered (nameIsSelected . map semanticsName . (^? elementName)))
+          where nameIsSelected [n] = n `elem` concatMap (map semanticsName . (^? elementName)) selected
                 nameIsSelected _ = False
 
         filteredLocs = filterList (\e -> not (getRange e `elem` floatedElemRanges)) locs
           where floatedElemRanges = map getRange floated
-        hasSharedSig = any (\e -> not $ null ((filteredLocs ^? annList & elementName) `intersect` (e ^? elementName))) selected
+        hasSharedSig = any (\e -> not $ null (map semanticsName (filteredLocs ^? annList & elementName) `intersect` map semanticsName (e ^? elementName))) selected
         conflicts = map checkConflict selected
 
         nameConflicts = concat $ map fst conflicts

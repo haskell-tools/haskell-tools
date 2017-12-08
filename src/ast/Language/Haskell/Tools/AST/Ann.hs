@@ -238,6 +238,9 @@ data Ann elem dom stage
         , _element    :: elem dom stage -- ^ The original AST part
         }
 
+instance SourceInfo src => Eq (Ann elem dom src) where
+  a == b = getRange a == getRange b
+
 makeReferences ''Ann
 
 -- | A list of AST elements
