@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving, TemplateHaskell, TypeSynonymInstances, UndecidableInstances #-}
+{-# LANGUAGE BangPatterns, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving, TemplateHaskell, TypeSynonymInstances, UndecidableInstances, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Language.Haskell.Tools.AST.SemaInfoTypes
   ( -- types
     NoSemanticInfo, ScopeInfo, NameInfo, CNameInfo, ModuleInfo, ImportInfo, ImplicitFieldInfo
@@ -88,7 +88,7 @@ data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                                    , _nameLocation :: SrcSpan
                                    }
 
-  deriving Data
+  deriving (Data, Functor, Foldable, Traversable)
 
 -- | Creates semantic information for an unambiguous name
 mkNameInfo :: Scope -> Bool -> n -> NameInfo n
@@ -118,7 +118,7 @@ data PName n
   = PName { _pName :: n
           , _pNameParent :: Maybe n
           }
-  deriving Data
+  deriving (Data, Functor, Foldable, Traversable)
 
 -- | Info for the module element
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
@@ -128,7 +128,7 @@ data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
                                , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
                                , _prelFamInsts :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
                                }
-  deriving Data
+  deriving (Data, Functor, Foldable, Traversable)
 
 instance Data DynFlags where
   gunfold _ _ _ = error "Cannot construct dyn flags"
@@ -152,7 +152,7 @@ data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and
                                , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed.
                                , _importedFamInsts :: [FamInst] -- ^ Family instances implicitly passed.
                                }
-  deriving Data
+  deriving (Data, Functor, Foldable, Traversable)
 
 deriving instance Data FamInst
 deriving instance Data FamFlavor
@@ -181,48 +181,3 @@ makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
 makeReferences ''ImplicitFieldInfo
 makeReferences ''LiteralInfo
-
-instance Functor NameInfo where
-  fmap f = nameInfo .- f
-
-instance Functor PName where
-  fmap f (PName n p) = PName (f n) (fmap f p)
-
-instance Functor ModuleInfo where
-  fmap f = implicitNames .- fmap (fmap f)
-
-instance Functor ImportInfo where
-  fmap f (ImportInfo mod avail imps clsInsts famInsts)
-    = ImportInfo mod (fmap f avail) (fmap (fmap f) imps) clsInsts famInsts
-
-instance Foldable NameInfo where
-  foldMap f si = maybe mempty f (si ^? nameInfo)
-
-instance Foldable ModuleInfo where
-  foldMap f si = foldMap (foldMap f) (si ^. implicitNames)
-
-instance Foldable ImportInfo where
-  foldMap f si = foldMap f (((si ^. availableNames)
-                   ++ (si ^? importedNames & traversal & (pName &+& pNameParent & just) )))
-
-instance Foldable PName where
-  foldMap f (PName n p) = f n `mappend` foldMap f p
-
-instance Traversable PName where
-  traverse f (PName n p) = PName <$> f n <*> traverse f p
-
-instance Traversable NameInfo where
-  traverse f (NameInfo locals defined nameInfo) = NameInfo locals defined <$> f nameInfo
-  traverse _ (AmbiguousNameInfo locals defined nameInfo span)
-    = pure $ AmbiguousNameInfo locals defined nameInfo span
-  traverse _ (ImplicitNameInfo locals defined nameInfo span)
-    = pure $ ImplicitNameInfo locals defined nameInfo span
-
-instance Traversable ModuleInfo where
-  traverse f (ModuleInfo mod dfs isboot imp clsInsts famInsts)
-    = ModuleInfo mod dfs isboot <$> traverse (traverse f) imp <*> pure clsInsts <*> pure famInsts
-
-instance Traversable ImportInfo where
-  traverse f (ImportInfo mod avail imps clsInsts famInsts)
-    = ImportInfo mod <$> traverse f avail <*> traverse (traverse f) imps <*> pure clsInsts
-                     <*> pure famInsts
