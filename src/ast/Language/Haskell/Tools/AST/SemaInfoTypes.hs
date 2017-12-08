@@ -41,10 +41,6 @@ data UsageSpec = UsageSpec { usageQualified :: Bool
                            }
   deriving Data
 
-instance Show UsageSpec where
-  show (UsageSpec q useQ asQ)
-    = (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
-
 -- | Semantic info type for any node not
 -- carrying additional semantic information
 data NoSemanticInfo = NoSemanticInfo

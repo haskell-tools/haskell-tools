@@ -176,6 +176,10 @@ class Outputable n => InspectableName n where
 showUsage :: InspectableName n => (n, Maybe [UsageSpec], Maybe n) -> String
 showUsage (n,usage,parent) = inspect n ++ show usage ++ maybe "" (\p -> "( in " ++ showSDocUnsafe (ppr p) ++ ")") parent
 
+instance Show UsageSpec where
+  show (UsageSpec q useQ asQ)
+    = (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
+
 instance InspectableName GHC.Name where
   inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "]"
 
