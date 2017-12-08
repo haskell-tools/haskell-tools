@@ -39,20 +39,16 @@ data UsageSpec = UsageSpec { usageQualified :: Bool
                            , usageQualifier :: String
                            , usageAs :: String
                            }
-  deriving (Eq, Data)
+  deriving Data
 
-instance Outputable UsageSpec where
-  ppr (UsageSpec q useQ asQ)
-    = GHC.text $ (if q then "qualified " else "") ++ "as "
-        ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
-  pprPrec _ (UsageSpec q useQ asQ)
-    = GHC.text $ (if q then "qualified " else "") ++ "as "
-        ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
+instance Show UsageSpec where
+  show (UsageSpec q useQ asQ)
+    = (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
 
 -- | Semantic info type for any node not
 -- carrying additional semantic information
 data NoSemanticInfo = NoSemanticInfo
-  deriving (Eq, Data)
+  deriving Data
 
 mkNoSemanticInfo :: NoSemanticInfo
 mkNoSemanticInfo = NoSemanticInfo
@@ -60,7 +56,7 @@ mkNoSemanticInfo = NoSemanticInfo
 -- | Info for expressions that tells which definitions are in scope
 data ScopeInfo = ScopeInfo { _exprScopedLocals :: Scope
                            }
-  deriving (Eq, Data)
+  deriving Data
 
 -- | Creates the information about the definitions in scope
 mkScopeInfo :: Scope -> ScopeInfo
@@ -70,19 +66,11 @@ data PreLiteralInfo = RealLiteralInfo { _realLiteralType :: Type
                                       }
                     | PreLiteralInfo { _preLiteralLoc :: SrcSpan
                                      }
-  deriving (Data)
-
-instance Show PreLiteralInfo where
-  show (RealLiteralInfo t) = "RealLiteralInfo (" ++ showSDocUnsafe (ppr t) ++ ")"
-  show (PreLiteralInfo sp) = "PreLiteralInfo (" ++ show sp ++ ")"
+  deriving Data
 
 data LiteralInfo = LiteralInfo { _literalType :: Type
                                }
-  deriving (Data)
-
-instance Show LiteralInfo where
-  show (LiteralInfo t) = "LiteralInfo (" ++ showSDocUnsafe (ppr t) ++ ")"
-
+  deriving Data
 
 -- | Info corresponding to a name
 data NameInfo n = NameInfo { _nameScopedLocals :: Scope
@@ -100,7 +88,7 @@ data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                                    , _nameLocation :: SrcSpan
                                    }
 
-  deriving (Eq, Data)
+  deriving Data
 
 -- | Creates semantic information for an unambiguous name
 mkNameInfo :: Scope -> Bool -> n -> NameInfo n
@@ -120,7 +108,7 @@ data CNameInfo = CNameInfo { _cnameScopedLocals :: Scope
                            , _cnameInfo :: Id
                            , _cnameFixity :: Maybe GHC.Fixity
                            }
-  deriving (Eq, Data)
+  deriving Data
 
 -- | Create a typed name semantic information
 mkCNameInfo :: Scope -> Bool -> Id -> Maybe GHC.Fixity -> CNameInfo
@@ -179,57 +167,13 @@ mkImportInfo mod !names !imported !orphan !family = ImportInfo mod names importe
 -- | Info corresponding to an record-wildcard
 data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitly bounded names
                                            }
-  deriving (Eq, Data)
+  deriving Data
 
 -- | Creates semantic information for a wildcard field binding
 mkImplicitFieldInfo :: [(Name, Name)] -> ImplicitFieldInfo
 mkImplicitFieldInfo = ImplicitFieldInfo
 
-instance Show ScopeInfo where
-  show (ScopeInfo locals) = "(ScopeInfo " ++ showSDocUnsafe (ppr locals) ++ ")"
-
-instance Outputable n => Show (NameInfo n) where
-  show (NameInfo locals defined nameInfo)
-    = "(NameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
-        ++ showSDocUnsafe (ppr nameInfo) ++ ")"
-  show (AmbiguousNameInfo locals defined nameInfo span)
-    = "(AmbiguousNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
-        ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
-  show (ImplicitNameInfo locals defined nameInfo span)
-    = "(ImplicitNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
-        ++ showSDocUnsafe (ppr nameInfo) ++ " " ++ show span ++ ")"
-
-instance Show CNameInfo where
-  show (CNameInfo locals defined nameInfo fixity)
-    = "(CNameInfo " ++ showSDocUnsafe (ppr locals) ++ " " ++ show defined ++ " "
-        ++ showSDocUnsafe (ppr nameInfo) ++ showSDocUnsafe (ppr fixity) ++ ")"
-
-instance Outputable n => Show (PName n) where
-  show (PName n (Just parent))
-    = showSDocUnsafe (ppr n) ++ "[in " ++ showSDocUnsafe (ppr parent) ++ "]"
-  show (PName n Nothing) = showSDocUnsafe (ppr n)
-
-instance Outputable n => Show (ModuleInfo n) where
-  show (ModuleInfo mod _ isboot imp clsInsts famInsts)
-    = "(ModuleInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ show isboot ++ " " ++ show imp ++ " "
-          ++ showSDocUnsafe (ppr clsInsts) ++ " " ++ showSDocUnsafe (ppr famInsts) ++ ")"
-
-instance Outputable n => Show (ImportInfo n) where
-  show (ImportInfo mod avail imported clsInsts famInsts)
-    = "(ImportInfo " ++ showSDocUnsafe (ppr mod) ++ " " ++ showSDocUnsafe (ppr avail) ++ " "
-        ++ show imported ++ " " ++ showSDocUnsafe (ppr clsInsts) ++ " "
-        ++ showSDocUnsafe (ppr famInsts) ++ ")"
-
-instance Show ImplicitFieldInfo where
-  show (ImplicitFieldInfo bnds)
-    = "(ImplicitFieldInfo [" ++ concat (intersperse "," (map showImplicitFld bnds)) ++ "])"
-    where showImplicitFld (from, to) = showSDocUnsafe (ppr from) ++ "->" ++ showSDocUnsafe (ppr to)
-
-instance Show NoSemanticInfo where
-  show NoSemanticInfo = "NoSemanticInfo"
-
 makeReferences ''PName
-makeReferences ''NoSemanticInfo
 makeReferences ''ScopeInfo
 makeReferences ''NameInfo
 makeReferences ''CNameInfo

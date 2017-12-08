@@ -108,16 +108,9 @@ type Domain d = ( Typeable d
                 , Data (SemanticInfo' d SameInfoImportCls)
                 , Data (SemanticInfo' d SameInfoModuleCls)
                 , Data (SemanticInfo' d SameInfoWildcardCls)
-                , Show (SemanticInfo' d SameInfoNameCls)
-                , Show (SemanticInfo' d SameInfoExprCls)
-                , Show (SemanticInfo' d SameInfoLitCls)
-                , Show (SemanticInfo' d SameInfoImportCls)
-                , Show (SemanticInfo' d SameInfoModuleCls)
-                , Show (SemanticInfo' d SameInfoWildcardCls)
                 )
 
 type DomainWith e d = ( Data (SemanticInfo' d (SemaInfoClassify e))
-                      , Show (SemanticInfo' d (SemaInfoClassify e))
                       , Domain d
                       )
 
@@ -133,9 +126,6 @@ class ( Typeable stage
       , Data (SpanInfo stage)
       , Data (ListInfo stage)
       , Data (OptionalInfo stage)
-      , Show (SpanInfo stage)
-      , Show (ListInfo stage)
-      , Show (OptionalInfo stage)
       , HasRange (SpanInfo stage)
       , HasRange (ListInfo stage)
       , HasRange (OptionalInfo stage)
