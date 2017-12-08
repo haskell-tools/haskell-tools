@@ -3,9 +3,9 @@ module CPP.ConditionalImportMulti where
 
 
 #ifndef USE_DATA_LIST
-import Control.Applicative ((<$>))
-import Control.Monad ((>>))
+import CPP.B(b)
+import CPP.C(c)
 #endif
 
 
-a = id <$> (Nothing >> Nothing)
+x = (b,c)

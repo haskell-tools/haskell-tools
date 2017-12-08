@@ -10,6 +10,7 @@ import Language.Haskell.Tools.Refactor.Builtin.InlineBinding (inlineBindingRefac
 import Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions (organizeExtensionsRefactoring, projectOrganizeExtensionsRefactoring)
 import Language.Haskell.Tools.Refactor.Builtin.OrganizeImports (organizeImportsRefactoring, projectOrganizeImportsRefactoring)
 import Language.Haskell.Tools.Refactor.Builtin.RenameDefinition (renameDefinitionRefactoring)
+import Language.Haskell.Tools.Refactor.Builtin.AutoCorrect
 
 builtinRefactorings :: [RefactoringChoice]
 builtinRefactorings
@@ -23,4 +24,5 @@ builtinRefactorings
     , extractBindingRefactoring
     , organizeExtensionsRefactoring
     , projectOrganizeExtensionsRefactoring
+    , autoCorrectRefactoring
     ]

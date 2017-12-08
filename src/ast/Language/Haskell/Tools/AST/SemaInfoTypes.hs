@@ -8,7 +8,7 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
   , defModuleName, defDynFlags, defIsBootModule, implicitNames, importedModule, availableNames
   , importedNames, implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts
-  , prelFamInsts
+  , prelFamInsts, literalType
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
@@ -236,6 +236,7 @@ makeReferences ''CNameInfo
 makeReferences ''ModuleInfo
 makeReferences ''ImportInfo
 makeReferences ''ImplicitFieldInfo
+makeReferences ''LiteralInfo
 
 instance Functor NameInfo where
   fmap f = nameInfo .- f

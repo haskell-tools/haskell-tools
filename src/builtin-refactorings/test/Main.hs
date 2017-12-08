@@ -45,6 +45,7 @@ main = defaultMain $ testGroup "refactor tests"
                            ++ map makeInlineBindingTest inlineBindingTests
                            ++ map makeWrongInlineBindingTest wrongInlineBindingTests
                            ++ map makeFloatOutTest floatOutTests
+                           ++ map makeAutoCorrectTest autoCorrectTests
                            ++ map makeWrongFloatOutTest wrongFloatOutTests
                            ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
                            ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
@@ -82,6 +83,8 @@ organizeImportTests =
   , "Refactor.OrganizeImports.MakeExplicit.Renamed"
   , "Refactor.OrganizeImports.InstanceCarry.ImportOrphan"
   , "Refactor.OrganizeImports.InstanceCarry.ImportNonOrphan"
+  , "Refactor.OrganizeImports.InstanceCarry.Duplicate"
+  , "Refactor.OrganizeImports.InstanceCarry.Transitive"
   , "Refactor.OrganizeImports.NarrowQual"
   , "Refactor.OrganizeImports.NarrowSpec"
   , "Refactor.OrganizeImports.StandaloneDeriving"
@@ -273,6 +276,21 @@ multiModuleTests =
 wrongMultiModuleTests =
   [ ("InlineBinding 3:1-3:2", "A", "Refactor" </> "InlineBinding" </> "AppearsInAnother", [])
   ]
+  
+autoCorrectTests =
+  [ ("Refactor.AutoCorrect.SimpleReParen", "3:5-3:12")
+  , ("Refactor.AutoCorrect.ExternalInstanceReParen", "4:5-4:15")
+  , ("Refactor.AutoCorrect.ComplexExprReParen", "3:5-3:29")
+  , ("Refactor.AutoCorrect.SimpleReOrder", "3:5-3:10")
+  , ("Refactor.AutoCorrect.ThreeArgReOrder", "3:5-3:12")
+  , ("Refactor.AutoCorrect.ThreeArgFirstReOrder", "3:5-3:10")
+  , ("Refactor.AutoCorrect.ExternalInstanceReOrder", "3:5-3:11")
+  , ("Refactor.AutoCorrect.ComplexExprReOrder", "3:5-3:22")
+  , ("Refactor.AutoCorrect.OwnInstanceReOrder", "5:5-5:10")
+  , ("Refactor.AutoCorrect.ComplexExprReOrder2", "3:5-3:39")
+  , ("Refactor.AutoCorrect.SectionReOrder", "3:5-3:18")
+  , ("Refactor.AutoCorrect.TupleSectionReOrder", "4:5-4:15")
+  ]
 
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ())
                          -> (String, String, String, [String]) -> TestTree
@@ -299,7 +317,11 @@ checkMultiFail _ (Right _) = assertFailure "The transformation should fail."
 
 createTest :: String -> [String] -> String -> TestTree
 createTest refactoring args mod
-  = testCase mod $ checkCorrectlyTransformed (refactoring ++ (concatMap (" "++) args)) rootDir mod
+  = testCase mod $ checkCorrectlyTransformed False (refactoring ++ (concatMap (" "++) args)) rootDir mod
+
+createResilientTest :: String -> [String] -> String -> TestTree
+createResilientTest refactoring args mod
+  = testCase mod $ checkCorrectlyTransformed True (refactoring ++ (concatMap (" "++) args)) rootDir mod
 
 createFailTest :: String -> [String] -> String -> TestTree
 createFailTest refactoring args mod
@@ -341,12 +363,17 @@ makeFloatOutTest (mod, rng) = createTest "FloatOut" [rng] mod
 makeWrongFloatOutTest :: (String, String) -> TestTree
 makeWrongFloatOutTest (mod, rng) = createFailTest "FloatOut" [rng] mod
 
-checkCorrectlyTransformed :: String -> String -> String -> IO ()
-checkCorrectlyTransformed command workingDir moduleName
+makeAutoCorrectTest :: (String, String) -> TestTree
+makeAutoCorrectTest (mod, rng) = createResilientTest "AutoCorrect" [rng] mod
+
+
+checkCorrectlyTransformed :: Bool -> String -> String -> String -> IO ()
+checkCorrectlyTransformed suppressErrors command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
-       res <- performRefactor command workingDir [] moduleName
+       res <- performRefactor command workingDir (if suppressErrors then deferFlags else []) moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                     (mapRight standardizeLineEndings res)
+  where deferFlags = ["-fdefer-type-errors","-fdefer-typed-holes","-fdefer-out-of-scope-variables", "-w"]
 
 testRefactor :: (UnnamedModule -> LocalRefactoring) -> String -> IO (Either String String)
 testRefactor refact moduleName

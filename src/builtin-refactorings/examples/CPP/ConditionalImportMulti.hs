@@ -1,11 +1,11 @@
 {-# LANGUAGE CPP #-}
 module CPP.ConditionalImportMulti where
 
-import Data.List
+import CPP.A
 #ifndef USE_DATA_LIST
-import Control.Applicative ((<$>))
-import Control.Monad ((>>))
+import CPP.B(b)
+import CPP.C(c)
 #endif
-import Data.List
+import CPP.A
 
-a = id <$> (Nothing >> Nothing)
+x = (b,c)

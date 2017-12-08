@@ -14,7 +14,7 @@ import SrcLoc as GHC
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Names as AST
-import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Literals as AST
+import Language.Haskell.Tools.AST.Representation.Literals as AST
 
 -- * Annotation type resolution
 

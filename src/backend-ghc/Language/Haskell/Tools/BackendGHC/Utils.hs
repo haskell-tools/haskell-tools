@@ -23,17 +23,21 @@ import FieldLabel as GHC (FieldLbl(..))
 import GHC
 import HsSyn
 import HscTypes
+import Var
 import Id (idName)
 import InstEnv as GHC (ClsInst(..), instanceDFunId, instEnvElts)
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
 import Outputable (Outputable(..), showSDocUnsafe)
+import IfaceSyn as GHC
 import SrcLoc
+import Finder
 
 import Control.Exception (Exception, throw)
 import Control.Monad.Reader
 import Control.Reference ((^.), (&))
+import Control.Applicative
 import Data.Char (isSpace)
 import Data.Data (Data(..))
 import Data.Either (Either(..), rights, lefts)
@@ -54,9 +58,9 @@ createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) =
                                       || nameLoc == getLoc idecl) imports
   (_, preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
   (insts, famInsts)
-    <- if prelude then lift $ getOrphanAndFamInstances (Module baseUnitId (GHC.mkModuleName "Prelude"))
+    <- if prelude then lift $ getInstances (Module baseUnitId (GHC.mkModuleName "Prelude"))
                   else return ([], [])
-  -- This function (via getOrphanAndFamInstances) refers the ghc environment,
+  -- This function (via getInstances) refers the ghc environment,
   -- we must evaluate the result or the reference may be kept preventing garbage collection.
   return $ mkModuleInfo (ms_mod mod) (ms_hspp_opts mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True)
                         (forceElements preludeImports) (forceElements insts) (forceElements famInsts)
@@ -95,8 +99,8 @@ createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
      -- TODO: only use getFromNameUsing once
      lookedUpNames <- liftGhc $ mapM translatePName $ names
      lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId . (^. pName)) $ importedNames
-     (insts, famInsts) <- lift $ getOrphanAndFamInstances mod
-     -- This function (via getOrphanAndFamInstances) refers the ghc environment,
+     (insts, famInsts) <- lift $ getInstances mod
+     -- This function (via getInstances) refers the ghc environment,
      -- we must evaluate the result or the reference may be kept preventing garbage collection.
      return $ mkImportInfo mod (forceElements $ catMaybes lookedUpImported)
                                (forceElements $ catMaybes lookedUpNames)
@@ -105,28 +109,27 @@ createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
                                         p' <- maybe (return Nothing) (getFromNameUsing getTopLevelId) p
                                         return (PName <$> n' <*> Just p')
 
--- | Gets the orphan and family instances from a module.
+-- | Gets the class and family instances from a module.
 -- Important: the results must be evaluated or ghs session state will not be garbage-collected.
-getOrphanAndFamInstances :: Module -> Ghc ([ClsInst], [FamInst])
-getOrphanAndFamInstances mod = do
+getInstances :: Module -> Ghc ([ClsInst], [FamInst])
+getInstances mod = do
   env <- getSession
-  eps <- liftIO (readIORef (hsc_EPS env))
-  let ifc = lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod
-      hp = lookupHptByModule (hsc_HPT env) mod
-      uses = catMaybes $ map getModule $ maybe [] (\ifc -> dep_orphs (mi_deps ifc) `union` dep_finsts (mi_deps ifc)) ifc
-      getModule mod = if moduleUnitId mod == mainUnitId
-                        then fmap Right $ lookupHptByModule (hsc_HPT env) mod
-                        else fmap Left $ lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod
-      usedMods = lefts uses
-      usedDetails = map hm_details (maybeToList hp ++ rights uses)
-      hptInstances = filter (isOrphan . is_orphan) $ concatMap md_insts usedDetails
-      hptFamilyInstances = concatMap md_fam_insts usedDetails
-      allInstances = instEnvElts (eps_inst_env eps)
-      relevantInstances = hptInstances ++ filter ((\n -> nameModule n `elem` (mod : map mi_module usedMods)) . idName . instanceDFunId) (filter (isOrphan . is_orphan) allInstances)
-      allFamilyInstances = famInstEnvElts (eps_fam_inst_env eps)
-      relevantFamilyInstances = hptFamilyInstances ++ filter ((\n -> nameModule n `elem` (mod : map mi_module usedMods)) . co_ax_name . fi_axiom) allFamilyInstances
-  return (relevantInstances, relevantFamilyInstances)
-
+  eps <- liftIO $ hscEPS env
+  let lookupInstances mn = case lookupHpt (hsc_HPT env) (GHC.moduleName mod) of 
+                             Just hmi -> (md_insts (hm_details hmi), md_fam_insts (hm_details hmi))
+                             Nothing -> let (hptInsts, hptFamInsts) = hptInstances env (== mn)
+                                            instDefIn mn inst = maybe False ((== mn) . GHC.moduleName) $ nameModule_maybe $ Var.varName $ is_dfun inst
+                                            famInstDefIn mn inst = maybe False ((== mn) . GHC.moduleName) $ nameModule_maybe $ co_ax_name $ fi_axiom inst
+                                         in ( hptInsts ++ filter (instDefIn mn) (instEnvElts $ eps_inst_env eps)
+                                            , hptFamInsts ++ filter (famInstDefIn mn) (famInstEnvElts $ eps_fam_inst_env eps)
+                                            )
+  case lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod of
+    Just ifc -> do
+      let (ownInstances, ownFamInstances) = lookupInstances (GHC.moduleName mod)
+          deps = dep_mods (mi_deps ifc)
+          (depInstances, depFamInstances) = unzip $ map lookupInstances (map fst deps)
+      return (ownInstances ++ concat depInstances, ownFamInstances ++ concat depFamInstances)
+    Nothing -> return ([],[])
 
 -- | Get names that are imported from a given import
 getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [PName GHC.Name])

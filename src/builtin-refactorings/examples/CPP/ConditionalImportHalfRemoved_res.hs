@@ -3,8 +3,8 @@ module CPP.ConditionalImportHalfRemoved where
 
 
 #ifndef USE_DATA_LIST
-import Control.Monad ((>>))
+import CPP.B(b)
 #endif
-import Control.Applicative ((<$>))
+import CPP.C(c)
 
-a = id <$> (Nothing >> Nothing)
+x = (b,c)

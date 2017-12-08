@@ -1,13 +1,10 @@
 {-# LANGUAGE CPP #-}
 module CPP.ConditionalImportOrder where
 
-import Data.List (intersperse)
+import CPP.C(c)
 #ifndef USE_DATA_LIST
-import Control.Monad (Monad(..))
+import CPP.B(b)
 #endif
-import Control.Applicative ((<$>))
+import CPP.A(a)
 
-a = Nothing >> Nothing
-
-b = id <$> Nothing
-c = intersperse "," ["a","b"]
+x = (a,b,c)

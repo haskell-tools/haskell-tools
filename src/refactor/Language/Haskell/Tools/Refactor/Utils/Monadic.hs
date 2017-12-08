@@ -4,8 +4,8 @@ module Language.Haskell.Tools.Refactor.Utils.Monadic where
 
 import Control.Monad.Reader (Monad(..), ReaderT(..), MonadReader(..))
 import Control.Monad.State.Strict
+import Control.Monad.Writer
 import Control.Monad.Trans.Except (runExceptT)
-import Control.Monad.Writer (Monad(..), WriterT(..), MonadWriter(..))
 import Control.Reference hiding (element)
 import Data.Either
 import Data.Function (on)

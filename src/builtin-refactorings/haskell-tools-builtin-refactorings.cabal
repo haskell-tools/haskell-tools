@@ -33,6 +33,7 @@ extra-source-files: examples/CPP/*.hs
                   , examples/Refactor/RenameDefinition/SpliceExpr_res/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
+                  , examples/Refactor/AutoCorrect/*.hs
                   , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
@@ -57,6 +58,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
+                     , Language.Haskell.Tools.Refactor.Builtin.AutoCorrect
 
 
   other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers

@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 module CPP.ConditionalImport where
 
-import Data.List
+import CPP.A(a)
 #ifndef USE_DATA_LIST
-import Control.Monad (Monad(..))
+import CPP.B(b)
 #endif
-import Data.List
+import CPP.A(a)
 
-a = Nothing >> Nothing
+x = b

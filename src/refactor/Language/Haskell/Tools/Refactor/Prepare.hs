@@ -5,7 +5,6 @@ module Language.Haskell.Tools.Refactor.Prepare where
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.IORef
 import Data.List ((\\), isSuffixOf)
 import Data.List.Split (splitOn)
 import Data.Maybe (Maybe(..), fromMaybe, fromJust)
@@ -21,9 +20,6 @@ import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad
 import HscTypes
-import TcRnTypes
-import TcRnMonad
-import TcRnDriver
 import Linker (unload)
 import Outputable (Outputable(..), showSDocUnsafe)
 import Packages (initPackages)
@@ -100,8 +96,8 @@ initGhcFlags' needsCodeGen errorsSuppressed = do
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
     $ (if errorsSuppressed then flip gopt_set Opt_DeferTypeErrors
-                                  . flip gopt_set Opt_DeferTypedHoles	 
-                                  . flip gopt_set Opt_DeferOutOfScopeVariables 
+                                  . flip gopt_set Opt_DeferTypedHoles
+                                  . flip gopt_set Opt_DeferOutOfScopeVariables
                            else id)
     $ dflags { importPaths = []
              , hscTarget = if needsCodeGen then HscInterpreted else HscNothing

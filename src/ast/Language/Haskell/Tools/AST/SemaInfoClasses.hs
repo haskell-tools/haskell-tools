@@ -3,6 +3,7 @@ module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools
 
 import GHC
 import Id as GHC (Id, idName)
+import qualified Type as GHC
 
 import Control.Reference
 
@@ -10,7 +11,11 @@ import Language.Haskell.Tools.AST.Ann as AST
 import Language.Haskell.Tools.AST.Representation.Exprs as AST (UFieldWildcard, UExpr)
 import Language.Haskell.Tools.AST.Representation.Modules as AST (UImportDecl, UModule)
 import Language.Haskell.Tools.AST.Representation.Names as AST (UQualifiedName)
+import Language.Haskell.Tools.AST.Representation.Literals as AST (ULiteral)
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
+
+semanticsLitType :: Ann ULiteral IdDom st -> GHC.Type
+semanticsLitType lit = lit ^. annotation & semanticInfo & literalType
 
 -- * Information about names
 
@@ -115,7 +120,7 @@ class HasModuleInfo' si where
   semanticsDynFlags :: si -> GHC.DynFlags
   isBootModule :: si -> Bool
   semanticsImplicitImports :: si -> [GHC.Name]
-  semanticsPrelOrphanInsts :: si -> [ClsInst]
+  semanticsPrelInsts :: si -> [ClsInst]
   semanticsPrelFamInsts :: si -> [FamInst]
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
@@ -123,7 +128,7 @@ instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = (^? implicitNames&traversal&pName)
-  semanticsPrelOrphanInsts = (^. prelOrphanInsts)
+  semanticsPrelInsts = (^. prelOrphanInsts)
   semanticsPrelFamInsts = (^. prelFamInsts)
 
 instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
@@ -131,7 +136,7 @@ instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = map idName . (^? implicitNames&traversal&pName)
-  semanticsPrelOrphanInsts = (^. prelOrphanInsts)
+  semanticsPrelInsts = (^. prelOrphanInsts)
   semanticsPrelFamInsts = (^. prelFamInsts)
 
 instance HasModuleInfo dom => HasModuleInfo' (Ann UModule dom st) where
@@ -139,7 +144,7 @@ instance HasModuleInfo dom => HasModuleInfo' (Ann UModule dom st) where
   semanticsDynFlags = semanticsDynFlags . (^. annotation&semanticInfo)
   isBootModule = isBootModule . (^. annotation&semanticInfo)
   semanticsImplicitImports = semanticsImplicitImports . (^. annotation&semanticInfo)
-  semanticsPrelOrphanInsts = semanticsPrelOrphanInsts . (^. annotation&semanticInfo)
+  semanticsPrelInsts = semanticsPrelInsts . (^. annotation&semanticInfo)
   semanticsPrelFamInsts = semanticsPrelFamInsts . (^. annotation&semanticInfo)
 
 -- * Information about imports
@@ -150,28 +155,28 @@ class HasImportInfo' si where
   semanticsImportedModule :: si -> GHC.Module
   semanticsAvailable :: si -> [GHC.Name]
   semanticsImported :: si -> [GHC.Name]
-  semanticsOrphanInsts :: si -> [ClsInst]
+  semanticsInsts :: si -> [ClsInst]
   semanticsFamInsts :: si -> [FamInst]
 
 instance HasImportInfo' (AST.ImportInfo GHC.Name) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = (^. availableNames)
   semanticsImported = (^? importedNames&traversal&pName)
-  semanticsOrphanInsts = (^. importedOrphanInsts)
+  semanticsInsts = (^. importedOrphanInsts)
   semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo' (AST.ImportInfo GHC.Id) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = map idName . (^. availableNames)
   semanticsImported = map idName . (^? importedNames&traversal&pName)
-  semanticsOrphanInsts = (^. importedOrphanInsts)
+  semanticsInsts = (^. importedOrphanInsts)
   semanticsFamInsts = (^. importedFamInsts)
 
 instance HasImportInfo dom => HasImportInfo' (Ann UImportDecl dom st) where
   semanticsImportedModule = semanticsImportedModule . (^. annotation&semanticInfo)
   semanticsAvailable = semanticsAvailable . (^. annotation&semanticInfo)
   semanticsImported = semanticsImported . (^. annotation&semanticInfo)
-  semanticsOrphanInsts = semanticsOrphanInsts . (^. annotation&semanticInfo)
+  semanticsInsts = semanticsInsts . (^. annotation&semanticInfo)
   semanticsFamInsts = semanticsFamInsts . (^. annotation&semanticInfo)
 
 -- * Information about implicitly bounded fields

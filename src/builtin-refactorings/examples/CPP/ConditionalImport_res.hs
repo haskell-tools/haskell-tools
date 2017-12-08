@@ -3,8 +3,8 @@ module CPP.ConditionalImport where
 
 
 #ifndef USE_DATA_LIST
-import Control.Monad (Monad(..))
+import CPP.B(b)
 #endif
 
 
-a = Nothing >> Nothing
+x = b
