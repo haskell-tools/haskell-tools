@@ -15,7 +15,6 @@ import ApiAnnotation (AnnKeywordId)
 import Avail (availNamesWithSelectors, availNames, availName)
 import BasicTypes (StringLiteral(..))
 import CoAxiom as GHC (CoAxiom(..))
-import CoreSyn as GHC (isOrphan)
 import DynFlags (xopt)
 import FamInstEnv as GHC (FamInst(..), famInstEnvElts)
 import FastString (unpackFS, mkFastString)
@@ -24,23 +23,18 @@ import GHC
 import HsSyn
 import HscTypes
 import Var
-import Id (idName)
-import InstEnv as GHC (ClsInst(..), instanceDFunId, instEnvElts)
+import InstEnv as GHC (ClsInst(..), instEnvElts)
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
 import Outputable (Outputable(..), showSDocUnsafe)
-import IfaceSyn as GHC
 import SrcLoc
-import Finder
 
 import Control.Exception (Exception, throw)
 import Control.Monad.Reader
 import Control.Reference ((^.), (&))
-import Control.Applicative
 import Data.Char (isSpace)
 import Data.Data (Data(..))
-import Data.Either (Either(..), rights, lefts)
 import Data.Function hiding ((&))
 import Data.IORef (readIORef)
 import Data.List

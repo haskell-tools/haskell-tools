@@ -76,9 +76,9 @@ reParenExpr insts e = do atoms <- lift $ extractAtoms e
                            ls -> -- TODO: choose the best one
                                  error $ "multiple correct parentheses were found: " ++ intercalate ", " (map (either prettyPrintAtom prettyPrint) ls)
 
-data Atom = NameA { aName :: HT.Name }
-          | OperatorA { aOperator :: Operator }
-          | LiteralA { aLiteral :: Literal }
+data Atom = NameA HT.Name
+          | OperatorA Operator
+          | LiteralA Literal
 
 prettyPrintAtom :: Atom -> String
 prettyPrintAtom (NameA n) = prettyPrint n

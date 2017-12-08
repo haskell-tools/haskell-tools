@@ -3,7 +3,6 @@ module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools
 
 import GHC
 import Id as GHC (Id, idName)
-import qualified Type as GHC
 
 import Control.Reference
 

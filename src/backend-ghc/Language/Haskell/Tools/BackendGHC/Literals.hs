@@ -7,7 +7,6 @@ import BasicTypes as GHC (FractionalLit(..))
 import FastString as GHC (unpackFS)
 import HsLit as GHC (OverLitVal(..), HsLit(..))
 import Type as GHC
-import PrelNames as GHC
 import TysWiredIn as GHC
 import TysPrim as GHC
 
