@@ -25,10 +25,18 @@ matrix:
   include:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack ARGS="--no-terminal --test --no-run-tests --bench --no-run-benchmarks" DOC_ARGS="--coverage --haddock --no-haddock-deps"
+  - env: 
+      - BUILD=stack 
+      - BUILD_ARGS="--no-terminal --test --no-run-tests --bench --no-run-benchmarks"
+      - DOC_ARGS="--haddock --no-haddock-deps"
+      - TEST_ARGS="--no-terminal --coverage"
     compiler: ": #stack default"
     if: type IN (push, pull_request)
-  - env: BUILD=stack ARGS="--no-terminal --test --no-run-tests --bench --no-run-benchmarks" DOC_ARGS=""
+  - env: 
+      - BUILD=stack 
+      - BUILD_ARGS="--no-terminal --test --no-run-tests --bench --no-run-benchmarks"
+      - DOC_ARGS=""
+      - TEST_ARGS=""
     compiler: ": #stack nightly"
     if: type = cron
 
@@ -42,22 +50,23 @@ before_install:
 
 install:
   # Install all dependecies of Haskell-tools, including test requirements
-  - travis_wait 30 stack --install-ghc build $ARGS $DOC_ARGS --only-dependencies
+  - travis_wait 30 stack --install-ghc build $BUILD_ARGS $DOC_ARGS --only-dependencies
 
 script:
 
   # Build Haskell-tools with all library, executable, test and benchmark
-  - travis_wait 30 stack build $ARGS $DOC_ARGS
+  - travis_wait 30 stack build $BUILD_ARGS $DOC_ARGS
 
+  # Check that the source distribution can be created
+  - stack sdist
+  
   # Run tests. We record test coverage information. We need to perform all of them at once to create the unified coverage reports.
   # Disabled on nightly builds (done when checking the distribution zips anyway).
   # On nightly build run the script to run self-test and test package distributions.
   - |
     if [ "$TRAVIS_EVENT_TYPE" != "cron" ]; then
-      travis_wait 30 stack build $ARGS $DOC_ARGS haskell-tools-rewrite haskell-tools-builtin-refactorings haskell-tools-experimental-refactorings haskell-tools-daemon haskell-tools-cli haskell-tools-demo
-      stack sdist
+      travis_wait 30 stack test $TEST_ARGS $DOC_ARGS haskell-tools-rewrite haskell-tools-builtin-refactorings haskell-tools-experimental-refactorings haskell-tools-daemon haskell-tools-cli haskell-tools-demo
     else
-      stack sdist
       bash ./daily.sh
     fi
 

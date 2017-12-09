@@ -18,13 +18,12 @@ ssh-add deploykey
 
 # Clone the existing repo into out/. Download only the files for the given folder
 mkdir out
-cd out
-git init
-git remote add -f origin git@github.com:haskell-tools/haskell-tools.github.io
-git config core.sparseCheckout true
-echo "$TRAVIS_BRANCH" >> .git/info/sparse-checkout
-git pull origin master
-cd ..
+git clone -b master git@github.com:haskell-tools/haskell-tools.github.io out
+
+# Remove folders from the github.io repo that has no corresponding active branches
+git ls-remote --heads https://github.com/haskell-tools/haskell-tools.git | grep -o -E "[a-zA-Z0-9-]+$" > branches.txt
+find out -maxdepth 1 -type d -path "./*" -exec sh -c \
+    'for f; do f=${f#./}; grep -qw "$f" branches.txt || rm -rf "$f"; done' sh {} +
 
 # Publish api and coverage info on pushes
 if [ "$TRAVIS_EVENT_TYPE" = "push" ]; then
@@ -54,9 +53,7 @@ cd out
 
 git config user.name "Travis CI"
 git config user.email "nboldi@caesar.elte.hu"
-git config push.default simple
 
 git add -A .
 git commit -m "Updating API documentation for: https://github.com/haskell-tools/haskell-tools/commit/$TRAVIS_COMMIT"
-git pull --allow-unrelated-histories origin master
-git push --set-upstream origin master
+git push
