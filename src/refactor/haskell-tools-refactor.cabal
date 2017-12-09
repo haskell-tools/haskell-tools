@@ -20,6 +20,7 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
                   , examples/Module/*.hs
                   , examples/Pattern/*.hs
                   , examples/TH/*.hs
+                  , examples/CPP/*.hs
                   , examples/TH/QuasiQuote/*.hs
                   , examples/TH/Splice/*.hs
                   , examples/Type/*.hs
