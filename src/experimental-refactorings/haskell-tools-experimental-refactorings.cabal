@@ -23,6 +23,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp1
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp2
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
+                     , Language.Haskell.Tools.Refactor.Builtin.FindUnused
 
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
