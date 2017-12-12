@@ -2,9 +2,9 @@
 module CPP.ConditionalImportBegin where
 
 #ifndef USE_DATA_LIST
-import Control.Monad ((>>))
+import CPP.A(a)
 #endif
-import Data.List
-import Data.List
+import CPP.B(b)
+import CPP.B(b)
 
-a = Nothing >> Nothing
+x = a

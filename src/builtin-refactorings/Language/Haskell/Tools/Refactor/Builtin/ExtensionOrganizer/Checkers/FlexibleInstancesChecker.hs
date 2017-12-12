@@ -2,15 +2,15 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 
+import Control.Monad.Trans.Maybe (MaybeT(..))
+import Data.Data (Data(..))
+import Data.List (nubBy)
+import Data.Function (on)
 import Control.Reference ((^.), (!~), biplateRef)
+
 import Language.Haskell.Tools.Refactor as Refact
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup (lookupSynDefM)
-
-
-import Control.Monad.Trans.Maybe (MaybeT(..))
-import Data.Data (Data(..))
-import Data.List (nub)
 
 import Name as GHC (isTyVarName, isTyConName, isWiredInName)
 
@@ -94,7 +94,7 @@ chkTyVars vars = do
           (isOk, (_, vs)) <- runStateT (runMaybeT (chkAll vars)) ([],[])
           case isOk of
             Just isOk ->
-              unless (isOk && length vs == (length . nub $ vs)) --tyvars are different
+              unless (isOk && length vs == (length . nubBy ((==) `on` (semanticsName . (^. simpleName))) $ vs)) --tyvars are different
                 (addOccurence_ FlexibleInstances vars)
             Nothing   -> error "chkTyVars: Couldn't look up something"
           return vars

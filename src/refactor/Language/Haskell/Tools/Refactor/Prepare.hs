@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MultiWayIf, ScopedTypeVariables, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiWayIf, ScopedTypeVariables, TypeFamilies, TupleSections #-}
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
 
-import Control.Exception (Exception(..), throwIO, throw)
+import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.List ((\\), isSuffixOf)
@@ -19,7 +19,7 @@ import GHC hiding (loadModule, ModuleName)
 import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad
-import HscTypes (HscEnv(..), ModSummary(..))
+import HscTypes
 import Linker (unload)
 import Outputable (Outputable(..), showSDocUnsafe)
 import Packages (initPackages)
@@ -82,22 +82,26 @@ reloadPkgDb = void $ setSessionDynFlags . fst =<< liftIO . initPackages . (\df -
 
 -- | Initialize GHC flags to default values that support refactoring
 initGhcFlags :: Ghc ()
-initGhcFlags = initGhcFlags' False
+initGhcFlags = initGhcFlags' False True
 
 initGhcFlagsForTest :: Ghc ()
-initGhcFlagsForTest = do initGhcFlags' True
+initGhcFlagsForTest = do initGhcFlags' True False
                          dfs <- getSessionDynFlags
                          void $ setSessionDynFlags $ dfs { hscTarget = HscAsm }
 
 -- | Sets up basic flags and settings for GHC
-initGhcFlags' :: Bool -> Ghc ()
-initGhcFlags' needsCodeGen = do
+initGhcFlags' :: Bool -> Bool -> Ghc ()
+initGhcFlags' needsCodeGen errorsSuppressed = do
   dflags <- getSessionDynFlags
   env <- getSession
   liftIO $ unload env [] -- clear linker state if ghc was used in the same process
   void $ setSessionDynFlags
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain
+    $ (if errorsSuppressed then flip gopt_set Opt_DeferTypeErrors
+                                  . flip gopt_set Opt_DeferTypedHoles
+                                  . flip gopt_set Opt_DeferOutOfScopeVariables
+                           else id)
     $ dflags { importPaths = []
              , hscTarget = if needsCodeGen then HscInterpreted else HscNothing
              , ghcLink = if needsCodeGen then LinkInMemory else NoLink
@@ -165,7 +169,7 @@ loadModule workingDir moduleName
 -- | The final version of our AST, with type infromation added
 type TypedModule = Ann AST.UModule IdDom SrcTemplateStage
 
--- | Get the typed representation from a type-correct program.
+-- | Get the typed representation of a Haskell module.
 parseTyped :: ModSummary -> Ghc TypedModule
 parseTyped modSum = withAlteredDynFlags (return . normalizeFlags) $ do
   let hasCppExtension = Cpp `xopt` ms_hspp_opts modSum

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Refactor.RenameDefinition.ValBracket where
 
-import TH.Splice.Define
+import Refactor.RenameDefinition.ThHelper
 
 data A = A
 

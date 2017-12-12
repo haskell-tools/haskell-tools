@@ -14,10 +14,10 @@ import OccName as GHC (occNameString)
 import PrelNames as GHC (negateName)
 import SrcLoc as GHC
 
-import Language.Haskell.Tools.AST.SemaInfoTypes (ScopeInfo, mkScopeInfo)
+import Language.Haskell.Tools.AST.SemaInfoTypes
 import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Binds (trfRhsGuard', trfWhereLocalBinds, trfLocalBinds)
 import Language.Haskell.Tools.BackendGHC.GHCUtils (GHCName(..), getFieldOccName)
-import Language.Haskell.Tools.BackendGHC.Literals (trfLiteral', trfOverloadedLit)
+import Language.Haskell.Tools.BackendGHC.Literals
 import Language.Haskell.Tools.BackendGHC.Monad
 import Language.Haskell.Tools.BackendGHC.Names
 import Language.Haskell.Tools.BackendGHC.Patterns (trfPattern)
@@ -62,8 +62,8 @@ trfExpr' (HsVar name) = AST.UVar <$> trfName name
 trfExpr' (HsUnboundVar name) = AST.UVar <$> trfNameText (occNameString $ unboundVarOcc name)
 trfExpr' (HsRecFld fld) = AST.UVar <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
 trfExpr' (HsIPVar ip) = AST.UVar <$> trfImplicitName ip
-trfExpr' (HsOverLit (ol_val -> val)) = AST.ULit <$> annContNoSema (trfOverloadedLit val)
-trfExpr' (HsLit val) = AST.ULit <$> annContNoSema (trfLiteral' val)
+trfExpr' (HsOverLit (ol_val -> val)) = AST.ULit <$> annCont (asks contRange >>= pure . PreLiteralInfo) (trfOverloadedLit val)
+trfExpr' (HsLit val) = AST.ULit <$> annCont (pure $ RealLiteralInfo (monoLiteralType val)) (trfLiteral' val)
 trfExpr' (HsLam (unLoc . mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] (unLoc -> EmptyLocalBinds))]))
   = AST.ULambda <$> (makeNonemptyList " " $ mapM trfPattern pats) <*> addToScope pats (trfExpr expr)
 trfExpr' (HsLamCase (unLoc . mg_alts -> matches)) = AST.ULamCase <$> addToScope matches (trfAnnList " " trfAlt' matches)
@@ -177,6 +177,7 @@ trfExpr' (ExplicitSum tag arity expr _)
                        <*> trfExpr expr
                        <*> makeList " | " (before AnnClose) (mapM makePlaceholder locsAfter)
   where makePlaceholder l = annLocNoSema (pure (srcLocSpan l)) (pure AST.UUnboxedSumPlaceHolder)
+trfExpr' EWildPat = return AST.UHole
 trfExpr' t = unhandledElement "expression" t
 
 trfFieldInits :: TransformName n r => HsRecFields n (LHsExpr n) -> Trf (AnnListG AST.UFieldUpdate (Dom r) RangeStage)

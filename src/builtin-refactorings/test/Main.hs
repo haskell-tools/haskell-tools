@@ -33,193 +33,24 @@ import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 --import ExtensionOrganizerTest.Main (extensionOrganizerTestGroup)
 
 main :: IO ()
-main = defaultMain nightlyTests
-
-nightlyTests :: TestTree
-nightlyTests
-  = testGroup "all tests" [ testGroup "functional tests" functionalTests
-                          , testGroup "CppHs tests" $ map makeCpphsTest cppHsTests
-                          , testGroup "instance-control tests" $ map makeInstanceControlTest instanceControlTests
-                          ]
-
-functionalTests :: [TestTree]
-functionalTests
-  = [ testGroup "reprint tests" (map makeReprintTest checkTestCases)
-    , testGroup "refactor tests"
-        $ map makeOrganizeImportsTest organizeImportTests
-            ++ map makeGenerateSignatureTest generateSignatureTests
-            ++ map makeWrongGenerateSigTest wrongGenerateSigTests
-            ++ map makeGenerateExportsTest generateExportsTests
-            ++ map makeRenameDefinitionTest renameDefinitionTests
-            ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-            ++ map makeExtractBindingTest extractBindingTests
-            ++ map makeWrongExtractBindingTest wrongExtractBindingTests
-            ++ map makeInlineBindingTest inlineBindingTests
-            ++ map makeWrongInlineBindingTest wrongInlineBindingTests
-            ++ map makeFloatOutTest floatOutTests
-            ++ map makeWrongFloatOutTest wrongFloatOutTests
-            ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
-            ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
-    ]
-  where checkTestCases = languageTests
-                          ++ organizeImportTests
-                          ++ map fst generateSignatureTests
-                          ++ generateExportsTests
-                          ++ map (\(mod,_,_) -> mod) renameDefinitionTests
-                          ++ map (\(mod,_,_) -> mod) wrongRenameDefinitionTests
-                          ++ map (\(mod,_,_) -> mod) extractBindingTests
-                          ++ map (\(mod,_,_) -> mod) wrongExtractBindingTests
-                          ++ map (\(mod,_) -> mod) inlineBindingTests
+main = defaultMain $ testGroup "refactor tests"
+                       $ map makeOrganizeImportsTest organizeImportTests
+                           ++ map makeGenerateSignatureTest generateSignatureTests
+                           ++ map makeWrongGenerateSigTest wrongGenerateSigTests
+                           ++ map makeGenerateExportsTest generateExportsTests
+                           ++ map makeRenameDefinitionTest renameDefinitionTests
+                           ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                           ++ map makeExtractBindingTest extractBindingTests
+                           ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+                           ++ map makeInlineBindingTest inlineBindingTests
+                           ++ map makeWrongInlineBindingTest wrongInlineBindingTests
+                           ++ map makeFloatOutTest floatOutTests
+                           ++ map makeAutoCorrectTest autoCorrectTests
+                           ++ map makeWrongFloatOutTest wrongFloatOutTests
+                           ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
+                           ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
 
 rootDir = "examples"
-
-languageTests =
-  [ "CPP.JustEnabled"
-  , "CPP.ConditionalCode"
-  , "Decl.AmbiguousFields"
-  , "Decl.AnnPragma"
-  , "Decl.ClassInfix"
-  , "Decl.ClosedTypeFamily"
-  , "Decl.CompletePragma"
-  , "Decl.CtorOp"
-  , "Decl.DataFamily"
-  , "Decl.DataType"
-  , "Decl.DataInstanceGADT"
-  , "Decl.DataTypeDerivings"
-  , "Decl.DefaultDecl"
-  , "Decl.FunBind"
-  , "Decl.FunctionalDeps"
-  , "Decl.FunGuards"
-  , "Decl.GADT"
-  , "Decl.GadtConWithCtx"
-  , "Decl.InfixAssertion"
-  , "Decl.InfixInstances"
-  , "Decl.InfixPatSyn"
-  , "Decl.InjectiveTypeFamily"
-  , "Decl.InlinePragma"
-  , "Decl.InstanceFamily"
-  , "Decl.InstanceOverlaps"
-  , "Decl.InstanceSpec"
-  , "Decl.LocalBindings"
-  , "Decl.LocalBindingInDo"
-  , "Decl.LocalFixity"
-  , "Decl.MinimalPragma"
-  , "Decl.MultipleFixity"
-  , "Decl.MultipleSigs"
-  , "Decl.OperatorBind"
-  , "Decl.OperatorDecl"
-  , "Decl.ParamDataType"
-  , "Decl.PatternBind"
-  , "Decl.PatternSynonym"
-  , "Decl.RecordPatternSynonyms"
-  , "Decl.RecordType"
-  , "Decl.RewriteRule"
-  , "Decl.SpecializePragma"
-  , "Decl.StandaloneDeriving"
-  , "Decl.TypeClass"
-  , "Decl.TypeClassMinimal"
-  , "Decl.TypeFamily"
-  , "Decl.TypeFamilyKindSig"
-  , "Decl.TypeInstance"
-  , "Decl.TypeRole"
-  , "Decl.TypeSynonym"
-  , "Decl.ValBind"
-  , "Decl.ViewPatternSynonym"
-  , "Expr.ArrowNotation"
-  , "Expr.Case"
-  , "Expr.DoNotation"
-  , "Expr.GeneralizedListComp"
-  , "Expr.EmptyCase"
-  , "Expr.FunSection"
-  , "Expr.If"
-  , "Expr.LambdaCase"
-  , "Expr.ListComp"
-  , "Expr.MultiwayIf"
-  , "Expr.Negate"
-  , "Expr.Operator"
-  , "Expr.ParenName"
-  , "Expr.ParListComp"
-  , "Expr.PatternAndDo"
-  , "Expr.RecordPuns"
-  , "Expr.RecordWildcards"
-  , "Expr.RecursiveDo"
-  , "Expr.Sections"
-  , "Expr.SemicolonDo"
-  , "Expr.StaticPtr"
-  , "Expr.TupleSections"
-  , "Expr.UnboxedSum"
-  , "Module.Simple"
-  , "Module.GhcOptionsPragma"
-  , "Module.Export"
-  , "Module.ExportSubs"
-  , "Module.ExportModifiers"
-  , "Module.NamespaceExport"
-  , "Module.Import"
-  , "Module.ImportOp"
-  , "Module.LangPragmas"
-  , "Module.PatternImport"
-  , "Pattern.Backtick"
-  , "Pattern.Constructor"
-  -- , "Pattern.ImplicitParams"
-  , "Pattern.Infix"
-  , "Pattern.NestedWildcard"
-  , "Pattern.NPlusK"
-  , "Pattern.OperatorPattern"
-  , "Pattern.Record"
-  , "Pattern.UnboxedSum"
-  , "Type.Bang"
-  , "Type.Builtin"
-  , "Type.Ctx"
-  , "Type.ExplicitTypeApplication"
-  , "Type.Forall"
-  , "Type.Primitives"
-  , "Type.TupleAssert"
-  , "Type.TypeOperators"
-  , "Type.Unpack"
-  , "Type.Wildcard"
-  , "TH.Brackets"
-  , "TH.QuasiQuote.Define"
-  , "TH.QuasiQuote.Use"
-  , "TH.Splice.Define"
-  , "TH.Splice.Use"
-  , "TH.CrossDef"
-  , "TH.ClassUse"
-  , "TH.Splice.UseImported"
-  , "TH.Splice.UseQual"
-  , "TH.Splice.UseQualMulti"
-  , "TH.LocalDefinition"
-  , "TH.MultiImport"
-  , "TH.NestedSplices"
-  , "TH.Quoted"
-  , "TH.WithWildcards"
-  , "TH.DoubleSplice"
-  , "TH.GADTFields"
-  , "Refactor.CommentHandling.CommentTypes"
-  , "Refactor.CommentHandling.BlockComments"
-  , "Refactor.CommentHandling.Crosslinking"
-  , "Refactor.CommentHandling.FunctionArgs"
-  ]
-
-cppHsTests =
-  [ "Language.Preprocessor.Cpphs"
-  , "Language.Preprocessor.Unlit"
-  , "Language.Preprocessor.Cpphs.CppIfdef"
-  , "Language.Preprocessor.Cpphs.HashDefine"
-  , "Language.Preprocessor.Cpphs.MacroPass"
-  , "Language.Preprocessor.Cpphs.Options"
-  , "Language.Preprocessor.Cpphs.Position"
-  , "Language.Preprocessor.Cpphs.ReadFirst"
-  , "Language.Preprocessor.Cpphs.RunCpphs"
-  , "Language.Preprocessor.Cpphs.SymTab"
-  , "Language.Preprocessor.Cpphs.Tokenise"
-  ]
-
-instanceControlTests =
-  [ "Control.Instances.Test"
-  , "Control.Instances.Morph"
-  , "Control.Instances.ShortestPath"
-  , "Control.Instances.TypeLevelPrelude"
-  ]
 
 organizeImportTests =
   [ "Refactor.OrganizeImports.Narrow"
@@ -252,6 +83,8 @@ organizeImportTests =
   , "Refactor.OrganizeImports.MakeExplicit.Renamed"
   , "Refactor.OrganizeImports.InstanceCarry.ImportOrphan"
   , "Refactor.OrganizeImports.InstanceCarry.ImportNonOrphan"
+  , "Refactor.OrganizeImports.InstanceCarry.Duplicate"
+  , "Refactor.OrganizeImports.InstanceCarry.Transitive"
   , "Refactor.OrganizeImports.NarrowQual"
   , "Refactor.OrganizeImports.NarrowSpec"
   , "Refactor.OrganizeImports.StandaloneDeriving"
@@ -443,6 +276,21 @@ multiModuleTests =
 wrongMultiModuleTests =
   [ ("InlineBinding 3:1-3:2", "A", "Refactor" </> "InlineBinding" </> "AppearsInAnother", [])
   ]
+  
+autoCorrectTests =
+  [ ("Refactor.AutoCorrect.SimpleReParen", "3:5-3:12")
+  , ("Refactor.AutoCorrect.ExternalInstanceReParen", "4:5-4:15")
+  , ("Refactor.AutoCorrect.ComplexExprReParen", "3:5-3:29")
+  , ("Refactor.AutoCorrect.SimpleReOrder", "3:5-3:10")
+  , ("Refactor.AutoCorrect.ThreeArgReOrder", "3:5-3:12")
+  , ("Refactor.AutoCorrect.ThreeArgFirstReOrder", "3:5-3:10")
+  , ("Refactor.AutoCorrect.ExternalInstanceReOrder", "3:5-3:11")
+  , ("Refactor.AutoCorrect.ComplexExprReOrder", "3:5-3:22")
+  , ("Refactor.AutoCorrect.OwnInstanceReOrder", "5:5-5:10")
+  , ("Refactor.AutoCorrect.ComplexExprReOrder2", "3:5-3:39")
+  , ("Refactor.AutoCorrect.SectionReOrder", "3:5-3:18")
+  , ("Refactor.AutoCorrect.TupleSectionReOrder", "4:5-4:15")
+  ]
 
 makeMultiModuleTest :: ((String, String, String, [String]) -> Either String [(String, Maybe String)] -> IO ())
                          -> (String, String, String, [String]) -> TestTree
@@ -469,7 +317,11 @@ checkMultiFail _ (Right _) = assertFailure "The transformation should fail."
 
 createTest :: String -> [String] -> String -> TestTree
 createTest refactoring args mod
-  = testCase mod $ checkCorrectlyTransformed (refactoring ++ (concatMap (" "++) args)) rootDir mod
+  = testCase mod $ checkCorrectlyTransformed False (refactoring ++ (concatMap (" "++) args)) rootDir mod
+
+createResilientTest :: String -> [String] -> String -> TestTree
+createResilientTest refactoring args mod
+  = testCase mod $ checkCorrectlyTransformed True (refactoring ++ (concatMap (" "++) args)) rootDir mod
 
 createFailTest :: String -> [String] -> String -> TestTree
 createFailTest refactoring args mod
@@ -511,12 +363,17 @@ makeFloatOutTest (mod, rng) = createTest "FloatOut" [rng] mod
 makeWrongFloatOutTest :: (String, String) -> TestTree
 makeWrongFloatOutTest (mod, rng) = createFailTest "FloatOut" [rng] mod
 
-checkCorrectlyTransformed :: String -> String -> String -> IO ()
-checkCorrectlyTransformed command workingDir moduleName
+makeAutoCorrectTest :: (String, String) -> TestTree
+makeAutoCorrectTest (mod, rng) = createResilientTest "AutoCorrect" [rng] mod
+
+
+checkCorrectlyTransformed :: Bool -> String -> String -> String -> IO ()
+checkCorrectlyTransformed suppressErrors command workingDir moduleName
   = do expected <- loadExpected True workingDir moduleName
-       res <- performRefactor command workingDir [] moduleName
+       res <- performRefactor command workingDir (if suppressErrors then deferFlags else []) moduleName
        assertEqual "The transformed result is not what is expected" (Right (standardizeLineEndings expected))
                                                                     (mapRight standardizeLineEndings res)
+  where deferFlags = ["-fdefer-type-errors","-fdefer-typed-holes","-fdefer-out-of-scope-variables", "-w"]
 
 testRefactor :: (UnnamedModule -> LocalRefactoring) -> String -> IO (Either String String)
 testRefactor refact moduleName
@@ -541,30 +398,6 @@ loadExpected resSuffix workingDir moduleName =
      hGetContents expectedHandle
 
 standardizeLineEndings = filter (/= '\r')
-
-makeReprintTest :: String -> TestTree
-makeReprintTest mod = testCase mod (checkCorrectlyPrinted rootDir mod)
-
-makeCpphsTest :: String -> TestTree
-makeCpphsTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "CppHs") mod)
-
-makeInstanceControlTest :: String -> TestTree
-makeInstanceControlTest mod = testCase mod (checkCorrectlyPrinted (rootDir </> "InstanceControl") mod)
-
-checkCorrectlyPrinted :: String -> String -> IO ()
-checkCorrectlyPrinted workingDir moduleName
-  = do -- need to use binary or line endings will be translated
-       expectedHandle <- openBinaryFile (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName ++ ".hs") ReadMode
-       expected <- hGetContents expectedHandle
-       (actual, actual', actual'') <- runGhc (Just libdir) $ do
-         parsed <- loadModule workingDir moduleName
-         actual <- prettyPrint <$> parseAST parsed
-         actual' <- prettyPrint <$> parseRenamed parsed
-         actual'' <- prettyPrint <$> parseTyped parsed
-         return (actual, actual', actual'')
-       assertEqual "Parsed: The original and the transformed source differ" expected actual
-       assertEqual "Renamed: The original and the transformed source differ" expected actual'
-       assertEqual "Typechecked: The original and the transformed source differ" expected actual''
 
 performRefactors :: String -> String -> [String] -> String -> IO (Either String [(String, Maybe String)])
 performRefactors command workingDir flags target = do

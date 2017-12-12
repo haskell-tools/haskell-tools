@@ -50,8 +50,8 @@ test-suite haskell-tools-experimental-refactorings-test
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.10  && < 4.11
-                     , tasty                     >= 0.11 && < 0.12
-                     , tasty-hunit               >= 0.9 && < 0.10
+                     , tasty                     >= 0.11 && < 0.13
+                     , tasty-hunit               >= 0.9 && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 4.5
                      , filepath                  >= 1.4  && < 1.5

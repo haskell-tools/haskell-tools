@@ -98,14 +98,14 @@ trfDeclsGroup g@(HsGroup vals splices tycls derivs fixities defaults foreigns wa
     getDeclsToInsert :: Trf [Ann AST.UDecl (Dom r) RangeStage]
     getDeclsToInsert = do decls <- asks declsToInsert
                           allLocals <- asks localsInScope
-                          case allLocals of locals:_ -> liftGhc $ mapM (loadIdsForDecls (map (^. _1) locals)) decls
+                          case allLocals of locals:_ -> liftGhc $ mapM (replaceNamesInDecls (map (^. _1) locals)) decls
                                             [] -> convertionProblem "getDeclsToInsert: empty scope"
-       where loadIdsForDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
-             loadIdsForDecls locals = AST.semaTraverse $
-                AST.SemaTrf (AST.nameInfo !~ findName) pure (traverse findName) pure pure pure
-               where findName rdr = pure $ fromGHCName $ fromMaybe (convProblem $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr)
-                                                                                    ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals))
-                                                       $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
+       where replaceNamesInDecls :: [GHC.Name] -> Ann AST.UDecl (Dom RdrName) RangeStage -> GHC.Ghc (Ann AST.UDecl (Dom r) RangeStage)
+             replaceNamesInDecls locals = AST.semaTraverse $
+                AST.SemaTrf (pure . (AST.nameInfo .- findName)) pure pure (pure . fmap findName) pure pure pure
+               where findName rdr = fromGHCName $ fromMaybe (convProblem $ "Data definition name not found: " ++ showSDocUnsafe (ppr rdr)
+                                                                             ++ ", locals: " ++ (concat $ intersperse ", " $ map (showSDocUnsafe . ppr) locals))
+                                                $ find ((occNameString (rdrNameOcc rdr) ==) . occNameString . nameOccName) locals
 
 trfDecl :: TransformName n r => Located (HsDecl n) -> Trf (Ann AST.UDecl (Dom r) RangeStage)
 trfDecl = trfLocNoSema $ \case

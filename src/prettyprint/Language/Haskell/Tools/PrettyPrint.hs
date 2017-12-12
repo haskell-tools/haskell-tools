@@ -6,7 +6,7 @@ module Language.Haskell.Tools.PrettyPrint (prettyPrint, toRoseTree, PrettyPrintP
 import FastString (fsLit)
 import SrcLoc
 
-import Language.Haskell.Tools.AST (SrcTemplateStage, SourceInfoTraversal(..))
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate
 import Language.Haskell.Tools.PrettyPrint.RoseTree
 
@@ -39,13 +39,11 @@ printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relIn
            printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child >+< printTemplateElems rest children
            printTemplateElems [] [] = return empty
            printTemplateElems _ []
-             = pprProblem $ "More child elem in template than actual children (elems: " ++ show elems
-                               ++ ", children: " ++ show children
-                               ++ "). Check that the default templates for AST elements are correct."
+             = pprProblem $ "More child elem in template than actual children in: " 
+                              ++ shortShowSpanWithFile (srcLocSpan $ RealSrcLoc parent)
            printTemplateElems [] _
-             = pprProblem $ "Not all children are used to pretty printing. (elems: "
-                              ++ show elems ++ ", children: " ++ show children
-                              ++ "). Check that the default templates for AST elements are correct."
+             = pprProblem $ "Not all children are used to pretty printing in: " 
+                              ++ shortShowSpanWithFile (srcLocSpan $ RealSrcLoc parent)
 
            min = minInd `max` getPosByRelative parent relInd
 

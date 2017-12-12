@@ -4,6 +4,7 @@
 module Language.Haskell.Tools.BackendGHC.Modules where
 
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Reference hiding (element)
 import Data.Char (isSpace)
 import Data.Generics.Uniplate.Data ()
@@ -21,7 +22,7 @@ import TcRnMonad as GHC (Applicative(..), (<$>))
 import Language.Haskell.Tools.AST (Ann(..), AnnMaybeG, AnnListG(..), Dom, RangeStage
                                   , sourceInfo, semantics, annotation, nodeSpan)
 import qualified Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.AST.SemaInfoTypes as AST (nameInfo, implicitNames, importedNames)
+import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 import Language.Haskell.Tools.BackendGHC.Decls (trfDecls, trfDeclsGroup)
 import Language.Haskell.Tools.BackendGHC.Exprs (trfText')
 import Language.Haskell.Tools.BackendGHC.Monad
@@ -144,22 +145,27 @@ trfExport = trfMaybeLocNoSema $ \case
   other -> do trf <- trfIESpec' other
               fmap AST.UDeclExport <$> (sequence $ fmap (annContNoSema . return) trf)
 
-trfImports :: TransformName n r => [LImportDecl n] -> Trf (AnnListG AST.UImportDecl (Dom r) RangeStage)
+trfImports :: forall n r . TransformName n r => [LImportDecl n] -> Trf (AnnListG AST.UImportDecl (Dom r) RangeStage)
 trfImports (filter (not . ideclImplicit . unLoc) -> imps)
-  = AnnListG <$> importDefaultLoc <*> mapM trfImport imps
+  = do res <- AnnListG <$> importDefaultLoc <*> mapM trfImport imps
+       -- the list of imported entities is added after the imports have been evaluated, to have all instances loaded
+       !importData <- mapM (createImportData . unLoc) imps :: Trf [ImportInfo r]
+       return $ flip evalState 0 $ AST.annList & AST.annotation & AST.semanticInfo
+                                     !~ (\_ -> get >>= \i -> modify (+1) >> return (importData !! i)) $ res
   where importDefaultLoc = noSemaInfo . AST.ListPos (if List.null imps then "\n" else "") "" "\n" (Just []) . srcSpanEnd
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange)
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
+
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
-trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
+trfImport (L l (GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
   do safeTok <- tokenLoc AnnSafe
      let -- default positions of optional parts of an import declaration
          annBeforeQual = if isSrc then AnnClose else AnnImport
          annBeforeSafe = if isQual then AnnQualified else annBeforeQual
          annBeforePkg = if isGoodSrcSpan safeTok then AnnSafe else annBeforeSafe
-
-     !importData <- createImportData impDecl
-     annLoc (pure importData) (pure l) $ AST.UImportDecl
+     -- the import semantic infos will be generated after all imports are processed,
+     -- otherwise information on instances imported will be inconsistent
+     annLoc (pure (error "Import's semantic data not initialized")) (pure l) $ AST.UImportDecl
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)
                      else nothing " " "" (after AnnImport))
        <*> (if isQual then makeJust <$> (annLocNoSema (tokenLoc AnnQualified) (pure AST.UImportQualified))

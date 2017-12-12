@@ -26,6 +26,7 @@ import qualified PrelNames as GHC (fromStringName, coerceKey)
 import SrcLoc (SrcSpan(..), noSrcSpan)
 import TyCon (TyCon(..), tyConFamInst_maybe)
 import Unique (getUnique)
+import CoreSyn as GHC (isOrphan)
 
 import Control.Applicative ((<$>), Alternative(..))
 import Control.Monad
@@ -64,8 +65,8 @@ organizeImports mod
        if noNarrowingImports
          then -- we don't know what definitions the generated code will use
               return $ modImports .- sortImports $ mod
-         else modImports !~ narrowImports noNarrowingSubspecs exportedModules (addFromString dfs usedNames) exportedNames prelInstances prelFamInsts . sortImports $ mod
-  where prelInstances = semanticsPrelOrphanInsts mod
+         else modImports !~ fmap sortImports . narrowImports noNarrowingSubspecs exportedModules (addFromString dfs usedNames) exportedNames prelInstances prelFamInsts $ mod
+  where prelInstances = semanticsPrelInsts mod
         prelFamInsts = semanticsPrelFamInsts mod
         addFromString dfs = if xopt OverloadedStrings dfs then (GHC.fromStringName :) else id
         usedNames = map getName $ (catMaybes $ map semanticsName
@@ -199,9 +200,10 @@ neededImports exportedModules usedNames prelInsts prelFamInsts imps = neededImpo
           where actuallyImported = semanticsImported imp `intersect` usedNames
         neededImports' usedNames kept (imp : rest)
             = needed : neededImports' usedNames (if needed then imp : kept else kept) rest
-          where needed = any (`notElem` otherClsInstances) (map is_dfun $ semanticsOrphanInsts imp)
+          where needed = any (`notElem` otherClsInstances) 
+                             (map is_dfun $ filter (isOrphan . is_orphan) $ semanticsInsts imp)
                            || any (`notElem` otherFamInstances) (map fi_axiom $ semanticsFamInsts imp)
-                otherClsInstances = map is_dfun (concatMap semanticsOrphanInsts kept ++ prelInsts)
+                otherClsInstances = map is_dfun (concatMap semanticsInsts kept ++ prelInsts)
                 otherFamInstances = map fi_axiom (concatMap semanticsFamInsts kept ++ prelFamInsts)
 
 -- | Narrows the import specification (explicitly imported elements)

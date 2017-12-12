@@ -1,4 +1,4 @@
-module Refactor.CommentHandling.FunctionArgs where
+module CommentHandling.FunctionArgs where
 
 f :: Int -- something
   -> {-| result -} Int

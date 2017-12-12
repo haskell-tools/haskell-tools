@@ -292,3 +292,7 @@ pattern LeftHighApp <- Ann _ ULeftHighApp
 -- | Right arrow high application: @>>-@
 pattern RightHighApp :: ArrowApp
 pattern RightHighApp <- Ann _ URightHighApp
+
+-- | A hole expression @_@
+pattern Hole :: Expr
+pattern Hole <- Ann _ UHole

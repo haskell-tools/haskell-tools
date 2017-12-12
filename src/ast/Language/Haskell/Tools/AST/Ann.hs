@@ -14,6 +14,7 @@ import SrcLoc as GHC
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Names as AST
+import Language.Haskell.Tools.AST.Representation.Literals as AST
 
 -- * Annotation type resolution
 
@@ -59,6 +60,7 @@ deriving instance Data IdDom
 type SemanticInfo (domain :: *) (node :: * -> * -> *) = SemanticInfo' domain (SemaInfoClassify node)
 
 data SemaInfoNameCls
+data SemaInfoLitCls
 data SemaInfoExprCls
 data SemaInfoImportCls
 data SemaInfoModuleCls
@@ -67,6 +69,7 @@ data SemaInfoWildcardCls
 
 type family SemaInfoClassify (node :: * -> * -> *) where
   SemaInfoClassify UQualifiedName = SemaInfoNameCls
+  SemaInfoClassify ULiteral       = SemaInfoLitCls
   SemaInfoClassify UExpr          = SemaInfoExprCls
   SemaInfoClassify UImportDecl    = SemaInfoImportCls
   SemaInfoClassify AST.UModule    = SemaInfoModuleCls
@@ -76,6 +79,7 @@ type family SemaInfoClassify (node :: * -> * -> *) where
 type family SemanticInfo' (domain :: *) (nodecls :: *)
 
 type instance SemanticInfo' (Dom n) SemaInfoNameCls = NameInfo n
+type instance SemanticInfo' (Dom n) SemaInfoLitCls = PreLiteralInfo
 type instance SemanticInfo' (Dom n) SemaInfoExprCls = ScopeInfo
 type instance SemanticInfo' (Dom n) SemaInfoImportCls = ImportInfo n
 type instance SemanticInfo' (Dom n) SemaInfoModuleCls = ModuleInfo GHC.Name
@@ -84,6 +88,7 @@ type instance SemanticInfo' (Dom n) SemaInfoDefaultCls = NoSemanticInfo
 
 type instance SemanticInfo' IdDom SemaInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SemaInfoExprCls = ScopeInfo
+type instance SemanticInfo' IdDom SemaInfoLitCls = LiteralInfo
 type instance SemanticInfo' IdDom SemaInfoImportCls = ImportInfo GHC.Id
 type instance SemanticInfo' IdDom SemaInfoModuleCls = ModuleInfo GHC.Id
 type instance SemanticInfo' IdDom SemaInfoWildcardCls = ImplicitFieldInfo
@@ -98,19 +103,14 @@ type Domain d = ( Typeable d
                 , Data d
                 , SemanticInfo' d SemaInfoDefaultCls ~ NoSemanticInfo
                 , Data (SemanticInfo' d SemaInfoNameCls)
+                , Data (SemanticInfo' d SemaInfoLitCls)
                 , Data (SemanticInfo' d SemaInfoExprCls)
                 , Data (SemanticInfo' d SemaInfoImportCls)
                 , Data (SemanticInfo' d SemaInfoModuleCls)
                 , Data (SemanticInfo' d SemaInfoWildcardCls)
-                , Show (SemanticInfo' d SemaInfoNameCls)
-                , Show (SemanticInfo' d SemaInfoExprCls)
-                , Show (SemanticInfo' d SemaInfoImportCls)
-                , Show (SemanticInfo' d SemaInfoModuleCls)
-                , Show (SemanticInfo' d SemaInfoWildcardCls)
                 )
 
 type DomainWith e d = ( Data (SemanticInfo' d (SemaInfoClassify e))
-                      , Show (SemanticInfo' d (SemaInfoClassify e))
                       , Domain d
                       )
 
@@ -126,9 +126,6 @@ class ( Typeable stage
       , Data (SpanInfo stage)
       , Data (ListInfo stage)
       , Data (OptionalInfo stage)
-      , Show (SpanInfo stage)
-      , Show (ListInfo stage)
-      , Show (OptionalInfo stage)
       , HasRange (SpanInfo stage)
       , HasRange (ListInfo stage)
       , HasRange (OptionalInfo stage)
@@ -241,6 +238,9 @@ data Ann elem dom stage
         , _element    :: elem dom stage -- ^ The original AST part
         }
 
+instance SourceInfo src => Eq (Ann elem dom src) where
+  a == b = getRange a == getRange b
+
 makeReferences ''Ann
 
 -- | A list of AST elements
@@ -341,6 +341,7 @@ class ApplySemaChange cls where
   appSemaChange :: SemaTrf f dom1 dom2 -> SemanticInfo' dom1 cls -> f (SemanticInfo' dom2 cls)
 
 instance ApplySemaChange SemaInfoNameCls where appSemaChange = trfSemaNameCls
+instance ApplySemaChange SemaInfoLitCls where appSemaChange = trfSemaLitCls
 instance ApplySemaChange SemaInfoExprCls where appSemaChange = trfSemaExprCls
 instance ApplySemaChange SemaInfoImportCls where appSemaChange = trfSemaImportCls
 instance ApplySemaChange SemaInfoModuleCls where appSemaChange = trfSemaModuleCls
@@ -355,6 +356,7 @@ class ApplySemaChange (SemaInfoClassify a)
 -- | A transformation on the possible semantic informations for a given domain
 data SemaTrf f dom1 dom2 = SemaTrf { trfSemaNameCls :: SemanticInfo' dom1 SemaInfoNameCls -> f (SemanticInfo' dom2 SemaInfoNameCls)
                                    , trfSemaExprCls :: SemanticInfo' dom1 SemaInfoExprCls -> f (SemanticInfo' dom2 SemaInfoExprCls)
+                                   , trfSemaLitCls :: SemanticInfo' dom1 SemaInfoLitCls -> f (SemanticInfo' dom2 SemaInfoLitCls)
                                    , trfSemaImportCls :: SemanticInfo' dom1 SemaInfoImportCls -> f (SemanticInfo' dom2 SemaInfoImportCls)
                                    , trfSemaModuleCls :: SemanticInfo' dom1 SemaInfoModuleCls -> f (SemanticInfo' dom2 SemaInfoModuleCls)
                                    , trfSemaWildcardCls :: SemanticInfo' dom1 SemaInfoWildcardCls -> f (SemanticInfo' dom2 SemaInfoWildcardCls)

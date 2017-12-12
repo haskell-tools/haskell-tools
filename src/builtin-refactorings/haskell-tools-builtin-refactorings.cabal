@@ -13,16 +13,8 @@ cabal-version:       >=1.10
 
 extra-source-files: examples/CompleteModules/*.hs
                   , examples/CPP/*.hs
-                  , examples/CppHs/Language/Preprocessor/*.hs
-                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
-                  , examples/CppHs/Language/Preprocessor/Cpphs/*.hs
-                  , examples/Decl/*.hs
-                  , examples/Expr/*.hs
-                  , examples/InstanceControl/Control/Instances/*.hs
-                  , examples/Module/*.hs
-                  , examples/Pattern/*.hs
-                  , examples/Refactor/CommentHandling/*.hs
                   , examples/Refactor/ExtractBinding/*.hs
+                  , examples/Refactor/FloatOut/*.hs
                   , examples/Refactor/GenerateExports/*.hs
                   , examples/Refactor/GenerateTypeSignature/*.hs
                   , examples/Refactor/GenerateTypeSignature/BringToScope/*.hs
@@ -42,11 +34,7 @@ extra-source-files: examples/CompleteModules/*.hs
                   , examples/Refactor/RenameDefinition/SpliceExpr_res/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
-                  , examples/Refactor/FloatOut/*.hs
-                  , examples/TH/*.hs
-                  , examples/TH/QuasiQuote/*.hs
-                  , examples/TH/Splice/*.hs
-                  , examples/Type/*.hs
+                  , examples/Refactor/AutoCorrect/*.hs
                   , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
@@ -60,6 +48,7 @@ extra-source-files: examples/CompleteModules/*.hs
 library
   ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.Refactor.Builtin
+                     , Language.Haskell.Tools.Refactor.Builtin.AutoCorrect
                      , Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature
                      , Language.Haskell.Tools.Refactor.Builtin.OrganizeImports
                      , Language.Haskell.Tools.Refactor.Builtin.GenerateExports
@@ -124,8 +113,8 @@ test-suite haskell-tools-builtin-refactorings-test
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.10  && < 4.11
-                     , tasty                     >= 0.11 && < 0.12
-                     , tasty-hunit               >= 0.9 && < 0.10
+                     , tasty                     >= 0.11 && < 0.13
+                     , tasty-hunit               >= 0.9 && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 4.5
                      , filepath                  >= 1.4  && < 1.5
@@ -146,9 +135,6 @@ test-suite haskell-tools-builtin-refactorings-test
                      , haskell-tools-prettyprint >= 1.0  && < 1.1
                      , haskell-tools-refactor    >= 1.0  && < 1.1
                      , haskell-tools-builtin-refactorings
-                     -- libraries used by the examples
-                     , old-time                  >= 1.1  && < 1.2
-                     , polyparse                 >= 1.12 && < 1.13
   default-language:    Haskell2010
 
 test-suite ht-extension-organizer-test
@@ -159,8 +145,8 @@ test-suite ht-extension-organizer-test
   hs-source-dirs:      test
   main-is:             ExtensionOrganizerTest/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11
-                     , tasty                     >= 0.11 && < 0.12
-                     , tasty-hunit               >= 0.9 && < 0.10
+                     , tasty                     >= 0.11 && < 0.13
+                     , tasty-hunit               >= 0.9 && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 4.5
                      , filepath                  >= 1.4  && < 1.5

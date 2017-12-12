@@ -1,10 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
 module CPP.BetweenImports where
 
-import Data.List
+import CPP.A(a)
 #if !(MIN_VERSION_text(1,2,1))
 #endif
-import Data.Maybe
+import CPP.B(b)
 
-x = Just
+x = a

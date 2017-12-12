@@ -119,6 +119,7 @@ data UExpr dom stage
                     , _exprInner :: Ann UExpr dom stage
                     , _exprSumPlaceholdersAfter :: AnnListG UUnboxedSumPlaceHolder dom stage
                     } -- ^ Unboxed sum expression (@ (# | True #) @).
+  | UHole -- ^ A hole in the program @_@, similar to undefined but gives type information.
   -- XML expressions omitted
 
 -- | Field update expressions

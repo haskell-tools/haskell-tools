@@ -1,19 +1,8 @@
 -- | Show instance for Haskell AST representation ignoring source and semantic information
 {-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
-module Language.Haskell.Tools.AST.Instances.Show () where
+module Language.Haskell.Tools.Debug.Show () where
 
-import Language.Haskell.Tools.AST.Ann (Ann(..), AnnListG(..), AnnMaybeG(..))
-import Language.Haskell.Tools.AST.Representation.Binds
-import Language.Haskell.Tools.AST.Representation.Decls
-import Language.Haskell.Tools.AST.Representation.Exprs
-import Language.Haskell.Tools.AST.Representation.Kinds (UPromoted(..), UKind(..), UKindConstraint(..))
-import Language.Haskell.Tools.AST.Representation.Literals (ULiteral(..))
-import Language.Haskell.Tools.AST.Representation.Modules
-import Language.Haskell.Tools.AST.Representation.Names
-import Language.Haskell.Tools.AST.Representation.Patterns (UPatternField(..), UPattern(..))
-import Language.Haskell.Tools.AST.Representation.Stmts
-import Language.Haskell.Tools.AST.Representation.TH
-import Language.Haskell.Tools.AST.Representation.Types
+import Language.Haskell.Tools.AST
 
 -- Annotations
 instance (Show (e dom stage)) => Show (Ann e dom stage) where

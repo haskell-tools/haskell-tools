@@ -53,11 +53,10 @@ trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
 trfAmbiguousOperator' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UOperator (Dom r) RangeStage)
 trfAmbiguousOperator' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfOperator' (unpackPostRn @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
-trfAmbiguousFieldOperator' _ (Ambiguous (L l rdr) _)
+trfAmbiguousOperator' _ (Ambiguous (L l rdr) _)
   = annLocNoSema (pure l)
       $ (if (isSymOcc (occName rdr)) then AST.UNormalOp else AST.UBacktickOp)
           <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfOperatorStr (not $ isSymOcc (occName rdr)) (rdrNameStr rdr))
-
 
 class (DataId n, Eq n, GHCName n, FromGHCName n, NameOrRdrName n ~ n, HasOccName n) => TransformableName n where
   correctNameString :: n -> Trf String
