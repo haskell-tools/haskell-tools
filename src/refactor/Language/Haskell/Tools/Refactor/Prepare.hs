@@ -20,7 +20,6 @@ import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad
 import HscTypes
-import Linker (unload)
 import Outputable (Outputable(..), showSDocUnsafe)
 import Packages (initPackages)
 import SrcLoc
@@ -90,8 +89,6 @@ initGhcFlagsForTest = do initGhcFlags' True False
 initGhcFlags' :: Bool -> Bool -> Ghc ()
 initGhcFlags' needsCodeGen errorsSuppressed = do
   dflags <- getSessionDynFlags
-  env <- getSession
-  liftIO $ unload env [] -- clear linker state if ghc was used in the same process
   void $ setSessionDynFlags
     $ flip gopt_set Opt_KeepRawTokenStream
     $ flip gopt_set Opt_NoHsMain

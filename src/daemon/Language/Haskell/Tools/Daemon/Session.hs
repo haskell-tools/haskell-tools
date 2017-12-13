@@ -179,7 +179,9 @@ clearModules mods = do
   -- clear the symbol cache for iserv
   liftIO $ purgeLookupSymbolCache env
   -- clear the global linker state
-  liftIO $ unload env (mapMaybe hm_linkable (eltsHpt hptStay))
+  dfs <- getSessionDynFlags
+  when (not $ gopt Opt_ExternalInterpreter dfs) $
+    liftIO $ unload env (mapMaybe hm_linkable (eltsHpt hptStay))
   -- clear name cache
   nameCache <- liftIO $ readIORef $ hsc_NC env
   let nameCache' = nameCache { nsNames = delModuleEnvList (nsNames nameCache) (map ms_mod mods) }
