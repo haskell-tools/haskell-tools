@@ -65,7 +65,9 @@ updateClient' UpdateCtx{..} Reset
        modify' $ resetSession
        Session sess <- liftIO $ reinitGhcSession warnMVar (generateCode (sharedOptions options))
        env <- liftIO $ readIORef sess
-       liftIO $ unload env [] -- clear (unload everything) the global state of the linker
+       dfs <- getSessionDynFlags
+       when (not $ gopt Opt_ExternalInterpreter dfs) $
+         liftIO $ unload env [] -- clear (unload everything) the global state of the linker
        lift $ setSession env
        addPackages response warnMVar roots
        return True
@@ -381,8 +383,7 @@ initGhcSession genCode = do
 
 reinitGhcSession :: MVar [Marker] -> Bool -> IO Session
 reinitGhcSession mv genCode = do 
-  sess <- Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags' genCode True >> setupLogging mv >> getSession))
-  return sess
+  Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags' genCode True >> setupLogging mv >> getSession))
 
 setupLogging :: MVar [Marker] -> Ghc ()
 setupLogging mv = modifySession $ \s -> s { hsc_dflags = (hsc_dflags s) { log_action = logger } }
