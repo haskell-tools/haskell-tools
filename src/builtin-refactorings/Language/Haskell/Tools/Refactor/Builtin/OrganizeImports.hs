@@ -65,9 +65,9 @@ organizeImports mod
        if noNarrowingImports
          then -- we don't know what definitions the generated code will use
               return $ modImports .- sortImports $ mod
-         else modImports !~ fmap sortImports . narrowImports noNarrowingSubspecs exportedModules (addFromString dfs usedNames) exportedNames prelInstances prelFamInsts $ mod
-  where prelInstances = semanticsPrelInsts mod
-        prelFamInsts = semanticsPrelFamInsts mod
+         else do (prelInstances, prelFamInsts) <- liftGhc $ getInstances preludeAccessible
+                 modImports !~ fmap sortImports . narrowImports noNarrowingSubspecs exportedModules (addFromString dfs usedNames) exportedNames prelInstances prelFamInsts $ mod
+  where preludeAccessible = semanticsPrelTransMods mod
         addFromString dfs = if xopt OverloadedStrings dfs then (GHC.fromStringName :) else id
         usedNames = map getName $ (catMaybes $ map semanticsName
                         -- obviously we don't want the names in the imports to be considered, but both from
@@ -124,9 +124,9 @@ sortImports ls = srcInfo & srcTmpSeparators .= filter (not . null . fst) (concat
 -- | Modify an import to only import  names that are used.
 narrowImports :: Bool -> [String] -> [GHC.Name] -> [(GHC.Name, Bool)] -> [ClsInst] -> [FamInst] -> ImportDeclList -> LocalRefactor ImportDeclList
 narrowImports noNarrowSubspecs exportedModules usedNames exportedNames prelInsts prelFamInsts imps
-  = (annListElems & traversal !~ narrowImport noNarrowSubspecs exportedModules usedNames exportedNames)
-      =<< filterListIndexedSt (\i _ -> impsNeeded !! i) imps
-  where impsNeeded = neededImports exportedModules (usedNames ++ map fst exportedNames) prelInsts prelFamInsts (imps ^. annListElems)
+  = do impsNeeded <- liftGhc $ neededImports exportedModules (usedNames ++ map fst exportedNames) prelInsts prelFamInsts (imps ^. annListElems)
+       (annListElems & traversal !~ narrowImport noNarrowSubspecs exportedModules usedNames exportedNames)
+          =<< filterListIndexedSt (\i _ -> impsNeeded !! i) imps
 
 -- | Reduces the number of definitions used from an import
 narrowImport :: Bool -> [String] -> [GHC.Name] -> [(GHC.Name, Bool)] -> ImportDecl -> LocalRefactor ImportDecl
@@ -188,23 +188,24 @@ createImportSpec elems = mkImportSpecList $ map createIESpec elems
         createIESpec (n, True)  = mkIESpec (mkUnqualName' (GHC.getName n)) (Just mkSubAll)
 
 -- | Check each import if it is actually needed
-neededImports :: [String] -> [GHC.Name] -> [ClsInst] -> [FamInst] -> [ImportDecl] -> [Bool]
-neededImports exportedModules usedNames prelInsts prelFamInsts imps = neededImports' usedNames [] imps
-  where neededImports' _ _ [] = []
+neededImports :: [String] -> [GHC.Name] -> [ClsInst] -> [FamInst] -> [ImportDecl] -> GHC.Ghc [Bool]
+neededImports exportedModules usedNames prelInsts prelFamInsts imps = do
+     impsWithInsts <- mapM (\i -> (i,) <$> getInstances (semanticsTransMods i)) imps  
+     return $ neededImports' usedNames [] prelInsts prelFamInsts impsWithInsts
+  where neededImports' _ _ _ _ [] = []
         -- keep the import if any definition is needed from it
-        neededImports' usedNames kept (imp : rest)
+        neededImports' usedNames kept keptInsts keptFamInsts ((imp, (clsInsts, famInsts)) : rest)
           | not (null actuallyImported)
                || (imp ^. importModule & moduleNameString) `elem` exportedModules
                || maybe False (`elem` exportedModules) (imp ^? importAs & annJust & importRename & moduleNameString)
-            = True : neededImports' usedNames (imp : kept) rest
+            = True : neededImports' usedNames (imp : kept) (clsInsts ++ keptInsts) (famInsts ++ keptFamInsts) rest
           where actuallyImported = semanticsImported imp `intersect` usedNames
-        neededImports' usedNames kept (imp : rest)
-            = needed : neededImports' usedNames (if needed then imp : kept else kept) rest
-          where needed = any (`notElem` otherClsInstances) 
-                             (map is_dfun $ filter (isOrphan . is_orphan) $ semanticsInsts imp)
-                           || any (`notElem` otherFamInstances) (map fi_axiom $ semanticsFamInsts imp)
-                otherClsInstances = map is_dfun (concatMap semanticsInsts kept ++ prelInsts)
-                otherFamInstances = map fi_axiom (concatMap semanticsFamInsts kept ++ prelFamInsts)
+        -- check if instances are needed from the import
+        neededImports' usedNames kept keptInsts keptFamInsts ((imp, (clsInsts, famInsts)) : rest)
+            = needed : if needed then neededImports' usedNames (imp : kept) (clsInsts ++ keptInsts) (famInsts ++ keptFamInsts) rest
+                                 else neededImports' usedNames kept keptInsts keptFamInsts rest
+          where needed = any (`notElem` map is_dfun keptInsts) (map is_dfun $ filter (isOrphan . is_orphan) clsInsts)
+                           || any (`notElem` map fi_axiom keptFamInsts) (map fi_axiom famInsts)
 
 -- | Narrows the import specification (explicitly imported elements)
 narrowImportSpecs :: Bool -> [GHC.Name] -> [(GHC.Name, Bool)] -> IESpecList -> LocalRefactor IESpecList

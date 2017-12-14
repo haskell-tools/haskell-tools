@@ -36,8 +36,9 @@ autoCorrect sp mod
 --------------------------------------------------------------------------------------------
 
 reOrder :: RealSrcSpan -> HT.Module -> LocalRefactor (Maybe HT.Module)
-reOrder sp mod = do let insts = semanticsPrelInsts mod ++ concatMap semanticsInsts (mod ^? modImports & annList :: [HT.ImportDecl])
+reOrder sp mod = do let accessibleMods = semanticsModule mod : semanticsPrelTransMods mod ++ concatMap semanticsTransMods (mod ^? modImports & annList :: [HT.ImportDecl])
                         rng:_ = map getRange (mod ^? nodesContained sp :: [Expr])
+                    insts <- liftGhc $ fst <$> getInstances accessibleMods
                     (res,done) <- liftGhc $ flip runStateT False ((nodesContained sp & filtered ((==rng) . getRange) !~ reOrderExpr insts) mod)
                     return (if done then Just res else Nothing)
 
@@ -63,8 +64,9 @@ reOrderExpr _ e = return e
 ------------------------------------------------------------------------------------------
 
 reParen :: RealSrcSpan -> HT.Module -> LocalRefactor (Maybe HT.Module)
-reParen sp mod = do let insts = semanticsPrelInsts mod ++ concatMap semanticsInsts (mod ^? modImports & annList :: [HT.ImportDecl])
+reParen sp mod = do let accessibleMods = semanticsModule mod : semanticsPrelTransMods mod ++ concatMap semanticsTransMods (mod ^? modImports & annList :: [HT.ImportDecl])
                         rng:_ = map getRange (mod ^? nodesContained sp :: [Expr])
+                    insts <- liftGhc $ fst <$> getInstances accessibleMods
                     (res,done) <- liftGhc $ flip runStateT False ((nodesContained sp & filtered ((==rng) . getRange) !~ reParenExpr insts) mod)
                     return (if done then Just res else Nothing)
 

@@ -7,28 +7,37 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   , exprScopedLocals, nameScopedLocals, nameIsDefined, nameInfo, ambiguousName, nameLocation
   , implicitName, cnameScopedLocals, cnameIsDefined, cnameInfo, cnameFixity
   , defModuleName, defDynFlags, defIsBootModule, implicitNames, importedModule, availableNames
-  , importedNames, implicitFieldBindings, importedOrphanInsts, importedFamInsts, prelOrphanInsts
-  , prelFamInsts, literalType
+  , importedNames, implicitFieldBindings, prelTransMods, importTransMods, literalType
     -- creator functions
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
   -- utils
   , PName(..), pName, pNameParent
+  , getInstances
   ) where
 
 import BasicTypes as GHC
 import DynFlags as GHC
 import FamInstEnv as GHC
+import qualified GHC
 import Id as GHC
+import Var
 import InstEnv as GHC
 import Module as GHC
 import Name as GHC
 import RdrName as GHC
 import SrcLoc as GHC
 import Type as GHC
+import HscTypes as GHC
+import CoAxiom as GHC
 
+import Data.Maybe
 import Data.Data as Data
 import Control.Reference
+import Control.Monad
+import Control.Monad.IO.Class
+
+import Outputable
 
 type Scope = [[(Name, Maybe [UsageSpec], Maybe Name)]]
 
@@ -118,8 +127,7 @@ data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
                                , _defDynFlags :: DynFlags -- ^ The compilation flags that are set up when the module was compiled
                                , _defIsBootModule :: Bool -- ^ True if this module is created from a hs-boot file
                                , _implicitNames :: [PName n] -- ^ implicitly imported names
-                               , _prelOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed from Prelude.
-                               , _prelFamInsts :: [FamInst] -- ^ Family instances implicitly passed from Prelude.
+                               , _prelTransMods :: [GHC.Module] -- ^ Modules imported transitively.
                                }
   deriving (Data, Functor, Foldable, Traversable)
 
@@ -133,17 +141,16 @@ dynFlagsCon = mkConstr dynFlagsType "DynFlags" [] Data.Prefix
 
 -- | Creates semantic information for the module element.
 -- Strict in the list of implicitely imported, orphan and family instances.
-mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [PName n] -> [ClsInst] -> [FamInst] -> ModuleInfo n
+mkModuleInfo :: GHC.Module -> DynFlags -> Bool -> [PName n] -> [GHC.Module] -> ModuleInfo n
 -- the calculate of these fields involves a big parts of the GHC state and it causes a space leak
 -- if not evaluated strictly
-mkModuleInfo mod dfs boot !imported !orphan !family = ModuleInfo mod dfs boot imported orphan family
+mkModuleInfo mod dfs boot !imported deps = ModuleInfo mod dfs boot imported deps
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
                                , _availableNames :: [n] -- ^ Names available from the imported module
                                , _importedNames :: [PName n] -- ^ Names actually imported from the module.
-                               , _importedOrphanInsts :: [ClsInst] -- ^ Class instances implicitly passed.
-                               , _importedFamInsts :: [FamInst] -- ^ Family instances implicitly passed.
+                               , _importTransMods :: [GHC.Module] -- ^ Modules imported transitively.
                                }
   deriving (Data, Functor, Foldable, Traversable)
 
@@ -152,10 +159,23 @@ deriving instance Data FamFlavor
 
 -- | Creates semantic information for an import declaration
 -- Strict in the list of the used and imported declarations, orphan and family instances.
-mkImportInfo :: GHC.Module -> [n] -> [PName n] -> [ClsInst] -> [FamInst] -> ImportInfo n
+mkImportInfo :: GHC.Module -> [n] -> [PName n] -> [GHC.Module] -> ImportInfo n
 -- the calculate of these fields involves a big parts of the GHC state and it causes a space leak
 -- if not evaluated strictly
-mkImportInfo mod !names !imported !orphan !family = ImportInfo mod names imported orphan family
+mkImportInfo mod !names !imported deps = ImportInfo mod names imported deps
+
+-- | Gets the class and family instances from a module.
+getInstances :: [Module] -> GHC.Ghc ([ClsInst], [FamInst])
+getInstances mods = do
+  env <- GHC.getSession
+  eps <- liftIO $ hscEPS env
+  let homePkgs = catMaybes $ map (lookupHpt (hsc_HPT env) . GHC.moduleName) mods
+      (hptInsts, hptFamInsts) = hptInstances env (`elem` map GHC.moduleName mods)
+      isFromMods inst = maybe False (`elem` mods) $ nameModule_maybe $ Var.varName $ is_dfun inst
+      famIsFromMods inst = maybe False (`elem` mods) $ nameModule_maybe $ co_ax_name $ fi_axiom inst
+      epsInsts = filter isFromMods $ instEnvElts $ eps_inst_env eps
+      epsFamInsts = filter famIsFromMods $ famInstEnvElts $ eps_fam_inst_env eps
+  return (hptInsts ++ epsInsts, hptFamInsts ++ epsFamInsts)
 
 -- | Info corresponding to an record-wildcard
 data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitly bounded names
