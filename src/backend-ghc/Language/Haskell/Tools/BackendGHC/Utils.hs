@@ -28,6 +28,8 @@ import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
 import Outputable (Outputable(..), showSDocUnsafe)
+import Packages
+import Finder
 import SrcLoc
 
 import Control.Exception (Exception, throw)
@@ -51,13 +53,12 @@ createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) =
                   && all (\idecl -> ("Prelude" /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))
                                       || nameLoc == getLoc idecl) imports
   (_, preludeImports) <- if prelude then getImportedNames "Prelude" Nothing else return (ms_mod mod, [])
-  (insts, famInsts)
-    <- if prelude then lift $ getInstances (Module baseUnitId (GHC.mkModuleName "Prelude"))
-                  else return ([], [])
+  deps <- if prelude then lift $ getDeps (Module baseUnitId (GHC.mkModuleName "Prelude"))
+                     else return []
   -- This function (via getInstances) refers the ghc environment,
   -- we must evaluate the result or the reference may be kept preventing garbage collection.
   return $ mkModuleInfo (ms_mod mod) (ms_hspp_opts mod) (case ms_hsc_src mod of HsSrcFile -> False; _ -> True)
-                        (forceElements preludeImports) (forceElements insts) (forceElements famInsts)
+                        (forceElements preludeImports) deps
 
 -- | Creates a semantic information for a name
 createNameInfo :: n -> Trf (NameInfo n)
@@ -93,37 +94,30 @@ createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
      -- TODO: only use getFromNameUsing once
      lookedUpNames <- liftGhc $ mapM translatePName $ names
      lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId . (^. pName)) $ importedNames
-     (insts, famInsts) <- lift $ getInstances mod
+     deps <- lift $ getDeps mod
      -- This function (via getInstances) refers the ghc environment,
      -- we must evaluate the result or the reference may be kept preventing garbage collection.
      return $ mkImportInfo mod (forceElements $ catMaybes lookedUpImported)
                                (forceElements $ catMaybes lookedUpNames)
-                               (forceElements insts) (forceElements famInsts)
+                               deps
   where translatePName (PName n p) = do n' <- getFromNameUsing getTopLevelId n
                                         p' <- maybe (return Nothing) (getFromNameUsing getTopLevelId) p
                                         return (PName <$> n' <*> Just p')
 
--- | Gets the class and family instances from a module.
--- Important: the results must be evaluated or ghs session state will not be garbage-collected.
-getInstances :: Module -> Ghc ([ClsInst], [FamInst])
-getInstances mod = do
-  env <- getSession
+getDeps :: Module -> Ghc [Module]
+getDeps mod = do
+  env <- GHC.getSession
   eps <- liftIO $ hscEPS env
-  let lookupInstances mn = case lookupHpt (hsc_HPT env) (GHC.moduleName mod) of 
-                             Just hmi -> (md_insts (hm_details hmi), md_fam_insts (hm_details hmi))
-                             Nothing -> let (hptInsts, hptFamInsts) = hptInstances env (== mn)
-                                            instDefIn mn inst = maybe False ((== mn) . GHC.moduleName) $ nameModule_maybe $ Var.varName $ is_dfun inst
-                                            famInstDefIn mn inst = maybe False ((== mn) . GHC.moduleName) $ nameModule_maybe $ co_ax_name $ fi_axiom inst
-                                         in ( hptInsts ++ filter (instDefIn mn) (instEnvElts $ eps_inst_env eps)
-                                            , hptFamInsts ++ filter (famInstDefIn mn) (famInstEnvElts $ eps_fam_inst_env eps)
-                                            )
   case lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod of
-    Just ifc -> do
-      let (ownInstances, ownFamInstances) = lookupInstances (GHC.moduleName mod)
-          deps = dep_mods (mi_deps ifc)
-          (depInstances, depFamInstances) = unzip $ map lookupInstances (map fst deps)
-      return (ownInstances ++ concat depInstances, ownFamInstances ++ concat depFamInstances)
-    Nothing -> return ([],[])
+    Just ifc -> (mod :) <$> mapM (liftIO . getModule env . fst) (dep_mods (mi_deps ifc))
+    Nothing -> return [mod]
+  where getModule env modName = do 
+          res <- findHomeModule env modName
+          case res of Found _ m -> return m
+                      _ -> case lookupPluginModuleWithSuggestions (hsc_dflags env) modName Nothing of
+                             LookupFound m _ -> return m
+                             LookupHidden hiddenPack hiddenMod -> return (head $ map fst hiddenMod ++ map fst hiddenPack)
+                             _ -> error $ "getDeps: module not found: " ++ GHC.moduleNameString modName
 
 -- | Get names that are imported from a given import
 getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [PName GHC.Name])
