@@ -10,35 +10,28 @@
 module Language.Haskell.Tools.Refactor.Utils.Type (typeExpr, appTypeMatches, literalType) where
 
 import Data.List
-import Data.Maybe
 import Control.Monad.State
-import Control.Monad.IO.Class
 import Control.Reference
+
 import GHC
-import TyCon as GHC
 import Module as GHC
 import InstEnv as GHC
 import Unify as GHC
-import SrcLoc as GHC
 import Type as GHC
 import Name as GHC
-import Outputable as GHC
-import Id as GHC
 import Var as GHC
 import UniqSupply as GHC
 import Unique as GHC
-import Unify as GHC
 import TysWiredIn as GHC
 import TysPrim as GHC
 import PrelNames as GHC
 import ConLike as GHC
-import DataCon as GHC
 import PatSyn as GHC
 import BasicTypes as GHC
+
 import Language.Haskell.Tools.Rewrite.ElementTypes as AST
 import Language.Haskell.Tools.Rewrite.Match as AST
 import Language.Haskell.Tools.AST as AST
-import Language.Haskell.Tools.Refactor.Monad
 
 typeExpr :: Expr -> Ghc GHC.Type
 typeExpr e = do usupp <- liftIO $ mkSplitUniqSupply 'z'
@@ -80,7 +73,7 @@ typeExpr' (Lambda args e) = do
   (argTypes, recomps) <- unzip <$> mapM (\_ -> splitType' <$> resultType) (args ^? annList)
   return $ foldr (.) recomp recomps $ mkFunTys argTypes resType
 typeExpr' (Let _ e) = typeExpr' e
-typeExpr' (If cond then' else') = typeExpr' then'
+typeExpr' (If _ then' _) = typeExpr' then'
 typeExpr' (MultiIf alts) =
   case alts ^? annList & caseGuardExpr of e:_ -> typeExpr' e
                                           _   -> resultType
@@ -131,7 +124,7 @@ typeExpr' (RightSection op rhs) = do
       return $ maybe id substTy subst $ repack (mkFunTys (arg1:rest) resTyp)
     _ -> resultType
 typeExpr' (AST.RecCon name _) 
-  = do def <- maybe (return Nothing) GHC.lookupName (semanticsName (name ^. simpleName))
+  = do def <- lift $ maybe (return Nothing) GHC.lookupName (semanticsName (name ^. simpleName))
        case def of 
          Just (AConLike (RealDataCon con)) -> return $ dataConSig con ^. _4
          Just (AConLike (PatSynCon patSyn)) -> return $ patSynSig patSyn ^. _6
@@ -184,8 +177,8 @@ splitType typ =
       (implicitArgs, realArgs) = partition isPredTy args
       repack subst insts t = (mkInvForAllTys (filter (`elem` tvs) foralls) . mkFunTys keptConstraints $ t, check)
         where
-          check = and $ map (checkInst insts) implicitArgs
-          checkInst insts t =
+          check = and $ map checkInst implicitArgs
+          checkInst t =
             case splitTyConApp_maybe (substTy subst t) of
               Just (tc, args) -> case tyConClass_maybe tc of 
                                    Just cls -> case lookupInstEnv False instEnvs cls args of 
@@ -203,12 +196,11 @@ resultType :: StateT [Unique] Ghc GHC.Type
 resultType = do 
   name <- newName
   let tv = mkTyVar name (mkTyConTy starKindTyCon)
-      occn  = mkOccName tvName "a"
   return $ mkInvForAllTys [tv] (mkTyVarTy tv)
 
 litType :: GHC.Name -> StateT [Unique] Ghc GHC.Type
 litType constraint = do 
-  Just (ATyCon numTyCon) <- lookupName numClassName
+  Just (ATyCon numTyCon) <- lift $ lookupName constraint
   name <- newName
   let tv = mkTyVar name (mkTyConTy starKindTyCon)
   return $ mkInvForAllTys [tv] $ mkFunTy (mkTyConApp numTyCon [mkTyVarTy tv]) (mkTyVarTy tv)

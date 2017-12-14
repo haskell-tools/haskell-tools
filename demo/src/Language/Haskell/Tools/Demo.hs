@@ -45,7 +45,6 @@ import SrcLoc (realSrcSpanStart)
 
 import Control.Reference
 
-import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.ASTDebug
 import Language.Haskell.Tools.ASTDebug.Instances ()
 import Language.Haskell.Tools.PrettyPrint

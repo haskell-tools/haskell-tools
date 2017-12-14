@@ -14,7 +14,6 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions
-import SrcLoc (SrcSpan)
 
 import Control.Monad.Reader
 import Control.Monad.State

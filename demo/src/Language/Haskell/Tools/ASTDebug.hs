@@ -43,7 +43,7 @@ data DebugNode dom = TreeNode { _nodeLabel :: String
                                 , _nodeValue :: String
                                 }
 
-deriving instance Domain dom => Show (DebugNode dom)
+-- deriving instance Domain dom => Show (DebugNode dom)
 
 data TreeDebugNode dom
   = TreeDebugNode { _nodeName :: String
@@ -51,7 +51,7 @@ data TreeDebugNode dom
                   , _children :: [DebugNode dom]
                   }
 
-deriving instance Domain dom => Show (TreeDebugNode dom)
+-- deriving instance Domain dom => Show (TreeDebugNode dom)
 
 data SemanticInfoType dom
   = DefaultInfoType { semaInfoTypeRng :: SrcSpan
@@ -71,9 +71,6 @@ data SemanticInfoType dom
   | ImplicitFieldInfoType { semaInfoTypeImplicitFld :: SemanticInfo' dom SameInfoWildcardCls
                           , semaInfoTypeRng :: SrcSpan
                           }
-
-
-deriving instance Domain dom => Show (SemanticInfoType dom)
 
 makeReferences ''DebugNode
 makeReferences ''TreeDebugNode
@@ -171,13 +168,17 @@ instance AssocData ImplicitFieldInfo where
                 ]
 
 inspectScope :: InspectableName n => [[(n, Maybe [UsageSpec], Maybe n)]] -> String
-inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map inspect)
+inspectScope = concat . intersperse " | " . map (concat . intersperse ", " . map showUsage)
 
 class Outputable n => InspectableName n where
   inspect :: n -> String
 
-instance InspectableName n => InspectableName (n, Maybe [UsageSpec], Maybe n) where
-  inspect (n,usage,parent) = inspect n ++ showSDocUnsafe (ppr usage) ++ maybe "" (\p -> "( in " ++ showSDocUnsafe (ppr p) ++ ")") parent
+showUsage :: InspectableName n => (n, Maybe [UsageSpec], Maybe n) -> String
+showUsage (n,usage,parent) = inspect n ++ show usage ++ maybe "" (\p -> "( in " ++ showSDocUnsafe (ppr p) ++ ")") parent
+
+instance Show UsageSpec where
+  show (UsageSpec q useQ asQ)
+    = (if q then "qualified " else "") ++ "as " ++ (if useQ == asQ || q then asQ else asQ ++ " or " ++ useQ)
 
 instance InspectableName GHC.Name where
   inspect name = showSDocUnsafe (ppr name) ++ "[" ++ show (getUnique name) ++ "]"

@@ -1,17 +1,20 @@
-{-# LANGUAGE DefaultSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE DefaultSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, TypeOperators, ConstraintKinds #-}
 -- | A module for displaying debug info about the source annotations of the syntax tree in different phases.
 module Language.Haskell.Tools.Debug.RangeDebug where
 
 import Control.Reference ()
 import GHC.Generics
-import Language.Haskell.Tools.AST (SourceInfo(..), Domain(..))
+import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.BackendGHC ()
 import Language.Haskell.Tools.PrettyPrint.Prepare ()
+import Language.Haskell.Tools.Debug.Show ()
+
+type ShowSrcInfo st = (Show (SpanInfo st), Show (ListInfo st), Show (OptionalInfo st)) 
 
 srcInfoDebug :: TreeDebug e dom st => e dom st -> String
 srcInfoDebug = treeDebug' 0
 
-class (SourceInfo st, Domain dom, Show (e dom st))
+class (ShowSrcInfo st, Domain dom, Show (e dom st))
         => TreeDebug e dom st where
   treeDebug' :: Int -> e dom st -> String
   default treeDebug' :: (GTreeDebug (Rep (e dom st)), Generic (e dom st), Domain dom) => Int -> e dom st -> String

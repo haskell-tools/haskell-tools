@@ -151,18 +151,20 @@ trfImports (filter (not . ideclImplicit . unLoc) -> imps)
        -- the list of imported entities is added after the imports have been evaluated, to have all instances loaded
        !importData <- mapM (createImportData . unLoc) imps :: Trf [ImportInfo r]
        return $ flip evalState 0 $ AST.annList & AST.annotation & AST.semanticInfo
-                                     !~ (\id -> get >>= \i -> modify (+1) >> return (importData !! i)) $ res
+                                     !~ (\_ -> get >>= \i -> modify (+1) >> return (importData !! i)) $ res
   where importDefaultLoc = noSemaInfo . AST.ListPos (if List.null imps then "\n" else "") "" "\n" (Just []) . srcSpanEnd
                              <$> (combineSrcSpans <$> asks (srcLocSpan . srcSpanStart . contRange)
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
-trfImport (L l impDecl@(GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
+trfImport (L l (GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
   do safeTok <- tokenLoc AnnSafe
      let -- default positions of optional parts of an import declaration
          annBeforeQual = if isSrc then AnnClose else AnnImport
          annBeforeSafe = if isQual then AnnQualified else annBeforeQual
          annBeforePkg = if isGoodSrcSpan safeTok then AnnSafe else annBeforeSafe
+     -- the import semantic infos will be generated after all imports are processed,
+     -- otherwise information on instances imported will be inconsistent
      annLoc (pure (error "Import's semantic data not initialized")) (pure l) $ AST.UImportDecl
        <$> (if isSrc then makeJust <$> annLocNoSema (tokensLoc [AnnOpen, AnnClose]) (pure AST.UImportSource)
                      else nothing " " "" (after AnnImport))
