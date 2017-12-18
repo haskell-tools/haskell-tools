@@ -38,6 +38,11 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests lambdaCaseTest
   , mkTests tupleSectionsTest
   , mkNestedTests magicHashTest
+  , mkTests functionalDependenciesTest
+  , mkTests defaultSignaturesTest
+  , mkTests recursiveDoTest
+  , mkTests arrowsTest
+  , mkTests parallelListCompTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -58,15 +63,9 @@ spanToLine (RealSrcSpan s) = srcSpanEndLine s
 simplifyExtMap :: ExtMap -> SimpleMap
 simplifyExtMap = SMap.map (map spanToLine)
 
-loadModuleAST :: FilePath -> ModuleName -> Ghc TypedModule
-loadModuleAST dir moduleName = do
-  useFlags ["-w"]
-  modSummary <- loadModule (testRoot </> dir) moduleName
-  parseTyped modSummary
-
 getExtensionsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtensionsFrom dir moduleName = runGhc (Just libdir) $ do
-  modAST <- loadModuleAST dir moduleName
+  modAST <- loadModuleAST (testRoot </> dir) moduleName
   exts <- collectExtensions modAST
   return $! simplifyExtMap exts
 
@@ -74,7 +73,6 @@ getExtAnnotsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtAnnotsFrom dir moduleName = do
   s <- readFile $ addExtension (mkModulePath dir moduleName) ".hs"
   return $! getExtensionAnnotations s
-
 
 mkTest :: FilePath -> ModuleName -> TestTree
 mkTest dir moduleName = testCase moduleName $ mkAssertion dir moduleName
@@ -235,3 +233,44 @@ magicHashLiteralTest :: TestSuite
 magicHashLiteralTest = (mhLiteralRoot, mhLiteralModules)
 mhLiteralRoot = "Literal"
 mhLiteralModules = [ "InExpr" ]
+
+
+functionalDependenciesTest :: TestSuite
+functionalDependenciesTest = (fdRoot, fdModules)
+fdRoot = "FunctionalDependenciesTest"
+fdModules = [ "Basic" ]
+
+
+defaultSignaturesTest :: TestSuite
+defaultSignaturesTest = (dsRoot, dsModules)
+dsRoot = "DefaultSignaturesTest"
+dsModules = [ "Basic" ]
+
+
+recursiveDoTest :: TestSuite
+recursiveDoTest = (rdRoot, rdModules)
+rdRoot = "RecursiveDoTest"
+rdModules = [ "MDo"
+            , "RecStmt"
+            ]
+
+
+arrowsTest :: TestSuite
+arrowsTest = (arrRoot, arrModules)
+arrRoot = "ArrowsTest"
+arrModules = [ "Basic" ]
+
+
+parallelListCompTest :: TestSuite
+parallelListCompTest = (pcRoot, pcModules)
+pcRoot = "ParallelListCompTest"
+pcModules = [ "InCaseRhs"
+            , "InCompStmt"
+            , "InExpr"
+            , "InFieldUpdate"
+            , "InPattern"
+            , "InRhs"
+            , "InRhsGuard"
+            , "InStmt"
+            , "InTupSecElem"
+            ]

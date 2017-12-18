@@ -20,6 +20,9 @@ instance Checkable Expr where
   check = chkTupleSections
       >=> chkUnboxedTuplesExpr
       >=> chkLambdaCase
+      >=> chkRecursiveDoExpr
+      >=> chkArrowsExpr
+      >=> chkParallelListComp
 
 instance Checkable Type where
   check = chkUnboxedTuplesType
@@ -54,3 +57,15 @@ instance Checkable QuasiQuote where
 
 instance Checkable Bracket where
   check = chkTemplateHaskellBracket
+
+instance Checkable FunDepList where
+  check = chkFunDeps
+
+instance Checkable ClassElement where
+  check = chkDefaultSigs
+
+instance Checkable Stmt where
+  check = chkRecursiveDoStmt
+
+instance Checkable Cmd where
+  check = chkArrowsCmd

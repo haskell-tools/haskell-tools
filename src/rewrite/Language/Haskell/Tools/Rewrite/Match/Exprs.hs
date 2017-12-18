@@ -52,6 +52,10 @@ pattern Case expr cases <- Ann _ (UCase expr cases)
 pattern Do :: StmtList -> Expr
 pattern Do stmts <- Ann _ (UDo DoKeyword stmts)
 
+-- | MDo-notation expressions (@ mdo x <- act1; act2 @)
+pattern MDo :: StmtList -> Expr
+pattern MDo stmts <- Ann _ (UDo MDoKeyword stmts)
+
 pattern ParArrayComp :: Expr -> ListCompBodyList -> Expr
 pattern ParArrayComp expr stmts <- Ann _ (UParArrayComp expr stmts)
 
@@ -192,7 +196,7 @@ pattern TupSecMissing <- Ann _ Missing
 
 -- | Clause of case expression (@ Just x -> x + 1 @)
 pattern Alt :: Pattern -> CaseRhs -> MaybeLocalBinds -> Alt
-pattern Alt pat rhs locals <- Ann _ (UAlt pat rhs locals) 
+pattern Alt pat rhs locals <- Ann _ (UAlt pat rhs locals)
 
 -- | Unguarded right-hand side a pattern match (@ -> 3 @)
 pattern CaseRhs :: Expr -> CaseRhs
@@ -202,7 +206,7 @@ pattern CaseRhs e <- Ann _ (UUnguardedCaseRhs e)
 pattern GuardedCaseRhss :: GuardedCaseRhsList -> CaseRhs
 pattern GuardedCaseRhss cases <- Ann _ (UGuardedCaseRhss cases)
 
--- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)      
+-- | A guarded right-hand side of pattern matches binding (@ | x > 3 -> 2 @)
 pattern GuardedCaseRhs :: RhsGuardList -> Expr -> GuardedCaseRhs
 pattern GuardedCaseRhs guards expr <- Ann _ (UGuardedCaseRhs guards expr)
 
@@ -223,8 +227,8 @@ pattern GeneratedPragma rng <- Ann _ (UGeneratedPragma rng)
 
 -- | In-AST source ranges (for generated pragmas)
 pattern SourceRange :: String -> Integer -> Integer -> Integer -> Integer -> SourceRange
-pattern SourceRange file fromLine fromCol toLine toCol 
-          <- Ann _ (USourceRange 
+pattern SourceRange file fromLine fromCol toLine toCol
+          <- Ann _ (USourceRange
                      (Ann _ (UStringNode file))
                      (Ann _ (Number fromLine))
                      (Ann _ (Number fromCol))
@@ -275,23 +279,20 @@ pattern DoCmd stmts <- Ann _ (UDoCmd stmts)
 
 -- | Left arrow application: @-<@
 pattern LeftAppl :: ArrowApp
-pattern LeftAppl <- Ann _ ULeftAppl 
+pattern LeftAppl <- Ann _ ULeftAppl
 
 -- | Right arrow application: @>-@
 pattern RightAppl :: ArrowApp
-pattern RightAppl <- Ann _ URightAppl 
+pattern RightAppl <- Ann _ URightAppl
 
 -- | Left arrow high application: @-<<@
 pattern LeftHighApp :: ArrowApp
-pattern LeftHighApp <- Ann _ ULeftHighApp 
+pattern LeftHighApp <- Ann _ ULeftHighApp
 
 -- | Right arrow high application: @>>-@
 pattern RightHighApp :: ArrowApp
-pattern RightHighApp <- Ann _ URightHighApp 
+pattern RightHighApp <- Ann _ URightHighApp
 
 -- | A hole expression @_@
 pattern Hole :: Expr
 pattern Hole <- Ann _ UHole
-
-
-

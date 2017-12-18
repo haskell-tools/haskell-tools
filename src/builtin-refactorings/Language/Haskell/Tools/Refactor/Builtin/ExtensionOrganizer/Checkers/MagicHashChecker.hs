@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
-             
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker where
 
 import Language.Haskell.Tools.Refactor

@@ -23,6 +23,10 @@ type family HasChecker node where
   HasChecker Splice           = 'True
   HasChecker QuasiQuote       = 'True
   HasChecker Bracket          = 'True
+  HasChecker FunDepList       = 'True
+  HasChecker ClassElement     = 'True
+  HasChecker Stmt             = 'True
+  HasChecker Cmd              = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node
