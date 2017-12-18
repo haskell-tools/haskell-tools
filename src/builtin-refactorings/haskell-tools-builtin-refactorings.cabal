@@ -11,8 +11,7 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 
-extra-source-files: examples/CompleteModules/*.hs
-                  , examples/CPP/*.hs
+extra-source-files: examples/CPP/*.hs
                   , examples/Refactor/ExtractBinding/*.hs
                   , examples/Refactor/FloatOut/*.hs
                   , examples/Refactor/GenerateExports/*.hs
@@ -35,15 +34,23 @@ extra-source-files: examples/CompleteModules/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType/*.hs
                   , examples/Refactor/RenameDefinition/SpliceType_res/*.hs
                   , examples/Refactor/AutoCorrect/*.hs
-                  , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
-                  , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
-                  , test/ExtensionOrganizerTest/DerivingsTest/*.hs
+
+                  , test/ExtensionOrganizerTest/ArrowsTest/*.hs
                   , test/ExtensionOrganizerTest/BangPatternsTest/*.hs
-                  , test/ExtensionOrganizerTest/PatternSynonymsTest/*.hs
-                  , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
+                  , test/ExtensionOrganizerTest/DefaultSignaturesTest/*.hs
+                  , test/ExtensionOrganizerTest/DerivingsTest/*.hs
+                  , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
+                  , test/ExtensionOrganizerTest/FunctionalDependenciesTest/*.hs
                   , test/ExtensionOrganizerTest/LambdaCaseTest/*.hs
+                  , test/ExtensionOrganizerTest/MagicHashTest/Literal/*.hs
+                  , test/ExtensionOrganizerTest/MagicHashTest/Name/*.hs
+                  , test/ExtensionOrganizerTest/ParallelListCompTest/*.hs
+                  , test/ExtensionOrganizerTest/PatternSynonymsTest/*.hs
+                  , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
+                  , test/ExtensionOrganizerTest/RecursiveDoTest/*.hs
+                  , test/ExtensionOrganizerTest/TemplateHaskellTest/*.hs
                   , test/ExtensionOrganizerTest/TupleSectionsTest/*.hs
-                  --, test/ExtensionOrganizerTest/UnboxedTuplesTest/*.hs
+                  , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
 
 library
   ghc-options: -O2
@@ -65,7 +72,6 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
-
 
   other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
@@ -170,35 +176,35 @@ test-suite ht-extension-organizer-test
 
   default-language:    Haskell2010
 
-benchmark ht-extension-organizer-benchmark
-  type:                exitcode-stdio-1.0
-  ghc-options:         -with-rtsopts=-M2g
-  other-modules:       ExtensionOrganizerBenchmark.ManualTraversal
-                     , ExtensionOrganizerBenchmark.UniPlateTraversal
-  hs-source-dirs:      benchmark
-  main-is:             ExtensionOrganizerBenchmark/Main.hs
-  build-depends:       base                      >= 4.10 && < 4.11
-                     , criterion                 >= 1.2  && < 1.3
-                     , silently                  >= 1.2  && < 1.3
-                     , transformers              >= 0.5  && < 0.6
-                     , either                    >= 4.4  && < 4.5
-                     , filepath                  >= 1.4  && < 1.5
-                     , mtl                       >= 2.2  && < 2.3
-                     , uniplate                  >= 1.6  && < 1.7
-                     , containers                >= 0.5  && < 0.6
-                     , directory                 >= 1.2  && < 1.4
-                     , references                >= 0.3  && < 0.4
-                     , split                     >= 0.2  && < 0.3
-                     , time                      >= 1.8  && < 1.9
-                     , template-haskell          >= 2.12 && < 2.13
-                     , ghc                       >= 8.2  && < 8.3
-                     , ghc-paths                 >= 0.1  && < 0.2
-                     , Cabal                     >= 2.0  && < 2.1
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-rewrite     >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
-                     , haskell-tools-builtin-refactorings
-
-  default-language:    Haskell2010
+-- benchmark ht-extension-organizer-benchmark
+--   type:                exitcode-stdio-1.0
+--   ghc-options:         -with-rtsopts=-M2g
+--   other-modules:       ExtensionOrganizerBenchmark.ManualTraversal
+--                      , ExtensionOrganizerBenchmark.UniPlateTraversal
+--   hs-source-dirs:      benchmark
+--   main-is:             ExtensionOrganizerBenchmark/Main.hs
+--   build-depends:       base                      >= 4.10 && < 4.11
+--                      , criterion                 >= 1.2  && < 1.3
+--                      , silently                  >= 1.2  && < 1.3
+--                      , transformers              >= 0.5  && < 0.6
+--                      , either                    >= 4.4  && < 4.5
+--                      , filepath                  >= 1.4  && < 1.5
+--                      , mtl                       >= 2.2  && < 2.3
+--                      , uniplate                  >= 1.6  && < 1.7
+--                      , containers                >= 0.5  && < 0.6
+--                      , directory                 >= 1.2  && < 1.4
+--                      , references                >= 0.3  && < 0.4
+--                      , split                     >= 0.2  && < 0.3
+--                      , time                      >= 1.8  && < 1.9
+--                      , template-haskell          >= 2.12 && < 2.13
+--                      , ghc                       >= 8.2  && < 8.3
+--                      , ghc-paths                 >= 0.1  && < 0.2
+--                      , Cabal                     >= 2.0  && < 2.1
+--                      , haskell-tools-ast         >= 1.0  && < 1.1
+--                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
+--                      , haskell-tools-rewrite     >= 1.0  && < 1.1
+--                      , haskell-tools-prettyprint >= 1.0  && < 1.1
+--                      , haskell-tools-refactor    >= 1.0  && < 1.1
+--                      , haskell-tools-builtin-refactorings
+-- 
+--   default-language:    Haskell2010
