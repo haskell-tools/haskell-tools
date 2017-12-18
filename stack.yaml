@@ -1,4 +1,5 @@
-resolver: nightly-2017-11-16
+resolver: nightly-2017-12-18
+system-ghc: true
 
 ghc-options:
   "$locals": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
