@@ -98,14 +98,14 @@ testPackage noLoad noClean sourceDirectory logDirectory resolver pack = do
   res <- runCommands (if noClean then return () else cleanup pkgLoc)
            $ init
                ++ load
-               ++ [ Left ("stack init" ++ (maybe "" (" --resolver="++) resolver) ++ " > " ++ buildLogPath ++ " 2>&1", pkgLoc, BuildFailure)
-                  , Left ("stack build --test --no-run-tests --bench --no-run-benchmarks --ghc-options=\"-w\" > "
+               ++ [ Left ("stack init --system-ghc" ++ (maybe "" (" --resolver="++) resolver) ++ " > " ++ buildLogPath ++ " 2>&1", pkgLoc, BuildFailure)
+                  , Left ("stack build --system-ghc --test --no-run-tests --bench --no-run-benchmarks --ghc-options=\"-w\" > "
                              ++ buildLogPath ++ " 2>&1", pkgLoc, BuildFailure)
                   -- correct rts option handling (on windows) requires stack 1.4
-                  , Left ("stack exec --RTS -- ht-refact +RTS -M4G -RTS --no-watch --ghc-options=\"-w\" "
+                  , Left ("stack exec --system-ghc --rts-option=\"-M4G\" -- ht-refact --no-watch --ghc-options=\"-w\" "
                             ++ " --execute=\"ProjectOrganizeImports\" . > "
                             ++ refLogPath ++ " 2>&1", pkgLoc, RefactError)
-                  , Left ("stack build > " ++ reloadLogPath ++ " 2>&1", pkgLoc, WrongCodeError)
+                  , Left ("stack build --system-ghc > " ++ reloadLogPath ++ " 2>&1", pkgLoc, WrongCodeError)
                   ]
   problem <- case res of
                RefactError -> map (\case '\n' -> ' '; c -> c) <$> readFile refLogPath
