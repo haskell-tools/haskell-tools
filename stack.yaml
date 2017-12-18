@@ -1,7 +1,7 @@
 resolver: nightly-2017-11-16
 
 ghc-options:
-  "*": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
+  "$locals": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
 
 packages:
   - src/ast
@@ -19,3 +19,4 @@ packages:
 extra-deps:
   - fswatch-0.1.0.2
   - knob-0.1.1
+  - classyplate-0.3.0.2

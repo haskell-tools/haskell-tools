@@ -81,9 +81,13 @@ reduceExtensions = \moduleAST -> do
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap
-collectExtensions moduleAST = do
+collectExtensions = collectExtensionsWith traverseModule
+
+collectExtensionsWith :: CheckNode UnnamedModule -> UnnamedModule -> Ghc ExtMap
+collectExtensionsWith trvModule moduleAST = do
   let expanded = expandDefaults moduleAST
-  flip execStateT SMap.empty . flip runReaderT expanded . traverseModule $ moduleAST
+  flip execStateT SMap.empty . flip runReaderT expanded . trvModule $ moduleAST
+
 
 -- | Collects default extension list, and expands each extension
 expandDefaults :: UnnamedModule -> [Extension]

@@ -1,2 +1,5 @@
 dist
 /cabal.sandbox.config
+*.html
+/benchmark
+/examples/CompleteModules

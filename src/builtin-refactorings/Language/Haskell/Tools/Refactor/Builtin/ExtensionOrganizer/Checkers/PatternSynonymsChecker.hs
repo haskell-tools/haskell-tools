@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
-
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.PatternSynonymsChecker where
 
 import Language.Haskell.Tools.Refactor (PatternSignature, PatternSynonym)
