@@ -1,5 +1,5 @@
 name:                haskell-tools-experimental-refactorings
-version:             1.0.0.2
+version:             1.0.0.3
 synopsis:            Refactoring Tool for Haskell
 description:         Contains experimental refactorings implemented in the Haskell-tools framework for tutorial purposes, or to be added later to the set of mature refactorings.
 homepage:            https://github.com/haskell-tools/haskell-tools
