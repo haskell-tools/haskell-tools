@@ -43,6 +43,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests recursiveDoTest
   , mkTests arrowsTest
   , mkTests parallelListCompTest
+  , mkTests typeFamiliesTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -273,4 +274,20 @@ pcModules = [ "InCaseRhs"
             , "InRhsGuard"
             , "InStmt"
             , "InTupSecElem"
+            ]
+
+typeFamiliesTest :: TestSuite
+typeFamiliesTest = (tfRoot, tfModules)
+tfRoot = "TypeFamiliesTest"
+tfModules = [ "AssocDataFamily"
+            , "AssocGDataFamily"
+            , "AssocTypeFamily"
+            , "ClosedTypeFamilyDecl"
+            , "DataFamilyDecl"
+            , "GDataFamilyDecl"
+            , "TypeEqualityContext"
+            , "TypeEqualityContextSynonyms"
+            , "TypeEquality"
+            , "TypeEqualitySynonyms"
+            , "TypeFamilyDecl"
             ]

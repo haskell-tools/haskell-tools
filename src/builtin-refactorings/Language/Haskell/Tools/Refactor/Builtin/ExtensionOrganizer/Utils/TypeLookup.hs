@@ -49,7 +49,7 @@ tyconFromGHCType (GHC.TyConApp tycon _) = Just tycon
 tyconFromGHCType _ = Nothing
 
 
--- NOTE: Return false if the type is certainly not a newtype
+-- NOTE: Returns false if the type is certainly not a newtype
 --       Returns true if it is a newtype or it could not have been looked up
 isNewtype :: Type -> ExtMonad Bool
 isNewtype t = do
@@ -63,7 +63,9 @@ lookupType t = do
   name  <- liftMaybe . nameFromType $ t
   sname <- liftMaybe . getSemName   $ name
   MaybeT . GHC.lookupName $ sname
-    where liftMaybe = MaybeT . return
+
+liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
+liftMaybe = MaybeT . return
 
 -- NOTE: gives just name if the type being scrutinised can be newtype
 --       else it gives nothing

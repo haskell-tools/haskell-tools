@@ -50,6 +50,7 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/RecursiveDoTest/*.hs
                   , test/ExtensionOrganizerTest/TemplateHaskellTest/*.hs
                   , test/ExtensionOrganizerTest/TupleSectionsTest/*.hs
+                  , test/ExtensionOrganizerTest/TypeFamiliesTest/*.hs
                   , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
 
 library
@@ -69,6 +70,9 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.AppSelector
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.Checkable
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.ClassyPlate
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
@@ -87,8 +91,10 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.RecursiveDoChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TemplateHaskellChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TupleSectionsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.ExtMonadMisc
 
 
   build-depends:       base                      >= 4.10  && < 4.11
@@ -206,5 +212,5 @@ test-suite ht-extension-organizer-test
 --                      , haskell-tools-prettyprint >= 1.0  && < 1.1
 --                      , haskell-tools-refactor    >= 1.0  && < 1.1
 --                      , haskell-tools-builtin-refactorings
--- 
+--
 --   default-language:    Haskell2010
