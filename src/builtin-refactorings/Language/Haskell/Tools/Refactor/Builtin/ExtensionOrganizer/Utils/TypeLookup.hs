@@ -24,6 +24,13 @@ chkSynonym t = do
                           Nothing -> return t
                           Just _  -> addOccurence TypeSynonymInstances t
 
+lookupTypeSynRhs :: Name -> MaybeT ExtMonad GHC.Type
+lookupTypeSynRhs name = do
+  sname <- liftMaybe . getSemName $ name
+  tt    <- MaybeT    . GHC.lookupName $ sname
+  tc    <- liftMaybe . tyconFromTyThing $ tt
+  liftMaybe . GHC.synTyConRhs_maybe $ tc
+
 lookupSynDefM :: Type -> MaybeT ExtMonad GHC.TyCon
 lookupSynDefM t = do
   tything <- lookupType t

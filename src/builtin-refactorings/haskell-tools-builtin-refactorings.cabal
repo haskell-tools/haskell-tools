@@ -70,9 +70,6 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.AppSelector
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.Checkable
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.GHCTypeTraversal.ClassyPlate
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
@@ -94,7 +91,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.ExtMonadMisc
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
 
 
   build-depends:       base                      >= 4.10  && < 4.11
