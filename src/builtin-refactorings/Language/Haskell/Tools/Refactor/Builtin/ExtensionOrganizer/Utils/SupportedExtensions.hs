@@ -14,6 +14,7 @@ isSupported = flip elem fullyHandledExtensions
 fullyHandledExtensions :: [Extension]
 fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
+                      ++ [TypeFamilies]
                       -- ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
