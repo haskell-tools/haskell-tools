@@ -58,8 +58,13 @@ reduceExtensions :: UnnamedModule -> Ghc [Extension]
 reduceExtensions = \moduleAST -> do
   let expanded = expandDefaults moduleAST
       (xs, ys) = partition isSupported expanded
-  xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-  return . sortBy (compare `on` show) . mergeInduced . nub $ (calcExts xs' ++ ys)
+  -- we can't say anything about generated code
+  if TemplateHaskell `notElem` expanded
+    then do
+      xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
+      return . sortBy (compare `on` show) . mergeInduced . nub $ (calcExts xs' ++ ys)
+    else
+      return expanded
 
   where isLVar (LVar _) = True
         isLVar _        = False
