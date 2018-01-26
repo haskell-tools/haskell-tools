@@ -12,6 +12,11 @@ import Control.Reference ((^.))
 
 import qualified GHC
 import qualified TyCoRep as GHC (Type(..), TyThing(..))
+import qualified ConLike as GHC (ConLike(..))
+import qualified DataCon as GHC (dataConUserType)
+import qualified PatSyn  as GHC (patSynBuilder)
+import qualified Var     as GHC (varType)
+
 
 
 chkSynonym :: CheckNode Type
@@ -24,6 +29,28 @@ chkSynonym t = do
                           Nothing -> return t
                           Just _  -> addOccurence TypeSynonymInstances t
 
+-- | Looks up a GHC Type from a Haskell Tools Name
+-- For an identifier, it returns its type.
+-- For a data constructor, it returns its type.
+-- For a pattern synonym, it returns its builder's type.
+-- For a type synonym constructor, it returns its right-hand side.
+-- For a coaxiom, it fails.
+lookupTypeFromName :: Name -> MaybeT ExtMonad GHC.Type
+lookupTypeFromName name = do
+  sname <- liftMaybe . getSemName $ name
+  tt    <- MaybeT    . GHC.lookupName $ sname
+  case tt of
+    GHC.AnId     idn  -> return . GHC.varType $ idn
+    GHC.AConLike con  -> handleCon con
+    GHC.ATyCon   tc   -> liftMaybe . GHC.synTyConRhs_maybe $ tc
+    GHC.ACoAxiom coax -> fail "CoAxioms are not supported for type lookup"
+  where handleCon (GHC.RealDataCon dc) = return . GHC.dataConUserType $ dc
+        handleCon (GHC.PatSynCon   pc) = do
+          (idn,_) <- liftMaybe . GHC.patSynBuilder $ pc
+          return . GHC.varType $ idn
+
+
+-- | Looks up a GHC Type from a Haskell Tools Name (if available)
 lookupTypeSynRhs :: Name -> MaybeT ExtMonad GHC.Type
 lookupTypeSynRhs name = do
   sname <- liftMaybe . getSemName $ name
@@ -38,7 +65,6 @@ lookupSynDefM t = do
   where liftMaybe = MaybeT . return
 
 -- NOTE: Returns Nothing if it is not a type synonym
---       (or has some weird structure I didn't think of)
 lookupSynDef :: GHC.TyThing -> Maybe GHC.TyCon
 lookupSynDef syn = do
   tycon <- tyconFromTyThing syn

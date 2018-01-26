@@ -79,3 +79,6 @@ instance Checkable InstBodyDecl where
 
 instance Checkable Assertion where
   check = chkTypeFamiliesAssertion
+
+instance Checkable Name where
+  check = chkNameForTyEqn

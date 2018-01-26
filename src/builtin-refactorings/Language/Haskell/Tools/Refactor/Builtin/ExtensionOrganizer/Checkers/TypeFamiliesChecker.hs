@@ -1,6 +1,7 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker where
 
 import TyCon          as GHC (TyCon())
+import TyCoRep        as GHC (TyThing(..))
 import PrelNames      as GHC (eqTyConName)
 import Unique         as GHC (hasKey, getUnique)
 import qualified Type as GHC (expandTypeSynonyms)
@@ -63,7 +64,7 @@ chkTypeFamiliesAssertion' a@(InfixAssert _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
   = addOccurence TypeFamilies a
-chkTypeFamiliesAssertion' a@(ClassAssert n _) = chkTyConName n >> return a
+-- chkTypeFamiliesAssertion' a@(ClassAssert n _) = chkNameForTyEqn n >> return a
 chkTypeFamiliesAssertion' a = return a
 
 chkTypeFamiliesType' :: CheckNode Type
@@ -71,12 +72,12 @@ chkTypeFamiliesType' t@(InfixTypeApp _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
   = addOccurence TypeFamilies t
-chkTypeFamiliesType' t@(VarType n) = chkTyConName n >> return t
+-- chkTypeFamiliesType' t@(VarType n) = chkNameForTyEqn n >> return t
 chkTypeFamiliesType' t = return t
 
-chkTyConName :: CheckNode Name
-chkTyConName name = do
-  mx <- runMaybeT . lookupTypeSynRhs $ name
+chkNameForTyEqn :: CheckNode Name
+chkNameForTyEqn name = do
+  mx <- runMaybeT . lookupTypeFromName $ name
   case mx of
     Nothing -> return name
     Just ty -> do
