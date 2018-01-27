@@ -291,5 +291,6 @@ tfModules = [ "AssocDataFamily"
             , "TypeEqualityContextSynonyms"
             , "TypeEquality"
             , "TypeEqualitySynonyms"
+            , "TypeEqualityInName"
             , "TypeFamilyDecl"
             ]

@@ -9,6 +9,10 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 type family HasChecker node where
+  -- Module-level checks
+  HasChecker Module           = 'True
+
+  -- Node-level checks
   HasChecker Decl             = 'True
   HasChecker Pattern          = 'True
   HasChecker Expr             = 'True
@@ -29,7 +33,6 @@ type family HasChecker node where
   HasChecker Cmd              = 'True
   HasChecker InstBodyDecl     = 'True
   HasChecker Assertion        = 'True
-  HasChecker Name             = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node

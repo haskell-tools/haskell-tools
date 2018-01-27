@@ -18,3 +18,7 @@ type HiddenEqRel a b = EqRel a b {-* TypeFamilies *-}
 
 type ComplexEqRelType a =
   Eq a => a -> a -> (forall c . HiddenEqRel a c => c -> c -> Bool) -> Bool  {-* TypeFamilies *-}
+
+
+eqRelName :: EqRel a b => a -> b
+eqRelName = id

@@ -5,8 +5,12 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable where
 
 import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+
+-- | Global checks
+instance Checkable Module where
+  check = globalChkNamesForTypeEq
 
 instance Checkable Decl where
   check = chkFlexibleInstances
@@ -79,6 +83,3 @@ instance Checkable InstBodyDecl where
 
 instance Checkable Assertion where
   check = chkTypeFamiliesAssertion
-
-instance Checkable Name where
-  check = chkNameForTyEqn

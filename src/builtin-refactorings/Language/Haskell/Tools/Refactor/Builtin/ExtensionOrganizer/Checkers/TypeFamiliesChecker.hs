@@ -1,7 +1,6 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker where
 
 import TyCon          as GHC (TyCon())
-import TyCoRep        as GHC (TyThing(..))
 import PrelNames      as GHC (eqTyConName)
 import Unique         as GHC (hasKey, getUnique)
 import qualified Type as GHC (expandTypeSynonyms)
@@ -9,13 +8,20 @@ import qualified Type as GHC (expandTypeSynonyms)
 import Control.Reference ((^.))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
+import Data.List (zipWith)
+import Data.Maybe (catMaybes)
 import Data.Generics.Uniplate.Data()
 import Data.Generics.Uniplate.Operations
+import qualified Data.Map.Strict as SMap
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
+
+-- | Checks whether any name's corresponding type in the module contains a type equality.
+globalChkNamesForTypeEq :: CheckNode Module
+globalChkNamesForTypeEq = conditional globalChkNamesForTypeEq' TypeFamilies
 
 -- | Checks a declaration if TypeFamilies is turned on.
 chkTypeFamiliesDecl :: CheckNode Decl
@@ -29,11 +35,11 @@ chkTypeFamiliesClassElement = conditional chkTypeFamiliesClassElement' TypeFamil
 chkTypeFamiliesInstBodyDecl :: CheckNode InstBodyDecl
 chkTypeFamiliesInstBodyDecl = conditional chkTypeFamiliesInstBodyDecl' TypeFamilies
 
--- | Checks an assertion (needed for a ~ b type equalities) if TypeFamilies is turned on.
+-- | Checks an assertion for syntactic evidence of a ~ b type equality if TypeFamilies is turned on.
 chkTypeFamiliesAssertion :: CheckNode Assertion
 chkTypeFamiliesAssertion = conditional chkTypeFamiliesAssertion' TypeFamilies
 
--- | Checks a type for infix type applications (needed for a ~ b type equalities) if TypeFamilies is turned on.
+-- | Checks a type for syntactic evidence of a ~ b type equality if TypeFamilies is turned on.
 chkTypeFamiliesType :: CheckNode Type
 chkTypeFamiliesType = conditional chkTypeFamiliesType' TypeFamilies
 
@@ -64,7 +70,6 @@ chkTypeFamiliesAssertion' a@(InfixAssert _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
   = addOccurence TypeFamilies a
--- chkTypeFamiliesAssertion' a@(ClassAssert n _) = chkNameForTyEqn n >> return a
 chkTypeFamiliesAssertion' a = return a
 
 chkTypeFamiliesType' :: CheckNode Type
@@ -72,7 +77,6 @@ chkTypeFamiliesType' t@(InfixTypeApp _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
   = addOccurence TypeFamilies t
--- chkTypeFamiliesType' t@(VarType n) = chkNameForTyEqn n >> return t
 chkTypeFamiliesType' t = return t
 
 chkNameForTyEqn :: CheckNode Name
@@ -86,3 +90,13 @@ chkNameForTyEqn name = do
       if any isEqTyCon tycons then addOccurence TypeFamilies name
                               else return name
   where isEqTyCon tc = tc `hasKey` getUnique eqTyConName
+
+globalChkNamesForTypeEq' :: CheckNode Module
+globalChkNamesForTypeEq' m = do
+  let origNames   = universeBi (m ^. modDecl) :: [Name]
+      pairedNames = catMaybes . zipWith zf (map getSemName origNames) $ origNames
+      uniqueNames = SMap.elems . SMap.fromList . reverse $ pairedNames
+  mapM_ chkNameForTyEqn uniqueNames
+  return m
+  where zf (Just x) y = Just (x,y)
+        zf _ _        = Nothing
