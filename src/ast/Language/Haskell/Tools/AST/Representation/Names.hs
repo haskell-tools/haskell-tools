@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies, TypeSynonymInstances #-}
 
 -- | Simple AST elements of Haskell
 module Language.Haskell.Tools.AST.Representation.Names where

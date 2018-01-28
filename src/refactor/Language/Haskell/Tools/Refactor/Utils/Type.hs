@@ -2,10 +2,8 @@
            , FlexibleContexts
            , RankNTypes
            , ScopedTypeVariables
-           , TupleSections
            , TypeApplications
            , TypeFamilies
-           , ViewPatterns
            #-}
 module Language.Haskell.Tools.Refactor.Utils.Type (typeExpr, appTypeMatches, literalType) where
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, LambdaCase, MultiParamTypeClasses, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, LambdaCase, RecordWildCards, ScopedTypeVariables #-}
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.BackendGHC.GHCUtils where
 

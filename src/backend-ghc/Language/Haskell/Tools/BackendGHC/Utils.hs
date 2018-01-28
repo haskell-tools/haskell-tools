@@ -3,7 +3,6 @@
            , FlexibleInstances
            , LambdaCase
            , ViewPatterns
-           , MultiParamTypeClasses
            , FlexibleContexts
            , AllowAmbiguousTypes
            , TypeApplications
