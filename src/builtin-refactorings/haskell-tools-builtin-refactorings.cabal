@@ -44,6 +44,7 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/LambdaCaseTest/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Literal/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Name/*.hs
+                  , test/ExtensionOrganizerTest/MultiParamTypeClassesTest/*.hs
                   , test/ExtensionOrganizerTest/ParallelListCompTest/*.hs
                   , test/ExtensionOrganizerTest/PatternSynonymsTest/*.hs
                   , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
@@ -82,6 +83,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.LambdaCaseChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MultiParamTypeClassesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ParallelListCompChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.PatternSynonymsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.RecordWildCardsChecker

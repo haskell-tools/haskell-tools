@@ -16,6 +16,7 @@ instance Checkable Decl where
   check = chkFlexibleInstances
       >=> chkDerivings
       >=> chkTypeFamiliesDecl
+      >=> chkMultiParamTypeClassesDecl
 
 instance Checkable Pattern where
   check = chkBangPatterns

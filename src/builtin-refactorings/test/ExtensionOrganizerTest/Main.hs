@@ -44,6 +44,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests arrowsTest
   , mkTests parallelListCompTest
   , mkTests typeFamiliesTest
+  , mkTests multiParamTypeClassesTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -294,3 +295,10 @@ tfModules = [ "AssocDataFamily"
             , "TypeEqualityInName"
             , "TypeFamilyDecl"
             ]
+
+multiParamTypeClassesTest :: TestSuite
+multiParamTypeClassesTest = (mptcRoot, mptcModules)
+mptcRoot = "MultiParamTypeClassesTest"
+mptcModules = [ "MultipleTyVars"
+              , "ZeroTyVars"
+              ]

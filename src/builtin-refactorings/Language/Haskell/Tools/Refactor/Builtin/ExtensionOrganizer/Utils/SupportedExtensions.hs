@@ -14,7 +14,8 @@ isSupported = flip elem fullyHandledExtensions
 fullyHandledExtensions :: [Extension]
 fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
-                      ++ [TypeFamilies]
+                      ++ typeClassExtensions
+                      -- ++ [TypeFamilies]
                       -- ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
@@ -29,3 +30,6 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
                      , DeriveFoldable, DeriveTraversable, DeriveLift
                      , DeriveAnyClass, GeneralizedNewtypeDeriving
                      , StandaloneDeriving, DerivingStrategies ]
+
+typeClassExtensions :: [Extension]
+typeClassExtensions = [ MultiParamTypeClasses ]

@@ -1,9 +1,10 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker where
 
 import TyCon          as GHC (TyCon())
-import PrelNames      as GHC (eqTyConName)
+import PrelNames      as GHC (eqTyConName, eqTyConKey, heqTyConKey, eqPrimTyConKey, eqReprPrimTyConKey, eqPhantPrimTyConKey)
 import Unique         as GHC (hasKey, getUnique)
-import qualified Type as GHC (expandTypeSynonyms)
+import qualified Type as GHC (expandTypeSynonyms, isEqPred, splitTyConApp_maybe)
+import qualified TyCoRep as GHC (Type())
 
 import Control.Reference ((^.))
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -89,7 +90,15 @@ chkNameForTyEqn name = do
           tycons = universeBi ty' :: [GHC.TyCon]
       if any isEqTyCon tycons then addOccurence TypeFamilies name
                               else return name
-  where isEqTyCon tc = tc `hasKey` getUnique eqTyConName
+  where isEqTyCon tc = tc `hasKey` eqTyConKey
+                    || tc `hasKey` heqTyConKey
+                    || tc `hasKey` eqPrimTyConKey
+                    || tc `hasKey` eqReprPrimTyConKey
+                    || tc `hasKey` eqPhantPrimTyConKey
+
+        isEqPredTy ty
+          | Just (tc, _) <- GHC.splitTyConApp_maybe ty = isEqTyCon tc
+          | otherwise = False
 
 globalChkNamesForTypeEq' :: CheckNode Module
 globalChkNamesForTypeEq' m = do
