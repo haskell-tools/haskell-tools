@@ -37,6 +37,7 @@ extra-source-files: examples/CPP/*.hs
 
                   , test/ExtensionOrganizerTest/ArrowsTest/*.hs
                   , test/ExtensionOrganizerTest/BangPatternsTest/*.hs
+                  , test/ExtensionOrganizerTest/ConstraintKindsTest/*.hs
                   , test/ExtensionOrganizerTest/DefaultSignaturesTest/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
@@ -77,6 +78,7 @@ library
 
   other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstraintKindsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker

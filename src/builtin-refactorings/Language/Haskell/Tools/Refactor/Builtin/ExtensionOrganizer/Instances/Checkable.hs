@@ -17,6 +17,7 @@ instance Checkable Decl where
       >=> chkDerivings
       >=> chkTypeFamiliesDecl
       >=> chkMultiParamTypeClassesDecl
+      >=> chkConstraintKindsDecl
 
 instance Checkable Pattern where
   check = chkBangPatterns

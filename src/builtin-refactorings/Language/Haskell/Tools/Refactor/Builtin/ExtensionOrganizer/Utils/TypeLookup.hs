@@ -7,16 +7,21 @@ import Language.Haskell.Tools.AST (simpleName)
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
-import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Reference ((^.))
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import qualified GHC
+import qualified GHC     hiding (typeKind)
 import qualified TyCoRep as GHC (Type(..), TyThing(..))
+import qualified Kind    as GHC (isConstraintKind, typeKind)
 import qualified ConLike as GHC (ConLike(..))
 import qualified DataCon as GHC (dataConUserType)
 import qualified PatSyn  as GHC (patSynBuilder)
 import qualified Var     as GHC (varType)
 
+
+
+hasConstraintKind :: GHC.Type -> Bool
+hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
 
 
 chkSynonym :: CheckNode Type
@@ -35,7 +40,7 @@ chkSynonym t = do
 -- For a pattern synonym, it returns its builder's type.
 -- For a type synonym constructor, it returns its right-hand side.
 -- For a coaxiom, it fails.
-lookupTypeFromName :: Name -> MaybeT ExtMonad GHC.Type
+lookupTypeFromName :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
 lookupTypeFromName name = do
   sname <- liftMaybe . getSemName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
@@ -113,5 +118,5 @@ isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
 
-getSemName :: Name -> Maybe GHC.Name
-getSemName x = semanticsName (x ^. simpleName)
+getSemName :: HasNameInfo' n => n -> Maybe GHC.Name
+getSemName = semanticsName

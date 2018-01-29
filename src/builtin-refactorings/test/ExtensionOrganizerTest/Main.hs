@@ -45,6 +45,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests parallelListCompTest
   , mkTests typeFamiliesTest
   , mkTests multiParamTypeClassesTest
+  , mkTests constraintKindsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -302,3 +303,11 @@ mptcRoot = "MultiParamTypeClassesTest"
 mptcModules = [ "MultipleTyVars"
               , "ZeroTyVars"
               ]
+
+constraintKindsTest :: TestSuite
+constraintKindsTest = (ckRoot, ckModules)
+ckRoot = "ConstraintKindsTest"
+ckModules = [ "ClassConstraints"
+            , "ComplexConstraints"
+            , "NotClassConstraints"
+            ]
