@@ -62,15 +62,11 @@ chkInstanceHead :: CheckNode InstanceHead
 chkInstanceHead x@(InfixInstanceHead tyvars _) = do
   tyvars' <- refact rmTypeMisc tyvars
   chkTyVars tyvars'
-  addOccurence_ MultiParamTypeClasses x
   addOccurence_ TypeOperators x
   return x
 chkInstanceHead app@(AppInstanceHead f tyvars) = do
   tyvars' <- refact rmTypeMisc tyvars
   chkTyVars tyvars'
-  case f of
-    AppInstanceHead _ _ -> addOccurence_ MultiParamTypeClasses app
-    _ -> return ()
   chkInstanceHead f
   return app
 chkInstanceHead x@(ParenInstanceHead h) = do

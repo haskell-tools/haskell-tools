@@ -1,5 +1,4 @@
-{-# LANGUAGE ConstraintKinds
-           , FlexibleContexts
+{-# LANGUAGE FlexibleContexts
            , RankNTypes
            , ScopedTypeVariables
            , TypeApplications

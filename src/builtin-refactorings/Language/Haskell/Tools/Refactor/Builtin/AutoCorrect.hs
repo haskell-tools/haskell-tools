@@ -1,5 +1,4 @@
-{-# LANGUAGE ConstraintKinds
-           , TypeFamilies
+{-# LANGUAGE TypeFamilies
            , FlexibleContexts
            , ScopedTypeVariables
            , ViewPatterns

@@ -1,5 +1,4 @@
-{-# LANGUAGE ConstraintKinds
-           , FlexibleContexts
+{-# LANGUAGE FlexibleContexts
            , LambdaCase
            , ScopedTypeVariables
            , TupleSections

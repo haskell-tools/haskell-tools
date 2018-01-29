@@ -1,4 +1,4 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
   (extractBinding', tryItOut, extractBindingRefactoring) where
 
