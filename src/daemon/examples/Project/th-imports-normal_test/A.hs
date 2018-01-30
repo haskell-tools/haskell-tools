@@ -1,4 +1,3 @@
 module A where
 
-aa :: ()
-aa = 4
+data A''

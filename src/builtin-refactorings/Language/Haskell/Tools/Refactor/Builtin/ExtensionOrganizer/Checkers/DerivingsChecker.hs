@@ -187,7 +187,7 @@ chkDerivingClause checker d@(DerivingMulti xs) = (annList !~ checker) xs >> retu
 nameFromStock :: InstanceHead -> Maybe GHC.Name
 nameFromStock x
   | InstanceHead name <- skipParens x,
-    Just sname <- getSemName name,
+    Just sname <- semanticsName name,
     isStockClass sname
     = Just sname
   | otherwise = Nothing

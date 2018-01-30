@@ -1,24 +1,20 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
 
 
-import Language.Haskell.Tools.AST (simpleName)
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
-import Control.Reference ((^.))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import qualified GHC     hiding (typeKind)
-import qualified TyCoRep as GHC (Type(..), TyThing(..))
-import qualified Kind    as GHC (isConstraintKind, typeKind)
-import qualified ConLike as GHC (ConLike(..))
-import qualified DataCon as GHC (dataConUserType)
-import qualified PatSyn  as GHC (patSynBuilder)
-import qualified Var     as GHC (varType)
-
-
+import qualified TyCoRep   as GHC (Type(..), TyThing(..))
+import qualified Kind      as GHC (isConstraintKind, typeKind)
+import qualified ConLike   as GHC (ConLike(..))
+import qualified DataCon   as GHC (dataConUserType)
+import qualified PatSyn    as GHC (patSynBuilder)
+import qualified Var       as GHC (varType)
+import qualified GHC       hiding (typeKind)
 
 hasConstraintKind :: GHC.Type -> Bool
 hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
@@ -34,31 +30,47 @@ chkSynonym t = do
                           Nothing -> return t
                           Just _  -> addOccurence TypeSynonymInstances t
 
--- | Looks up a GHC Type from a Haskell Tools Name
+-- | Looks up the Type of an entity with an Id of any locality.
+-- If the entity being scrutinised is a type variable, it fails.
+lookupTypeFromId :: HasIdInfo' id => id -> MaybeT ExtMonad GHC.Type
+lookupTypeFromId idn
+  | GHC.isLocalId  . semanticsId $ idn = return . typeOrKindFromId $ idn
+  | GHC.isGlobalId . semanticsId $ idn = lookupTypeFromGlobalName idn
+  | otherwise = fail "Couldn't lookup name"
+
+-- | Looks up the Type or the Kind of an entity that has an Id.
+-- Note: In some cases we only get the Kind of the Id (e.g. for type constructors)
+typeOrKindFromId :: HasIdInfo' id => id -> GHC.Type
+typeOrKindFromId idn = GHC.varType . semanticsId $ idn
+
+-- | Extracts a Type from a TyThing when possible.
+typeFromTyThing :: GHC.TyThing -> Maybe GHC.Type
+typeFromTyThing (GHC.AnId     idn)  = Just . GHC.varType $ idn
+typeFromTyThing (GHC.ATyCon   tc)   = GHC.synTyConRhs_maybe tc
+typeFromTyThing (GHC.ACoAxiom coax) = fail "CoAxioms are not supported for type lookup"
+typeFromTyThing (GHC.AConLike con)  = handleCon con
+  where handleCon (GHC.RealDataCon dc) = Just . GHC.dataConUserType $ dc
+        handleCon (GHC.PatSynCon   pc) = do
+          (idn,_) <- GHC.patSynBuilder pc
+          return . GHC.varType $ idn
+
+-- | Looks up a GHC Type from a Haskell Tools Name (given the name is global)
 -- For an identifier, it returns its type.
 -- For a data constructor, it returns its type.
 -- For a pattern synonym, it returns its builder's type.
 -- For a type synonym constructor, it returns its right-hand side.
 -- For a coaxiom, it fails.
-lookupTypeFromName :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
-lookupTypeFromName name = do
-  sname <- liftMaybe . getSemName $ name
+lookupTypeFromGlobalName :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
+lookupTypeFromGlobalName name = do
+  sname <- liftMaybe . semanticsName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
-  case tt of
-    GHC.AnId     idn  -> return . GHC.varType $ idn
-    GHC.AConLike con  -> handleCon con
-    GHC.ATyCon   tc   -> liftMaybe . GHC.synTyConRhs_maybe $ tc
-    GHC.ACoAxiom coax -> fail "CoAxioms are not supported for type lookup"
-  where handleCon (GHC.RealDataCon dc) = return . GHC.dataConUserType $ dc
-        handleCon (GHC.PatSynCon   pc) = do
-          (idn,_) <- liftMaybe . GHC.patSynBuilder $ pc
-          return . GHC.varType $ idn
+  liftMaybe . typeFromTyThing $ tt
 
 
 -- | Looks up a GHC Type from a Haskell Tools Name (if available)
 lookupTypeSynRhs :: Name -> MaybeT ExtMonad GHC.Type
 lookupTypeSynRhs name = do
-  sname <- liftMaybe . getSemName $ name
+  sname <- liftMaybe . semanticsName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
   tc    <- liftMaybe . tyconFromTyThing $ tt
   liftMaybe . GHC.synTyConRhs_maybe $ tc
@@ -99,7 +111,7 @@ isNewtype t = do
 lookupType :: Type -> MaybeT ExtMonad GHC.TyThing
 lookupType t = do
   name  <- liftMaybe . nameFromType $ t
-  sname <- liftMaybe . getSemName   $ name
+  sname <- liftMaybe . semanticsName   $ name
   MaybeT . GHC.lookupName $ sname
 
 liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
@@ -117,6 +129,3 @@ nameFromType _                = Nothing
 isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
-
-getSemName :: HasNameInfo' n => n -> Maybe GHC.Name
-getSemName = semanticsName

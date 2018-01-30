@@ -1,10 +1,9 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker where
 
 import TyCon          as GHC (TyCon())
-import PrelNames      as GHC (eqTyConName, eqTyConKey, heqTyConKey, eqPrimTyConKey, eqReprPrimTyConKey, eqPhantPrimTyConKey)
-import Unique         as GHC (hasKey, getUnique)
-import qualified Type as GHC (expandTypeSynonyms, isEqPred, splitTyConApp_maybe)
-import qualified TyCoRep as GHC (Type())
+import PrelNames      as GHC
+import Unique         as GHC (hasKey)
+import qualified Type as GHC (expandTypeSynonyms)
 
 import Control.Reference ((^.))
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -18,6 +17,8 @@ import qualified Data.Map.Strict as SMap
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
+
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
 
 
 -- | Checks whether any name's corresponding type in the module contains a type equality.
@@ -82,28 +83,25 @@ chkTypeFamiliesType' t = return t
 
 chkNameForTyEqn :: CheckNode Name
 chkNameForTyEqn name = do
-  mx <- runMaybeT . lookupTypeFromName $ name
-  case mx of
-    Nothing -> return name
+  mty <- runMaybeT . lookupTypeFromId $ name
+  case mty of
     Just ty -> do
-      let ty' = GHC.expandTypeSynonyms ty
+      let ty'    = GHC.expandTypeSynonyms ty
           tycons = universeBi ty' :: [GHC.TyCon]
       if any isEqTyCon tycons then addOccurence TypeFamilies name
                               else return name
+    Nothing -> return name
+
   where isEqTyCon tc = tc `hasKey` eqTyConKey
                     || tc `hasKey` heqTyConKey
                     || tc `hasKey` eqPrimTyConKey
                     || tc `hasKey` eqReprPrimTyConKey
                     || tc `hasKey` eqPhantPrimTyConKey
 
-        isEqPredTy ty
-          | Just (tc, _) <- GHC.splitTyConApp_maybe ty = isEqTyCon tc
-          | otherwise = False
-
 globalChkNamesForTypeEq' :: CheckNode Module
 globalChkNamesForTypeEq' m = do
   let origNames   = universeBi (m ^. modDecl) :: [Name]
-      pairedNames = catMaybes . zipWith zf (map getSemName origNames) $ origNames
+      pairedNames = catMaybes . zipWith zf (map semanticsName origNames) $ origNames
       uniqueNames = SMap.elems . SMap.fromList . reverse $ pairedNames
   mapM_ chkNameForTyEqn uniqueNames
   return m

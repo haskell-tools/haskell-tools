@@ -16,7 +16,7 @@ fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
                       ++ [ ConstraintKinds ]
-                      -- ++ [TypeFamilies]
+                      ++ [TypeFamilies]
                       -- ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
