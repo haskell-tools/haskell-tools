@@ -10,7 +10,7 @@ fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
                       ++ [ ConstraintKinds ]
-                      ++ [TypeFamilies]
+                      ++ [ TypeFamilies ]
                       -- ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
@@ -18,7 +18,8 @@ syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
                       , PatternSynonyms, TupleSections, LambdaCase, QuasiQuotes
                       , ViewPatterns, MagicHash, UnboxedTuples
                       , FunctionalDependencies, DefaultSignatures
-                      , RecursiveDo, Arrows, ParallelListComp ]
+                      , RecursiveDo, Arrows, ParallelListComp
+                      , KindSignatures ]
 
 derivingExtensions :: [Extension]
 derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor

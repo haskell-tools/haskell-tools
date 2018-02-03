@@ -9,6 +9,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.Defau
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker              as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker      as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker as X
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.KindSignaturesChecker         as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.LambdaCaseChecker             as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker              as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MultiParamTypeClassesChecker  as X

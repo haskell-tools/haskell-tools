@@ -79,7 +79,7 @@ mkModuleName s = mkAnn (fromString s) (UModuleName s)
 -- * Pragmas
 
 mkFilePragmas :: [FilePragma] -> FilePragmaList
-mkFilePragmas = mkAnnList (followedBy "\n" $ separatedBy "\n" list)
+mkFilePragmas = mkAnnList (separatedBy "\n" list)
 
 -- | @LANGUAGE@ pragma, listing the enabled language extensions in that file
 mkLanguagePragma :: [String] -> FilePragma

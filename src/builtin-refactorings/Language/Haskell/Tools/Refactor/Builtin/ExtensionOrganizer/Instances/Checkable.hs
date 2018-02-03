@@ -56,6 +56,7 @@ instance Checkable NamePart where
 
 instance Checkable Kind where
   check = chkMagicHashKind
+      >=> chkKindSignaturesKind
 
 instance Checkable Splice where
   check = chkTemplateHaskellSplice
