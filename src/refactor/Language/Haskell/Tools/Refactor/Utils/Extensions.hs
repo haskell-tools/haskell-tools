@@ -1,6 +1,9 @@
  -- all extensions should be matched
 
-module Language.Haskell.Tools.Refactor.Utils.Extensions where
+module Language.Haskell.Tools.Refactor.Utils.Extensions
+  ( module Language.Haskell.Tools.Refactor.Utils.Extensions
+  , GHC.Extension(..)
+  ) where
 
 import Control.Reference ((^.), _1, _2, _3)
 import Language.Haskell.Extension (KnownExtension(..))
@@ -52,6 +55,13 @@ impliedXFlags
     , (GHC.TemplateHaskell,           turnOn,  GHC.TemplateHaskellQuotes)
     , (GHC.Strict,                    turnOn,  GHC.StrictData)
     ]
+
+-- | Canonicalize extensions
+canonExt :: String -> String
+canonExt "CPP" = "Cpp"
+canonExt "NamedFieldPuns" = "RecordPuns"
+canonExt "GeneralisedNewtypeDeriving" = "GeneralizedNewtypeDeriving"
+canonExt e = e
 
 -- * Mapping of Cabal haskell extensions to their GHC counterpart
 

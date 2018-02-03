@@ -92,6 +92,8 @@ chkNameForTyEqn name = do
                               else return name
     Nothing -> return name
 
+  --traceShow (showName name ++ " -- " ++ showOutputable ty') $
+
   where isEqTyCon tc = tc `hasKey` eqTyConKey
                     || tc `hasKey` heqTyConKey
                     || tc `hasKey` eqPrimTyConKey

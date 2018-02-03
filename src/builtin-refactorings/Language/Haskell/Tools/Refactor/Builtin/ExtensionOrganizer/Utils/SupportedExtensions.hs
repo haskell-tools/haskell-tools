@@ -2,12 +2,6 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Supporte
 
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 
-unregularExts :: String -> String
-unregularExts "CPP" = "Cpp"
-unregularExts "NamedFieldPuns" = "RecordPuns"
-unregularExts "GeneralisedNewtypeDeriving" = "GeneralizedNewtypeDeriving"
-unregularExts e = e
-
 isSupported :: Extension -> Bool
 isSupported = flip elem fullyHandledExtensions
 

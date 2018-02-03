@@ -7,16 +7,17 @@ module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
 
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (unregularExts, isSupported, fullyHandledExtensions)
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (isSupported, fullyHandledExtensions)
 
 import Language.Haskell.Tools.Refactor hiding (LambdaCase)
-import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension)
+import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension, canonExt)
 
 import GHC (Ghc(..))
 
 import Control.Reference
 import Data.Char (isAlpha)
 import Data.Function (on)
+import Data.Maybe (mapMaybe)
 import Data.List
 import qualified Data.Map.Strict as SMap (keys, empty)
 
@@ -43,15 +44,24 @@ organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
   let isRedundant e = extName `notElem` foundExts && extName `elem` handledExts
-        where extName = unregularExts (e ^. langExt)
+        where extName = canonExt (e ^. langExt)
       handledExts = map show fullyHandledExtensions
       foundExts = map show exts
 
+      langExts = mkLanguagePragma . map show $ exts
+      ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
+      ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
+
+      newPragmas = mkFilePragmas $ langExts:ghcOpts'
+
+  (filePragmas != newPragmas) moduleAST
+
+
   -- remove unused extensions (only those that are fully handled)
-  filePragmas & annList & lpPragmas !~ filterListSt (not . isRedundant)
-        -- remove empty {-# LANGUAGE #-} pragmas
-    >=> filePragmas !~ filterListSt (\case LanguagePragma (AnnList []) -> False; _ -> True)
-    $ moduleAST
+  -- filePragmas & annList & lpPragmas !~ filterListSt (not . isRedundant)
+  --       -- remove empty {-# LANGUAGE #-} pragmas
+  --   >=> filePragmas !~ filterListSt (\case LanguagePragma (AnnList []) -> False; _ -> True)
+  --   $ moduleAST
 
 -- | Reduces default extension list (keeps unsupported extensions)
 reduceExtensions :: UnnamedModule -> Ghc [Extension]
@@ -76,12 +86,12 @@ reduceExtensions = \moduleAST -> do
           = map (\(LVar x) -> x) . SMap.keys $ logRels
           | otherwise     = []
 
-        rmInduced :: Extension -> [Extension] -> [Extension]
-        rmInduced e = flip (\\) induced
-          where induced = delete e $ expandExtension e
+rmInduced :: Extension -> [Extension] -> [Extension]
+rmInduced e = flip (\\) induced
+  where induced = delete e $ expandExtension e
 
-        mergeInduced :: [Extension] -> [Extension]
-        mergeInduced exts = foldl (flip rmInduced) exts exts
+mergeInduced :: [Extension] -> [Extension]
+mergeInduced exts = foldl (flip rmInduced) exts exts
 
 
 -- | Collects extensions induced by the source code (with location info)
@@ -100,12 +110,12 @@ expandDefaults = nub . concatMap expandExtension . collectDefaultExtensions
 
 -- | Collects extensions enabled by default
 collectDefaultExtensions :: UnnamedModule -> [Extension]
-collectDefaultExtensions = map toExt . getExtensions
+collectDefaultExtensions = mapMaybe toExt . getExtensions
   where
   getExtensions :: UnnamedModule -> [String]
   getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
 
-toExt :: String -> Extension
-toExt str = case map fst . reads . unregularExts . takeWhile isAlpha $ str of
-              e:_ -> e
-              []  -> error $ "Extension '" ++ takeWhile isAlpha str ++ "' is not known."
+toExt :: String -> Maybe Extension
+toExt str = case map fst . reads . canonExt . takeWhile isAlpha $ str of
+              e:_ -> Just e
+              []  -> fail $ "Extension '" ++ takeWhile isAlpha str ++ "' is not known."
