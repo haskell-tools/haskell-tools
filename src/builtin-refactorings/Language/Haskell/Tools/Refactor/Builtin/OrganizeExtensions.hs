@@ -54,14 +54,10 @@ organizeExtensions moduleAST = do
 
       newPragmas = mkFilePragmas $ langExts:ghcOpts'
 
-  (filePragmas != newPragmas) moduleAST
-
-
-  -- remove unused extensions (only those that are fully handled)
-  -- filePragmas & annList & lpPragmas !~ filterListSt (not . isRedundant)
-  --       -- remove empty {-# LANGUAGE #-} pragmas
-  --   >=> filePragmas !~ filterListSt (\case LanguagePragma (AnnList []) -> False; _ -> True)
-  --   $ moduleAST
+  (filePragmas != newPragmas)
+    -- remove empty {-# LANGUAGE #-} pragmas
+    >=> filePragmas !~ filterListSt (\case LanguagePragma (AnnList []) -> False; _ -> True)
+    $ moduleAST
 
 -- | Reduces default extension list (keeps unsupported extensions)
 reduceExtensions :: UnnamedModule -> Ghc [Extension]
