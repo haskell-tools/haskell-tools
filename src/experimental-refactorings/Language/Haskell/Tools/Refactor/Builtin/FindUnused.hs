@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TypeFamilies, MonoLocalBinds, KindSignatures, ExplicitNamespaces, FlexibleContexts, TemplateHaskell, TemplateHaskellQuotes, TupleSections #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.FindUnused where
 
 import Language.Haskell.Tools.PrettyPrint (prettyPrint)

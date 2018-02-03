@@ -1,7 +1,5 @@
-{-# LANGUAGE DeriveFunctor
-           , DeriveGeneric
-           , DeriveAnyClass
-           #-}
+{-# LANGUAGE DeriveAnyClass, DeriveFunctor, DeriveGeneric #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap where
 

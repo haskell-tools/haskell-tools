@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances, TemplateHaskell, TemplateHaskellQuotes #-}
+
 -- | Representation of modules, their collections, refactoring changes and exceptions.
 module Language.Haskell.Tools.Refactor.Representation where
 

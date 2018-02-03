@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings #-}
+
 -- | Helper functions for working with source templates
 module Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplateHelpers where
 

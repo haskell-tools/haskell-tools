@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeApplications #-}
+
 -- | Defines operation on AST lists.
 -- AST lists carry source information so simple list modification is not enough.
 module Language.Haskell.Tools.Refactor.Utils.Lists where

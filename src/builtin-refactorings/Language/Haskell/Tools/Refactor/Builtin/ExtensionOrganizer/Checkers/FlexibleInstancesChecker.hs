@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts, MultiWayIf, TypeFamilies #-}
 
+
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 
 import Control.Monad.Trans.Maybe (MaybeT(..))

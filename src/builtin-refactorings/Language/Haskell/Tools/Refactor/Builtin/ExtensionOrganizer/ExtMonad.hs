@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes, StandaloneDeriving, TypeFamilies, TypeSynonymInstances #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, RankNTypes, StandaloneDeriving, TypeSynonymInstances #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad

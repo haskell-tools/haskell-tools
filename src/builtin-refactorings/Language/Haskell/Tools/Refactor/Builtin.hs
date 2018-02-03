@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds #-}
+
 module Language.Haskell.Tools.Refactor.Builtin ( builtinRefactorings ) where
 
 import Language.Haskell.Tools.Refactor (RefactoringChoice)

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MultiWayIf, ScopedTypeVariables, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, LambdaCase, MonoLocalBinds, MultiWayIf, ScopedTypeVariables #-}
+
 -- | Defines utility methods that prepare Haskell modules for refactoring
 module Language.Haskell.Tools.Refactor.Prepare where
 

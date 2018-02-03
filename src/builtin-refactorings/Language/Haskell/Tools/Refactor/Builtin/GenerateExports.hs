@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, TupleSections, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, LambdaCase, MonoLocalBinds, TupleSections #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.GenerateExports
   (generateExports, generateExportsRefactoring) where
 

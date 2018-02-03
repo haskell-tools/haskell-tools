@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes, TypeFamilies, TypeApplications #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, RankNTypes, TypeApplications #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST

@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances #-}
+
 module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
 
 import GHC

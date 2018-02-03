@@ -1,6 +1,5 @@
-{-# LANGUAGE TypeFamilies
-           , DataKinds
-           #-}
+{-# LANGUAGE DataKinds, TypeFamilies #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector where
 

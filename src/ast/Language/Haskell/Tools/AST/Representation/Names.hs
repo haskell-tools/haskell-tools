@@ -1,5 +1,6 @@
 
-{-# LANGUAGE TypeFamilies, TypeSynonymInstances #-}
+{-# LANGUAGE ExplicitNamespaces, KindSignatures, MonoLocalBinds, TypeSynonymInstances #-}
+
 
 -- | Simple AST elements of Haskell
 module Language.Haskell.Tools.AST.Representation.Names where

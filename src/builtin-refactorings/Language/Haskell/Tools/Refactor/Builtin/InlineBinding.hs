@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, LambdaCase, MonoLocalBinds, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications #-}
+
 -- | Defines the inline binding refactoring that removes a value binding and replaces all occurences
 -- with an expression equivalent to the body of the binding.
 module Language.Haskell.Tools.Refactor.Builtin.InlineBinding

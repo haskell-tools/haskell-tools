@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, MultiWayIf, ScopedTypeVariables, TupleSections, TypeApplications, TypeFamilies, ViewPatterns #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, MultiWayIf, ScopedTypeVariables, TupleSections, TypeApplications, ViewPatterns #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.RenameDefinition
   (renameDefinition, renameDefinition', renameDefinitionRefactoring) where
 

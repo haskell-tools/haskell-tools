@@ -1,13 +1,6 @@
 -- | Utility functions for transforming the GHC AST representation into our own.
-{-# LANGUAGE TypeSynonymInstances
-           , FlexibleInstances
-           , LambdaCase
-           , ViewPatterns
-           , FlexibleContexts
-           , AllowAmbiguousTypes
-           , TypeApplications
-           , TypeFamilies
-           #-}
+{-# LANGUAGE AllowAmbiguousTypes, FlexibleContexts, FlexibleInstances, LambdaCase, TypeApplications, TypeFamilies, ViewPatterns #-}
+
 module Language.Haskell.Tools.BackendGHC.Utils where
 
 import ApiAnnotation (AnnKeywordId)

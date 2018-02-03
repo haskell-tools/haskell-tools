@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts, MultiWayIf, ViewPatterns #-}
 
+
 {-
   NOTE: We need Decl level checking in order to gain extra information
         from the newtype and data keywords.

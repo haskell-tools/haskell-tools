@@ -1,6 +1,5 @@
-{-# LANGUAGE LambdaCase
-           , TypeFamilies
-           #-}
+{-# LANGUAGE ExplicitNamespaces, KindSignatures, LambdaCase, MonoLocalBinds #-}
+
 module Main where
 
 import Test.Tasty (TestTree, testGroup, defaultMain)

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes, TupleSections, TypeFamilies, LambdaCase #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, LambdaCase, MonoLocalBinds, RankNTypes, TupleSections #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
   ( module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions

@@ -1,6 +1,5 @@
-{-# LANGUAGE TypeSynonymInstances
-            , FlexibleInstances
-            #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable where
 

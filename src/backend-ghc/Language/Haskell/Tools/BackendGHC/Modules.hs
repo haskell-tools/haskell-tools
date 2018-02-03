@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
+
 -- | Functions that convert the module-related elements (modules, imports, exports) of the GHC AST to corresponding elements in the Haskell-tools AST representation
 -- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
 module Language.Haskell.Tools.BackendGHC.Modules where

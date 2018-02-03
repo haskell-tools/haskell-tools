@@ -1,6 +1,7 @@
 -- don't show warnings, Template Haskell generated code contains unused variables
+{-# LANGUAGE TemplateHaskell, TemplateHaskellQuotes #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
-{-# LANGUAGE TemplateHaskell #-}
+
 -- | Generating instances for traversing the semantic information of the Haskell Representation
 module Language.Haskell.Tools.AST.Instances.SourceInfoTraversal () where
 

@@ -1,5 +1,6 @@
 -- | Generation of names for refactorings
-{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, KindSignatures, MonoLocalBinds, OverloadedStrings #-}
+
 module Language.Haskell.Tools.Rewrite.Create.Names where
 
 import Data.String (IsString(..), String)

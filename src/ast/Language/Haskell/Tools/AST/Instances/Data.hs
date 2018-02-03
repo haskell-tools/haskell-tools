@@ -1,5 +1,6 @@
 -- | Data instances for Haskell AST (used for generics)
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, StandaloneDeriving, TypeFamilies, UndecidableInstances #-}
+
 module Language.Haskell.Tools.AST.Instances.Data () where
 
 import Data.Data

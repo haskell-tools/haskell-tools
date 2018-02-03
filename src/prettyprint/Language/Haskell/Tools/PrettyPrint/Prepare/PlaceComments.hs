@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase, ScopedTypeVariables #-}
+
 -- | This transformation expands nodes to contain the comments that should be attached to them. After this, a
 -- normalizing transformation should be performed that expands parents to contain their children.
 module Language.Haskell.Tools.PrettyPrint.Prepare.PlaceComments where

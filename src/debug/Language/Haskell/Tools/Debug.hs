@@ -1,8 +1,5 @@
- {-# LANGUAGE StandaloneDeriving
-            , DeriveGeneric
-            , LambdaCase
-            , ScopedTypeVariables
-            #-}
+ {-# LANGUAGE DeriveGeneric, LambdaCase, ScopedTypeVariables, StandaloneDeriving #-}
+
 module Language.Haskell.Tools.Debug where
 
 import Control.Exception

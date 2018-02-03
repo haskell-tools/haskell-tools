@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, ScopedTypeVariables, TupleSections #-}
+
 module Language.Haskell.Tools.BackendGHC.AddTypeInfo (addTypeInfos) where
 
 import Bag as GHC (bagToList)

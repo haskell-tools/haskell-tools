@@ -1,9 +1,5 @@
-{-# LANGUAGE FlexibleContexts
-           , FlexibleInstances
-           , MultiParamTypeClasses
-           , UndecidableInstances
-           , TypeFamilies
-           #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, UndecidableInstances #-}
+
 module Language.Haskell.Tools.ASTDebug.Instances where
 
 import Language.Haskell.Tools.ASTDebug

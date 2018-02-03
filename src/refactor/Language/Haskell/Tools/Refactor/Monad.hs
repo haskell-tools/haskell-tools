@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving #-}
+
 -- | Types and instances for monadic refactorings. The refactoring monad provides automatic
 -- importing, keeping important source fragments (such as preprocessor pragmas), and providing
 -- contextual information for refactorings.

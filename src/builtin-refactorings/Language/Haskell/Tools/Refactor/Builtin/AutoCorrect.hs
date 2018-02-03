@@ -1,9 +1,5 @@
-{-# LANGUAGE TypeFamilies
-           , FlexibleContexts
-           , ScopedTypeVariables
-           , ViewPatterns
-           , TupleSections
-           #-}
+{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, ScopedTypeVariables, TupleSections, ViewPatterns #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.AutoCorrect (autoCorrect, tryItOut, autoCorrectRefactoring) where
 
 import SrcLoc

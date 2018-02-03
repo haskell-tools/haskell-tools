@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
+
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
   , module Debug.Trace

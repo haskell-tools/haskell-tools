@@ -1,6 +1,7 @@
 -- | Generation of statement-level AST fragments for refactorings.
 -- The bindings defined here are the AST constructor names with an "mk" prefix.
-{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
+{-# LANGUAGE ExplicitNamespaces, KindSignatures, MonoLocalBinds, OverloadedStrings #-}
+
 module Language.Haskell.Tools.Rewrite.Create.Kinds where
 
 import Data.String (IsString(..), String)

@@ -1,6 +1,7 @@
 -- don't show warnings, Template Haskell generated code contains unused variables
+{-# LANGUAGE TypeApplications, TemplateHaskell, TemplateHaskellQuotes, DataKinds, FlexibleInstances, TypeSynonymInstances, MultiParamTypeClasses, ConstrainedClassMethods, FlexibleContexts, UndecidableInstances, TypeFamilies, MonoLocalBinds, KindSignatures, ExplicitNamespaces, AllowAmbiguousTypes, ScopedTypeVariables, ExplicitForAll #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
-{-# LANGUAGE TypeApplications, TemplateHaskell, DataKinds, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances, TypeFamilies, AllowAmbiguousTypes, ScopedTypeVariables #-}
+
 -- | Generating instances for traversing the semantic information of the Haskell Representation
 module Language.Haskell.Tools.AST.Instances.ClassyPlate where
 
