@@ -47,7 +47,7 @@ instance (T2 a b) :!: (T1 a) where  {-* MultiParamTypeClasses *-}
 instance (a :+: b) :!: (T1 a) where  {-* MultiParamTypeClasses *-}
   j _ _ = True
 
-instance C1 [(a :: *)] where
+instance C1 [(a :: *)] where  {-* KindSignatures *-}
   f1 _ = True
 
 instance C2 (T1 a) (T1 a) where  {-* MultiParamTypeClasses *-}

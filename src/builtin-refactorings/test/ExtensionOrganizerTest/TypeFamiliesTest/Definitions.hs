@@ -9,7 +9,7 @@ type EqRel a b = a ~ b {-* TypeFamilies *-}
 
 type TrfAB a b = a ~ b => a -> b  {-* TypeFamilies *-}
 
-type family F a :: * where
+type family F a :: * where  {-* KindSignatures *-}
   F Int  = Integer
   F Char = String
   F a    = a  {-* TypeFamilies *-}

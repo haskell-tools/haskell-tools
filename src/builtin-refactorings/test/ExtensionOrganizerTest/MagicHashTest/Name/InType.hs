@@ -42,5 +42,5 @@ f7 x = ()
 f8 :: a# :+: b# -> ()          {-* MagicHash, MagicHash *-} -- TypeOperators
 f8 x = ()
 
-f9 :: (a# :: *) -> ()          {-* MagicHash *-} --KindSignatures
+f9 :: (a# :: *) -> ()          {-* MagicHash, KindSignatures *-}
 f9 x = ()

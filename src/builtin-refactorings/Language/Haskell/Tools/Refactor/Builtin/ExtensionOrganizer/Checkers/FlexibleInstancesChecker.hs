@@ -168,7 +168,7 @@ rmTypeMisc :: CheckNode Type
 rmTypeMisc = rmTParens >=> rmTKinded
 
 rmTKinded :: CheckNode Type
-rmTKinded kt@(KindedType t _) = addOccurence_ KindSignatures kt >> return t
+rmTKinded kt@(KindedType t _) = return t
 rmTKinded x                   = return x
 
 -- removes Parentheses from the AST
