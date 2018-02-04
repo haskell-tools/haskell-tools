@@ -8,7 +8,7 @@ module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
 
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (isSupported, fullyHandledExtensions)
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (isSupported)
 
 import Language.Haskell.Tools.Refactor hiding (LambdaCase)
 import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension, canonExt)
@@ -44,12 +44,7 @@ tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
-  let isRedundant e = extName `notElem` foundExts && extName `elem` handledExts
-        where extName = canonExt (e ^. langExt)
-      handledExts = map show fullyHandledExtensions
-      foundExts = map show exts
-
-      langExts = mkLanguagePragma . map show $ exts
+  let langExts = mkLanguagePragma . map show $ exts
       ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
       ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
 

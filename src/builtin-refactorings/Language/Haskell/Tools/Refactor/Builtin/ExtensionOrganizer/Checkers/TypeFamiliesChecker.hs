@@ -18,8 +18,6 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
-
 
 -- | Checks whether any name's corresponding type in the module contains a type equality.
 globalChkNamesForTypeEq :: CheckNode Module

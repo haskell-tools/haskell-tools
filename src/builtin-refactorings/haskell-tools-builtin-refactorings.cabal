@@ -40,8 +40,10 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/ConstraintKindsTest/*.hs
                   , test/ExtensionOrganizerTest/DefaultSignaturesTest/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
+                  , test/ExtensionOrganizerTest/ExplicitNamespacesTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/FunctionalDependenciesTest/*.hs
+                  , test/ExtensionOrganizerTest/KindSignaturesTest/*.hs
                   , test/ExtensionOrganizerTest/LambdaCaseTest/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Literal/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Name/*.hs

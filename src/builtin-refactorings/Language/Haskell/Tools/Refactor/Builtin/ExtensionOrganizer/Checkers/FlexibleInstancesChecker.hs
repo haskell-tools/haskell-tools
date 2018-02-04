@@ -168,8 +168,8 @@ rmTypeMisc :: CheckNode Type
 rmTypeMisc = rmTParens >=> rmTKinded
 
 rmTKinded :: CheckNode Type
-rmTKinded kt@(KindedType t _) = return t
-rmTKinded x                   = return x
+rmTKinded (KindedType t _) = return t
+rmTKinded x                = return x
 
 -- removes Parentheses from the AST
 -- the structure is reserved

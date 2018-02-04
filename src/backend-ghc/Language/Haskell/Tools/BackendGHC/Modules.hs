@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, MultiWayIf, ScopedTypeVariables, TypeApplications, TypeFamilies, ViewPatterns #-}
 
 -- | Functions that convert the module-related elements (modules, imports, exports) of the GHC AST to corresponding elements in the Haskell-tools AST representation
 -- Also contains the entry point of the transformation that collects the information from different GHC AST representations.
@@ -55,7 +55,7 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
          !info <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) imports
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod
   where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
-        originalNames = Map.fromList $ catMaybes $ map getSourceAndInfo (rangeMod ^? biplateRef)
+        originalNames = Map.fromList $ mapMaybe getSourceAndInfo (rangeMod ^? biplateRef)
         getSourceAndInfo :: Ann AST.UQualifiedName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
 
@@ -97,8 +97,8 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
 loadSplices :: HsModule RdrName -> Trf a -> Trf a
 loadSplices hsMod trf = do
     let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        exprSpls = catMaybes $ map (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        typeSpls = catMaybes $ map (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+        exprSpls = mapMaybe (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+        typeSpls = mapMaybe (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
     setSplices declSpls typeSpls exprSpls trf
 
 trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
@@ -212,8 +212,10 @@ getWrappedName (L _ (IEType n)) = n
 trfImportModifier :: Trf (AnnMaybeG AST.UImportModifier (Dom r) RangeStage)
 trfImportModifier = do
   patLoc <- tokenLoc AnnPattern
-  if isGoodSrcSpan patLoc then makeJust <$> annLocNoSema (return patLoc) (return AST.UImportPattern)
-                          else nothing " " "" atTheStart
+  typLoc <- tokenLoc AnnType
+  if | (not . isGoodSrcSpan $ patLoc) && (not . isGoodSrcSpan $ typLoc) -> nothing " " "" atTheStart
+     | isGoodSrcSpan patLoc -> makeJust <$> annLocNoSema (return patLoc) (return AST.UImportPattern)
+     | isGoodSrcSpan typLoc -> makeJust <$> annLocNoSema (return typLoc) (return AST.UImportType)
 
 trfModuleName :: Located ModuleName -> Trf (Ann AST.UModuleName (Dom r) RangeStage)
 trfModuleName = trfLocNoSema trfModuleName'

@@ -46,6 +46,8 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests typeFamiliesTest
   , mkTests multiParamTypeClassesTest
   , mkTests constraintKindsTest
+  , mkTests kindSignaturesTest
+  , mkTests explicitNamespacesTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -310,4 +312,21 @@ ckRoot = "ConstraintKindsTest"
 ckModules = [ "ClassConstraints"
             , "ComplexConstraints"
             , "NotClassConstraints"
+            ]
+
+kindSignaturesTest :: TestSuite
+kindSignaturesTest = (ksRoot, ksModules)
+ksRoot = "KindSignaturesTest"
+ksModules = [ "InClassDecl"
+            , "InDataDecl"
+            , "InForAll"
+            , "InTypeFamily"
+            , "InTypeSynonym"
+            ]
+
+explicitNamespacesTest :: TestSuite
+explicitNamespacesTest = (esRoot, esModules)
+esRoot = "ExplicitNamespacesTest"
+esModules = [ "Import"
+            , "Export"
             ]

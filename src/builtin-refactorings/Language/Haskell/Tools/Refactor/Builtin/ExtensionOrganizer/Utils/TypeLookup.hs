@@ -48,7 +48,7 @@ typeOrKindFromId idn = GHC.varType . semanticsId $ idn
 typeFromTyThing :: GHC.TyThing -> Maybe GHC.Type
 typeFromTyThing (GHC.AnId     idn)  = Just . GHC.varType $ idn
 typeFromTyThing (GHC.ATyCon   tc)   = GHC.synTyConRhs_maybe tc
-typeFromTyThing (GHC.ACoAxiom coax) = fail "CoAxioms are not supported for type lookup"
+typeFromTyThing (GHC.ACoAxiom _)    = fail "CoAxioms are not supported for type lookup"
 typeFromTyThing (GHC.AConLike con)  = handleCon con
   where handleCon (GHC.RealDataCon dc) = Just . GHC.dataConUserType $ dc
         handleCon (GHC.PatSynCon   pc) = do
