@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, ViewPatterns #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
   (extractBinding', tryItOut, extractBindingRefactoring) where

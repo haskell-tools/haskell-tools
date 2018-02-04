@@ -81,6 +81,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstraintKindsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitNamespacesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.KindSignaturesChecker

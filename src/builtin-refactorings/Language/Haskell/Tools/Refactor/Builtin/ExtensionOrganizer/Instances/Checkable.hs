@@ -85,3 +85,6 @@ instance Checkable InstBodyDecl where
 
 instance Checkable Assertion where
   check = chkTypeFamiliesAssertion
+
+instance Checkable IESpec where
+  check = chkExplicitNamespacesIESpec

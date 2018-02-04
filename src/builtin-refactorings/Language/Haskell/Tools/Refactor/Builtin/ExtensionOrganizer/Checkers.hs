@@ -7,6 +7,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangP
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstraintKindsChecker        as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker      as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker              as X
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitNamespacesChecker     as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker      as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.KindSignaturesChecker         as X
