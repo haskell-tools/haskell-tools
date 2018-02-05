@@ -38,6 +38,19 @@ instance HasNameInfo dom => HasNameInfo' (Ann UQualifiedName dom st) where
 instance HasNameInfo dom => HasNameInfo' (Ann UName dom st) where
   semanticsName = semanticsName . _simpleName . _element
 
+-- | Domains that have semantic information for literals
+type HasLiteralInfo dom = (Domain dom, HasLiteralInfo' (SemanticInfo dom ULiteral))
+
+-- | Info of types
+class HasLiteralInfo' si where
+  semanticsLiteralType :: si -> GHC.Type
+
+instance HasLiteralInfo' LiteralInfo where
+  semanticsLiteralType = (^. literalType)
+
+instance HasLiteralInfo dom => HasLiteralInfo' (Ann ULiteral dom st) where
+  semanticsLiteralType = semanticsLiteralType . (^. annotation&semanticInfo)
+
 -- * Information about typed names
 
 type HasIdInfo dom = (Domain dom, HasIdInfo' (SemanticInfo dom UQualifiedName))
