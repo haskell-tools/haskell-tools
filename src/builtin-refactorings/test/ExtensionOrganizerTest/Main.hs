@@ -48,6 +48,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests constraintKindsTest
   , mkTests kindSignaturesTest
   , mkTests explicitNamespacesTest
+  , mkTests overloadedStringsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -329,4 +330,12 @@ explicitNamespacesTest = (esRoot, esModules)
 esRoot = "ExplicitNamespacesTest"
 esModules = [ "Import"
             , "Export"
+            ]
+
+overloadedStringsTest :: TestSuite
+overloadedStringsTest = (osRoot, osModules)
+osRoot = "OverloadedStringsTest"
+osModules = [ "Synonym"
+            , "Newtype"
+            , "Other"
             ]

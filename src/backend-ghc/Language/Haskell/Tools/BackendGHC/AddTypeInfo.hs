@@ -61,19 +61,32 @@ addTypeInfos bnds mod = do
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
         getType' ut name = fromMaybe (mkVanillaGlobal name ut) <$> ((<|> Map.lookup name ids) <$> getTopLevelId name)
         ids = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
-        
+
         extractTypes :: LHsBinds Id -> [Id]
         extractTypes = concatMap universeBi . bagToList
-        
+
         fetchLitType :: Monad m => PreLiteralInfo -> m LiteralInfo
         fetchLitType (RealLiteralInfo t) = return $ LiteralInfo t
-        fetchLitType (PreLiteralInfo sp) = return $ LiteralInfo $ fromMaybe (convProblem $ "cannot lookup type of literal at: " ++ shortShowSpanWithFile sp) $ lookup sp lits
-        
-        lits :: [(SrcSpan, Type)]
-        lits = catMaybes $ map (\case L l (HsOverLit lit) -> Just (l, ol_type lit); _ -> Nothing) (extractLiterals bnds) 
-        
-        extractLiterals :: LHsBinds Id -> [LHsExpr Id]
-        extractLiterals = concatMap universeBi . bagToList
+        fetchLitType (PreLiteralInfo sp) = return $ LiteralInfo $ fromMaybe (convProblem $ "cannot lookup type of literal at: " ++ shortShowSpanWithFile sp) $ lookup sp decompedOverloadedLits
+
+        -- NOTE: Only overloaded literals' type information is collected here
+        --       Might not be complete
+        --       Collecting only HsOverLits doesn't work,
+        --       because they contain only UnhelpfulSrcSpans
+        decompedOverloadedLits :: [(SrcSpan, Type)]
+        decompedOverloadedLits = catMaybes $ map decompExprLit exprLits ++ map decompPatLit patLits
+          where exprLits :: [LHsExpr Id]
+                exprLits = concatMap universeBi . bagToList $ bnds
+
+                decompExprLit (L loc (HsOverLit lit)) = Just (loc, ol_type lit)
+                decompExprLit x = Nothing
+
+                patLits :: [LPat Id]
+                patLits = concatMap universeBi . bagToList $ bnds
+
+                decompPatLit (L loc (NPat llit _ _ _)) = Just (loc, ol_type . unLoc $ llit)
+                decompPatLit x = Nothing
+
 
         mkUnknownType :: IO Type
         mkUnknownType = do

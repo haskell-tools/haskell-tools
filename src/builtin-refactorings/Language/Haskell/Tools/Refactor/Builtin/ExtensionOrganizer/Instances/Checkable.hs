@@ -49,6 +49,7 @@ instance Checkable PatternSignature where
 
 instance Checkable Literal where
   check = chkMagicHashLiteral
+      >=> chkOverloadedStringsLiteral
 
 instance Checkable NamePart where
   check = chkMagicHashNamePart
