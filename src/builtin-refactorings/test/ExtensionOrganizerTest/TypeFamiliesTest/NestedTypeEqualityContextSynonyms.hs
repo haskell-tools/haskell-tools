@@ -4,8 +4,10 @@ module NestedTypeEqualityContextSynonyms where
 
 import Definitions
 
-f :: HiddenEqRel a b => a -> b  {-* TypeFamilies, TypeFamilies *-}
+{-@ TypeFamilies @-}
+
+f :: HiddenEqRel a b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 f = id
 
-g :: ComplexEqRelType a  {-* TypeFamilies, TypeFamilies *-}
-g x y h = h x y          {-* TypeFamilies *-}
+g :: ComplexEqRelType a  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
+g x y h = h x y          {-* TypeFamilies + GADTs *-}

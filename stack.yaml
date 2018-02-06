@@ -20,3 +20,4 @@ extra-deps:
   - fswatch-0.1.0.2
   - knob-0.1.1
   - classyplate-0.3.0.2
+  - minisat-solver-0.1

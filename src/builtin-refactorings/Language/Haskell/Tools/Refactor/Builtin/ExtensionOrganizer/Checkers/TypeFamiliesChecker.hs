@@ -21,7 +21,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLook
 
 -- | Checks whether any name's corresponding type in the module contains a type equality.
 globalChkNamesForTypeEq :: CheckNode Module
-globalChkNamesForTypeEq = conditional globalChkNamesForTypeEq' TypeFamilies
+globalChkNamesForTypeEq = conditionalAny globalChkNamesForTypeEq' [TypeFamilies, GADTs]
 
 -- | Checks a declaration if TypeFamilies is turned on.
 chkTypeFamiliesDecl :: CheckNode Decl
@@ -69,14 +69,14 @@ chkTypeFamiliesAssertion' :: CheckNode Assertion
 chkTypeFamiliesAssertion' a@(InfixAssert _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
-  = addOccurence TypeFamilies a
+  = addRelation (TypeFamilies `lOr` GADTs) a
 chkTypeFamiliesAssertion' a = return a
 
 chkTypeFamiliesType' :: CheckNode Type
 chkTypeFamiliesType' t@(InfixTypeApp _ op _)
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
-  = addOccurence TypeFamilies t
+  = addRelation (TypeFamilies `lOr` GADTs) t
 chkTypeFamiliesType' t = return t
 
 chkNameForTyEqn :: CheckNode Name
@@ -86,7 +86,7 @@ chkNameForTyEqn name = do
     Just ty -> do
       let ty'    = GHC.expandTypeSynonyms ty
           tycons = universeBi ty' :: [GHC.TyCon]
-      if any isEqTyCon tycons then addOccurence TypeFamilies name
+      if any isEqTyCon tycons then addRelation (TypeFamilies `lOr` GADTs) name
                               else return name
     Nothing -> return name
 

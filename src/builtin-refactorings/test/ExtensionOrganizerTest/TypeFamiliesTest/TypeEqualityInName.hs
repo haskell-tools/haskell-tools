@@ -4,4 +4,6 @@ module TypeEqualityInName where
 
 import Definitions
 
-g = eqRelName {-* TypeFamilies *-}
+{-@ TypeFamilies @-}
+
+g = eqRelName {-* TypeFamilies + GADTs *-}

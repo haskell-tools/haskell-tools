@@ -20,7 +20,7 @@ import Data.Char (isAlpha)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
-import qualified Data.Map.Strict as SMap (keys, empty)
+import qualified Data.Map.Strict as SMap (empty)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.
@@ -57,26 +57,16 @@ organizeExtensions moduleAST = do
 
 -- | Reduces default extension list (keeps unsupported extensions)
 reduceExtensions :: UnnamedModule -> Ghc [Extension]
-reduceExtensions = \moduleAST -> do
+reduceExtensions moduleAST = do
   let expanded = expandDefaults moduleAST
       (xs, ys) = partition isSupported expanded
   -- we can't say anything about generated code
   if TemplateHaskell `notElem` expanded
     then do
       xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-      return . sortBy (compare `on` show) . mergeInduced . nub $ (calcExts xs' ++ ys)
+      return . sortBy (compare `on` show) . mergeInduced . nub $ (determineExtensions xs' ++ ys)
     else
       return expanded
-
-  where isLVar (LVar _) = True
-        isLVar _        = False
-
-        calcExts :: ExtMap -> [Extension]
-        calcExts logRels
-          | ks <- SMap.keys logRels
-          , all isLVar ks
-          = map (\(LVar x) -> x) . SMap.keys $ logRels
-          | otherwise     = []
 
 rmInduced :: Extension -> [Extension] -> [Extension]
 rmInduced e = flip (\\) induced

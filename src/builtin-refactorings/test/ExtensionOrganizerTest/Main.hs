@@ -9,10 +9,11 @@ import Language.Haskell.TH.LanguageExtensions (Extension)
 import SrcLoc (SrcSpan(..), srcSpanEndLine)
 
 import Data.List (sort)
+import Control.Monad (unless)
 import qualified Data.Map.Strict as SMap (Map, map)
 import System.FilePath (FilePath, addExtension, (</>))
 
-import ExtensionOrganizerTest.AnnotationParser (getExtensionAnnotations)
+import ExtensionOrganizerTest.AnnotationParser
 import Language.Haskell.Tools.Refactor hiding (ModuleName)
 import Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
 
@@ -75,20 +76,31 @@ getExtensionsFrom dir moduleName = runGhc (Just libdir) $ do
   exts <- collectExtensions modAST
   return $! simplifyExtMap exts
 
-getExtAnnotsFrom :: FilePath -> ModuleName -> IO SimpleMap
-getExtAnnotsFrom dir moduleName = do
+getLclExtAnnotsFrom :: FilePath -> ModuleName -> IO SimpleMap
+getLclExtAnnotsFrom dir moduleName = do
   s <- readFile $ addExtension (mkModulePath dir moduleName) ".hs"
-  return $! getExtensionAnnotations s
+  return $! getLocalExtensionAnnotations s
+
+getGlbExtAnnotsFrom :: FilePath -> ModuleName -> IO [Extension]
+getGlbExtAnnotsFrom dir moduleName = do
+  s <- readFile $ addExtension (mkModulePath dir moduleName) ".hs"
+  return $! getGlobalExtensionAnnotations s
 
 mkTest :: FilePath -> ModuleName -> TestTree
 mkTest dir moduleName = testCase moduleName $ mkAssertion dir moduleName
 
+-- | Compares the local annotations with the result of the checker.
+-- Also compares the global expected result with minimized extension set.
 mkAssertion :: FilePath -> ModuleName -> IO ()
 mkAssertion dir moduleName = do
-  expected <- getExtAnnotsFrom  dir moduleName
-  result   <- getExtensionsFrom dir moduleName
-  assertEqual "Failure" (mapSort expected) (mapSort result)
-  where mapSort = SMap.map sort
+  global <- getGlbExtAnnotsFrom dir moduleName
+  local  <- getLclExtAnnotsFrom dir moduleName
+  result <- getExtensionsFrom   dir moduleName
+  let minimalExts = determineExtensions result
+      mapSort = SMap.map sort
+
+  assertEqual "Failure" (mapSort local) (mapSort result)
+  unless (null global) $ assertEqual "Failure" (sort global) (sort minimalExts)
 
 mkTests :: TestSuite -> TestTree
 mkTests (testDir, tests) = testGroup testDir (map (mkTest testDir) tests)

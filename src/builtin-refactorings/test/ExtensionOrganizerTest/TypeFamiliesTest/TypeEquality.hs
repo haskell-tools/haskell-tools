@@ -2,4 +2,6 @@
 
 module TypeEquality where
 
-type DoubleEq a b c = (a ~ b, b ~ c) {-* TypeFamilies, TypeFamilies, TypeFamilies, ConstraintKinds *-}
+{-@ TypeFamilies, ConstraintKinds @-}
+
+type DoubleEq a b c = (a ~ b, b ~ c) {-* TypeFamilies + GADTs, TypeFamilies + GADTs, TypeFamilies + GADTs, ConstraintKinds *-}

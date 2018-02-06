@@ -10,7 +10,7 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkOverloadedStringsLiteral :: CheckNode Literal
-chkOverloadedStringsLiteral = chkLit
+chkOverloadedStringsLiteral = conditional chkLit OverloadedStrings
   where chkLit :: CheckNode Literal
         chkLit lit
           | UStringLit _ <- lit ^. element

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, StandaloneDeriving, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, TypeSynonymInstances #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
@@ -24,13 +24,6 @@ import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
 {-# ANN module "HLint: ignore Use mappend" #-}
 {-# ANN module "HLint: ignore Use import/export shortcut" #-}
 
-deriving instance Ord  Extension
-deriving instance Read Extension
-
-
--- how could I hide the tyvar a?
--- type Asd a = forall m . (MonadReader [Extension] m, MonadState ExtMap m, GhcMonad m) => m a
-
 
 type ExtMonad = ReaderT [Extension] (StateT ExtMap Ghc)
 
@@ -52,6 +45,14 @@ addOccurence_ extension element = modify $ addOccurence' (LVar extension) elemen
 addOccurence :: (MonadState ExtMap m, HasRange node) =>
                  Extension -> node -> m node
 addOccurence ext node = addOccurence_ ext node >> return node
+
+addRelation_ :: (MonadState ExtMap m, HasRange node) =>
+                 LogicalRelation Extension -> node -> m ()
+addRelation_ rel element = modify $ addOccurence' rel element
+
+addRelation :: (MonadState ExtMap m, HasRange node) =>
+                LogicalRelation Extension -> node -> m node
+addRelation rel node = addRelation_ rel node >> return node
 
 isTurnedOn :: Extension -> ExtMonad Bool
 isTurnedOn ext = do

@@ -4,8 +4,10 @@ module TypeEqualityContextSynonyms where
 
 import Definitions
 
-f :: EqRel a b => a -> b  {-* TypeFamilies, TypeFamilies *-}
+{-@ TypeFamilies @-}
+
+f :: EqRel a b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 f = id
 
-g :: TrfAB a b  {-* TypeFamilies, TypeFamilies *-}
+g :: TrfAB a b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 g = id

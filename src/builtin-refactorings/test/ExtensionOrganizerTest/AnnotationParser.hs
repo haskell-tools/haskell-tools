@@ -1,28 +1,48 @@
-module ExtensionOrganizerTest.AnnotationParser where
+module ExtensionOrganizerTest.AnnotationParser
+  (getLocalExtensionAnnotations, getGlobalExtensionAnnotations)
+  where
 
 import Data.List
 import qualified Data.Map.Strict as SMap (Map, empty, insertWith)
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad (Extension, LogicalRelation(..)) -- for Ord Extension
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap (Extension, LogicalRelation(..))
 
 {-# ANN module "HLint: ignore Use zipWith" #-}
 
 
-getExtensionAnnotations :: String -> SMap.Map (LogicalRelation Extension) [Int]
-getExtensionAnnotations s = foldl f SMap.empty (parseFile s)
-  where f m (num, exts) = foldl (g num) m exts
-        g num m' ext = SMap.insertWith (++) (LVar ext) [num] m'
+getGlobalExtensionAnnotations :: String -> [Extension]
+getGlobalExtensionAnnotations s
+  | [] <- getGlobalAnnot s = []
+  | otherwise              = parseGlobalAnnot . getGlobalAnnot $ s
 
-parseFile :: String -> [(Int, [Extension])] -- SMap.Map Extension [Int]
+getLocalExtensionAnnotations :: String -> SMap.Map (LogicalRelation Extension) [Int]
+getLocalExtensionAnnotations s = foldl f SMap.empty (parseFile s)
+  where f m (num, exts) = foldl (g num) m exts
+        g num m' ext = SMap.insertWith (++) ext [num] m'
+
+parseFile :: String -> [(Int, [LogicalRelation Extension])] -- SMap.Map Extension [Int]
 parseFile = map parseLine . zip [1..] . lines
 
-parseLine :: (Int, String) -> (Int, [Extension])
-parseLine (num, line) = (num, parseAnnot line)
+parseLine :: (Int, String) -> (Int, [LogicalRelation Extension])
+parseLine (num, line) = (num, parseLocalAnnot . getLocalAnnot $ line)
 
-parseAnnot :: String -> [Extension]
-parseAnnot = map read . delimit (== ',') . getAnnot
+parseLocalAnnot :: String -> [LogicalRelation Extension]
+parseLocalAnnot = map parseRelation . delimit (== ',')
 
-getAnnot :: String -> String
-getAnnot = concat . takeWhile (not . isPrefixOf "*-}") . tail' . dropWhile (not . isPrefixOf "{-*" ) . words
+-- NOTE: Currently only parses OR relation
+parseRelation :: String -> LogicalRelation Extension
+parseRelation = foldl1 (:||:) . map (LVar . read) . delimit (== '+')
+
+parseGlobalAnnot :: String -> [Extension]
+parseGlobalAnnot = map read . delimit (== ',')
+
+getGlobalAnnot :: String -> String
+getGlobalAnnot = getAnnot "{-@" "@-}"
+
+getLocalAnnot :: String -> String
+getLocalAnnot = getAnnot "{-*" "*-}"
+
+getAnnot :: String -> String -> String -> String
+getAnnot start end = concat . takeWhile (not . isPrefixOf end) . tail' . dropWhile (not . isPrefixOf start ) . words
   where tail' [] = []
         tail' xs = tail xs
 
