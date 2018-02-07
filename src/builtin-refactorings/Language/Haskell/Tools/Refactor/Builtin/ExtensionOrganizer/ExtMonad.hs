@@ -40,7 +40,7 @@ addOccurence' key node = SMap.insertWith (++) key [getRange node]
 -- TODO: add isTurnedOn check
 addOccurence_ :: (MonadState ExtMap m, HasRange node) =>
                   Extension -> node -> m ()
-addOccurence_ extension element = modify $ addOccurence' (LVar extension) element
+addOccurence_ extension element = modify $ addOccurence' (lVar extension) element
 
 addOccurence :: (MonadState ExtMap m, HasRange node) =>
                  Extension -> node -> m node

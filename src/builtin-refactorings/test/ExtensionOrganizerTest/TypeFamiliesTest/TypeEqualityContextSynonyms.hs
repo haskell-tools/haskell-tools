@@ -4,7 +4,7 @@ module TypeEqualityContextSynonyms where
 
 import Definitions
 
-{-@ TypeFamilies @-}
+{-@ GADTs @-}
 
 f :: EqRel a b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 f = id

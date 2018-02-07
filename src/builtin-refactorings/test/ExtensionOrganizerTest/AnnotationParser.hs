@@ -4,7 +4,7 @@ module ExtensionOrganizerTest.AnnotationParser
 
 import Data.List
 import qualified Data.Map.Strict as SMap (Map, empty, insertWith)
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap (Extension, LogicalRelation(..))
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 
 {-# ANN module "HLint: ignore Use zipWith" #-}
 
@@ -30,7 +30,7 @@ parseLocalAnnot = map parseRelation . delimit (== ',')
 
 -- NOTE: Currently only parses OR relation
 parseRelation :: String -> LogicalRelation Extension
-parseRelation = foldl1 (:||:) . map (LVar . read) . delimit (== '+')
+parseRelation = foldl1 (:||:) . map (lVar . read) . delimit (== '+')
 
 parseGlobalAnnot :: String -> [Extension]
 parseGlobalAnnot = map read . delimit (== ',')

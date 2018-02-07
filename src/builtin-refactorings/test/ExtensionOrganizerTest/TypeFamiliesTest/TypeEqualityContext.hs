@@ -2,7 +2,7 @@
 
 module TypeEqualityContext where
 
-{-@ TypeFamilies @-}
+{-@ GADTs @-}
 
 f :: a ~ b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 f = id

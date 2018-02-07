@@ -4,7 +4,7 @@ module NestedTypeEqualityContextSynonyms where
 
 import Definitions
 
-{-@ TypeFamilies @-}
+{-@ GADTs @-}
 
 f :: HiddenEqRel a b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
 f = id

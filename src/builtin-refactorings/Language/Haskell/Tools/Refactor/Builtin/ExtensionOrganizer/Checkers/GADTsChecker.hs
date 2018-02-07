@@ -41,7 +41,7 @@ chkConDeclForExistentials' conDecl = liftM (fromMaybe conDecl) . runMaybeT $
     UInfixConDecl _ _ _ op _ -> chkName (op ^. operatorName)
   where chkName :: HasNameInfo' n => n -> MaybeT ExtMonad ConDecl
         chkName n = do
-          isVanilla <- isVanillaDataConNameM $ n
+          isVanilla <- isVanillaDataConNameM n
           if isVanilla
             then return conDecl
             else lift . addRelation (GADTs `lOr` ExistentialQuantification) $ conDecl

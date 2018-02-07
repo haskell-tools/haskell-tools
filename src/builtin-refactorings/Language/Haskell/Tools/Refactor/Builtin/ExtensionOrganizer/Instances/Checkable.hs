@@ -92,6 +92,8 @@ instance Checkable Operator where
 
 instance Checkable GadtConDecl where
   check = chkGADTsGadtConDecl
+      >=> chkExplicitForAllGadtConDecl
 
 instance Checkable ConDecl where
   check = chkConDeclForExistentials
+      >=> chkExplicitForAllConDecl
