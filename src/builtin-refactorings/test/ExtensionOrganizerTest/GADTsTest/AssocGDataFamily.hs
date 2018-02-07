@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, GADTSyntax #-}
+{-# LANGUAGE TypeFamilies, GADTs #-}
 
 module AssocGDataFamily where
 

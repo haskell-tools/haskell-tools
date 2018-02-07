@@ -50,6 +50,8 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests kindSignaturesTest
   , mkTests explicitNamespacesTest
   , mkTests overloadedStringsTest
+  , mkTests gadtsTest
+  , mkTests existentialQuantificationTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -350,4 +352,30 @@ osRoot = "OverloadedStringsTest"
 osModules = [ "Synonym"
             , "Newtype"
             , "Other"
+            ]
+
+gadtsTest :: TestSuite
+gadtsTest = (gadtRoot, gadtModules)
+gadtRoot = "GADTsTest"
+gadtModules = [ "AssocGDataFamily"
+              , "GDataFamilyDecl"
+              , "GDataInstDecl"
+              , "NormalContext"
+              , "NormalExistential"
+              , "NormalOnlySyntax"
+              , "NormalSpecResultType"
+              , "RecordContext"
+              , "RecordExistential"
+              , "RecordOnlySyntax"
+              , "RecordSpecResultType"
+              , "TypeEquality"
+              , "TypeEqualityWithOnlySyntax"
+              ]
+
+existentialQuantificationTest :: TestSuite
+existentialQuantificationTest = (eqRoot, eqModules)
+eqRoot = "ExistentialQuantificationTest"
+eqModules = [ "WithGADT"
+            , "WithGADTSyntax"
+            , "WithoutGADTSyntax"
             ]

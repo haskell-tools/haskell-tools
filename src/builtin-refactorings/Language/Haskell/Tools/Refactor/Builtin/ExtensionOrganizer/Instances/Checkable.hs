@@ -33,7 +33,7 @@ instance Checkable Expr where
 
 instance Checkable Type where
   check = chkUnboxedTuplesType
-      >=> chkTypeFamiliesType
+      >=> chkExplicitForAllType
 
 instance Checkable PatternField where
   check = chkRecordWildCardsPatField
@@ -84,8 +84,14 @@ instance Checkable Cmd where
 instance Checkable InstBodyDecl where
   check = chkTypeFamiliesInstBodyDecl
 
-instance Checkable Assertion where
-  check = chkTypeFamiliesAssertion
-
 instance Checkable IESpec where
   check = chkExplicitNamespacesIESpec
+
+instance Checkable Operator where
+  check = chkOperatorForTypeEq
+
+instance Checkable GadtConDecl where
+  check = chkGADTsGadtConDecl
+
+instance Checkable ConDecl where
+  check = chkConDeclForExistentials

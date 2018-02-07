@@ -2,5 +2,5 @@
 
 module InForAll where
 
-f :: forall (a :: *) . a -> a {-* KindSignatures *-}
+f :: forall (a :: *) . a -> a {-* KindSignatures, ExplicitForAll *-}
 f = id

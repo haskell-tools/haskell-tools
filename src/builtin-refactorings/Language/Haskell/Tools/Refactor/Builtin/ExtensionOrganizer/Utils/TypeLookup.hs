@@ -3,6 +3,7 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
 
+import Control.Reference ((^.))
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
@@ -12,7 +13,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Kind      as GHC (isConstraintKind, typeKind)
 import qualified ConLike   as GHC (ConLike(..))
-import qualified DataCon   as GHC (dataConUserType)
+import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
@@ -130,3 +131,17 @@ nameFromType _                = Nothing
 isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
+
+-- | Decides whether a given name is a standard Haskell98 data constructor.
+-- Fails if not given a proper name.
+isVanillaDataConNameM :: HasNameInfo' n => n -> MaybeT ExtMonad Bool
+isVanillaDataConNameM name = do
+  sname <- liftMaybe . semanticsName  $ name
+  tt    <- MaybeT    . GHC.lookupName $ sname
+  dc    <- liftMaybe . extractDataCon $ tt
+  return . GHC.isVanillaDataCon $ dc
+  where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc
+        extractDataCon  _                                  = Nothing
+
+opSemName :: Operator -> MaybeT ExtMonad GHC.Name
+opSemName = liftMaybe . semanticsName . (^. operatorName)

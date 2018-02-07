@@ -35,3 +35,6 @@ showOutputable = GHC.showSDocUnsafe . GHC.ppr
 
 showName :: Name -> String
 showName = (^. simpleName & unqualifiedName & simpleNameStr)
+
+showOp :: Operator -> String
+showOp = (^. operatorName & unqualifiedName & simpleNameStr)

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveFunctor, DeriveGeneric, StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveFunctor, DeriveGeneric, StandaloneDeriving, FlexibleInstances #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
@@ -11,6 +11,7 @@ import Control.DeepSeq
 import SrcLoc (SrcSpan)
 
 import Data.List
+import Data.Monoid
 import Data.Function (on)
 import qualified Data.Map.Lazy   as LMap
 import qualified Data.Map.Strict as SMap (Map)
@@ -18,6 +19,9 @@ import qualified Data.Map.Strict as SMap (Map)
 import qualified SAT.MiniSat as SAT
 
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
+import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension)
+
+{-# ANN module "HLint: ignore Redundant lambda" #-}
 
 
 deriving instance Ord  Extension
@@ -46,11 +50,9 @@ type ExtMap = SMap.Map (LogicalRelation Extension) [SrcSpan]
 instance NFData Extension where
   rnf x = seq x ()
 
-cmpOnResult :: LMap.Map k Bool -> LMap.Map k Bool -> Ordering
-cmpOnResult = compare `on` cardinality
-
-cardinality :: LMap.Map k Bool -> Int
-cardinality = length . filter (== True) . LMap.elems
+-- instance Monoid (a -> a -> Ordering) where
+--   mempty      = \x y -> EQ
+--   mappend f g = \x y -> f x y <> g x y
 
 toFormula :: LogicalRelation a -> SAT.Formula a
 toFormula (LVar x)   = SAT.Var x
@@ -63,11 +65,18 @@ allToFormula = SAT.All . map toFormula
 
 determineExtensions :: SMap.Map (LogicalRelation Extension) v -> [Extension]
 {- NOTE:
- The sorting is needed to get a deterministic result.
- This way we get all the solutions that require the least number of extension enabled,
- then we select the lexicographically first element.
+ We calculate all the solutions that require the least number of extension enabled, (comparing on length)
+ then for each extension we remove all the extensions implied by it, (mergeImplied)
+ finally we select the lexicographically first element. (comparing lists after sorting them)
 -}
-determineExtensions x = minimum . map toExts . head . minimals $ solution
+determineExtensions x = minimal . map toExts $ solution
   where solution = SAT.solve_all . allToFormula . LMap.keys $ x
-        toExts = sort . map fst . filter snd . LMap.toList
-        minimals = groupBy ((==) `on` cardinality) . sortBy (compare `on` cardinality)
+        toExts   = mergeImplied . map fst . filter snd . LMap.toList
+        minimal  = minimumBy ((compare `on` length) <> (compare `on` sort))
+
+        rmImplied :: Extension -> [Extension] -> [Extension]
+        rmImplied e = flip (\\) implied
+          where implied = delete e $ expandExtension e
+
+        mergeImplied :: [Extension] -> [Extension]
+        mergeImplied exts = foldl (flip rmImplied) exts exts

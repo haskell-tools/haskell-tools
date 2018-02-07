@@ -23,6 +23,11 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLook
 globalChkNamesForTypeEq :: CheckNode Module
 globalChkNamesForTypeEq = conditionalAny globalChkNamesForTypeEq' [TypeFamilies, GADTs]
 
+-- | Checks an operator for syntactic evidence of a ~ b type equality if TypeFamilies or GADTs is turned on.
+chkOperatorForTypeEq :: CheckNode Operator
+chkOperatorForTypeEq = conditionalAny chkOperatorForTypeEq' [TypeFamilies, GADTs]
+
+
 -- | Checks a declaration if TypeFamilies is turned on.
 chkTypeFamiliesDecl :: CheckNode Decl
 chkTypeFamiliesDecl = conditional chkTypeFamiliesDecl' TypeFamilies
@@ -35,13 +40,6 @@ chkTypeFamiliesClassElement = conditional chkTypeFamiliesClassElement' TypeFamil
 chkTypeFamiliesInstBodyDecl :: CheckNode InstBodyDecl
 chkTypeFamiliesInstBodyDecl = conditional chkTypeFamiliesInstBodyDecl' TypeFamilies
 
--- | Checks an assertion for syntactic evidence of a ~ b type equality if TypeFamilies is turned on.
-chkTypeFamiliesAssertion :: CheckNode Assertion
-chkTypeFamiliesAssertion = conditional chkTypeFamiliesAssertion' TypeFamilies
-
--- | Checks a type for syntactic evidence of a ~ b type equality if TypeFamilies is turned on.
-chkTypeFamiliesType :: CheckNode Type
-chkTypeFamiliesType = conditional chkTypeFamiliesType' TypeFamilies
 
 
 chkTypeFamiliesDecl' :: CheckNode Decl
@@ -65,19 +63,13 @@ chkTypeFamiliesInstBodyDecl' b@InstanceDataFamilyDef{}     = addOccurence TypeFa
 chkTypeFamiliesInstBodyDecl' b@InstanceDataFamilyGADTDef{} = addOccurence TypeFamilies b
 chkTypeFamiliesInstBodyDecl' b                             = return b
 
-chkTypeFamiliesAssertion' :: CheckNode Assertion
-chkTypeFamiliesAssertion' a@(InfixAssert _ op _)
-  | Just name <- semanticsName (op ^. operatorName)
-  , name == eqTyConName
-  = addRelation (TypeFamilies `lOr` GADTs) a
-chkTypeFamiliesAssertion' a = return a
 
-chkTypeFamiliesType' :: CheckNode Type
-chkTypeFamiliesType' t@(InfixTypeApp _ op _)
+chkOperatorForTypeEq' :: CheckNode Operator
+chkOperatorForTypeEq' op
   | Just name <- semanticsName (op ^. operatorName)
   , name == eqTyConName
-  = addRelation (TypeFamilies `lOr` GADTs) t
-chkTypeFamiliesType' t = return t
+  = addRelation (TypeFamilies `lOr` GADTs) op
+  | otherwise = return op
 
 chkNameForTyEqn :: CheckNode Name
 chkNameForTyEqn name = do

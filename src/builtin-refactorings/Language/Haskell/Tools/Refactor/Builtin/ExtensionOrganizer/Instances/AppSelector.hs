@@ -31,8 +31,10 @@ type family HasChecker node where
   HasChecker Stmt             = 'True
   HasChecker Cmd              = 'True
   HasChecker InstBodyDecl     = 'True
-  HasChecker Assertion        = 'True
   HasChecker IESpec           = 'True
+  HasChecker Operator         = 'True
+  HasChecker GadtConDecl      = 'True
+  HasChecker ConDecl      = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node

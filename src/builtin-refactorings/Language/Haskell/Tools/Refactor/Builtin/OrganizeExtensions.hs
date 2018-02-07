@@ -64,17 +64,9 @@ reduceExtensions moduleAST = do
   if TemplateHaskell `notElem` expanded
     then do
       xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-      return . sortBy (compare `on` show) . mergeInduced . nub $ (determineExtensions xs' ++ ys)
+      return . sortBy (compare `on` show) $ (determineExtensions xs' ++ ys)
     else
       return expanded
-
-rmInduced :: Extension -> [Extension] -> [Extension]
-rmInduced e = flip (\\) induced
-  where induced = delete e $ expandExtension e
-
-mergeInduced :: [Extension] -> [Extension]
-mergeInduced exts = foldl (flip rmInduced) exts exts
-
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap
