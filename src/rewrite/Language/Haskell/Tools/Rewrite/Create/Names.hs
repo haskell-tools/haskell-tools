@@ -1,5 +1,5 @@
 -- | Generation of names for refactorings
-{-# LANGUAGE ExplicitNamespaces, KindSignatures, MonoLocalBinds, OverloadedStrings #-}
+{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
 
 module Language.Haskell.Tools.Rewrite.Create.Names where
 

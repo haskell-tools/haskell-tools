@@ -1,5 +1,5 @@
 
-{-# LANGUAGE ExplicitNamespaces, KindSignatures, MonoLocalBinds, TypeSynonymInstances #-}
+{-# LANGUAGE MonoLocalBinds, TypeSynonymInstances #-}
 
 
 -- | Simple AST elements of Haskell

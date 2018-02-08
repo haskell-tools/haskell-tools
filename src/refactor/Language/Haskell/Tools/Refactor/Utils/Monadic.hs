@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, FlexibleInstances, KindSignatures, MonoLocalBinds, MultiWayIf, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, MonoLocalBinds, MultiWayIf, TypeApplications #-}
 
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.Utils.Monadic where

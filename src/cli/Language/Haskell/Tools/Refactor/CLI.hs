@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RecordWildCards, ScopedTypeVariables #-}
 
 -- | The command line interface for Haskell-tools. It uses the Haskell-tools daemon package starting
 -- the daemon in the same process and communicating with it through a channel.

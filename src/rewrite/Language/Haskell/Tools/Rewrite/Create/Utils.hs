@@ -1,5 +1,5 @@
 -- | Utility methods for generating parts of the AST for refactorings
-{-# LANGUAGE ExplicitNamespaces, FlexibleInstances, KindSignatures, MonoLocalBinds #-}
+{-# LANGUAGE FlexibleInstances, MonoLocalBinds #-}
 
 module Language.Haskell.Tools.Rewrite.Create.Utils where
 

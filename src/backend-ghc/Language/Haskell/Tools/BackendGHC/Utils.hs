@@ -1,5 +1,5 @@
 -- | Utility functions for transforming the GHC AST representation into our own.
-{-# LANGUAGE AllowAmbiguousTypes, FlexibleContexts, FlexibleInstances, LambdaCase, TypeApplications, TypeFamilies, ViewPatterns #-}
+{-# LANGUAGE AllowAmbiguousTypes, FlexibleContexts, FlexibleInstances, GADTs, LambdaCase, TypeApplications, ViewPatterns #-}
 
 module Language.Haskell.Tools.BackendGHC.Utils where
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MultiWayIf, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, GADTs, MultiWayIf #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TemplateHaskellQuotes #-}
+{-# LANGUAGE LambdaCase, TemplateHaskellQuotes, TemplateHaskellQuotes #-}
 
 -- | Generating instances for traversal on semantic information
 module Language.Haskell.Tools.AST.TH.SourceInfoTraversal where

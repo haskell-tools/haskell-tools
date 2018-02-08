@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, DeriveDataTypeable, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, MultiParamTypeClasses, ConstrainedClassMethods, ScopedTypeVariables, ExplicitForAll, StandaloneDeriving, TemplateHaskell, TemplateHaskellQuotes, TypeApplications, TypeFamilies, MonoLocalBinds, KindSignatures, ExplicitNamespaces, UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, DeriveDataTypeable, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TypeApplications, TypeFamilies, UndecidableInstances #-}
 
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where

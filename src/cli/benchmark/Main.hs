@@ -1,5 +1,5 @@
 
-{-# LANGUAGE DeriveGeneric, ExplicitNamespaces, KindSignatures, MonoLocalBinds, RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric, MonoLocalBinds, RecordWildCards #-}
 
 module Main where
 

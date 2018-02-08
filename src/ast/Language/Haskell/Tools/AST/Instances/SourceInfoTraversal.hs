@@ -1,5 +1,5 @@
 -- don't show warnings, Template Haskell generated code contains unused variables
-{-# LANGUAGE TemplateHaskell, TemplateHaskellQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 
 -- | Generating instances for traversing the semantic information of the Haskell Representation

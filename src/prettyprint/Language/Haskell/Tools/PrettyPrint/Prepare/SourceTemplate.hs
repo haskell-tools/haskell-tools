@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, RecordWildCards, DisambiguateRecordFields, TemplateHaskell, TemplateHaskellQuotes, TypeFamilies, MonoLocalBinds, KindSignatures, ExplicitNamespaces #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances, RecordWildCards, TemplateHaskell, TypeFamilies #-}
 
 -- | The final version of the source annotation. Each node contains its original textual format, with the places of
 -- the children specified by placeholders.

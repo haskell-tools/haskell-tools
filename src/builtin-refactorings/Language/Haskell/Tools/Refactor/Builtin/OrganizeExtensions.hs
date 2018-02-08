@@ -58,7 +58,8 @@ organizeExtensions moduleAST = do
 -- | Reduces default extension list (keeps unsupported extensions)
 reduceExtensions :: UnnamedModule -> Ghc [Extension]
 reduceExtensions moduleAST = do
-  let expanded = expandDefaults moduleAST
+  let defaults = collectDefaultExtensions moduleAST
+      expanded = expandExtensions defaults
       (xs, ys) = partition isSupported expanded
   -- we can't say anything about generated code
   if TemplateHaskell `notElem` expanded
@@ -68,7 +69,7 @@ reduceExtensions moduleAST = do
       -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
       return . sortBy (compare `on` show) . mergeImplied $ (determineExtensions xs' ++ ys)
     else
-      return expanded
+      return . mergeImplied $ defaults
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap
@@ -76,13 +77,13 @@ collectExtensions = collectExtensionsWith traverseModule
 
 collectExtensionsWith :: CheckNode UnnamedModule -> UnnamedModule -> Ghc ExtMap
 collectExtensionsWith trvModule moduleAST = do
-  let expanded = expandDefaults moduleAST
+  let expanded = expandExtensions . collectDefaultExtensions $ moduleAST
   flip execStateT SMap.empty . flip runReaderT expanded . trvModule $ moduleAST
 
 
--- | Collects default extension list, and expands each extension
-expandDefaults :: UnnamedModule -> [Extension]
-expandDefaults = nub . concatMap expandExtension . collectDefaultExtensions
+-- | Expands every extension in a list, while not producing any duplicates.
+expandExtensions :: [Extension] -> [Extension]
+expandExtensions = nub . concatMap expandExtension
 
 -- | Collects extensions enabled by default
 collectDefaultExtensions :: UnnamedModule -> [Extension]
