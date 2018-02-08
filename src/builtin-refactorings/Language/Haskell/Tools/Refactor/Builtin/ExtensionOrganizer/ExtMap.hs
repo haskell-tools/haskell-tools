@@ -75,9 +75,9 @@ determineExtensions x = minimal . map toExts $ solution
         toExts   = mergeImplied . map fst . filter snd . LMap.toList
         minimal  = minimumBy ((compare `on` length) <> (compare `on` (sum . map complexity)) <> (compare `on` sort))
 
-        rmImplied :: Extension -> [Extension] -> [Extension]
-        rmImplied e = flip (\\) implied
-          where implied = delete e $ expandExtension e
+rmImplied :: Extension -> [Extension] -> [Extension]
+rmImplied e = flip (\\) implied
+  where implied = delete e $ expandExtension e
 
-        mergeImplied :: [Extension] -> [Extension]
-        mergeImplied exts = foldl (flip rmImplied) exts exts
+mergeImplied :: [Extension] -> [Extension]
+mergeImplied exts = foldl (flip rmImplied) exts exts

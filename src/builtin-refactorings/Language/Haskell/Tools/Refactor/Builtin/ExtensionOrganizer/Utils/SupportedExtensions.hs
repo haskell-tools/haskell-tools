@@ -9,8 +9,7 @@ fullyHandledExtensions :: [Extension]
 fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
-                      ++ [ ConstraintKinds ]
-                      ++ [ TypeFamilies ]
+                      ++ typeSystemExtensions
                       -- ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
@@ -19,7 +18,8 @@ syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
                       , ViewPatterns, MagicHash, UnboxedTuples
                       , FunctionalDependencies, DefaultSignatures
                       , RecursiveDo, Arrows, ParallelListComp
-                      , KindSignatures, ExplicitNamespaces ]
+                      , KindSignatures, ExplicitNamespaces
+                      , GADTSyntax, ExplicitForAll ]
 
 derivingExtensions :: [Extension]
 derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
@@ -29,3 +29,7 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
 
 typeClassExtensions :: [Extension]
 typeClassExtensions = [ MultiParamTypeClasses ]
+
+typeSystemExtensions :: [Extension]
+typeSystemExtensions = [ TypeFamilies, GADTs, ExistentialQuantification
+                       , ConstraintKinds ]

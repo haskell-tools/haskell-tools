@@ -64,7 +64,9 @@ reduceExtensions moduleAST = do
   if TemplateHaskell `notElem` expanded
     then do
       xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-      return . sortBy (compare `on` show) $ (determineExtensions xs' ++ ys)
+      -- Merging is needed because there might be unsopported extensions
+      -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
+      return . sortBy (compare `on` show) . mergeImplied $ (determineExtensions xs' ++ ys)
     else
       return expanded
 
