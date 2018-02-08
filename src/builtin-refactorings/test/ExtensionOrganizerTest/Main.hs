@@ -52,6 +52,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests overloadedStringsTest
   , mkTests gadtsTest
   , mkTests existentialQuantificationTest
+  , mkTests constrainedClassMethodsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -379,3 +380,11 @@ eqModules = [ "WithGADT"
             , "WithGADTSyntax"
             , "WithoutGADTSyntax"
             ]
+
+constrainedClassMethodsTest :: TestSuite
+constrainedClassMethodsTest = (ccmRoot, ccmModules)
+ccmRoot = "ConstrainedClassMethodsTest"
+ccmModules = [ "MixedTyVars"
+             , "NullaryConstraint"
+             , "OnlyClassTyVars"
+             ]

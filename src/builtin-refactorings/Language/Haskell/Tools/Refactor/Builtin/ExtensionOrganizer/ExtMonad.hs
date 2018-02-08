@@ -18,6 +18,7 @@ import Language.Haskell.TH.LanguageExtensions
 
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
 
 
@@ -84,6 +85,8 @@ conditionalAny checker exts node = do
 conditionalAdd :: HasRange node => Extension -> node -> ExtMonad node
 conditionalAdd ext = conditional (addOccurence ext) ext
 
+liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
+liftMaybe = MaybeT . return
 
 runExtMonadIO :: ExtMonad a -> IO a
 runExtMonadIO = runGhc (Just libdir) . runExtMonadGHC

@@ -28,7 +28,7 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
                      , StandaloneDeriving, DerivingStrategies ]
 
 typeClassExtensions :: [Extension]
-typeClassExtensions = [ MultiParamTypeClasses ]
+typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods ]
 
 typeSystemExtensions :: [Extension]
 typeSystemExtensions = [ TypeFamilies, GADTs, ExistentialQuantification

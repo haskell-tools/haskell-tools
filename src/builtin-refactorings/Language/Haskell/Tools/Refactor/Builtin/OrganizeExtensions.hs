@@ -11,7 +11,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (isSupported)
 
 import Language.Haskell.Tools.Refactor hiding (LambdaCase)
-import Language.Haskell.Tools.Refactor.Utils.Extensions (expandExtension, canonExt)
+import Language.Haskell.Tools.Refactor.Utils.Extensions
 
 import GHC (Ghc(..))
 
@@ -58,7 +58,7 @@ organizeExtensions moduleAST = do
 -- | Reduces default extension list (keeps unsupported extensions)
 reduceExtensions :: UnnamedModule -> Ghc [Extension]
 reduceExtensions moduleAST = do
-  let defaults = collectDefaultExtensions moduleAST
+  let defaults = map replaceDeprecated . collectDefaultExtensions $ moduleAST
       expanded = expandExtensions defaults
       (xs, ys) = partition isSupported expanded
   -- we can't say anything about generated code
@@ -67,7 +67,7 @@ reduceExtensions moduleAST = do
       xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
       -- Merging is needed because there might be unsopported extensions
       -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
-      return . sortBy (compare `on` show) . mergeImplied $ (determineExtensions xs' ++ ys)
+      return . sortBy (compare `on` show) . nub . mergeImplied $ (determineExtensions xs' ++ ys)
     else
       return . mergeImplied $ defaults
 

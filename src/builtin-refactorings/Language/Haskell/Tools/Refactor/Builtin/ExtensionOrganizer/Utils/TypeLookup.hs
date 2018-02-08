@@ -3,8 +3,6 @@
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
 
-import Control.Reference ((^.))
-
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
@@ -116,9 +114,6 @@ lookupType t = do
   sname <- liftMaybe . semanticsName   $ name
   MaybeT . GHC.lookupName $ sname
 
-liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
-liftMaybe = MaybeT . return
-
 -- NOTE: gives just name if the type being scrutinised can be newtype
 --       else it gives nothing
 nameFromType :: Type -> Maybe Name
@@ -142,6 +137,3 @@ isVanillaDataConNameM name = do
   return . GHC.isVanillaDataCon $ dc
   where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc
         extractDataCon  _                                  = Nothing
-
-opSemName :: Operator -> MaybeT ExtMonad GHC.Name
-opSemName = liftMaybe . semanticsName . (^. operatorName)
