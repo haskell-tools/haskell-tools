@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MonoLocalBinds, MultiWayIf, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, TypeApplications #-}
 
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.Utils.Monadic where
@@ -147,7 +147,7 @@ referenceOperator :: GHC.Name -> LocalRefactor (Ann UOperator IdDom SrcTemplateS
 referenceOperator = referenceName' mkQualOp'
 
 -- | Create a name that references the definition. Generates an import if the definition is not yet imported.
-referenceName' :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name 
+referenceName' :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name
                     -> LocalRefactor (Ann nt IdDom SrcTemplateStage)
 referenceName' makeName name
   | name `elem` registeredNamesFromPrelude || qualifiedName name `elem` otherNamesFromPrelude
@@ -166,7 +166,7 @@ referenceName' makeName name
   where moduleParts = maybe [] (splitOn "." . GHC.moduleNameString . GHC.moduleName) . GHC.nameModule_maybe
 
 -- | Reference the name by the shortest suitable import
-referenceBy :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name 
+referenceBy :: ([String] -> GHC.Name -> Ann nt IdDom SrcTemplateStage) -> GHC.Name
                  -> [Ann UImportDecl IdDom SrcTemplateStage] -> Ann nt IdDom SrcTemplateStage
 referenceBy makeName name imps =
   let prefixes = map importQualifier imps

@@ -10,7 +10,7 @@ fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
                       ++ typeSystemExtensions
-                      -- ++ [FlexibleInstances]
+                      ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
 syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
@@ -28,7 +28,9 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
                      , StandaloneDeriving, DerivingStrategies ]
 
 typeClassExtensions :: [Extension]
-typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods ]
+typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods
+                      , FlexibleInstances, TypeSynonymInstances
+                      ]
 
 typeSystemExtensions :: [Extension]
 typeSystemExtensions = [ TypeFamilies, GADTs, ExistentialQuantification

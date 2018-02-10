@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, MonoLocalBinds, KindSignatures, ExplicitNamespaces, FlexibleContexts, TemplateHaskell, TemplateHaskellQuotes, TupleSections #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, TemplateHaskell, TupleSections #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.FindUnused where
 

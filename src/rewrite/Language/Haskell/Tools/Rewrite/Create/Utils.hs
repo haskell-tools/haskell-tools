@@ -1,5 +1,5 @@
 -- | Utility methods for generating parts of the AST for refactorings
-{-# LANGUAGE FlexibleInstances, MonoLocalBinds #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 module Language.Haskell.Tools.Rewrite.Create.Utils where
 

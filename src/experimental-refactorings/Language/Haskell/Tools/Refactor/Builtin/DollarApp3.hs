@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.DollarApp3 where
 

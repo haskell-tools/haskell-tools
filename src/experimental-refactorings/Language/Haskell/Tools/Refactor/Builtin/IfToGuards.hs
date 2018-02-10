@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, MonoLocalBinds, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.IfToGuards (ifToGuards, tryItOut) where
 

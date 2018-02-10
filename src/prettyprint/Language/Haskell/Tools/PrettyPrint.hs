@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, RecordPuns, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, RecordPuns, UndecidableInstances #-}
 
 
 -- | Pretty printing the AST

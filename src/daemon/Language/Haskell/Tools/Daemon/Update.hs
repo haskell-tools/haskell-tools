@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, FlexibleContexts, KindSignatures, LambdaCase, MonoLocalBinds, MultiWayIf, RecordWildCards, TupleSections, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, MultiWayIf, RecordWildCards, TupleSections, TypeApplications #-}
 
 -- | Resolves how the daemon should react to individual requests from the client.
 module Language.Haskell.Tools.Daemon.Update (updateClient, updateForFileChanges, initGhcSession) where

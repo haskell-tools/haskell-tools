@@ -84,7 +84,8 @@ chkTypeArg cls ty = do
   where chkSynonymTypeArg :: GHC.Class -> GHC.Type -> ExtMonad Type
         chkSynonymTypeArg cls' ty'
           | tyArgNeedsFI cls' ty' = addOccurence FlexibleInstances ty
-          | otherwise             = return ty
+          -- Note that we always add TypeSynonymInstances (FI implies TSI)
+          | otherwise             = addOccurence TypeSynonymInstances ty
 
 -- | Checks a type argument of class whether it has only (distinct) type variable arguments.
 chkNormalTypeArg :: CheckNode Type

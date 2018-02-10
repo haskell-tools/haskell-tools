@@ -1,4 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces, KindSignatures, LambdaCase, MonoLocalBinds #-}
+{-# LANGUAGE LambdaCase, MonoLocalBinds #-}
 
 module Main where
 
