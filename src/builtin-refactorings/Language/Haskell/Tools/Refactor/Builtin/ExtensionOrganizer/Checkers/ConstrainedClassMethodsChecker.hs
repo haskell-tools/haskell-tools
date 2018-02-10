@@ -27,7 +27,7 @@ chkCCMDeclHead dh = do
 
 
 -- | Helper function for chkCCMDeclHead.
--- True  <=> Lookup is succesful and the extension is needed
+-- True  <=> Lookup is succesful and ConstrainedClassMethods is needed
 -- False <=> Lookup is succesful, but CCM is not needed, or the argument is not a class DeclHead
 -- fails <=> Lookup is unsuccesful (either name or type lookup)
 chkCCMDeclHead' :: DeclHead -> MaybeT ExtMonad Bool

@@ -5,6 +5,7 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLook
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLookup
 
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
@@ -67,8 +68,9 @@ lookupTypeFromGlobalName name = do
   liftMaybe . typeFromTyThing $ tt
 
 
--- | Looks up a GHC Type from a Haskell Tools Name (if available)
-lookupTypeSynRhs :: Name -> MaybeT ExtMonad GHC.Type
+-- | Looks up the right-hand side (GHC representation)
+-- of a Haskell Tools Name corresponding to a type synonym
+lookupTypeSynRhs :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
 lookupTypeSynRhs name = do
   sname <- liftMaybe . semanticsName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
@@ -114,12 +116,41 @@ lookupType t = do
   sname <- liftMaybe . semanticsName   $ name
   MaybeT . GHC.lookupName $ sname
 
--- NOTE: gives just name if the type being scrutinised can be newtype
---       else it gives nothing
+-- | Looks up a GHC.Class from something that has a type class constructor in it
+-- Fails if the argument does not contain a class type constructor
+lookupClassWith :: (a -> MaybeT ExtMonad GHC.Name) -> a -> MaybeT ExtMonad GHC.Class
+lookupClassWith getName x = do
+  sname   <- getName x
+  tything <- MaybeT . GHC.lookupName $ sname
+  case tything of
+    GHC.ATyCon tc | GHC.isClassTyCon tc -> liftMaybe . GHC.tyConClass_maybe $ tc
+    _ -> fail "TypeLookup.lookupClassWith: Argument does not contain a class type constructor"
+
+lookupClassFromInstance :: InstanceHead -> MaybeT ExtMonad GHC.Class
+lookupClassFromInstance = lookupClassWith instHeadSemName
+
+lookupClassFromDeclHead :: DeclHead -> MaybeT ExtMonad GHC.Class
+lookupClassFromDeclHead = lookupClassWith declHeadSemName
+
+-- | Looks up the right-hand side (GHC representation)
+-- of a Haskell Tools Type corresponding to a type synonym
+semanticsTypeSynRhs :: Type -> MaybeT ExtMonad GHC.Type
+semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeSynRhs
+
+-- | Converts a global Haskell Tools type to a GHC type
+semanticsType :: Type -> MaybeT ExtMonad GHC.Type
+semanticsType ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeFromGlobalName
+
+-- | Extracts the name of a type
+-- In case of a type application, it finds the type being applied
 nameFromType :: Type -> Maybe Name
 nameFromType (TypeApp f _)    = nameFromType f
 nameFromType (ParenType x)    = nameFromType x
 nameFromType (KindedType t _) = nameFromType t
+nameFromType (BangType t)     = nameFromType t
+nameFromType (LazyType t)     = nameFromType t
+nameFromType (UnpackType t)   = nameFromType t
+nameFromType (NoUnpackType t) = nameFromType t
 nameFromType (VarType x)      = Just x
 nameFromType _                = Nothing
 

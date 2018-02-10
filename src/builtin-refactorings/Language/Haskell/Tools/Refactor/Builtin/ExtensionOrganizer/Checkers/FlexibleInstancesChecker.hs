@@ -1,41 +1,44 @@
 {-# LANGUAGE FlexibleContexts, GADTs, MultiWayIf #-}
 
-
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 
+import qualified GHC
+import qualified Class   as GHC
+import qualified TcType  as GHC
+import qualified Type    as GHC
+import qualified TyCoRep as GHC
+import qualified Name    as GHC (isTyVarName, isTyConName, isWiredInName)
+
+import Util (equalLength)
+import ListSetOps (hasNoDups)
+
+import Data.Maybe (mapMaybe)
 import Control.Monad.Trans.Maybe (MaybeT(..))
+
 import Data.Data (Data(..))
 import Data.List (nubBy)
 import Data.Function (on)
-import Control.Reference ((^.), (!~), biplateRef)
+import Control.Reference ((^.), (.-), biplateRef)
 
-import Language.Haskell.Tools.Refactor as Refact
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup (lookupSynDefM)
+import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad hiding (StandaloneDeriving)
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
-import Name as GHC (isTyVarName, isTyConName, isWiredInName)
 
 {-# ANN module "HLint: ignore Redundant bracket" #-}
 
 -- TODO: write "deriving instance ..." tests (should work)
 -- TODO: should expand type synonyms  !!!
 
--- NOTE: Here we implicitly constrained the type with ExtDomain.
---       but we only really need HasNameInfo.
+-- | We need to check declarations because we want to avoid checking type family instances
+chkFlexibleInstancesDecl :: CheckNode Decl
+chkFlexibleInstancesDecl = conditional chkFlexibleInstancesDecl' FlexibleInstances
 
--- NOTE: We need Decl level checking, in order to distinguish
---       class instances from data and type family instances.
-
-chkFlexibleInstances :: CheckNode Decl
-chkFlexibleInstances = conditional chkFlexibleInstances' FlexibleInstances
-
-chkFlexibleInstances' :: CheckNode Decl
-chkFlexibleInstances' d@(Refact.StandaloneDeriving _ _ rule) = checkedReturn rule d
-chkFlexibleInstances' d@(InstanceDecl rule _)                = checkedReturn rule d
-chkFlexibleInstances' d = return d
-
-checkedReturn :: InstanceRule -> a -> ExtMonad a
-checkedReturn rule x = chkInstanceRule rule >> return x
+-- | We need to check declarations because we want to avoid checking type family instances
+chkFlexibleInstancesDecl' :: CheckNode Decl
+chkFlexibleInstancesDecl' d@(StandaloneDeriving _ _ rule) = chkInstanceRule rule >> return d
+chkFlexibleInstancesDecl' d@(InstanceDecl rule _)         = chkInstanceRule rule >> return d
+chkFlexibleInstancesDecl' d = return d
 
 -- this check DOES transform the AST for its internal computations
 -- but returns the original one in the end
@@ -49,43 +52,43 @@ chkInstanceRule r@(InstanceRule _ _ ihead) = do
 chkInstanceRule r = return r
 
 refact ::
-     (Data.Data.Data (node dom stage), Data.Data.Data (inner dom stage),
-      Monad m) =>
-     (inner dom stage -> m (inner dom stage))
-     -> node dom stage -> m (node dom stage)
-refact op = biplateRef !~ op
+     (Data.Data.Data (node dom stage), Data.Data.Data (inner dom stage)) =>
+     (inner dom stage -> inner dom stage) ->
+      node dom stage -> node dom stage
+refact op = biplateRef .- op
 
 
--- one IHApp will only check its own tyvars (their structure and uniqueness)
--- thus with MultiParamTypeclasses each param will be checked independently
--- (so the same type variable can appear in multiple params)
+-- | Checks every single type argument in an instance declaration
+-- If the class being instantiated could not have been looked up, it keeps FlexibleInstances
 chkInstanceHead :: CheckNode InstanceHead
-chkInstanceHead x@(InfixInstanceHead tyvars _) = do
-  tyvars' <- refact rmTypeMisc tyvars
-  chkTyVars tyvars'
-  addOccurence_ TypeOperators x
-  return x
-chkInstanceHead app@(AppInstanceHead f tyvars) = do
-  tyvars' <- refact rmTypeMisc tyvars
-  chkTyVars tyvars'
-  chkInstanceHead f
-  return app
-chkInstanceHead x@(ParenInstanceHead h) = do
-  chkInstanceHead h
-  return x
-chkInstanceHead app = return app
+chkInstanceHead ih = do
+  let types = collectTyArgs ih
+  mCls <- runMaybeT . lookupClassFromInstance $ ih
+  case mCls of
+    Just cls -> mapM_ (chkTypeArg cls) types >> return ih
+    Nothing  -> addOccurence FlexibleInstances ih
 
--- TODO: skip other unnecessary parts of the AST (eg.: UType ctors)
--- where can UTyPromoted appear?
--- can i write forall in instance heads?
--- unboxed tuple (has different kind, can't use in ihead), par array?
--- TH ctors
--- other misc ...
--- synonym expansion (runMaybeT . lookupSynDefM $ vars) (now: if synonym, keep FC)
-chkTyVars :: CheckNode Type
-chkTyVars vars = do
-  msyn <- runMaybeT . lookupSynDefM $ vars
-  maybe (performCheck vars) (const $ addOccurence FlexibleInstances vars) msyn
+-- | Checks a type argument of class whether it needs FlexibleInstances
+-- First checks the structure of the type argument opaquely
+-- Then, for type synonyms, it checks whether their GHC representation itself
+-- needs the extension.
+--
+-- Might find false positive occurences for phantom types:
+-- > type Phatom a b = [a]
+-- > instance C (Phatnom a a)
+-- > instance C (Phantom a Int)
+chkTypeArg :: GHC.Class -> Type -> ExtMonad Type
+chkTypeArg cls ty = do
+  chkNormalTypeArg ty
+  maybeTM (return ty) (chkSynonymTypeArg cls) (semanticsTypeSynRhs ty)
+  where chkSynonymTypeArg :: GHC.Class -> GHC.Type -> ExtMonad Type
+        chkSynonymTypeArg cls' ty'
+          | tyArgNeedsFI cls' ty' = addOccurence FlexibleInstances ty
+          | otherwise             = return ty
+
+-- | Checks a type argument of class whether it has only (distinct) type variable arguments.
+chkNormalTypeArg :: CheckNode Type
+chkNormalTypeArg vars = performCheck . refact rmTypeMisc $ vars
 
   where performCheck vars = do
           (isOk, (_, vs)) <- runStateT (runMaybeT (chkAll vars)) ([],[])
@@ -93,7 +96,7 @@ chkTyVars vars = do
             Just isOk ->
               unless (isOk && length vs == (length . nubBy ((==) `on` (semanticsName . (^. simpleName))) $ vs)) --tyvars are different
                 (addOccurence_ FlexibleInstances vars)
-            Nothing   -> error "chkTyVars: Couldn't look up something"
+            Nothing   -> error "chkNormalTypeArg: Couldn't look up something"
           return vars
 
         chkAll x =
@@ -114,16 +117,16 @@ chkTyVars vars = do
           -- NOTE: -XHaskell98 operator type variables??
           -- NOTE VarType is either TyCon or TyVar
           --      if it is a TyCon, it cannot be wired in (Int, Char, etc)
-          if | isTyVarName   sname -> addTyVarM x >> return False
-             | isWiredInName sname -> addTyConM x >> return False
-             | isTyConName   sname -> addTyConM x >> return True
-             | otherwise           -> return True -- NEVER
+          if | GHC.isTyVarName   sname -> addTyVarM x >> return False
+             | GHC.isWiredInName sname -> addTyConM x >> return False
+             | GHC.isTyConName   sname -> addTyConM x >> return True
+             | otherwise               -> return True -- NEVER
         chkUnitTyCon _ = return False
 
 
         chkSingleTyVar (VarType x) = do
           sname <- tyVarSemNameM x
-          if (isTyVarName sname)
+          if (GHC.isTyVarName sname)
             then addTyVarM x >> return True
             else addTyConM x >> return False
         chkSingleTyVar _ = return False
@@ -149,8 +152,7 @@ chkTyVars vars = do
               (VarType c) -> addTyConM c >> return True
               _           -> chkOnlyApp f
             else return False
-        chkOnlyApp x@(InfixTypeApp lhs op rhs) = do
-          lift . lift $ addOccurence_ TypeOperators x
+        chkOnlyApp (InfixTypeApp lhs op rhs) = do
           addTyConM . mkNormalName $ (op ^. operatorName)
           lOK <- chkSingleTyVar lhs
           rOK <- chkSingleTyVar rhs
@@ -164,15 +166,44 @@ chkTyVars vars = do
 
         tyVarSemNameM x = MaybeT . return . semanticsName $ x ^. simpleName
 
-rmTypeMisc :: CheckNode Type
-rmTypeMisc = rmTParens >=> rmTKinded
+rmTypeMisc :: Type -> Type
+rmTypeMisc (KindedType t _) = t
+rmTypeMisc (ParenType x)    = x
+rmTypeMisc x                = x
 
-rmTKinded :: CheckNode Type
-rmTKinded (KindedType t _) = return t
-rmTKinded x                = return x
+-- | Collects the type arguments in an instance declaration
+-- Type arguments are the the types that the class is being instantiated with
+collectTyArgs :: InstanceHead -> [Type]
+collectTyArgs (InstanceHead _)        = []
+collectTyArgs (InfixInstanceHead t _) = [t]
+collectTyArgs (ParenInstanceHead ih)  = collectTyArgs ih
+collectTyArgs (AppInstanceHead ih t)  = t : collectTyArgs ih
 
--- removes Parentheses from the AST
--- the structure is reserved
-rmTParens :: CheckNode Type
-rmTParens (ParenType x) = return x
-rmTParens x             = return x
+-- Decides whether a type argument of a type class constructor need FlexibleInstances
+tyArgNeedsFI :: GHC.Class -> GHC.Type -> Bool
+tyArgNeedsFI cls arg = not . hasOnlyDistinctTyVars $ tyArg
+  where [tyArg] = GHC.filterOutInvisibleTypes (GHC.classTyCon cls) [arg]
+
+-- | Checks whether a GHC.Type is an application, and has only (distinct) type variable arguments
+-- Logic from TcValidity.tcInstHeadTyAppAllTyVars
+hasOnlyDistinctTyVars :: GHC.Type -> Bool
+hasOnlyDistinctTyVars ty
+  | Just (tc, tys) <- GHC.tcSplitTyConApp_maybe (dropCasts ty)
+  , tys'           <- GHC.filterOutInvisibleTypes tc tys
+  , tyVars         <- mapMaybe GHC.tcGetTyVar_maybe tys'
+  = tyVars `equalLength` tys' && hasNoDups tyVars
+  | otherwise = False
+
+
+-- | A local helper function from TcValidity
+dropCasts :: GHC.Type -> GHC.Type
+dropCasts (GHC.CastTy ty _)     = dropCasts ty
+dropCasts (GHC.AppTy t1 t2)     = GHC.mkAppTy (dropCasts t1) (dropCasts t2)
+dropCasts (GHC.FunTy t1 t2)     = GHC.mkFunTy (dropCasts t1) (dropCasts t2)
+dropCasts (GHC.TyConApp tc tys) = GHC.mkTyConApp tc (map dropCasts tys)
+dropCasts (GHC.ForAllTy b ty)   = GHC.ForAllTy (dropCastsB b) (dropCasts ty)
+dropCasts ty                    = ty
+
+-- | A local helper function from TcValidity
+dropCastsB :: GHC.TyVarBinder -> GHC.TyVarBinder
+dropCastsB b = b

@@ -4,6 +4,7 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+  , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad
   , module Language.Haskell.TH.LanguageExtensions
   , module Control.Monad.State
   , module Control.Monad.Reader
@@ -11,6 +12,7 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad
 
 import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )
@@ -18,7 +20,6 @@ import Language.Haskell.TH.LanguageExtensions
 
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
 
 
@@ -84,9 +85,6 @@ conditionalAny checker exts node = do
 
 conditionalAdd :: HasRange node => Extension -> node -> ExtMonad node
 conditionalAdd ext = conditional (addOccurence ext) ext
-
-liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
-liftMaybe = MaybeT . return
 
 runExtMonadIO :: ExtMonad a -> IO a
 runExtMonadIO = runGhc (Just libdir) . runExtMonadGHC

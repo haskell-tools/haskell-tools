@@ -12,7 +12,7 @@ instance Checkable Module where
   check = globalChkNamesForTypeEq
 
 instance Checkable Decl where
-  check = chkFlexibleInstances
+  check = chkFlexibleInstancesDecl
       >=> chkDerivings
       >=> chkTypeFamiliesDecl
       >=> chkMultiParamTypeClassesDecl

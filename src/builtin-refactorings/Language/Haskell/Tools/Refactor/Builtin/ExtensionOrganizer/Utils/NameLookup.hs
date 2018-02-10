@@ -3,11 +3,11 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLook
 import qualified GHC
 
 import Control.Reference ((^.))
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
-import Control.Monad.Trans.Maybe (MaybeT(..))
 
 opSemName :: Operator -> MaybeT ExtMonad GHC.Name
 opSemName = liftMaybe . semanticsName . (^. operatorName)
@@ -17,3 +17,9 @@ declHeadSemName (NameDeclHead n)       = liftMaybe . semanticsName $ n
 declHeadSemName (ParenDeclHead dh)     = declHeadSemName dh
 declHeadSemName (DeclHeadApp dh _)     = declHeadSemName dh
 declHeadSemName (InfixDeclHead _ op _) = opSemName op
+
+instHeadSemName :: InstanceHead -> MaybeT ExtMonad GHC.Name
+instHeadSemName (InstanceHead n)         = liftMaybe . semanticsName $ n
+instHeadSemName (InfixInstanceHead _ op) = opSemName op
+instHeadSemName (ParenInstanceHead ih)   = instHeadSemName ih
+instHeadSemName (AppInstanceHead ih _)   = instHeadSemName ih
