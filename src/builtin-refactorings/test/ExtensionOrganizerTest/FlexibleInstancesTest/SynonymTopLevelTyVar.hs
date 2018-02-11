@@ -15,5 +15,5 @@ instance C2 a a where  {-* FlexibleInstances, FlexibleInstances, MultiParamTypeC
   f2 _ _ = True
 
 -- extra check for the brackets around "d"
-instance C2 ((PPlusSyn a b) c) (d) where  {-* FlexibleInstances, MultiParamTypeClasses *-}
+instance C2 ((PPlusSyn a b) c) (d) where  {-* FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances *-}
   f2 _ _ = True

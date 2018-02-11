@@ -21,16 +21,6 @@ hasConstraintKind :: GHC.Type -> Bool
 hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
 
 
-chkSynonym :: CheckNode Type
-chkSynonym t = do
-  mtycon <- runMaybeT . lookupType $ t
-  case mtycon of
-    Nothing    -> return t
-    Just tycon -> chkSynonym' tycon
-  where chkSynonym' x = case lookupSynDef x of
-                          Nothing -> return t
-                          Just _  -> addOccurence TypeSynonymInstances t
-
 -- | Looks up the Type of an entity with an Id of any locality.
 -- If the entity being scrutinised is a type variable, it fails.
 lookupTypeFromId :: HasIdInfo' id => id -> MaybeT ExtMonad GHC.Type
@@ -76,12 +66,6 @@ lookupTypeSynRhs name = do
   tt    <- MaybeT    . GHC.lookupName $ sname
   tc    <- liftMaybe . tyconFromTyThing $ tt
   liftMaybe . GHC.synTyConRhs_maybe $ tc
-
-lookupSynDefM :: Type -> MaybeT ExtMonad GHC.TyCon
-lookupSynDefM t = do
-  tything <- lookupType t
-  liftMaybe $ lookupSynDef tything
-  where liftMaybe = MaybeT . return
 
 -- NOTE: Returns Nothing if it is not a type synonym
 lookupSynDef :: GHC.TyThing -> Maybe GHC.TyCon

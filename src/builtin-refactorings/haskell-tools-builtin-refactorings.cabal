@@ -107,6 +107,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TemplateHaskellChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TupleSectionsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug

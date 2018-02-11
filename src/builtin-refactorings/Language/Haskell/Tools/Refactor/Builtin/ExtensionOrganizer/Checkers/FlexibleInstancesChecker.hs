@@ -23,38 +23,20 @@ import Control.Reference ((^.), (.-), biplateRef)
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad hiding (StandaloneDeriving)
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
 
 
 {-# ANN module "HLint: ignore Redundant bracket" #-}
 
 -- TODO: write "deriving instance ..." tests (should work)
--- TODO: should expand type synonyms  !!!
 
 -- | We need to check declarations because we want to avoid checking type family instances
 chkFlexibleInstancesDecl :: CheckNode Decl
-chkFlexibleInstancesDecl = conditional chkFlexibleInstancesDecl' FlexibleInstances
+chkFlexibleInstancesDecl = conditional (chkInstancesDeclWith $ chkInstanceRuleWith chkInstanceHead) FlexibleInstances
 
--- | We need to check declarations because we want to avoid checking type family instances
-chkFlexibleInstancesDecl' :: CheckNode Decl
-chkFlexibleInstancesDecl' d@(StandaloneDeriving _ _ rule) = chkInstanceRule rule >> return d
-chkFlexibleInstancesDecl' d@(InstanceDecl rule _)         = chkInstanceRule rule >> return d
-chkFlexibleInstancesDecl' d = return d
-
--- this check DOES transform the AST for its internal computations
--- but returns the original one in the end
--- NOTE: There are two traversals:
---       First one on the class level, and the second one one on the type level.
---       Since biplateRef is lazy, it won't go down to the type level in the first traversal
-chkInstanceRule :: CheckNode InstanceRule
-chkInstanceRule r@(InstanceRule _ _ ihead) = do
-  chkInstanceHead ihead
-  return $! r
-chkInstanceRule r = return r
-
-refact ::
-     (Data.Data.Data (node dom stage), Data.Data.Data (inner dom stage)) =>
-     (inner dom stage -> inner dom stage) ->
-      node dom stage -> node dom stage
+refact :: (Data.Data.Data (node dom stage), Data.Data.Data (inner dom stage)) =>
+          (inner dom stage -> inner dom stage) ->
+           node dom stage  -> node dom stage
 refact op = biplateRef .- op
 
 
@@ -84,8 +66,7 @@ chkTypeArg cls ty = do
   where chkSynonymTypeArg :: GHC.Class -> GHC.Type -> ExtMonad Type
         chkSynonymTypeArg cls' ty'
           | tyArgNeedsFI cls' ty' = addOccurence FlexibleInstances ty
-          -- Note that we always add TypeSynonymInstances (FI implies TSI)
-          | otherwise             = addOccurence TypeSynonymInstances ty
+          | otherwise             = return ty
 
 -- | Checks a type argument of class whether it has only (distinct) type variable arguments.
 chkNormalTypeArg :: CheckNode Type
@@ -171,14 +152,6 @@ rmTypeMisc :: Type -> Type
 rmTypeMisc (KindedType t _) = t
 rmTypeMisc (ParenType x)    = x
 rmTypeMisc x                = x
-
--- | Collects the type arguments in an instance declaration
--- Type arguments are the the types that the class is being instantiated with
-collectTyArgs :: InstanceHead -> [Type]
-collectTyArgs (InstanceHead _)        = []
-collectTyArgs (InfixInstanceHead t _) = [t]
-collectTyArgs (ParenInstanceHead ih)  = collectTyArgs ih
-collectTyArgs (AppInstanceHead ih t)  = t : collectTyArgs ih
 
 -- Decides whether a type argument of a type class constructor need FlexibleInstances
 tyArgNeedsFI :: GHC.Class -> GHC.Type -> Bool

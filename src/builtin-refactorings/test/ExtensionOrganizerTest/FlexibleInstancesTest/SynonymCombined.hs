@@ -10,5 +10,5 @@ import Definitions
 
 -- same TyVars and TopLevelTyVar
 
-instance C2 a (TS2 c c) where  {-* FlexibleInstances, FlexibleInstances, MultiParamTypeClasses *-}
+instance C2 a (TS2 c c) where  {-* FlexibleInstances, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances *-}
   f2 _ _ = True
