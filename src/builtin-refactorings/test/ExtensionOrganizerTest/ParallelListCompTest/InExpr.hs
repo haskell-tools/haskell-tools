@@ -29,7 +29,7 @@ x4 = if null [ (x,y) | x <- [1..10] | y <- [1..10] ]     {-* ParallelListComp *-
 
 x5 = if | null [ (x,y) | x <- [1..10] | y <- [1..10] ] -> []                    {-* ParallelListComp *-}
         | null [ (x,y) | x <- [1..10] | y <- [1..10] ] -> [ (x,y) | x <- [1..10] | y <- [1..10] ]   {-* ParallelListComp, ParallelListComp *-}
-        | otherwise -> [ (x,y) | x <- [1..10] | y <- [1..10] ]               {-* ParallelListComp *-} --MultiWayIf
+        | otherwise -> [ (x,y) | x <- [1..10] | y <- [1..10] ]               {-* ParallelListComp, MultiWayIf *-}
 
 x6 = case [ (x,y) | x <- [1..10] | y <- [1..10] ] of  {-* ParallelListComp *-}
        [] -> [ (x,y) | x <- [1..10] | y <- [1..10] ]             {-* ParallelListComp *-}

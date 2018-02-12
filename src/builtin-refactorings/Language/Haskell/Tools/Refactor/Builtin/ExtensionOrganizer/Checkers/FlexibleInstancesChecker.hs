@@ -29,6 +29,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeS
 {-# ANN module "HLint: ignore Redundant bracket" #-}
 
 -- TODO: write "deriving instance ..." tests (should work)
+-- NOTE: could use AST.SemaInfoTypes.getInstances (but it doesn't have location info)
 
 -- | We need to check declarations because we want to avoid checking type family instances
 chkFlexibleInstancesDecl :: CheckNode Decl

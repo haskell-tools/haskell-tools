@@ -32,6 +32,7 @@ instance Checkable Expr where
       >=> chkRecursiveDoExpr
       >=> chkArrowsExpr
       >=> chkParallelListComp
+      >=> chkMultiWayIfExpr
 
 instance Checkable Type where
   check = chkUnboxedTuplesType

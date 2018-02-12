@@ -53,6 +53,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests gadtsTest
   , mkTests existentialQuantificationTest
   , mkTests constrainedClassMethodsTest
+  , mkTests multiWayIfTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -393,4 +394,18 @@ ccmRoot = "ConstrainedClassMethodsTest"
 ccmModules = [ "MixedTyVars"
              , "NullaryConstraint"
              , "OnlyClassTyVars"
+             ]
+
+multiWayIfTest :: TestSuite
+multiWayIfTest = (mwiRoot, mwiModules)
+mwiRoot = "MultiWayIfTest"
+mwiModules = [ "InCaseRhs"
+             , "InCompStmt"
+             , "InExpr"
+             , "InFieldUpdate"
+             , "InPattern"
+             , "InRhs"
+             , "InRhsGuard"
+             , "InStmt"
+             , "InTupSecElem"
              ]
