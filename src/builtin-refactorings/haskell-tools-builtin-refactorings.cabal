@@ -60,6 +60,7 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/TemplateHaskellTest/*.hs
                   , test/ExtensionOrganizerTest/TupleSectionsTest/*.hs
                   , test/ExtensionOrganizerTest/TypeFamiliesTest/*.hs
+                  , test/ExtensionOrganizerTest/TypeOperatorsTest/*.hs
                   , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
 
 library
@@ -109,6 +110,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TemplateHaskellChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TupleSectionsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeOperatorsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker

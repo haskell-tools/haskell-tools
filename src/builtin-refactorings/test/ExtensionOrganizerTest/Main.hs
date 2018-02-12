@@ -54,6 +54,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests existentialQuantificationTest
   , mkTests constrainedClassMethodsTest
   , mkTests multiWayIfTest
+  , mkTests typeOperatorsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -409,3 +410,16 @@ mwiModules = [ "InCaseRhs"
              , "InStmt"
              , "InTupSecElem"
              ]
+
+typeOperatorsTest :: TestSuite
+typeOperatorsTest = (toRoot, toModules)
+toRoot = "TypeOperatorsTest"
+toModules = [ "InfixClassDecl"
+            , "InfixDataDecl"
+            , "InfixInstance"
+            , "InfixTypeAnnot"
+            , "InfixTypeSig"
+            , "NormalClassDecl"
+            , "NormalDataDecl"
+            , "NormalInstance"
+            ]

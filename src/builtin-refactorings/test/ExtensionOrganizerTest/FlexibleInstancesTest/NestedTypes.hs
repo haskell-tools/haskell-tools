@@ -21,5 +21,5 @@ instance C1 (T2 a (T1 b)) where  {-* FlexibleInstances *-}
 instance C1 (T2 (T1 a) b) where  {-* FlexibleInstances *-}
   f1 _ = True
 
-instance C1 ((T1 a) :+: b) where  {-* FlexibleInstances *-}
+instance C1 ((T1 a) :+: b) where  {-* FlexibleInstances, TypeOperators *-}
   f1 _ = True

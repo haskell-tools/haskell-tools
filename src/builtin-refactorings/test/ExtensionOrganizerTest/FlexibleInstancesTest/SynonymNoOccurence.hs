@@ -27,21 +27,21 @@ instance C1 (PlusSyn a b) where  {-* TypeSynonymInstances *-}
   f1 _ = True
 
 instance C1 ((:-:) a b) where
-  f1 _ = True
+  f1 _ = True                   
 
 instance (:?:) TS0 TS0 where    {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances *-}
   h _ _ = True
 
-instance TS0 :!: TS0 where      {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances *-}
+instance TS0 :!: TS0 where      {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances, TypeOperators *-}
   j _ _ = True
 
-instance TS0 :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances *-}
+instance TS0 :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances, TypeOperators *-}
   j _ _ = True
 
-instance (TS2 a b) :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances *-}
+instance (TS2 a b) :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances, TypeSynonymInstances, TypeOperators *-}
   j _ _ = True
 
-instance (a :+: b) :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances *-}
+instance (a :+: b) :!: (TS1 a) where  {-* MultiParamTypeClasses, TypeSynonymInstances, TypeOperators, TypeOperators *-}
   j _ _ = True
 
 instance C1 [(a :: *)] where         {-* KindSignatures *-}

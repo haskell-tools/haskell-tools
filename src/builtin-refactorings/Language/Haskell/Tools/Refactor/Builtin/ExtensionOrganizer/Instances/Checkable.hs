@@ -19,6 +19,7 @@ instance Checkable Decl where
       >=> chkConstraintKindsDecl
       >=> chkConstrainedClassMethodsDecl
       >=> chkTypeSynonymInstancesDecl
+      >=> chkTypeOperatorsDecl'
 
 instance Checkable Pattern where
   check = chkBangPatterns
@@ -37,6 +38,7 @@ instance Checkable Expr where
 instance Checkable Type where
   check = chkUnboxedTuplesType
       >=> chkExplicitForAllType
+      >=> chkTypeOperatorsType
 
 instance Checkable PatternField where
   check = chkRecordWildCardsPatField
@@ -100,3 +102,9 @@ instance Checkable GadtConDecl where
 instance Checkable ConDecl where
   check = chkConDeclForExistentials
       >=> chkExplicitForAllConDecl
+
+instance Checkable Assertion where
+  check = chkTypeOperatorsAssertion
+
+instance Checkable InstanceHead where
+  check = chkTypeOperatorsInstHead
