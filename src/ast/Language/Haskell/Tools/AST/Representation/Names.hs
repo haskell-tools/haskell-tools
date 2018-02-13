@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MonoLocalBinds, TypeSynonymInstances #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 
 -- | Simple AST elements of Haskell

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, GADTs, MultiWayIf #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
   ( chkTypeSynonymInstancesDecl, chkInstancesDeclWith, chkInstanceRuleWith, collectTyArgs) where

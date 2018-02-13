@@ -10,7 +10,6 @@ fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
                       ++ typeSystemExtensions
-                      ++ [FlexibleInstances]
 
 syntacticExtensions :: [Extension]
 syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
@@ -19,7 +18,8 @@ syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
                       , FunctionalDependencies, DefaultSignatures
                       , RecursiveDo, Arrows, ParallelListComp
                       , KindSignatures, ExplicitNamespaces
-                      , GADTSyntax, ExplicitForAll ]
+                      , GADTSyntax, ExplicitForAll, MultiWayIf
+                      , TypeOperators ]
 
 derivingExtensions :: [Extension]
 derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor

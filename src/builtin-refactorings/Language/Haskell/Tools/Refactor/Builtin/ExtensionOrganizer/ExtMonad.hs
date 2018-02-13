@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad

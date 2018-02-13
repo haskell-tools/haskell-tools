@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, FlexibleInstances, StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, StandaloneDeriving #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
