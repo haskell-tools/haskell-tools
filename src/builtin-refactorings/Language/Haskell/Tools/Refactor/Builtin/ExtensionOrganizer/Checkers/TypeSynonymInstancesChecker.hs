@@ -5,7 +5,6 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeS
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad hiding (StandaloneDeriving)
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
 
 {-# ANN module "HLint: ignore Redundant bracket" #-}

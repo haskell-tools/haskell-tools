@@ -4,15 +4,15 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
-  , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad
+  , module Language.Haskell.Tools.Refactor.Utils.Maybe
   , module Language.Haskell.TH.LanguageExtensions
   , module Control.Monad.State
   , module Control.Monad.Reader
   ) where
 
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Utils.Maybe
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad
 
 import GHC (SrcSpan(..), Ghc(..), runGhc)
 import GHC.Paths ( libdir )

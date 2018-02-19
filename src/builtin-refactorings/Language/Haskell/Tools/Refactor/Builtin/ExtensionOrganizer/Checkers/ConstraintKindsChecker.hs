@@ -10,7 +10,6 @@ import Data.Generics.Uniplate.Operations
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
 
 chkConstraintKindsDecl :: CheckNode Decl

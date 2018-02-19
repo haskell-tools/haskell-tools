@@ -1,13 +1,6 @@
 {-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
 
-
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup where
-
-import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLookup
-
-import Control.Monad.Trans.Maybe (MaybeT(..))
+module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Kind      as GHC (isConstraintKind, typeKind)
@@ -16,6 +9,13 @@ import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
+import           GHC       (GhcMonad)
+
+import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.Rewrite
+import Language.Haskell.Tools.Refactor.Utils.NameLookup
+import Language.Haskell.Tools.Refactor.Utils.Maybe
+
 
 hasConstraintKind :: GHC.Type -> Bool
 hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
@@ -23,7 +23,7 @@ hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
 
 -- | Looks up the Type of an entity with an Id of any locality.
 -- If the entity being scrutinised is a type variable, it fails.
-lookupTypeFromId :: HasIdInfo' id => id -> MaybeT ExtMonad GHC.Type
+lookupTypeFromId :: (HasIdInfo' id, GhcMonad m) => id -> MaybeT m GHC.Type
 lookupTypeFromId idn
   | GHC.isLocalId  . semanticsId $ idn = return . typeOrKindFromId $ idn
   | GHC.isGlobalId . semanticsId $ idn = lookupTypeFromGlobalName idn
@@ -51,7 +51,7 @@ typeFromTyThing (GHC.AConLike con)  = handleCon con
 -- For a pattern synonym, it returns its builder's type.
 -- For a type synonym constructor, it returns its right-hand side.
 -- For a coaxiom, it fails.
-lookupTypeFromGlobalName :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
+lookupTypeFromGlobalName :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m GHC.Type
 lookupTypeFromGlobalName name = do
   sname <- liftMaybe . semanticsName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
@@ -60,7 +60,7 @@ lookupTypeFromGlobalName name = do
 
 -- | Looks up the right-hand side (GHC representation)
 -- of a Haskell Tools Name corresponding to a type synonym
-lookupTypeSynRhs :: HasNameInfo' n => n -> MaybeT ExtMonad GHC.Type
+lookupTypeSynRhs :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m GHC.Type
 lookupTypeSynRhs name = do
   sname <- liftMaybe . semanticsName $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
@@ -87,14 +87,14 @@ tyconFromGHCType _ = Nothing
 
 -- NOTE: Returns false if the type is certainly not a newtype
 --       Returns true if it is a newtype or it could not have been looked up
-isNewtype :: Type -> ExtMonad Bool
+isNewtype :: GhcMonad m => Type -> m Bool
 isNewtype t = do
   tycon <- runMaybeT . lookupType $ t
   return $! maybe True isNewtypeTyCon tycon
 
 
 
-lookupType :: Type -> MaybeT ExtMonad GHC.TyThing
+lookupType :: GhcMonad m => Type -> MaybeT m GHC.TyThing
 lookupType t = do
   name  <- liftMaybe . nameFromType $ t
   sname <- liftMaybe . semanticsName   $ name
@@ -102,7 +102,7 @@ lookupType t = do
 
 -- | Looks up a GHC.Class from something that has a type class constructor in it
 -- Fails if the argument does not contain a class type constructor
-lookupClassWith :: (a -> MaybeT ExtMonad GHC.Name) -> a -> MaybeT ExtMonad GHC.Class
+lookupClassWith :: GhcMonad m => (a -> MaybeT m GHC.Name) -> a -> MaybeT m GHC.Class
 lookupClassWith getName x = do
   sname   <- getName x
   tything <- MaybeT . GHC.lookupName $ sname
@@ -110,19 +110,19 @@ lookupClassWith getName x = do
     GHC.ATyCon tc | GHC.isClassTyCon tc -> liftMaybe . GHC.tyConClass_maybe $ tc
     _ -> fail "TypeLookup.lookupClassWith: Argument does not contain a class type constructor"
 
-lookupClassFromInstance :: InstanceHead -> MaybeT ExtMonad GHC.Class
+lookupClassFromInstance :: GhcMonad m => InstanceHead -> MaybeT m GHC.Class
 lookupClassFromInstance = lookupClassWith instHeadSemName
 
-lookupClassFromDeclHead :: DeclHead -> MaybeT ExtMonad GHC.Class
+lookupClassFromDeclHead :: GhcMonad m => DeclHead -> MaybeT m GHC.Class
 lookupClassFromDeclHead = lookupClassWith declHeadSemName
 
 -- | Looks up the right-hand side (GHC representation)
 -- of a Haskell Tools Type corresponding to a type synonym
-semanticsTypeSynRhs :: Type -> MaybeT ExtMonad GHC.Type
+semanticsTypeSynRhs :: GhcMonad m => Type -> MaybeT m GHC.Type
 semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeSynRhs
 
 -- | Converts a global Haskell Tools type to a GHC type
-semanticsType :: Type -> MaybeT ExtMonad GHC.Type
+semanticsType :: GhcMonad m => Type -> MaybeT m GHC.Type
 semanticsType ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeFromGlobalName
 
 -- | Extracts the name of a type
@@ -144,7 +144,7 @@ isNewtypeTyCon _ = False
 
 -- | Decides whether a given name is a standard Haskell98 data constructor.
 -- Fails if not given a proper name.
-isVanillaDataConNameM :: HasNameInfo' n => n -> MaybeT ExtMonad Bool
+isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
 isVanillaDataConNameM name = do
   sname <- liftMaybe . semanticsName  $ name
   tt    <- MaybeT    . GHC.lookupName $ sname

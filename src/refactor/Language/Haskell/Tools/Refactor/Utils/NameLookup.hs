@@ -1,24 +1,25 @@
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLookup where
+module Language.Haskell.Tools.Refactor.Utils.NameLookup where
 
+import GHC (GhcMonad)
 import qualified GHC
 
 import Control.Reference ((^.))
-import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.Rewrite
+import Language.Haskell.Tools.Refactor.Utils.Maybe
 
 
-opSemName :: Operator -> MaybeT ExtMonad GHC.Name
+opSemName :: GhcMonad m => Operator -> MaybeT m GHC.Name
 opSemName = liftMaybe . semanticsName . (^. operatorName)
 
-declHeadSemName :: DeclHead -> MaybeT ExtMonad GHC.Name
+declHeadSemName :: GhcMonad m => DeclHead -> MaybeT m GHC.Name
 declHeadSemName (NameDeclHead n)       = liftMaybe . semanticsName $ n
 declHeadSemName (ParenDeclHead dh)     = declHeadSemName dh
 declHeadSemName (DeclHeadApp dh _)     = declHeadSemName dh
 declHeadSemName (InfixDeclHead _ op _) = opSemName op
 
-instHeadSemName :: InstanceHead -> MaybeT ExtMonad GHC.Name
+instHeadSemName :: GhcMonad m => InstanceHead -> MaybeT m GHC.Name
 instHeadSemName (InstanceHead n)         = liftMaybe . semanticsName $ n
 instHeadSemName (InfixInstanceHead _ op) = opSemName op
 instHeadSemName (ParenInstanceHead ih)   = instHeadSemName ih

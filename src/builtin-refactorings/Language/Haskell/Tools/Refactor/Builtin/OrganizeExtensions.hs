@@ -8,7 +8,7 @@ module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
 
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions (isSupported)
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions (isSupported)
 
 import Language.Haskell.Tools.Refactor hiding (LambdaCase)
 import Language.Haskell.Tools.Refactor.Utils.Extensions

@@ -16,7 +16,6 @@ import qualified Data.Map.Strict as SMap
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
 
 -- | Checks whether any name's corresponding type in the module contains a type equality.

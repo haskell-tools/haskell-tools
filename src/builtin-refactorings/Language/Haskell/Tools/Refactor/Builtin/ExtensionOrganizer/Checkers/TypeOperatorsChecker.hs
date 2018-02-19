@@ -10,7 +10,6 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLookup
 
 -- | Checks a Type whether it contains any DeclHeads that amy need TypeOperators
 chkTypeOperatorsType :: CheckNode Type

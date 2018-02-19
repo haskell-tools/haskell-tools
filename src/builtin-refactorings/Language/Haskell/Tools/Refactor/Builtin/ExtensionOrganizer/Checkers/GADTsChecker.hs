@@ -7,7 +7,6 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
 
 -- | Checks a GADT-style constructor if GADTSyntax is turned on.

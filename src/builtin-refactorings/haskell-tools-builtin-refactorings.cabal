@@ -75,16 +75,13 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.InlineBinding
                      , Language.Haskell.Tools.Refactor.Builtin.FloatOut
                      , Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.NameLookup
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 
   other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker

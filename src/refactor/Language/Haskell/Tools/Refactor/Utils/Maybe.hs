@@ -1,4 +1,8 @@
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Monad where
+module Language.Haskell.Tools.Refactor.Utils.Maybe
+ ( module Language.Haskell.Tools.Refactor.Utils.Maybe
+ , module Data.Maybe
+ , MaybeT(..)
+ ) where
 
 import Data.Maybe
 import Control.Monad

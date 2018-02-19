@@ -1,4 +1,4 @@
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions where
+module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions where
 
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 
