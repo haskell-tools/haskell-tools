@@ -172,6 +172,7 @@ test-suite ht-extension-organizer-test
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
   other-modules:       ExtensionOrganizerTest.AnnotationParser
+                     , ExtensionOrganizerTest.Parser
   hs-source-dirs:      test
   main-is:             ExtensionOrganizerTest/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11
