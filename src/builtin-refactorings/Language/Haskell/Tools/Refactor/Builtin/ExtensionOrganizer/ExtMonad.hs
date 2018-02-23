@@ -1,14 +1,17 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, RankNTypes, StandaloneDeriving, TypeFamilies, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes #-}
+
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
   , module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+  , module Language.Haskell.Tools.Refactor.Utils.Maybe
   , module Language.Haskell.TH.LanguageExtensions
   , module Control.Monad.State
   , module Control.Monad.Reader
   ) where
 
 import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.Refactor.Utils.Maybe
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
 
 import GHC (SrcSpan(..), Ghc(..), runGhc)
@@ -22,13 +25,6 @@ import qualified Data.Map.Strict as SMap (Map(..), empty, insertWith)
 
 {-# ANN module "HLint: ignore Use mappend" #-}
 {-# ANN module "HLint: ignore Use import/export shortcut" #-}
-
-deriving instance Ord  Extension
-deriving instance Read Extension
-
-
--- how could I hide the tyvar a?
--- type Asd a = forall m . (MonadReader [Extension] m, MonadState ExtMap m, GhcMonad m) => m a
 
 
 type ExtMonad = ReaderT [Extension] (StateT ExtMap Ghc)
@@ -46,11 +42,19 @@ addOccurence' key node = SMap.insertWith (++) key [getRange node]
 -- TODO: add isTurnedOn check
 addOccurence_ :: (MonadState ExtMap m, HasRange node) =>
                   Extension -> node -> m ()
-addOccurence_ extension element = modify $ addOccurence' (LVar extension) element
+addOccurence_ extension element = modify $ addOccurence' (lVar extension) element
 
 addOccurence :: (MonadState ExtMap m, HasRange node) =>
                  Extension -> node -> m node
 addOccurence ext node = addOccurence_ ext node >> return node
+
+addRelation_ :: (MonadState ExtMap m, HasRange node) =>
+                 LogicalRelation Extension -> node -> m ()
+addRelation_ rel element = modify $ addOccurence' rel element
+
+addRelation :: (MonadState ExtMap m, HasRange node) =>
+                LogicalRelation Extension -> node -> m node
+addRelation rel node = addRelation_ rel node >> return node
 
 isTurnedOn :: Extension -> ExtMonad Bool
 isTurnedOn ext = do
@@ -81,7 +85,6 @@ conditionalAny checker exts node = do
 
 conditionalAdd :: HasRange node => Extension -> node -> ExtMonad node
 conditionalAdd ext = conditional (addOccurence ext) ext
-
 
 runExtMonadIO :: ExtMonad a -> IO a
 runExtMonadIO = runGhc (Just libdir) . runExtMonadGHC

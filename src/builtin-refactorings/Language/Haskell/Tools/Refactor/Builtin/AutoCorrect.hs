@@ -1,10 +1,5 @@
-{-# LANGUAGE ConstraintKinds
-           , TypeFamilies
-           , FlexibleContexts
-           , ScopedTypeVariables
-           , ViewPatterns
-           , TupleSections
-           #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, ScopedTypeVariables, TupleSections, ViewPatterns #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.AutoCorrect (autoCorrect, tryItOut, autoCorrectRefactoring) where
 
 import SrcLoc

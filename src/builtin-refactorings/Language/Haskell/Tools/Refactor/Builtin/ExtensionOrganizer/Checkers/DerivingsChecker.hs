@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts, MultiWayIf, ViewPatterns #-}
 
+
 {-
   NOTE: We need Decl level checking in order to gain extra information
         from the newtype and data keywords.
@@ -27,7 +28,6 @@ import Control.Reference ((^.), (!~), (&))
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Refactor as Refact hiding (Enum)
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad as Ext
-import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
 
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Data.Map as Map (fromList, lookup)
@@ -187,7 +187,7 @@ chkDerivingClause checker d@(DerivingMulti xs) = (annList !~ checker) xs >> retu
 nameFromStock :: InstanceHead -> Maybe GHC.Name
 nameFromStock x
   | InstanceHead name <- skipParens x,
-    Just sname <- getSemName name,
+    Just sname <- semanticsName name,
     isStockClass sname
     = Just sname
   | otherwise = Nothing
@@ -222,7 +222,6 @@ chkStandaloneDeriving d@(Refact.StandaloneDeriving strat _ (decompRule -> (cls,t
   | Just strat' <- strat = do
     addOccurence_  Ext.DerivingStrategies d
     addOccurence_  Ext.StandaloneDeriving d
-    chkSynonym ty
     chkStrat strat' cls
     return d
   | otherwise = do
@@ -253,9 +252,6 @@ rightmostType ihead
 {-
   NOTE: Returns false if the type is certainly not a type synonym.
         Returns true if it is a synonym for a newtype or it could not have been looked up.
-  NOTE: It always has the following side-effects:
-        - If the input is a type synonym, then adds TypeSynonymInstances
-          (regardless of it being a newtype or not)
 
   This behaviour will produce false positives.
   This is desirable since the underlying type might be a newtype
@@ -269,6 +265,4 @@ isSynNewType t = do
     Just tycon -> isSynNewType' tycon
   where isSynNewType' x = case lookupSynDef x of
                             Nothing  -> return False
-                            Just def -> do
-                                        addOccurence_ TypeSynonymInstances t
-                                        return (GHC.isNewTyCon def)
+                            Just def -> return (GHC.isNewTyCon def)

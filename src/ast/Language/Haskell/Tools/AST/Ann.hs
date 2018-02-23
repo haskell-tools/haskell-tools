@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, DeriveDataTypeable, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TypeApplications, TypeFamilies, UndecidableInstances #-}
+
 -- | Parts of AST representation for keeping extra data
 module Language.Haskell.Tools.AST.Ann where
 
@@ -96,8 +97,8 @@ type instance SemanticInfo' IdDom SemaInfoDefaultCls = NoSemanticInfo
 
 -- | A semantic domain for the AST. The semantic domain maps semantic information for
 -- the different types of nodes in the AST. The kind of semantic domain for an AST
--- depends on which stages of the compilation did it pass. However after transforming
--- the GHC representation to our AST, the domain keeps the same.
+-- depends on which stages of the compilation it passed. However after transforming
+-- the GHC representation to our AST, the domain stays the same.
 -- The domain is not applied to the AST elements that are generated while refactoring.
 type Domain d = ( Typeable d
                 , Data d

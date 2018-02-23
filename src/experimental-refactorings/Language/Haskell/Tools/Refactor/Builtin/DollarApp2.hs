@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.DollarApp2 where
 
 import Language.Haskell.Tools.Refactor

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, RecordWildCards, TypeFamilies #-}
+
 -- | The range template is an intermediate annotation level, where the children nodes of the tree
 -- had been cut from the parent nodes, but the annotations still contain ranges instead of text.
 module Language.Haskell.Tools.PrettyPrint.Prepare.RangeTemplate where

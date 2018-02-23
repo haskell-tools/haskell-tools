@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, StandaloneDeriving #-}
 
+
 module Language.Haskell.Tools.AST.Utils.GHCInstances where
 
 import Data.Data

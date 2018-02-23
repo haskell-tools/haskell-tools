@@ -1,12 +1,5 @@
-{-# LANGUAGE OverloadedStrings
-           , DeriveGeneric
-           , TypeApplications
-           , ScopedTypeVariables
-           , LambdaCase
-           , TemplateHaskell
-           , PatternGuards
-           , FlexibleContexts
-           #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, TypeApplications, ScopedTypeVariables, LambdaCase, TemplateHaskell, PatternGuards, FlexibleContexts #-}
+
 
 module Language.Haskell.Tools.Demo where
 

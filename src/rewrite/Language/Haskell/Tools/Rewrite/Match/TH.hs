@@ -1,5 +1,6 @@
 -- | Pattern matching on Template Haskell AST fragments for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.TH where
 
 import Language.Haskell.Tools.AST

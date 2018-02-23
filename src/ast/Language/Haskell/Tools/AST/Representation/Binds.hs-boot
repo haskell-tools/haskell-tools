@@ -1,4 +1,5 @@
 {-# LANGUAGE RoleAnnotations #-}
+
 module Language.Haskell.Tools.AST.Representation.Binds where
 
 type role ULocalBind nominal nominal

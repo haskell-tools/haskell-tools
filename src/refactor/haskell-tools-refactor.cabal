@@ -29,19 +29,22 @@ extra-source-files: examples/CppHs/Language/Preprocessor/*.hs
 library
   ghc-options: -O2
   exposed-modules:     Language.Haskell.Tools.Refactor
-                     , Language.Haskell.Tools.Refactor.Utils.BindingElem
-                     , Language.Haskell.Tools.Refactor.Utils.Monadic
                      , Language.Haskell.Tools.Refactor.Monad
-                     , Language.Haskell.Tools.Refactor.Representation
                      , Language.Haskell.Tools.Refactor.Prepare
-                     , Language.Haskell.Tools.Refactor.Utils.Lists
-                     , Language.Haskell.Tools.Refactor.Utils.Name
-                     , Language.Haskell.Tools.Refactor.Utils.Helpers
-                     , Language.Haskell.Tools.Refactor.Utils.AST
                      , Language.Haskell.Tools.Refactor.Refactoring
-                     , Language.Haskell.Tools.Refactor.Utils.Indentation
+                     , Language.Haskell.Tools.Refactor.Representation
+                     , Language.Haskell.Tools.Refactor.Utils.AST
+                     , Language.Haskell.Tools.Refactor.Utils.BindingElem
                      , Language.Haskell.Tools.Refactor.Utils.Extensions
+                     , Language.Haskell.Tools.Refactor.Utils.Helpers
+                     , Language.Haskell.Tools.Refactor.Utils.Indentation
+                     , Language.Haskell.Tools.Refactor.Utils.Lists
+                     , Language.Haskell.Tools.Refactor.Utils.Maybe
+                     , Language.Haskell.Tools.Refactor.Utils.Monadic
+                     , Language.Haskell.Tools.Refactor.Utils.Name
+                     , Language.Haskell.Tools.Refactor.Utils.NameLookup
                      , Language.Haskell.Tools.Refactor.Utils.Type
+                     , Language.Haskell.Tools.Refactor.Utils.TypeLookup
 
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
@@ -61,7 +64,7 @@ library
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
                      , haskell-tools-prettyprint >= 1.0  && < 1.1
   default-language:    Haskell2010
-  
+
 test-suite haskell-tools-builtin-refactorings-test
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g

@@ -1,5 +1,6 @@
 -- | UPattern matching on type-level AST fragments for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.Types where
 
 import Language.Haskell.Tools.AST
@@ -11,7 +12,7 @@ import Language.Haskell.Tools.Rewrite.ElementTypes
 pattern ForallType :: TyVarList -> Type -> Type
 pattern ForallType vars t <- Ann _ (UTyForall vars t)
 
--- | Type with a context (@ forall x y . type @)
+-- | Type with a context (@ C a => type @)
 pattern CtxType :: Context -> Type -> Type
 pattern CtxType ctx t <- Ann _ (UTyCtx ctx t)
 

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
+
 module Language.Haskell.Tools.Refactor.Builtin ( builtinRefactorings ) where
 
 import Language.Haskell.Tools.Refactor (RefactoringChoice)

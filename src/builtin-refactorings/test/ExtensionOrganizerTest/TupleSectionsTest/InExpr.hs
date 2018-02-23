@@ -27,7 +27,7 @@ x4 = if fst $ (True,) 0   {-* TupleSections *-}
 
 x5 = if | fst $ (True,) 0 -> 20             {-* TupleSections *-}
         | snd $ (,True) 0 -> fst $ (0,) 5   {-* TupleSections, TupleSections *-}
-        | otherwise -> fst $ (0,) 5         {-* TupleSections *-} --MultiWayIf
+        | otherwise -> fst $ (0,) 5         {-* TupleSections, MultiWayIf *-}
 
 x6 = case fst $ ([],) () of  {-* TupleSections *-}
        [] -> (0,)             {-* TupleSections *-}

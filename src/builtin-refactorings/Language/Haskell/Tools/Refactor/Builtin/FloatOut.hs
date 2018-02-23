@@ -1,4 +1,5 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, LambdaCase, ScopedTypeVariables, TypeApplications, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, ScopedTypeVariables, TypeApplications #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.FloatOut
   (floatOut, floatOutRefactoring) where
 

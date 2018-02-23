@@ -1,4 +1,5 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, RankNTypes, ScopedTypeVariables, TupleSections, TypeApplications, TypeFamilies, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts, GADTs, RankNTypes, ScopedTypeVariables, TupleSections, TypeApplications, ViewPatterns #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.GenerateTypeSignature
   ( generateTypeSignature, generateTypeSignature', tryItOut
   , generateTypeSignatureRefactoring) where

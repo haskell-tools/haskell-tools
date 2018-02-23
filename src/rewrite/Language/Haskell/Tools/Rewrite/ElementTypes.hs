@@ -23,6 +23,9 @@ type ExportSpec = Ann UExportSpec IdDom SrcTemplateStage
 -- | Marks a name to be imported or exported with related names (subspecifier)
 type IESpec = Ann UIESpec IdDom SrcTemplateStage
 
+-- | Specifies the imported element
+type ImportModifier = Ann UImportModifier IdDom SrcTemplateStage
+
 -- | Marks how related names will be imported or exported with a given name
 type SubSpec = Ann USubSpec IdDom SrcTemplateStage
 
@@ -346,6 +349,7 @@ type MaybeImportSource = AnnMaybe UImportSource
 type MaybeImportSafe = AnnMaybe UImportSafe
 type MaybeImportSpec = AnnMaybe UImportSpec
 type MaybeModuleHead = AnnMaybe UModuleHead
+type MaybeImportModifier = AnnMaybe UImportModifier
 type MaybeModulePragma = AnnMaybe UModulePragma
 type MaybeSubSpec = AnnMaybe USubSpec
 type MaybeStringNode = AnnMaybe UStringNode

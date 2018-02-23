@@ -1,6 +1,7 @@
 -- | Generation of literals for refactorings.
 -- The bindings defined here are the AST constructor names with an "mk" prefix.
-{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
+{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
+
 module Language.Haskell.Tools.Rewrite.Create.Literals where
 
 import Data.String (IsString(..), String)

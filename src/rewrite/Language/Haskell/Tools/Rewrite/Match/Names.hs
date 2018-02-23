@@ -1,5 +1,6 @@
 -- | Generation of basic AST fragments (names for example) for refactorings
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.Names where
 
 import Language.Haskell.Tools.AST

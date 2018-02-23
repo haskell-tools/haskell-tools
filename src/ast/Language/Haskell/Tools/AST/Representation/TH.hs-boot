@@ -1,4 +1,5 @@
 {-# LANGUAGE RoleAnnotations #-}
+
 module Language.Haskell.Tools.AST.Representation.TH where
 
 type role USplice nominal nominal

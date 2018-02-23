@@ -1,8 +1,5 @@
-{-# LANGUAGE FlexibleContexts
-           , TypeFamilies
-           , RecordWildCards
-           , ScopedTypeVariables
-           #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RecordWildCards, ScopedTypeVariables #-}
+
 -- | The command line interface for Haskell-tools. It uses the Haskell-tools daemon package starting
 -- the daemon in the same process and communicating with it through a channel.
 -- It can be used in a one-shot mode, listing all actions in a command-line parameter or using its

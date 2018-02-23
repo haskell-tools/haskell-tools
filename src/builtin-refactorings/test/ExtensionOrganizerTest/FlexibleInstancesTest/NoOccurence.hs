@@ -4,7 +4,7 @@
              FlexibleInstances
              #-}
 
-module NoOccurenceON where
+module NoOccurence where
 
 import Definitions
 
@@ -38,16 +38,16 @@ instance C1 ((:-:) a b) where
 instance (:?:) T0 T0 where    {-* MultiParamTypeClasses *-}
   h _ _ = True
 
-instance T0 :!: T0 where      {-* TypeOperators, MultiParamTypeClasses *-}
+instance T0 :!: T0 where      {-* MultiParamTypeClasses, TypeOperators *-}
+  j _ _ = True                {-*  *-}
+
+instance T0 :!: (T1 a) where  {-* MultiParamTypeClasses, TypeOperators *-}
   j _ _ = True
 
-instance T0 :!: (T1 a) where  {-* TypeOperators, MultiParamTypeClasses *-}
+instance (T2 a b) :!: (T1 a) where  {-* MultiParamTypeClasses, TypeOperators *-}
   j _ _ = True
 
-instance (T2 a b) :!: (T1 a) where  {-* TypeOperators, MultiParamTypeClasses *-}
-  j _ _ = True
-
-instance (a :+: b) :!: (T1 a) where  {-* TypeOperators, TypeOperators, MultiParamTypeClasses *-}
+instance (a :+: b) :!: (T1 a) where  {-* MultiParamTypeClasses, TypeOperators, TypeOperators *-}
   j _ _ = True
 
 instance C1 [(a :: *)] where         {-* KindSignatures *-}

@@ -1,4 +1,5 @@
-{-# LANGUAGE DefaultSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, TypeOperators, ConstraintKinds #-}
+{-# LANGUAGE ConstraintKinds, DefaultSignatures, FlexibleContexts, FlexibleInstances, GADTs, MultiParamTypeClasses, TypeOperators #-}
+
 -- | A module for displaying debug info about the source annotations of the syntax tree in different phases.
 module Language.Haskell.Tools.Debug.RangeDebug where
 
