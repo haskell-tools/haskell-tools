@@ -1,4 +1,4 @@
 module A where
 
-a :: ()
-a = 4
+aa :: ()
+aa = 4

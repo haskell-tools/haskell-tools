@@ -11,7 +11,7 @@ import System.Directory
 import System.FilePath
 import System.IO
 
-import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings, builtinQueries)
 import Language.Haskell.Tools.Refactor.CLI (SharedDaemonOptions(..), CLIOptions(..), normalRefactorSession)
 
 main :: IO ()
@@ -43,7 +43,7 @@ makeCliTest (name, dirs, args, input, outputCheck)
       inHandle <- newFileHandle inKnob "<input>" ReadMode
       outKnob <- newKnob (pack [])
       outHandle <- newFileHandle outKnob "<output>" WriteMode
-      normalRefactorSession builtinRefactorings inHandle outHandle (args suffix testdirs)
+      normalRefactorSession builtinRefactorings builtinQueries inHandle outHandle (args suffix testdirs)
       actualOut <- Data.Knob.getContents outKnob
       assertBool ("The result is not what is expected. Output: " ++ (unpack actualOut))
         =<< outputCheck suffix (unpack actualOut)
