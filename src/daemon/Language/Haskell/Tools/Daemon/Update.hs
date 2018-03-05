@@ -48,15 +48,18 @@ import Paths_haskell_tools_daemon (version)
 -- | Context for responding to a user request.
 data UpdateCtx = UpdateCtx { options :: DaemonOptions
                            , refactorings :: [RefactoringChoice]
+                           , queries :: [QueryChoice]
                            , response :: ResponseMsg -> IO ()
                            , warnMVar :: MVar [Marker]
                            }
 
 -- | This function does the real job of acting upon client messages in a stateful environment of a
 -- client.
-updateClient :: DaemonOptions -> MVar [Marker] -> [RefactoringChoice] -> (ResponseMsg -> IO ()) -> ClientMessage
+updateClient :: DaemonOptions -> MVar [Marker] -> [RefactoringChoice] -> [QueryChoice]
+                  -> (ResponseMsg -> IO ()) -> ClientMessage
                   -> DaemonSession Bool
-updateClient options warnMVar refactors resp = updateClient' (UpdateCtx options refactors resp warnMVar)
+updateClient options warnMVar refactors queries resp
+  = updateClient' (UpdateCtx options refactors queries resp warnMVar)
 
 updateClient' :: UpdateCtx -> ClientMessage -> DaemonSession Bool
 -- resets the internal state of Haskell-tools (but keeps options)
@@ -141,7 +144,15 @@ updateClient' _ Stop
   = do modify (exiting .= True)
        return False
 
--- TODO: perform refactorings without selected modules
+updateClient' UpdateCtx{..} (PerformQuery query modPath selection args shutdown)
+  = do (selectedMod, otherMods) <- getFileMods modPath
+       res <- lift $ performQuery queries (query:selection:args) (maybe (Left modPath) Right selectedMod) otherMods
+       case res of
+         Left err -> liftIO $ response $ ErrorMessage err
+         Right res -> liftIO $ response $ QueryResult res
+       when shutdown $ liftIO $ response Disconnected
+       return (not shutdown)
+
 updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args shutdown diffMode)
   = do (selectedMod, otherMods) <- getFileMods modPath
        performRefactoring (refact:selection:args)
@@ -376,13 +387,13 @@ getUndoRemoved = catMaybes . map (\case RemoveAdded fp -> Just fp
                                         _              -> Nothing)
 
 initGhcSession :: Bool -> IO (Session, MVar [Marker])
-initGhcSession genCode = do 
+initGhcSession genCode = do
   mv <- newMVar []
   sess <- Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags' genCode True >> setupLogging mv >> getSession))
   return (sess, mv)
 
 reinitGhcSession :: MVar [Marker] -> Bool -> IO Session
-reinitGhcSession mv genCode = do 
+reinitGhcSession mv genCode = do
   Session <$> (newIORef =<< runGhc (Just libdir) (initGhcFlags' genCode True >> setupLogging mv >> getSession))
 
 setupLogging :: MVar [Marker] -> Ghc ()

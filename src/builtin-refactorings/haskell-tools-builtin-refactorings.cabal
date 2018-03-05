@@ -63,6 +63,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
                      , Language.Haskell.Tools.Refactor.Builtin.InlineBinding
                      , Language.Haskell.Tools.Refactor.Builtin.FloatOut
+                     , Language.Haskell.Tools.Refactor.Builtin.GetMatches
                      , Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
@@ -93,6 +94,7 @@ library
 
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
+                     , aeson                     >= 1.0 && < 1.3
                      , uniplate                  >= 1.6  && < 1.7
                      , classyplate               >= 0.3  && < 0.4
                      , deepseq                   >= 1.4  && < 1.5
@@ -206,5 +208,5 @@ test-suite ht-extension-organizer-test
 --                      , haskell-tools-prettyprint >= 1.0  && < 1.1
 --                      , haskell-tools-refactor    >= 1.0  && < 1.1
 --                      , haskell-tools-builtin-refactorings
--- 
+--
 --   default-language:    Haskell2010

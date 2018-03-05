@@ -48,6 +48,14 @@ data ClientMessage
     -- with the selection and details. Successful refactorings will cause re-loading of modules.
     -- If 'shutdownAfter' or 'diffMode' is not set, after the refactoring,
     -- modules are re-loaded, LoadingModules, LoadedModule responses are sent.
+  | PerformQuery { query :: String
+                 , modulePath :: FilePath
+                 , editorSelection :: String
+                 , details :: [String] -- ^ Additional details for the refactoring like the
+                                       -- names of generated definitions.
+                 , shutdownAfter :: Bool -- ^ Stop the daemon after performing the query.
+                 }
+    -- ^ Orders the engine to perform a query on the module given with the selection and details.
   | UndoLast
     -- ^ Asks the daemon to undo the last refactoring.
   | Disconnect
@@ -85,6 +93,8 @@ data ResponseMsg
                  , loadedModuleName :: String
                  }
     -- ^ The engine has loaded the given module.
+  | QueryResult { queryResult :: Value }
+    -- ^ The result of querying the program representation.
   | UnusedFlags { unusedFlags :: [String] }
     -- ^ Returns the flags that are not used by the engine.
   | Disconnected
@@ -99,7 +109,7 @@ data Marker = Marker { location :: SrcSpan
 instance Show Marker where
   show marker = show (severity marker) ++ " at " ++ shortShowSpanWithFile (location marker) ++ ": " ++ message marker
 
-data Severity = Error | Warning | Info 
+data Severity = Error | Warning | Info
   deriving (Show, Generic, Eq)
 
 instance ToJSON ResponseMsg
