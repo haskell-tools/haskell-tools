@@ -4,6 +4,7 @@ module Language.Haskell.Tools.Refactor.Refactoring where
 
 import Control.Monad.Trans.Except (runExceptT)
 import Data.List ((++), map, find)
+import Data.Aeson (Value)
 
 import GHC (RealSrcSpan, Ghc)
 

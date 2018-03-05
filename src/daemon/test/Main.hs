@@ -29,7 +29,7 @@ import Language.Haskell.Tools.Daemon (runDaemon')
 import Language.Haskell.Tools.Daemon.Options as Options (SharedDaemonOptions(..), DaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
 import Language.Haskell.Tools.Daemon.Protocol
-import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings, builtinQueries)
 
 pORT_NUM_START = 4100
 pORT_NUM_END = 4200
@@ -656,8 +656,8 @@ communicateWithDaemon watch port opts msgs = withSocketsDo $ do
                                watchDir <- (++) <$> glob watchPath <*> glob linuxWatchPath
                                case (watch, watchDir) of
                                  (True, []) -> error "The watch executable is not found."
-                                 (True, w:_) -> forkIO $ runDaemon' builtinRefactorings (opts portNum (Just w))
-                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings (opts portNum Nothing)
+                                 (True, w:_) -> forkIO $ runDaemon' builtinRefactorings builtinQueries (opts portNum (Just w))
+                                 (False, _) -> forkIO $ runDaemon' builtinRefactorings builtinQueries (opts portNum Nothing)
                                return portNum
           `catch` \(e :: SomeException) -> do putStrLn ("exception caught: `" ++ show e ++ "` trying with a new port")
                                               modifyMVar_ port (\i -> if i < pORT_NUM_END
