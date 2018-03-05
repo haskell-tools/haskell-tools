@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances, RecordWildCards, TemplateHaskell, TypeFamilies #-}
+
 -- | The final version of the source annotation. Each node contains its original textual format, with the places of
 -- the children specified by placeholders.
 module Language.Haskell.Tools.PrettyPrint.Prepare.SourceTemplate where

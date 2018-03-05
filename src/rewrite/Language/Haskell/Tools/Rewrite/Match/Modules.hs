@@ -1,5 +1,6 @@
 -- | UPattern matching on UModule-level AST fragments for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.Modules where
 
 import Language.Haskell.Tools.AST
@@ -28,8 +29,8 @@ pattern ModuleExport :: ModuleName -> ExportSpec
 pattern ModuleExport name <- Ann _ (UModuleExport name)
 
 -- | Marks a name to be imported or exported with related names (subspecifier)
-pattern IESpec :: Name -> MaybeSubSpec -> IESpec
-pattern IESpec name ss <- Ann _ (UIESpec _ name ss)
+pattern IESpec :: MaybeImportModifier -> Name -> MaybeSubSpec -> IESpec
+pattern IESpec modifier name ss <- Ann _ (UIESpec modifier name ss)
 
 -- | @(..)@: a class exported with all of its methods, or a datatype exported with all of its constructors.
 pattern SubAll :: SubSpec
@@ -40,10 +41,10 @@ pattern SubList :: NameList -> SubSpec
 pattern SubList names <- Ann _ (USubSpecList names)
 
 
-pattern ImportDecl :: MaybeImportSource -> MaybeImportQualified 
+pattern ImportDecl :: MaybeImportSource -> MaybeImportQualified
                         -> MaybeImportSafe -> MaybeStringNode
                         -> ModuleName -> MaybeImportRenaming
-                        -> MaybeImportSpec -> ImportDecl       
+                        -> MaybeImportSpec -> ImportDecl
 pattern ImportDecl source qualified safe pkg name rename spec <- Ann _ (UImportDecl source qualified safe pkg name rename spec)
 
 pattern ImportRenaming :: ModuleName -> ImportRenaming

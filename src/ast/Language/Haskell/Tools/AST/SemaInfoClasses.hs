@@ -1,4 +1,5 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, UndecidableInstances #-}
+
 module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
 
 import GHC
@@ -9,7 +10,7 @@ import Control.Reference
 import Language.Haskell.Tools.AST.Ann as AST
 import Language.Haskell.Tools.AST.Representation.Exprs as AST (UFieldWildcard, UExpr)
 import Language.Haskell.Tools.AST.Representation.Modules as AST (UImportDecl, UModule)
-import Language.Haskell.Tools.AST.Representation.Names as AST (UQualifiedName)
+import Language.Haskell.Tools.AST.Representation.Names as AST (UName(..), UQualifiedName)
 import Language.Haskell.Tools.AST.Representation.Literals as AST (ULiteral)
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 
@@ -33,6 +34,9 @@ instance HasNameInfo' CNameInfo where
 
 instance HasNameInfo dom => HasNameInfo' (Ann UQualifiedName dom st) where
   semanticsName = semanticsName . (^. annotation&semanticInfo)
+
+instance HasNameInfo dom => HasNameInfo' (Ann UName dom st) where
+  semanticsName = semanticsName . _simpleName . _element
 
 -- | Domains that have semantic information for literals
 type HasLiteralInfo dom = (Domain dom, HasLiteralInfo' (SemanticInfo dom ULiteral))
@@ -60,6 +64,9 @@ instance HasIdInfo' CNameInfo where
 
 instance HasIdInfo dom => HasIdInfo' (Ann UQualifiedName dom st) where
   semanticsId = semanticsId . (^. annotation&semanticInfo)
+
+instance HasIdInfo dom => HasIdInfo' (Ann UName dom st) where
+  semanticsId = semanticsId . _simpleName . _element
 
 -- * Fixity information
 

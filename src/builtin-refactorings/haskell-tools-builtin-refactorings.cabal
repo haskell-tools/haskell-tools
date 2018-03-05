@@ -37,19 +37,30 @@ extra-source-files: examples/CPP/*.hs
 
                   , test/ExtensionOrganizerTest/ArrowsTest/*.hs
                   , test/ExtensionOrganizerTest/BangPatternsTest/*.hs
+                  , test/ExtensionOrganizerTest/ConstrainedClassMethodsTest/*.hs
+                  , test/ExtensionOrganizerTest/ConstraintKindsTest/*.hs
                   , test/ExtensionOrganizerTest/DefaultSignaturesTest/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
+                  , test/ExtensionOrganizerTest/ExistentialQuantificationTest/*.hs
+                  , test/ExtensionOrganizerTest/ExplicitNamespacesTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/FunctionalDependenciesTest/*.hs
+                  , test/ExtensionOrganizerTest/GADTsTest/*.hs
+                  , test/ExtensionOrganizerTest/KindSignaturesTest/*.hs
                   , test/ExtensionOrganizerTest/LambdaCaseTest/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Literal/*.hs
                   , test/ExtensionOrganizerTest/MagicHashTest/Name/*.hs
+                  , test/ExtensionOrganizerTest/MultiParamTypeClassesTest/*.hs
+                  , test/ExtensionOrganizerTest/MultiWayIfTest/*.hs
+                  , test/ExtensionOrganizerTest/OverloadedStringsTest/*.hs
                   , test/ExtensionOrganizerTest/ParallelListCompTest/*.hs
                   , test/ExtensionOrganizerTest/PatternSynonymsTest/*.hs
                   , test/ExtensionOrganizerTest/RecordWildCardsTest/*.hs
                   , test/ExtensionOrganizerTest/RecursiveDoTest/*.hs
                   , test/ExtensionOrganizerTest/TemplateHaskellTest/*.hs
                   , test/ExtensionOrganizerTest/TupleSectionsTest/*.hs
+                  , test/ExtensionOrganizerTest/TypeFamiliesTest/*.hs
+                  , test/ExtensionOrganizerTest/TypeOperatorsTest/*.hs
                   , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
 
 library
@@ -65,31 +76,43 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.FloatOut
                      , Language.Haskell.Tools.Refactor.Builtin.GetMatches
                      , Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.SupportedExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Checkable
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.TypeLookup
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.SupportedExtensions
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
 
   other-modules:       Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ArrowsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.BangPatternsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstrainedClassMethodsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstraintKindsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DefaultSignaturesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitForAllChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitNamespacesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.GADTsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.KindSignaturesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.LambdaCaseChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MagicHashChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MultiParamTypeClassesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.MultiWayIfChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.OverloadedStringsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ParallelListCompChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.PatternSynonymsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.RecordWildCardsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.RecursiveDoChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TemplateHaskellChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TupleSectionsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeFamiliesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeOperatorsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
 
 
   build-depends:       base                      >= 4.10  && < 4.11
@@ -106,6 +129,7 @@ library
                      , split                     >= 0.2  && < 0.3
                      , filepath                  >= 1.4  && < 1.5
                      , template-haskell          >= 2.12 && < 2.13
+                     , minisat-solver            >= 0.1  && < 0.2
                      , ghc                       >= 8.2  && < 8.3
                      , Cabal                     >= 2.0  && < 2.1
                      , haskell-tools-ast         >= 1.0  && < 1.1
@@ -150,6 +174,7 @@ test-suite ht-extension-organizer-test
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
   other-modules:       ExtensionOrganizerTest.AnnotationParser
+                     , ExtensionOrganizerTest.Parser
   hs-source-dirs:      test
   main-is:             ExtensionOrganizerTest/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11

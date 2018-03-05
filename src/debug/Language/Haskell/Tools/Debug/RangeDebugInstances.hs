@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, UndecidableInstances, ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, GADTs, MultiParamTypeClasses, UndecidableInstances #-}
+
 module Language.Haskell.Tools.Debug.RangeDebugInstances where
 
 import Language.Haskell.Tools.Debug.RangeDebug

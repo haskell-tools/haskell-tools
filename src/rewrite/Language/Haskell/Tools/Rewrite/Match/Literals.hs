@@ -1,5 +1,6 @@
 -- | UPattern matching on literals for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.Literals where
 
 import Language.Haskell.Tools.AST (ULiteral(..), Ann(..))

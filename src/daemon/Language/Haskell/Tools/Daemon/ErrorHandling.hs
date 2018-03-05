@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
+
 -- | Handlers for common errors in Haskell-tools daemon.
 module Language.Haskell.Tools.Daemon.ErrorHandling where
 

@@ -1,8 +1,6 @@
 
-{-# LANGUAGE TypeFamilies
-           , RecordWildCards
-           , DeriveGeneric
-           #-}
+{-# LANGUAGE DeriveGeneric, MonoLocalBinds, RecordWildCards #-}
+
 module Main where
 
 import Criterion.Measurement hiding (runBenchmark)

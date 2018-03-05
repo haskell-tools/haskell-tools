@@ -9,7 +9,7 @@ import Definitions
 {-# ANN module "HLint: ignore Redundant bracket" #-}
 
 
-instance C1 (T1 a) where  
+instance C1 (T1 a) where
   f1 _ = True
 
 instance C1 (T1 (T1 a)) where    {-* FlexibleInstances *-}

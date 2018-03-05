@@ -1,13 +1,16 @@
  -- all extensions should be matched
 
-module Language.Haskell.Tools.Refactor.Utils.Extensions where
+module Language.Haskell.Tools.Refactor.Utils.Extensions
+  ( module Language.Haskell.Tools.Refactor.Utils.Extensions
+  , GHC.Extension(..)
+  ) where
 
 import Control.Reference ((^.), _1, _2, _3)
 import Language.Haskell.Extension (KnownExtension(..))
 import qualified Language.Haskell.TH.LanguageExtensions as GHC (Extension(..))
 
 
-
+-- | Expands an extension into all the extensions it implies (keeps original as well)
 expandExtension :: GHC.Extension -> [GHC.Extension]
 expandExtension ext = ext : implied
   where fst' = (^. _1) :: (a,b,c) -> a
@@ -16,6 +19,10 @@ expandExtension ext = ext : implied
 
         implied = map trd' . filter snd' . filter ((== ext) . fst') $ impliedXFlags
 
+-- | Replaces deprecated extensions with their new counterpart
+replaceDeprecated :: GHC.Extension -> GHC.Extension
+replaceDeprecated GHC.NullaryTypeClasses = GHC.MultiParamTypeClasses
+replaceDeprecated x = x
 
 turnOn  = True
 turnOff = False
@@ -52,6 +59,14 @@ impliedXFlags
     , (GHC.TemplateHaskell,           turnOn,  GHC.TemplateHaskellQuotes)
     , (GHC.Strict,                    turnOn,  GHC.StrictData)
     ]
+
+-- | Canonicalize extensions
+canonExt :: String -> String
+canonExt "CPP" = "Cpp"
+canonExt "Rank2Types" = "RankNTypes"
+canonExt "NamedFieldPuns" = "RecordPuns"
+canonExt "GeneralisedNewtypeDeriving" = "GeneralizedNewtypeDeriving"
+canonExt e = e
 
 -- * Mapping of Cabal haskell extensions to their GHC counterpart
 

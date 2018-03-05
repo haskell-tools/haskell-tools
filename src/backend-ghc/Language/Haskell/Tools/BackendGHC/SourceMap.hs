@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+
 -- | A representation of the tokens that build up the source file.
 module Language.Haskell.Tools.BackendGHC.SourceMap where
 

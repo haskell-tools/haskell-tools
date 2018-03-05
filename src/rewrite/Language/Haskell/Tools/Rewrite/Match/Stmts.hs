@@ -1,5 +1,6 @@
 -- | UPattern matching on statement-level AST fragments for refactorings.
 {-# LANGUAGE PatternSynonyms #-}
+
 module Language.Haskell.Tools.Rewrite.Match.Stmts where
 
 import Language.Haskell.Tools.AST

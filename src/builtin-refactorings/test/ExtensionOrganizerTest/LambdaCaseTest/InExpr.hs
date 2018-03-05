@@ -28,7 +28,7 @@ x4 = if (\case {_ -> True}) 5       {-* LambdaCase *-}
 
 x5 = if | (\case {_ -> False}) 5 -> 20                    {-* LambdaCase *-}
         | (\case {_ -> True}) 5 -> (\case {_ -> 10}) ()   {-* LambdaCase, LambdaCase *-}
-        | otherwise -> (\case {_ -> 10}) ()               {-* LambdaCase *-} --MultiWayIf
+        | otherwise -> (\case {_ -> 10}) ()               {-* LambdaCase, MultiWayIf *-}
 
 x6 = case (\case {_ -> [1..10]}) () of  {-* LambdaCase *-}
        [] -> \case {_ -> 5}             {-* LambdaCase *-}

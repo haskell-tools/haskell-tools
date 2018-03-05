@@ -1,18 +1,5 @@
-{-# LANGUAGE TypeOperators
-           , DefaultSignatures
-           , StandaloneDeriving
-           , FlexibleContexts
-           , FlexibleInstances
-           , MultiParamTypeClasses
-           , TypeFamilies
-           , TemplateHaskell
-           , OverloadedStrings
-           , ConstraintKinds
-           , LambdaCase
-           , ViewPatterns
-           , ScopedTypeVariables
-           , UndecidableInstances
-           #-}
+{-# LANGUAGE TypeOperators, DefaultSignatures, StandaloneDeriving, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TypeFamilies, TemplateHaskell, OverloadedStrings, ConstraintKinds, LambdaCase, ViewPatterns, ScopedTypeVariables, UndecidableInstances #-}
+
 -- | A module for displaying the AST in a tree view.
 module Language.Haskell.Tools.ASTDebug where
 

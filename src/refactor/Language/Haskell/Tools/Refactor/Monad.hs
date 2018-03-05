@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving #-}
+
 -- | Types and instances for monadic refactorings. The refactoring monad provides automatic
 -- importing, keeping important source fragments (such as preprocessor pragmas), and providing
 -- contextual information for refactorings.
@@ -11,6 +12,7 @@ import Control.Monad.Trans (MonadTrans(..), MonadIO)
 import Control.Monad.Trans.Except (ExceptT(..), throwE, runExceptT)
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Trans.Writer (WriterT(..))
+import Control.Monad.Trans.Maybe  (MaybeT(..))
 import Control.Monad.Writer
 import DynFlags (HasDynFlags(..))
 import Exception (ExceptionMonad(..))
@@ -122,3 +124,7 @@ instance GhcMonad m => GhcMonad (ExceptT s m) where
 instance ExceptionMonad m => ExceptionMonad (ExceptT s m) where
   gcatch e c = ExceptT (runExceptT e `gcatch` (runExceptT . c))
   gmask m = ExceptT $ gmask (\f -> runExceptT $ m (ExceptT . f . runExceptT))
+
+instance (ExceptionMonad m) => ExceptionMonad (MaybeT m) where
+  gcatch action handler = MaybeT $ runMaybeT action `gcatch` (runMaybeT . handler)
+  gmask m = MaybeT $ gmask (\f -> runMaybeT $ m (\x -> MaybeT . f . runMaybeT $ x))

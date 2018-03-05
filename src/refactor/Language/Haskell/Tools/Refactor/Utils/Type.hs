@@ -1,12 +1,5 @@
-{-# LANGUAGE ConstraintKinds
-           , FlexibleContexts
-           , RankNTypes
-           , ScopedTypeVariables
-           , TupleSections
-           , TypeApplications
-           , TypeFamilies
-           , ViewPatterns
-           #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, ScopedTypeVariables, TypeApplications #-}
+
 module Language.Haskell.Tools.Refactor.Utils.Type (typeExpr, appTypeMatches, literalType) where
 
 import Data.List

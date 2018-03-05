@@ -1,7 +1,5 @@
-{-# LANGUAGE LambdaCase
-           , TypeApplications
-           , ScopedTypeVariables
-           #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables, TypeApplications #-}
+
 module Main where
 
 import Control.Applicative ((<$>))

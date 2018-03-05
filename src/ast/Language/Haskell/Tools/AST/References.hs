@@ -1,6 +1,7 @@
 -- don't show warnings, Template Haskell generated code contains unused variables
-{-# OPTIONS_GHC -fno-warn-unused-matches #-}
 {-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-warn-unused-matches #-}
+
 -- | Generated references for AST elements.
 module Language.Haskell.Tools.AST.References where
 
