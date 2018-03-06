@@ -18,15 +18,13 @@ getMatchesQuery = LocationQuery "GetMatches" getMatches
 
 getMatches :: RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad Value
 getMatches sp (_,mod) _
-  = do res <- execWriterT (nodesContaining sp !~ getMatchesOfName $ mod)
-       case res of [ctors] -> return ctors
-                   _ -> queryError "Not one single results found"
-
-
-getMatchesOfName :: QualifiedName -> WriterT [Value] QueryMonad QualifiedName
-getMatchesOfName n = do ctors <- lift $ getCtors (idType $ semanticsId n)
-                        tell [toJSON ctors]
-                        return n
+  = case selectedName of [n] -> do ctors <- getCtors $ idType $ semanticsId n
+                                   return $ toJSON ctors
+                         []  -> queryError "No name is selected."
+                         _   -> queryError "Multiple names are selected."
+  where
+    selectedName :: [QualifiedName]
+    selectedName = mod ^? nodesContaining sp
 
 getCtors :: GHC.Type -> QueryMonad [(String, [String])]
 -- | TODO: unpack forall, context types
