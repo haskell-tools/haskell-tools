@@ -35,6 +35,7 @@ library
                      , Language.Haskell.Tools.Refactor.Representation
                      , Language.Haskell.Tools.Refactor.Utils.AST
                      , Language.Haskell.Tools.Refactor.Utils.BindingElem
+                     , Language.Haskell.Tools.Refactor.Utils.Debug
                      , Language.Haskell.Tools.Refactor.Utils.Extensions
                      , Language.Haskell.Tools.Refactor.Utils.Helpers
                      , Language.Haskell.Tools.Refactor.Utils.Indentation

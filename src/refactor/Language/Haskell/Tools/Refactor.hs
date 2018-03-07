@@ -23,6 +23,7 @@ import Language.Haskell.Tools.Refactor.Prepare           as X hiding (ModuleName
 import Language.Haskell.Tools.Refactor.Refactoring       as X
 import Language.Haskell.Tools.Refactor.Representation    as X
 import Language.Haskell.Tools.Refactor.Utils.BindingElem as X
+import Language.Haskell.Tools.Refactor.Utils.Debug       as X
 import Language.Haskell.Tools.Refactor.Utils.Helpers     as X
 import Language.Haskell.Tools.Refactor.Utils.Indentation as X
 import Language.Haskell.Tools.Refactor.Utils.Lists       as X

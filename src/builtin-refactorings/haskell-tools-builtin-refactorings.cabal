@@ -111,7 +111,6 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeSynonymInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.UnboxedTuplesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ViewPatternsChecker
-                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
 
 
   build-depends:       base                      >= 4.10  && < 4.11

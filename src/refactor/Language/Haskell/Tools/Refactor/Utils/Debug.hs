@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 
-module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
-  ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
+module Language.Haskell.Tools.Refactor.Utils.Debug
+  ( module Language.Haskell.Tools.Refactor.Utils.Debug
   , module Debug.Trace
   ) where
 
@@ -13,7 +13,8 @@ import Control.Reference ((^.), (&))
 import Debug.Trace
 import qualified Outputable as GHC
 
-import Language.Haskell.Tools.Refactor
+import Language.Haskell.Tools.AST
+import Language.Haskell.Tools.Rewrite
 
 
 debugM :: (Monad m, Show a) => m a -> m a
