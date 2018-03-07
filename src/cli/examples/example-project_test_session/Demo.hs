@@ -1,0 +1,3 @@
+module Demo where
+
+b = ()

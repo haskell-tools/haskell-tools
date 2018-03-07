@@ -1,6 +1,24 @@
 -- | Defines the API for refactorings
 module Language.Haskell.Tools.Refactor
-    ( module X
+    ( module Language.Haskell.Tools.AST.SemaInfoClasses
+    , module Language.Haskell.Tools.Rewrite
+    , module Language.Haskell.Tools.AST.References
+    , module Language.Haskell.Tools.AST.Helpers
+    , module Language.Haskell.Tools.Refactor.Utils.Monadic
+    , module Language.Haskell.Tools.Refactor.Utils.Helpers
+    , module Language.Haskell.Tools.Rewrite.ElementTypes
+    , module Language.Haskell.Tools.Refactor.Prepare
+    , module Language.Haskell.Tools.Refactor.Utils.Lists
+    , module Language.Haskell.Tools.Refactor.Utils.BindingElem
+    , module Language.Haskell.Tools.Refactor.Utils.Indentation
+    , module Language.Haskell.Tools.Refactor.Querying
+    , module Language.Haskell.Tools.Refactor.Refactoring
+    , module Language.Haskell.Tools.Refactor.Utils.Name
+    , module Language.Haskell.Tools.Refactor.Representation
+    , module Language.Haskell.Tools.Refactor.Monad
+    , module Language.Haskell.Tools.Refactor.Utils.Type
+    , module Language.Haskell.Tools.Refactor.Utils.TypeLookup
+    , module Language.Haskell.Tools.Refactor.Utils.NameLookup
     , Ann, HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain, Dom, IdDom
     , shortShowSpan, shortShowSpanWithFile, SrcTemplateStage, SourceInfoTraversal(..)
     -- elements of source templates
@@ -22,6 +40,7 @@ import Language.Haskell.Tools.Refactor.Monad             as X
 import Language.Haskell.Tools.Refactor.Prepare           as X hiding (ModuleName)
 import Language.Haskell.Tools.Refactor.Refactoring       as X
 import Language.Haskell.Tools.Refactor.Representation    as X
+import Language.Haskell.Tools.Refactor.Querying          as X
 import Language.Haskell.Tools.Refactor.Utils.BindingElem as X
 import Language.Haskell.Tools.Refactor.Utils.Debug       as X
 import Language.Haskell.Tools.Refactor.Utils.Helpers     as X

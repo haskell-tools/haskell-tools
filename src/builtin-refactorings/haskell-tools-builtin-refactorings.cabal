@@ -1,5 +1,5 @@
 name:                haskell-tools-builtin-refactorings
-version:             1.0.0.0
+version:             1.0.1.0
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -74,6 +74,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
                      , Language.Haskell.Tools.Refactor.Builtin.InlineBinding
                      , Language.Haskell.Tools.Refactor.Builtin.FloatOut
+                     , Language.Haskell.Tools.Refactor.Builtin.GetMatches
                      , Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
@@ -115,6 +116,7 @@ library
 
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
+                     , aeson                     >= 1.0 && < 1.3
                      , uniplate                  >= 1.6  && < 1.7
                      , classyplate               >= 0.3  && < 0.4
                      , deepseq                   >= 1.4  && < 1.5
@@ -142,10 +144,10 @@ test-suite haskell-tools-builtin-refactorings-test
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.10  && < 4.11
-                     , tasty                     >= 0.11 && < 0.13
+                     , tasty                     >= 0.11 && < 1.1
                      , tasty-hunit               >= 0.9 && < 0.11
                      , transformers              >= 0.5  && < 0.6
-                     , either                    >= 4.4  && < 4.5
+                     , either                    >= 4.4  && < 5.1
                      , filepath                  >= 1.4  && < 1.5
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
@@ -175,10 +177,10 @@ test-suite ht-extension-organizer-test
   hs-source-dirs:      test
   main-is:             ExtensionOrganizerTest/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11
-                     , tasty                     >= 0.11 && < 0.13
+                     , tasty                     >= 0.11 && < 1.1
                      , tasty-hunit               >= 0.9 && < 0.11
                      , transformers              >= 0.5  && < 0.6
-                     , either                    >= 4.4  && < 4.5
+                     , either                    >= 4.4  && < 5.1
                      , filepath                  >= 1.4  && < 1.5
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
@@ -211,7 +213,7 @@ test-suite ht-extension-organizer-test
 --                      , criterion                 >= 1.2  && < 1.3
 --                      , silently                  >= 1.2  && < 1.3
 --                      , transformers              >= 0.5  && < 0.6
---                      , either                    >= 4.4  && < 4.5
+--                      , either                    >= 4.4  && < 4.6
 --                      , filepath                  >= 1.4  && < 1.5
 --                      , mtl                       >= 2.2  && < 2.3
 --                      , uniplate                  >= 1.6  && < 1.7

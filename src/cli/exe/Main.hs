@@ -8,11 +8,11 @@ import System.Exit (exitSuccess, exitFailure)
 import System.IO (IO, stdout, stdin)
 
 import Language.Haskell.Tools.Daemon.Options (sharedOptionsParser)
-import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings, builtinQueries)
 import Language.Haskell.Tools.Refactor.CLI (normalRefactorSession, CLIOptions(..))
 
 main :: IO ()
-main = exit =<< normalRefactorSession builtinRefactorings stdin stdout =<< execParser opts
+main = exit =<< normalRefactorSession builtinRefactorings builtinQueries stdin stdout =<< execParser opts
   where exit :: Bool -> IO ()
         exit True = exitSuccess
         exit False = exitFailure
