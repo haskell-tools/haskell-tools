@@ -1,5 +1,5 @@
 name:                haskell-tools-debug
-version:             1.0.1.0
+version:             1.0.1.1
 synopsis:            Debugging Tools for Haskell-tools
 description:         Debugging Tools for Haskell-tools
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -29,11 +29,10 @@ library
                      , haskell-tools-refactor    >= 1.0 && < 1.1
                      , haskell-tools-prettyprint >= 1.0 && < 1.1
                      , haskell-tools-builtin-refactorings >= 1.0 && < 1.1
-                     , uniplate
-                     , classyplate               >= 0.3  && < 0.4
-                     , syb
-                     , criterion
-                     , mtl
+                     , uniplate                  >= 1.6 && < 1.7
+                     , classyplate               >= 0.3 && < 0.4
+                     , criterion                 >= 1.1 && < 1.5
+                     , mtl                       >= 2.2 && < 2.3
   default-language:    Haskell2010
 
 executable ht-debug
