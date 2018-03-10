@@ -39,7 +39,6 @@ addOccurence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]
 addOccurence' key node = SMap.insertWith (++) key [getRange node]
 
--- TODO: add isTurnedOn check
 addOccurence_ :: (MonadState ExtMap m, HasRange node) =>
                   Extension -> node -> m ()
 addOccurence_ extension element = modify $ addOccurence' (lVar extension) element
@@ -55,6 +54,16 @@ addRelation_ rel element = modify $ addOccurence' rel element
 addRelation :: (MonadState ExtMap m, HasRange node) =>
                 LogicalRelation Extension -> node -> m node
 addRelation rel node = addRelation_ rel node >> return node
+
+
+addOccurenceLoc' :: Ord k => k -> SrcSpan -> SMap.Map k [SrcSpan] -> SMap.Map k [SrcSpan]
+addOccurenceLoc' k loc = SMap.insertWith (++) k [loc]
+
+addOccurenceLoc :: MonadState ExtMap m => Extension -> SrcSpan -> m ()
+addOccurenceLoc ext loc = modify $ addOccurenceLoc' (lVar ext) loc
+
+addRelationLoc :: MonadState ExtMap m => LogicalRelation Extension -> SrcSpan -> m ()
+addRelationLoc rel loc = modify $ addOccurenceLoc' rel loc
 
 isTurnedOn :: Extension -> ExtMonad Bool
 isTurnedOn ext = do

@@ -55,6 +55,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests constrainedClassMethodsTest
   , mkTests multiWayIfTest
   , mkTests typeOperatorsTest
+  , mkTests undecidableInstancesTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -422,4 +423,16 @@ toModules = [ "InfixClassDecl"
             , "NormalClassDecl"
             , "NormalDataDecl"
             , "NormalInstance"
+            ]
+
+undecidableInstancesTest :: TestSuite
+undecidableInstancesTest = (udRoot, udModules)
+udRoot = "UndecidableInstancesTest"
+udModules = [ "BadTyVars"
+            , "NoSmallerPred"
+            , "TupleConstraint"
+            , "TyFamBadTyVars"
+            , "TyFamNestedTyFun"
+            , "TyFamNoSmaller"
+            , "TyFunInSuperClass"
             ]

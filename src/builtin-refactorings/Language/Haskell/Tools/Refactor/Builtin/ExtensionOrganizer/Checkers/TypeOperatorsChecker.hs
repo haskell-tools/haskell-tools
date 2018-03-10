@@ -55,7 +55,7 @@ chkTypeOperatorsDecl' d = do
   -- but one that uses an operator OccName.
 isOperatorM :: DeclHead -> ExtMonad Bool
 isOperatorM dh = do
-  mSemName <- runMaybeT . declHeadSemName $ dh
+  let mSemName = declHeadSemName dh
   case mSemName of
     Just semName
       | occ <- GHC.nameOccName semName

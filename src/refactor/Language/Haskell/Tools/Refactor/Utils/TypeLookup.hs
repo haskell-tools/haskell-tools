@@ -2,6 +2,8 @@
 
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
+import qualified CoAxiom   as GHC
+import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe)
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Kind      as GHC (isConstraintKind, typeKind)
 import qualified ConLike   as GHC (ConLike(..))
@@ -16,6 +18,8 @@ import Language.Haskell.Tools.Rewrite
 import Language.Haskell.Tools.Refactor.Utils.NameLookup
 import Language.Haskell.Tools.Refactor.Utils.Maybe
 
+
+type ClosedTyFam = GHC.CoAxiom GHC.Branched
 
 hasConstraintKind :: GHC.Type -> Bool
 hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
@@ -111,10 +115,10 @@ lookupClassWith getName x = do
     _ -> fail "TypeLookup.lookupClassWith: Argument does not contain a class type constructor"
 
 lookupClassFromInstance :: GhcMonad m => InstanceHead -> MaybeT m GHC.Class
-lookupClassFromInstance = lookupClassWith instHeadSemName
+lookupClassFromInstance = lookupClassWith (liftMaybe . instHeadSemName)
 
 lookupClassFromDeclHead :: GhcMonad m => DeclHead -> MaybeT m GHC.Class
-lookupClassFromDeclHead = lookupClassWith declHeadSemName
+lookupClassFromDeclHead = lookupClassWith (liftMaybe . declHeadSemName)
 
 -- | Looks up the right-hand side (GHC representation)
 -- of a Haskell Tools Type corresponding to a type synonym
@@ -152,3 +156,16 @@ isVanillaDataConNameM name = do
   return . GHC.isVanillaDataCon $ dc
   where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc
         extractDataCon  _                                  = Nothing
+
+-- | Looks up a closed type family from a name.
+lookupClosedTyFam :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m ClosedTyFam
+lookupClosedTyFam name = do
+  sname <- liftMaybe . semanticsName $ name
+  tt    <- MaybeT    . GHC.lookupName $ sname
+  liftMaybe . coAxiomFromTyThing $ tt
+
+-- | Extract the CoAxioms from a TyThing representing a closed type family.
+coAxiomFromTyThing :: GHC.TyThing -> Maybe (GHC.CoAxiom GHC.Branched)
+coAxiomFromTyThing (GHC.ATyCon tc)   = GHC.isClosedSynFamilyTyConWithAxiom_maybe tc
+coAxiomFromTyThing (GHC.ACoAxiom ax) = Just ax
+coAxiomFromTyThing _                 = Nothing

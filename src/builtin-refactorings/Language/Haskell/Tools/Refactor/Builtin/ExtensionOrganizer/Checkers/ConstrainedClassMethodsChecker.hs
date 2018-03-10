@@ -31,7 +31,7 @@ chkCCMDeclHead dh = do
 -- fails <=> Lookup is unsuccesful (either name or type lookup)
 chkCCMDeclHead' :: DeclHead -> MaybeT ExtMonad Bool
 chkCCMDeclHead' dh = do
-  sname   <- declHeadSemName dh
+  sname   <- liftMaybe . declHeadSemName $ dh
   tything <- MaybeT . GHC.lookupName $ sname
   case tything of
     GHC.ATyCon tc | GHC.isClassTyCon tc -> liftMaybe . fmap classNeedsCCM . GHC.tyConClass_maybe $ tc

@@ -19,8 +19,8 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 
 -- | Checks whether any name's corresponding type in the module contains a type equality.
-globalChkNamesForTypeEq :: CheckNode Module
-globalChkNamesForTypeEq = conditionalAny globalChkNamesForTypeEq' [TypeFamilies, GADTs]
+gblChkNamesForTypeEq :: CheckNode Module
+gblChkNamesForTypeEq = conditionalAny gblChkNamesForTypeEq' [TypeFamilies, GADTs]
 
 -- | Checks an operator for syntactic evidence of a ~ b type equality if TypeFamilies or GADTs is turned on.
 chkOperatorForTypeEq :: CheckNode Operator
@@ -89,8 +89,8 @@ chkNameForTyEqn name = do
                     || tc `hasKey` eqReprPrimTyConKey
                     || tc `hasKey` eqPhantPrimTyConKey
 
-globalChkNamesForTypeEq' :: CheckNode Module
-globalChkNamesForTypeEq' m = do
+gblChkNamesForTypeEq' :: CheckNode Module
+gblChkNamesForTypeEq' m = do
   let origNames   = universeBi (m ^. modDecl) :: [Name]
       pairedNames = catMaybes . zipWith zf (map semanticsName origNames) $ origNames
       uniqueNames = SMap.elems . SMap.fromList . reverse $ pairedNames

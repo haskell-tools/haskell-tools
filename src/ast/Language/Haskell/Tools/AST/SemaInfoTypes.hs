@@ -166,7 +166,7 @@ mkImportInfo :: GHC.Module -> [n] -> [PName n] -> [GHC.Module] -> ImportInfo n
 mkImportInfo mod !names !imported deps = ImportInfo mod names imported deps
 
 -- | Gets the class and family instances from a module.
-getInstances :: [Module] -> GHC.Ghc ([ClsInst], [FamInst])
+getInstances :: GHC.GhcMonad m => [GHC.Module] -> m ([ClsInst], [FamInst])
 getInstances mods = do
   env <- GHC.getSession
   eps <- liftIO $ hscEPS env
@@ -178,7 +178,7 @@ getInstances mods = do
       epsFamInsts = filter famIsFromMods $ famInstEnvElts $ eps_fam_inst_env eps
   return (hptInsts ++ epsInsts, hptFamInsts ++ epsFamInsts)
 
--- | Info corresponding to an record-wildcard
+-- | Info corresponding to a record-wildcard
 data ImplicitFieldInfo = ImplicitFieldInfo { _implicitFieldBindings :: [(Name, Name)] -- ^ The implicitly bounded names
                                            }
   deriving Data
