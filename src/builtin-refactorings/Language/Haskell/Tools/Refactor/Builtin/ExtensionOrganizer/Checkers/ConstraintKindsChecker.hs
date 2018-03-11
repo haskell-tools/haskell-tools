@@ -40,9 +40,3 @@ hasAnyTyVarHeads ta@TupleAssert{}
   | Just assertions <- ta ^? innerAsserts & annListElems
   = any hasAnyTyVarHeads assertions
 hasAnyTyVarHeads _ = False
-
-declHeadQName :: DeclHead -> QualifiedName
-declHeadQName (NameDeclHead n)       = n ^. simpleName
-declHeadQName (ParenDeclHead dh)     = declHeadQName dh
-declHeadQName (DeclHeadApp dh _)     = declHeadQName dh
-declHeadQName (InfixDeclHead _ op _) = op ^. operatorName

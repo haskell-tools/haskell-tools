@@ -8,7 +8,10 @@ import Data.Maybe
 import Control.Monad
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-liftMaybe :: (Monad m) => Maybe a -> MaybeT m a
+isJustT :: Monad m => MaybeT m a -> m Bool
+isJustT m = liftM isJust . runMaybeT $ m
+
+liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
 maybeT :: Monad m => b -> (a -> b) -> MaybeT m a -> m b

@@ -13,6 +13,9 @@ import Language.Haskell.Tools.Rewrite
 import Language.Haskell.Tools.Refactor.Utils.Maybe
 
 
+instance HasNameInfo' GHC.Name where
+  semanticsName = Just <$> id
+
 instance HasNameInfo' Operator where
   semanticsName = opSemName
 
@@ -22,8 +25,15 @@ instance HasNameInfo' DeclHead where
 instance HasNameInfo' InstanceHead where
   semanticsName = instHeadSemName
 
+
 opSemName :: Operator -> Maybe GHC.Name
 opSemName = semanticsName . (^. operatorName)
+
+declHeadQName :: DeclHead -> QualifiedName
+declHeadQName (NameDeclHead n)       = n ^. simpleName
+declHeadQName (ParenDeclHead dh)     = declHeadQName dh
+declHeadQName (DeclHeadApp dh _)     = declHeadQName dh
+declHeadQName (InfixDeclHead _ op _) = op ^. operatorName
 
 declHeadSemName :: DeclHead -> Maybe GHC.Name
 declHeadSemName (NameDeclHead n)       = semanticsName n
@@ -52,3 +62,18 @@ assertionSemNames (InfixAssert _ op _) = maybeToList . opSemName $ op
 assertionSemNames (ImplicitAssert n _) = maybeToList . semanticsName $ n
 assertionSemNames (TupleAssert xs)     = concatMap assertionSemNames xs
 assertionSemNames _ = []
+
+-- | Extracts the name of a type.
+-- In case of a type application, it finds the type being applied.
+-- It works only for unambiguous types, so it won't work for tuples.
+nameFromType :: Type -> Maybe Name
+nameFromType (TypeApp f _)    = nameFromType f
+nameFromType (ParenType x)    = nameFromType x
+nameFromType (ListType t)     = nameFromType t
+nameFromType (KindedType t _) = nameFromType t
+nameFromType (BangType t)     = nameFromType t
+nameFromType (LazyType t)     = nameFromType t
+nameFromType (UnpackType t)   = nameFromType t
+nameFromType (NoUnpackType t) = nameFromType t
+nameFromType (VarType x)      = Just x
+nameFromType _                = Nothing

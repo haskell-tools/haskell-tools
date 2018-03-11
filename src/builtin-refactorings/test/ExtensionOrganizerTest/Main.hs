@@ -445,5 +445,6 @@ fcRoot = "FlexibleContextsTest"
 fcModules = [ "ForAll"
             , "NestedCtx"
             , "TypeApp"
+            , "TySynConstraints"
             , "VarType"
             ]

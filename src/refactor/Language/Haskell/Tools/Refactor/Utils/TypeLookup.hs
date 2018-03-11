@@ -115,6 +115,9 @@ lookupClassWith getName x = do
     GHC.ATyCon tc | GHC.isClassTyCon tc -> liftMaybe . GHC.tyConClass_maybe $ tc
     _ -> fail "TypeLookup.lookupClassWith: Argument does not contain a class type constructor"
 
+lookupClass :: (GhcMonad m, HasNameInfo' n) => n -> MaybeT m GHC.Class
+lookupClass = lookupClassWith (liftMaybe . semanticsName)
+
 lookupClassFromInstance :: GhcMonad m => InstanceHead -> MaybeT m GHC.Class
 lookupClassFromInstance = lookupClassWith (liftMaybe . instHeadSemName)
 
@@ -129,19 +132,6 @@ semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeSynRhs
 -- | Converts a global Haskell Tools type to a GHC type
 semanticsType :: GhcMonad m => Type -> MaybeT m GHC.Type
 semanticsType ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeFromGlobalName
-
--- | Extracts the name of a type
--- In case of a type application, it finds the type being applied
-nameFromType :: Type -> Maybe Name
-nameFromType (TypeApp f _)    = nameFromType f
-nameFromType (ParenType x)    = nameFromType x
-nameFromType (KindedType t _) = nameFromType t
-nameFromType (BangType t)     = nameFromType t
-nameFromType (LazyType t)     = nameFromType t
-nameFromType (UnpackType t)   = nameFromType t
-nameFromType (NoUnpackType t) = nameFromType t
-nameFromType (VarType x)      = Just x
-nameFromType _                = Nothing
 
 isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
@@ -171,6 +161,7 @@ coAxiomFromTyThing (GHC.ATyCon tc)   = GHC.isClosedSynFamilyTyConWithAxiom_maybe
 coAxiomFromTyThing (GHC.ACoAxiom ax) = Just ax
 coAxiomFromTyThing _                 = Nothing
 
+-- | Determines whether a Type itself has a type variable head.
 hasTyVarHead :: Type -> Bool
 hasTyVarHead (ForallType _ t) = hasTyVarHead t
 hasTyVarHead (CtxType _ t) = hasTyVarHead t

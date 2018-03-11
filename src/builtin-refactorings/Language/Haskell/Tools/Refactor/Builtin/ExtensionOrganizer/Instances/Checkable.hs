@@ -22,6 +22,7 @@ instance Checkable Decl where
       >=> chkTypeSynonymInstancesDecl
       >=> chkTypeOperatorsDecl
       >=> chkUndecidableInstancesDecl
+      >=> chkFlexibleContextsDecl
 
 instance Checkable Pattern where
   check = chkBangPatterns

@@ -1,5 +1,6 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeOperatorsChecker where
 
+import PrelNames (eqTyConName)
 import qualified Name    as GHC (nameOccName)
 import qualified OccName as GHC (isTcOcc, isSymOcc)
 
@@ -32,7 +33,11 @@ chkTypeOperatorsDecl = conditional chkTypeOperatorsDecl' TypeOperators
 
 
 chkTypeOperatorsType' :: CheckNode Type
-chkTypeOperatorsType' t@InfixTypeApp{} = addOccurence TypeOperators t
+chkTypeOperatorsType' t@(InfixTypeApp _ op _)
+  | Just name <- semanticsName op
+  , name == eqTyConName
+  = return t
+  | otherwise = addOccurence TypeOperators t
 chkTypeOperatorsType' t = return t
 
 chkTypeOperatorsAssertion' :: CheckNode Assertion
