@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, OverloadedStrings, RecordWildCards, ScopedTypeVariables, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, OverloadedStrings, RecordWildCards, ScopedTypeVariables, TypeApplications #-}
 
 -- | The central module for the background process of Haskell-tools. Starts the daemon process and
 -- updates it for each client request in a loop. After this releases the resources and terminates.

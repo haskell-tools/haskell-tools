@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+
 
 
 module Language.Haskell.Tools.Refactor.Utils.Debug

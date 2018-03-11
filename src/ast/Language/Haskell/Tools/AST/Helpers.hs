@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, PatternSynonyms, RankNTypes, ScopedTypeVariables, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds, PatternSynonyms, RankNTypes, ScopedTypeVariables #-}
 
 
 -- | Helper functions for using the AST.
