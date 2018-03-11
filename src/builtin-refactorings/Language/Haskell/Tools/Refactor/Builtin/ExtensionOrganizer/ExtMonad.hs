@@ -70,6 +70,9 @@ isTurnedOn ext = do
   defaults <- ask
   return $! ext `elem` defaults
 
+isTurnedOff :: Extension -> ExtMonad Bool
+isTurnedOff ext = not <$> isTurnedOn ext
+
 conditional :: (node -> ExtMonad node) ->
                Extension ->
                node ->

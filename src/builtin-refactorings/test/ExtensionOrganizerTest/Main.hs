@@ -429,6 +429,7 @@ undecidableInstancesTest :: TestSuite
 undecidableInstancesTest = (udRoot, udModules)
 udRoot = "UndecidableInstancesTest"
 udModules = [ "BadTyVars"
+            , "GNDForAssociatedTypes"
             , "NoSmallerPred"
             , "TupleConstraint"
             , "TyFamBadTyVars"
