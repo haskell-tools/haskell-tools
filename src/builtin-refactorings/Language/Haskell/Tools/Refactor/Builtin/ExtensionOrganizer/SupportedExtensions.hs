@@ -34,4 +34,4 @@ typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods
 
 typeSystemExtensions :: [Extension]
 typeSystemExtensions = [ TypeFamilies, GADTs, ExistentialQuantification
-                       , ConstraintKinds ]
+                       , ConstraintKinds, UndecidableInstances ]

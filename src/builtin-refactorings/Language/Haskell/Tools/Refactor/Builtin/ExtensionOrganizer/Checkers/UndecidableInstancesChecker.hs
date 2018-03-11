@@ -7,7 +7,9 @@ import InstEnv
 import TcType
 import GHC hiding (Module, ClassDecl, ClosedTypeFamily)
 
-import Control.Reference ((^.))
+import Data.Maybe (isJust)
+
+import Control.Reference ((^.), (&))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Language.Haskell.Tools.AST
@@ -59,25 +61,32 @@ famInstNeedsUD inst
   | otherwise = False
 
 -- | Checks a declaration whether it needs UndecidableInstances.
--- If a lookup is not successful, it keeps the extension.
+-- (If the extension is turned on)
 chkUndecidableInstancesDecl :: CheckNode Decl
-chkUndecidableInstancesDecl d = do
-  mDecl <- runMaybeT (chkUndecidableInstancesDecl' d)
+chkUndecidableInstancesDecl = conditional chkUndecidableInstancesDecl' UndecidableInstances
+
+-- | Checks a declaration whether it needs UndecidableInstances.
+-- If a lookup is not successful, it keeps the extension.
+chkUndecidableInstancesDecl' :: CheckNode Decl
+chkUndecidableInstancesDecl' d = do
+  mDecl <- runMaybeT (chkUndecidableInstancesDeclMaybe d)
   maybe (addOccurence UndecidableInstances d) return mDecl
 
 -- | Checks a class declaration whether it has a type function in its context,
 -- or a closed type family declaration needs UndecidableInstances.
 -- For more information on the family check, see checkFamInstRhs.
 -- May fail on lookup.
-chkUndecidableInstancesDecl' :: Decl -> MaybeT ExtMonad Decl
-chkUndecidableInstancesDecl' d@(ClassDecl mCtx _ _ _) = do
-  ctx <- liftMaybe $ mCtx ^. annMaybe
-  let assert = ctx ^. contextAssertion
-      names  = assertionQNames assert
-  types <- mapM lookupTypeFromId names
-  if any hasTyFunHead types then addOccurence UndecidableInstances d
-                            else return d
-chkUndecidableInstancesDecl' d@(ClosedTypeFamily dh _ _) = do
+chkUndecidableInstancesDeclMaybe :: Decl -> MaybeT ExtMonad Decl
+chkUndecidableInstancesDeclMaybe d@(ClassDecl mCtx _ _ _)
+  | isJust (mCtx ^. annMaybe) = do
+    ctx <- liftMaybe $ mCtx ^. annMaybe
+    let assert = ctx ^. contextAssertion
+        names  = assertionQNames assert
+    types <- mapM lookupTypeFromId names
+    if any hasTyFunHead types then addOccurence UndecidableInstances d
+                              else return d
+  | otherwise = return d
+chkUndecidableInstancesDeclMaybe d@(ClosedTypeFamily dh _ _) = do
   tyFam <- lookupClosedTyFam dh
   let brs    = fromBranches . coAxiomBranches $ tyFam
       famEqs = map ((,) <$> coAxBranchLHS <*> tcTyFamInsts . coAxBranchRHS) brs
@@ -86,4 +95,4 @@ chkUndecidableInstancesDecl' d@(ClosedTypeFamily dh _ _) = do
     chkFamEqM :: [GHC.Type] -> [(GHC.TyCon, [GHC.Type])] -> ExtMonad ()
     chkFamEqM lhs rhs = when (checkFamEq lhs rhs)
                              (addOccurence_ UndecidableInstances d)
-chkUndecidableInstancesDecl' d = return d
+chkUndecidableInstancesDeclMaybe d = return d
