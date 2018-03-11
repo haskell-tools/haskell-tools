@@ -3,12 +3,13 @@
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
 import qualified CoAxiom   as GHC
-import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe)
-import qualified TyCoRep   as GHC (Type(..), TyThing(..))
-import qualified Kind      as GHC (isConstraintKind, typeKind)
 import qualified ConLike   as GHC (ConLike(..))
 import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
+import qualified Kind      as GHC (isConstraintKind, typeKind)
+import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
+import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe)
+import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
 import           GHC       (GhcMonad)
@@ -169,3 +170,32 @@ coAxiomFromTyThing :: GHC.TyThing -> Maybe (GHC.CoAxiom GHC.Branched)
 coAxiomFromTyThing (GHC.ATyCon tc)   = GHC.isClosedSynFamilyTyConWithAxiom_maybe tc
 coAxiomFromTyThing (GHC.ACoAxiom ax) = Just ax
 coAxiomFromTyThing _                 = Nothing
+
+hasTyVarHead :: Type -> Bool
+hasTyVarHead (ForallType _ t) = hasTyVarHead t
+hasTyVarHead (CtxType _ t) = hasTyVarHead t
+hasTyVarHead FunctionType{} = False
+hasTyVarHead TupleType{} = False
+hasTyVarHead UnboxedTupleType{} = False
+hasTyVarHead ListType{} = False
+hasTyVarHead ParArrayType{} = False
+hasTyVarHead (TypeApp f _) = hasTyVarHead f
+hasTyVarHead InfixTypeApp{} = False
+hasTyVarHead (ParenType t) = hasTyVarHead t
+hasTyVarHead (VarType n) = maybe False GHC.isTyVarName (semanticsName n)
+hasTyVarHead (KindedType t _) = hasTyVarHead t
+hasTyVarHead (BangType t) = hasTyVarHead t
+hasTyVarHead (LazyType t) = hasTyVarHead t
+hasTyVarHead (UnpackType t) = hasTyVarHead t
+hasTyVarHead (NoUnpackType t) = hasTyVarHead t
+hasTyVarHead WildcardType{} = False
+hasTyVarHead NamedWildcardType{} = False
+hasTyVarHead SpliceType{} = False
+hasTyVarHead QuasiQuoteType{} = False
+hasTyVarHead PromotedIntType{} = False
+hasTyVarHead PromotedStringType{} = False
+hasTyVarHead PromotedConType{} = False
+hasTyVarHead PromotedListType{} = False
+hasTyVarHead PromotedTupleType{} = False
+hasTyVarHead PromotedUnitType{} = False
+hasTyVarHead UnboxedSumType{} = False

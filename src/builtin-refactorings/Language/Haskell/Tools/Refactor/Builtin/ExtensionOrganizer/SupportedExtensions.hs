@@ -30,6 +30,7 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
 typeClassExtensions :: [Extension]
 typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods
                       , FlexibleInstances, TypeSynonymInstances
+                      , FlexibleContexts
                       ]
 
 typeSystemExtensions :: [Extension]

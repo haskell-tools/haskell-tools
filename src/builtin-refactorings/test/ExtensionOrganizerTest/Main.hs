@@ -56,6 +56,7 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests multiWayIfTest
   , mkTests typeOperatorsTest
   , mkTests undecidableInstancesTest
+  , mkTests flexibleContextsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -436,4 +437,13 @@ udModules = [ "BadTyVars"
             , "TyFamNestedTyFun"
             , "TyFamNoSmaller"
             , "TyFunInSuperClass"
+            ]
+
+flexibleContextsTest :: TestSuite
+flexibleContextsTest = (fcRoot, fcModules)
+fcRoot = "FlexibleContextsTest"
+fcModules = [ "ForAll"
+            , "NestedCtx"
+            , "TypeApp"
+            , "VarType"
             ]

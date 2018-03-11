@@ -11,6 +11,7 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.Deriv
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitForAllChecker          as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitNamespacesChecker      as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker       as X
+import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleContextsChecker        as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker  as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.GADTsChecker                   as X
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.KindSignaturesChecker          as X

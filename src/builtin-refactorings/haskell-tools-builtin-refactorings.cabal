@@ -43,6 +43,7 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/DerivingsTest/*.hs
                   , test/ExtensionOrganizerTest/ExistentialQuantificationTest/*.hs
                   , test/ExtensionOrganizerTest/ExplicitNamespacesTest/*.hs
+                  , test/ExtensionOrganizerTest/FlexibleContextsTest/*.hs
                   , test/ExtensionOrganizerTest/FlexibleInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/FunctionalDependenciesTest/*.hs
                   , test/ExtensionOrganizerTest/GADTsTest/*.hs
@@ -61,6 +62,7 @@ extra-source-files: examples/CPP/*.hs
                   , test/ExtensionOrganizerTest/TupleSectionsTest/*.hs
                   , test/ExtensionOrganizerTest/TypeFamiliesTest/*.hs
                   , test/ExtensionOrganizerTest/TypeOperatorsTest/*.hs
+                  , test/ExtensionOrganizerTest/UndecidableInstancesTest/*.hs
                   , test/ExtensionOrganizerTest/ViewPatternsTest/*.hs
 
 library
@@ -92,6 +94,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.DerivingsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitForAllChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ExplicitNamespacesChecker
+                     , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleContextsChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FunctionalDependenciesChecker
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.GADTsChecker

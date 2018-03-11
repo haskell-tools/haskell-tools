@@ -110,3 +110,6 @@ instance Checkable Assertion where
 
 instance Checkable InstanceHead where
   check = chkTypeOperatorsInstHead
+
+instance Checkable Context where
+  check = chkFlexibleContexts

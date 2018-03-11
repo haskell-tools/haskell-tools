@@ -37,6 +37,7 @@ type family HasChecker node where
   HasChecker ConDecl          = 'True
   HasChecker Assertion        = 'True
   HasChecker InstanceHead     = 'True
+  HasChecker Context          = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node
