@@ -24,7 +24,7 @@ import System.IO
 
 import Language.Haskell.Tools.Daemon.Options (SharedDaemonOptions(..))
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB(..))
-import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
+import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings, builtinQueries)
 import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSession)
 
 rootDir = "examples"
@@ -134,7 +134,7 @@ makeCliTest wd rfs = do
     inHandle <- newFileHandle inKnob "<input>" ReadMode
     outKnob <- newKnob (BS.pack [])
     outHandle <- newFileHandle outKnob "<output>" WriteMode
-    void $ normalRefactorSession builtinRefactorings inHandle outHandle
+    void $ normalRefactorSession builtinRefactorings builtinQueries inHandle outHandle
              (CLIOptions False False Nothing (SharedDaemonOptions True Nothing False False Nothing (Just DefaultDB)) [wd])
   `finally` do removeDirectoryRecursive wd
                renameDirectory (wd ++ "_orig") wd
