@@ -8,7 +8,7 @@ import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
 import qualified Kind      as GHC (isConstraintKind, typeKind)
 import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
-import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe)
+import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
@@ -137,14 +137,29 @@ isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
 
--- | Decides whether a given name is a standard Haskell98 data constructor.
--- Fails if not given a proper name.
-isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
-isVanillaDataConNameM name = do
+-- | Looks up the given name, extracts something out of it.
+-- If the extraction is not succesful, it returns False,
+-- if it is successful, then checks the result against the predicate.
+-- The reasoning behind this, is that the predicate can only be
+-- satisfied by a proper name.
+satisfies :: (HasNameInfo' n, GhcMonad m) =>
+             (GHC.TyThing -> Maybe a) -> (a -> Bool) -> n -> MaybeT m Bool
+satisfies extract pred name = do
   sname <- liftMaybe . semanticsName  $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
-  dc    <- liftMaybe . extractDataCon $ tt
-  return . GHC.isVanillaDataCon $ dc
+  return $ maybe False pred (extract tt)
+
+-- | Decides whether a given name is a type family constructor.
+-- Fails if the lookup is not successful.
+isClassTyConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
+isClassTyConNameM = satisfies extractTyCon GHC.isClassTyCon
+  where extractTyCon (GHC.ATyCon tc) = Just tc
+        extractTyCon  _              = Nothing
+
+-- | Decides whether a given name is a standard Haskell98 data constructor.
+-- Fails if the lookup is not successful.
+isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
+isVanillaDataConNameM = satisfies extractDataCon GHC.isVanillaDataCon
   where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc
         extractDataCon  _                                  = Nothing
 

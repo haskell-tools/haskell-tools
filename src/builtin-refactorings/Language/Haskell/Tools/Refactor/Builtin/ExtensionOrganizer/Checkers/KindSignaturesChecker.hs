@@ -5,4 +5,4 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkKindSignaturesKind :: CheckNode Kind
 chkKindSignaturesKind = conditional chkKind KindSignatures
-  where chkKind = addOccurence KindSignatures
+  where chkKind = addEvidence KindSignatures

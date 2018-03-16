@@ -8,15 +8,15 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 -- can be reached from: Decl, Type, Expr, Pattern
 chkTemplateHaskellSplice :: CheckNode Splice
-chkTemplateHaskellSplice = addOccurence TemplateHaskell
+chkTemplateHaskellSplice = addEvidence TemplateHaskell
 
 -- can be reached from: Type, Expr, Pattern
 chkTemplateHaskellQuasiQuote :: CheckNode QuasiQuote
-chkTemplateHaskellQuasiQuote = addOccurence QuasiQuotes
+chkTemplateHaskellQuasiQuote = addEvidence QuasiQuotes
 
 -- can be reached from: Expr
 chkTemplateHaskellBracket :: CheckNode Bracket
-chkTemplateHaskellBracket = addOccurence TemplateHaskellQuotes
+chkTemplateHaskellBracket = addEvidence TemplateHaskellQuotes
 
 chkTemplateHaskellhNamePart :: CheckNode NamePart
 chkTemplateHaskellhNamePart = conditional chkTemplateHaskellNamePart' TemplateHaskellQuotes
@@ -25,5 +25,5 @@ chkTemplateHaskellhNamePart = conditional chkTemplateHaskellNamePart' TemplateHa
 -- should be THQuotes OR DataKinds
 chkTemplateHaskellNamePart' :: CheckNode NamePart
 chkTemplateHaskellNamePart' n@(NamePart name) =
-  if (head name == '\'') then addOccurence TemplateHaskellQuotes n
+  if (head name == '\'') then addEvidence TemplateHaskellQuotes n
                          else return n

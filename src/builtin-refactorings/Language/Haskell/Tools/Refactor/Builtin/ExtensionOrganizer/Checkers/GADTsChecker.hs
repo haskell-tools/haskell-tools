@@ -26,8 +26,8 @@ chkGADTsGadtConDecl' conDecl = do
   let conNames = conDecl ^. (gadtConNames & annListElems)
   mres <- mapM (runMaybeT . isVanillaDataConNameM) conNames
   if and . catMaybes $ mres
-    then addOccurence GADTSyntax conDecl
-    else do addOccurence GADTSyntax conDecl
+    then addEvidence GADTSyntax conDecl
+    else do addEvidence GADTSyntax conDecl
             addRelation (GADTs `lOr` ExistentialQuantification) conDecl
 
 -- Extracts the name from a ConDecl, and checks whether it is a vanilla

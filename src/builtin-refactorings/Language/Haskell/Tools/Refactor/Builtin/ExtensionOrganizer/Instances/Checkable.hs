@@ -9,8 +9,9 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 -- | Global checks
 instance Checkable Module where
-  check = gblChkNamesForTypeEq
+  check = gblChkQNamesForTypeEq
       >=> gblChkUndecidableInstances
+      >=> gblChkQNamesForFC
 
 instance Checkable Decl where
   check = chkFlexibleInstancesDecl

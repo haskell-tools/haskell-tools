@@ -20,12 +20,12 @@ chkConstraintKindsDecl' d@(TypeDecl dh rhs)
   -- Has any constraints of form (x t1 t2)
   | ctxts <- universeBi rhs :: [Context]
   , any hasTyVarHeadAsserts ctxts
-  = addOccurence ConstraintKinds d
+  = addEvidence ConstraintKinds d
   -- Right-hand side has kind Constraint
   | otherwise = do
   let ty = typeOrKindFromId . declHeadQName $ dh
   if hasConstraintKind ty || returnsConstraintKind ty
-     then addOccurence ConstraintKinds d
+     then addEvidence ConstraintKinds d
      else return d
 chkConstraintKindsDecl' d = return d
 

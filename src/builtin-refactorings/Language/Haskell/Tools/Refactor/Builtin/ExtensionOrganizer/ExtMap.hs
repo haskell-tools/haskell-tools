@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveFunctor, StandaloneDeriving #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
@@ -36,7 +36,11 @@ deriving instance (Generic a, NFData a) => NFData (Formula a)
 
 type LogicalRelation a = Formula a
 
-type ExtMap = SMap.Map (LogicalRelation Extension) [SrcSpan]
+data Occurence a = Hint a
+                 | Evidence a
+  deriving (Show, Eq, Ord, Functor)
+
+type ExtMap = SMap.Map (LogicalRelation Extension) [Occurence SrcSpan]
 
 lVar :: a -> LogicalRelation a
 lVar = Var

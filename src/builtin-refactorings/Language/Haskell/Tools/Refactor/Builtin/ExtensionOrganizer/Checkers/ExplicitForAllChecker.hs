@@ -11,7 +11,7 @@ chkExplicitForAllType = conditional chkType ExplicitForAll
   where chkType :: CheckNode Type
         chkType t
           | UTyForall{} <- t ^. element
-          = addOccurence ExplicitForAll t
+          = addEvidence ExplicitForAll t
           | otherwise = return t
 
 chkExplicitForAllConDecl :: CheckNode ConDecl
@@ -23,5 +23,5 @@ chkExplicitForAllGadtConDecl = conditional (chkQuantifiedTyVarsWith (^. gadtConT
 chkQuantifiedTyVarsWith :: HasRange a => (a -> TyVarList) -> CheckNode a
 chkQuantifiedTyVarsWith getTyVars conDecl =
   if (annLength . getTyVars $ conDecl) > 0
-    then addOccurence ExplicitForAll conDecl
+    then addEvidence ExplicitForAll conDecl
     else return conDecl

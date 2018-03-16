@@ -37,22 +37,22 @@ chkTypeOperatorsType' t@(InfixTypeApp _ op _)
   | Just name <- semanticsName op
   , name == eqTyConName
   = return t
-  | otherwise = addOccurence TypeOperators t
+  | otherwise = addEvidence TypeOperators t
 chkTypeOperatorsType' t = return t
 
 chkTypeOperatorsAssertion' :: CheckNode Assertion
-chkTypeOperatorsAssertion' a@InfixAssert{} = addOccurence TypeOperators a
+chkTypeOperatorsAssertion' a@InfixAssert{} = addEvidence TypeOperators a
 chkTypeOperatorsAssertion' a = return a
 
 chkTypeOperatorsInstHead' :: CheckNode InstanceHead
-chkTypeOperatorsInstHead' ih@InfixInstanceHead{} = addOccurence TypeOperators ih
+chkTypeOperatorsInstHead' ih@InfixInstanceHead{} = addEvidence TypeOperators ih
 chkTypeOperatorsInstHead' ih = return ih
 
 chkTypeOperatorsDecl' :: CheckNode Decl
 chkTypeOperatorsDecl' d = do
   let dhs = universeBi d :: [DeclHead]
   anyNeedsTO <- liftM or $ mapM isOperatorM dhs
-  if anyNeedsTO then addOccurence TypeOperators d
+  if anyNeedsTO then addEvidence TypeOperators d
                 else return d
 
 -- OccName: [Type and class operator definitions]

@@ -69,13 +69,13 @@ type TestSuite       = (FilePath, [TestName])
 type TestName        = String
 type ModuleName      = String
 type Line            = Int
-type SimpleMap       = SMap.Map (LogicalRelation Extension) [Line]
+type SimpleMap       = SMap.Map (LogicalRelation Extension) [Occurence Line]
 
 spanToLine :: SrcSpan -> Line
 spanToLine (RealSrcSpan s) = srcSpanEndLine s
 
 simplifyExtMap :: ExtMap -> SimpleMap
-simplifyExtMap = SMap.map (map spanToLine)
+simplifyExtMap = SMap.map (map (fmap spanToLine))
 
 getExtensionsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtensionsFrom dir moduleName = runGhc (Just libdir) $ do
@@ -432,6 +432,13 @@ udRoot = "UndecidableInstancesTest"
 udModules = [ "BadTyVars"
             , "GNDForAssociatedTypes"
             , "NoSmallerPred"
+            , "SynBadTyVars"
+            , "SynNoSmallerPred"
+            , "SynTupleConstraint"
+            , "SynTyFamBadTyVars"
+            , "SynTyFamNestedTyFun"
+            , "SynTyFamNoSmaller"
+            , "SynTyFunInSuperClass"
             , "TupleConstraint"
             , "TyFamBadTyVars"
             , "TyFamNestedTyFun"
@@ -444,7 +451,10 @@ flexibleContextsTest = (fcRoot, fcModules)
 fcRoot = "FlexibleContextsTest"
 fcModules = [ "ForAll"
             , "NestedCtx"
+            , "Synonyms"
+            , "TyFamConstraints"
             , "TypeApp"
             , "TySynConstraints"
             , "VarType"
+            , "WithScopedTyVarsMagic"
             ]

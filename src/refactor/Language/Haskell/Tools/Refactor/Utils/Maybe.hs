@@ -14,6 +14,9 @@ isJustT m = liftM isJust . runMaybeT $ m
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
+fromMaybeT :: Monad m => a -> MaybeT m a -> m a
+fromMaybeT def = maybeT def id 
+
 maybeT :: Monad m => b -> (a -> b) -> MaybeT m a -> m b
 maybeT def f x = liftM (maybe def f) (runMaybeT x)
 

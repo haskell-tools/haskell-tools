@@ -37,7 +37,7 @@ chkInstanceHead ih = do
 -- | Checks a type argument of class whether it is a synonym
 chkTypeArg :: Type -> ExtMonad Type
 chkTypeArg ty =
-  maybeTM (return ty) (const . addOccurence TypeSynonymInstances $ ty) (semanticsTypeSynRhs ty)
+  maybeTM (return ty) (const . addEvidence TypeSynonymInstances $ ty) (semanticsTypeSynRhs ty)
 
 -- | Collects the type arguments in an instance declaration
 -- Type arguments are the the types that the class is being instantiated with

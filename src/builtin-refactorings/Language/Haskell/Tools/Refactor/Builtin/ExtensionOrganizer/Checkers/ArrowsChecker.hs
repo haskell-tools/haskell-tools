@@ -4,9 +4,9 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkArrowsExpr :: CheckNode Expr
--- chkArrowsExpr e@Proc{}     = addOccurence Arrows e
-chkArrowsExpr e@ArrowApp{} = addOccurence Arrows e
+-- chkArrowsExpr e@Proc{}     = addEvidence Arrows e
+chkArrowsExpr e@ArrowApp{} = addEvidence Arrows e
 chkArrowsExpr e            = return e
 
 chkArrowsCmd :: CheckNode Cmd
-chkArrowsCmd = addOccurence Arrows
+chkArrowsCmd = addEvidence Arrows

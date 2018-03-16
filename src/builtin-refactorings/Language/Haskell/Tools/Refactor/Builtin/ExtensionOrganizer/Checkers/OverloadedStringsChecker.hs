@@ -15,5 +15,5 @@ chkOverloadedStringsLiteral = conditional chkLit OverloadedStrings
         chkLit lit
           | UStringLit _ <- lit ^. element
           , not . GHC.eqType GHC.stringTy $ semanticsLiteralType lit
-          = addOccurence OverloadedStrings lit
+          = addEvidence OverloadedStrings lit
           | otherwise = return lit

@@ -37,7 +37,7 @@ gblChkUndecidableInstances' m = do
 -- it adds the occurence with location of the instance.
 chkClsInst :: ClsInst -> ExtMonad ()
 chkClsInst inst = when (clsInstNeedsUD inst)
-                       (addOccurenceLoc UndecidableInstances (getSrcSpan inst))
+                       (addEvidenceLoc UndecidableInstances (getSrcSpan inst))
 
 -- | Decides whether a type class instance requires UndecidableInstances.
 clsInstNeedsUD :: ClsInst -> Bool
@@ -48,7 +48,7 @@ clsInstNeedsUD inst = checkInstTermination args theta
 -- it adds the occurence with location of the instance.
 chkFamInst :: FamInst -> ExtMonad ()
 chkFamInst inst = when (famInstNeedsUD inst)
-                       (addOccurenceLoc UndecidableInstances (getSrcSpan inst))
+                       (addEvidenceLoc UndecidableInstances (getSrcSpan inst))
 
 -- | Decides whether a family instance requires UndecidableInstances.
 -- If it is a data family instance, it does not need the extension.
@@ -70,7 +70,7 @@ chkUndecidableInstancesDecl = conditional chkUndecidableInstancesDecl' Undecidab
 chkUndecidableInstancesDecl' :: CheckNode Decl
 chkUndecidableInstancesDecl' d = do
   mDecl <- runMaybeT (chkUndecidableInstancesDeclMaybe d)
-  maybe (addOccurence UndecidableInstances d) return mDecl
+  maybe (addEvidence UndecidableInstances d) return mDecl
 
 -- | Checks a class declaration whether it has a type function in its context,
 -- or a closed type family declaration needs UndecidableInstances.
@@ -83,7 +83,7 @@ chkUndecidableInstancesDeclMaybe d@(ClassDecl mCtx _ _ _)
     let assert = ctx ^. contextAssertion
         names  = assertionQNames assert
     types <- mapM lookupTypeFromId names
-    if any hasTyFunHead types then addOccurence UndecidableInstances d
+    if any hasTyFunHead types then addEvidence UndecidableInstances d
                               else return d
   | otherwise = return d
 chkUndecidableInstancesDeclMaybe d@(ClosedTypeFamily dh _ _) = do
@@ -94,5 +94,5 @@ chkUndecidableInstancesDeclMaybe d@(ClosedTypeFamily dh _ _) = do
   where
     chkFamEqM :: [GHC.Type] -> [(GHC.TyCon, [GHC.Type])] -> ExtMonad ()
     chkFamEqM lhs rhs = when (checkFamEq lhs rhs)
-                             (addOccurence_ UndecidableInstances d)
+                             (addEvidence_ UndecidableInstances d)
 chkUndecidableInstancesDeclMaybe d = return d

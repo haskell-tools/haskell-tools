@@ -22,7 +22,7 @@ chkCCMDeclHead dh = do
   mNeedsCCM <- runMaybeT . chkCCMDeclHead' $ dh
   case mNeedsCCM of
     Just False -> return dh
-    _          -> addOccurence ConstrainedClassMethods dh
+    _          -> addEvidence ConstrainedClassMethods dh
 
 
 -- | Helper function for chkCCMDeclHead.
