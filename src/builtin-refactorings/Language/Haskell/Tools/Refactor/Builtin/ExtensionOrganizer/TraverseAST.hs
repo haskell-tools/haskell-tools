@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, TypeApplications #-}
+{-# LANGUAGE MonoLocalBinds, RankNTypes, TypeApplications #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST

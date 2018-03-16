@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
