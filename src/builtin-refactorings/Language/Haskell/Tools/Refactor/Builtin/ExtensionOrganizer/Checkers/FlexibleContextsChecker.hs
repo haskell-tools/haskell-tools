@@ -1,6 +1,5 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleContextsChecker where
 
-import CoAxiom (Role(..))
 import Kind (returnsConstraintKind)
 import TcType (tcSplitNestedSigmaTys, checkValidClsArgs)
 import Type hiding (Type(..))
@@ -10,20 +9,14 @@ import qualified Name as GHC
 import qualified GHC
 
 import Data.List
-import Data.Function (on)
 import Data.Generics.Uniplate.Data()
 import Data.Generics.Uniplate.Operations
-import qualified Data.Map.Strict as SMap
 
 import Control.Reference ((^.))
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Refactor
-import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
-
-instance Eq GHC.Type where
-  (==) = eqType
 
 gblChkQNamesForFC :: CheckNode Module
 gblChkQNamesForFC = conditional gblChkQNamesForFC' FlexibleContexts
@@ -107,51 +100,62 @@ chkQNameForFC name = do
   mty <- runMaybeT . lookupTypeFromId $ name
   case mty of
     Just ty -> do
+      -- First we get all subtypes of the given type, while expanding all type synonyms,
+      -- then we remove all implicit predicates,
+      -- and partition the types into predicate types and theta types.
       let expanded = expandTypeSynonyms ty
-          allTys = universeBi expanded :: [GHC.Type]
-          (preds, thetas) = partition isPredTy . filter (not . isIPPred) $ allTys
+          subTys = universeBi expanded :: [GHC.Type]
+          (preds, tys) = partition isPredTy . filter (not . isIPPred) $ subTys
+
+          -- We don't need type equalities, so we get rid of them and their children.
+          -- Then we extract the constraints from the types.
           nomEqs = universeBi (filter isNominalEqPred preds) :: [GHC.Type]
           preds' = preds \\ nomEqs
-          thetas' = concatMap (snd' . tcSplitNestedSigmaTys) thetas
-          xs = mapMaybe getClassPredTys_maybe (thetas' ++ preds')
+          thetas = concatMap (snd' . tcSplitNestedSigmaTys) tys
+
+          -- We split each theta type into its class tycon and its arguments.
+          -- We also filter out tuple constraints
+          -- (we already have the constraints in it).
+          xs = mapMaybe getClassPredTys_maybe (thetas ++ preds')
           xs' = filter (not . isCTupleClass . fst) xs
-      if all (uncurry hasValidClsArgs) xs'
-        then return False
-        else return True
+
+      if all (uncurry hasValidClsArgs) xs' then return False
+                                           else return True
     Nothing -> return False
-  where hasValidClsArgs cls args = res
-          where res = cls `hasKey` eqTyConKey
-                   || isIPClass cls
-                   || checkValidClsArgs False cls args
-        snd' (_,x,_) = x
-        isNominalEqPred ty
-          | Just (tc,_) <- splitTyConApp_maybe ty = tc `hasKey` eqTyConKey
-          | otherwise = False
+  where
+    hasValidClsArgs :: GHC.Class -> [GHC.Type] -> Bool
+    hasValidClsArgs cls args = cls `hasKey` eqTyConKey
+                            || isIPClass cls
+                            || checkValidClsArgs False cls args
+
+    snd' :: (a,b,c) -> b
+    snd' (_,x,_) = x
+
+    isNominalEqPred :: GHC.Type -> Bool
+    isNominalEqPred ty
+      | Just (tc,_) <- splitTyConApp_maybe ty = tc `hasKey` eqTyConKey
+      | otherwise = False
 
 gblChkQNamesForFC' :: CheckNode Module
 gblChkQNamesForFC' m = do
-  -- names appearing on the rhs of bindings are just hints
-  -- only lhs names require FlexibleContexts
-  let origNames   = universeBi (m ^. modDecl) :: [QualifiedName]
-      rhs         = universeBi (m ^. modDecl) :: [Rhs]
-      hints       = universeBi rhs            :: [QualifiedName]
+  -- Names appearing on the rhs of bindings are just hints,
+  -- they don't necessarily require FlexibleContexts.
+  let allNames   = universeBi (m ^. modDecl) :: [QualifiedName]
+      rhs        = universeBi (m ^. modDecl) :: [Rhs]
+      hints      = universeBi rhs            :: [QualifiedName]
 
-      -- selecting relevant names
+      -- Separating hints from evidence,
       -- and grouping them together based on their GHC.Name
-      evidence    = origNames \\ hints
-      pairedNames = catMaybes . zipWith zf (map semanticsName evidence) $ evidence
-      groupedNames = map (map snd)
-                   . groupBy ((==) `on` fst)
-                   . sortBy (compare `on` fst)
-                   $ pairedNames
+      evidence  = filter (isJust . semanticsName) (allNames \\ hints)
+      hints'    = filter (isJust . semanticsName) hints
+      groupedEs = equivalenceGroupsBy semanticsName evidence
+      groupedHs = equivalenceGroupsBy semanticsName hints'
 
-      -- selecting a representative element from the names
-      representatives = map ((,) <$> head <*> id) groupedNames
-
-  es <- filterM (chkQNameForFC . fst) representatives
-  hs <- filterM chkQNameForFC hints
+  -- Checking the representative elements, whether they need FC,
+  -- if they do, add occurences for every node in their group.
+  es <- filterM (chkQNameForFC . fst) groupedEs
+  hs <- filterM (chkQNameForFC . fst) groupedHs
   mapM_ (addEvidence FlexibleContexts) (concatMap snd es)
-  mapM_ (addHint     FlexibleContexts) hs
+  mapM_ (addHint     FlexibleContexts) (concatMap snd hs)
+
   return m
-  where zf (Just x) y = Just (x,y)
-        zf _ _        = Nothing

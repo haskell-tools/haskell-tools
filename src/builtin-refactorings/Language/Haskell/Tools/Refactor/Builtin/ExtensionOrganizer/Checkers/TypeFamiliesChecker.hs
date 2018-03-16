@@ -6,13 +6,10 @@ import Unique         as GHC (hasKey)
 import qualified Type as GHC (expandTypeSynonyms)
 
 import Control.Reference ((^.))
-import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.List (zipWith, (\\))
-import Data.Maybe (catMaybes)
+import Data.List ((\\))
 import Data.Generics.Uniplate.Data()
 import Data.Generics.Uniplate.Operations
-import qualified Data.Map.Strict as SMap
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
@@ -70,20 +67,16 @@ chkOperatorForTypeEq' op
   = addRelation (TypeFamilies `lOr` GADTs) op
   | otherwise = return op
 
-chkQNameForTyEqnWith :: (LogicalRelation Extension -> CheckNode QualifiedName) ->
-                         CheckNode QualifiedName
-chkQNameForTyEqnWith addRel name = do
+chkQNameForTyEqn :: QualifiedName -> ExtMonad Bool
+chkQNameForTyEqn name = do
   mty <- runMaybeT . lookupTypeFromId $ name
   case mty of
     Just ty -> do
       let ty'    = GHC.expandTypeSynonyms ty
           tycons = universeBi ty' :: [GHC.TyCon]
-      if any isEqTyCon tycons then addRel (TypeFamilies `lOr` GADTs) name
-                              else return name
-    Nothing -> return name
-
-  --traceShow (showName name ++ " -- " ++ showOutputable ty') $
-
+      if any isEqTyCon tycons then return True
+                              else return False
+    Nothing -> return False
   where isEqTyCon tc = tc `hasKey` eqTyConKey
                     || tc `hasKey` heqTyConKey
                     || tc `hasKey` eqPrimTyConKey
@@ -92,16 +85,24 @@ chkQNameForTyEqnWith addRel name = do
 
 gblChkQNamesForTypeEq' :: CheckNode Module
 gblChkQNamesForTypeEq' m = do
-  -- names appearing on the rhs of bindings are just hints
-  -- only lhs names require TypeFamilies
-  let origNames   = universeBi (m ^. modDecl) :: [QualifiedName]
-      rhs         = universeBi (m ^. modDecl) :: [Rhs]
-      hints       = universeBi rhs            :: [QualifiedName]
-      evidence    = origNames \\ hints
-      pairedNames = catMaybes . zipWith zf (map semanticsName evidence) $ evidence
-      uniqueNames = SMap.elems . SMap.fromList . reverse $ pairedNames
-  mapM_ (chkQNameForTyEqnWith addRelation)     uniqueNames
-  mapM_ (chkQNameForTyEqnWith addRelationHint) hints
+  -- Names appearing on the rhs of bindings are just hints,
+  -- they don't necessarily require TypeFamilies.
+  let allNames   = universeBi (m ^. modDecl) :: [QualifiedName]
+      rhs        = universeBi (m ^. modDecl) :: [Rhs]
+      hints      = universeBi rhs            :: [QualifiedName]
+
+      -- Separating hints from evidence,
+      -- and grouping them together based on their GHC.Name
+      evidence  = filter (isJust . semanticsName) (allNames \\ hints)
+      hints'    = filter (isJust . semanticsName) hints
+      groupedEs = equivalenceGroupsBy semanticsName evidence
+      groupedHs = equivalenceGroupsBy semanticsName hints'
+
+  -- Checking the representative elements, whether they need FC,
+  -- if they do, add occurences for every node in their group.
+  es <- filterM (chkQNameForTyEqn . fst) groupedEs
+  hs <- filterM (chkQNameForTyEqn . fst) groupedHs
+  mapM_ (addRelation     (TypeFamilies `lOr` GADTs)) (concatMap snd es)
+  mapM_ (addRelationHint (TypeFamilies `lOr` GADTs)) (concatMap snd hs)
+
   return m
-  where zf (Just x) y = Just (x,y)
-        zf _ _        = Nothing

@@ -7,8 +7,6 @@ import qualified OccName as GHC (isTcOcc, isSymOcc)
 import Data.Generics.Uniplate.Data()
 import Data.Generics.Uniplate.Operations
 
-import Control.Monad.Trans.Maybe (MaybeT(..))
-
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 

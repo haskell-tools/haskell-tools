@@ -9,7 +9,7 @@ import GHC hiding (Module, ClassDecl, ClosedTypeFamily)
 
 import Data.Maybe (isJust)
 
-import Control.Reference ((^.), (&))
+import Control.Reference ((^.))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Language.Haskell.Tools.AST

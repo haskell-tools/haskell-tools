@@ -6,7 +6,7 @@ module Language.Haskell.Tools.Refactor.Utils.Helpers where
 import Control.Monad.State ()
 import Control.Reference
 import Data.Function (on)
-import Data.List (sortBy, nubBy)
+import Data.List (sortBy, nubBy, groupBy)
 import Data.Maybe (Maybe(..))
 
 import Language.Haskell.Tools.AST as AST
@@ -45,3 +45,21 @@ removeEmptyBnds binds exprs = (binds .- removeEmptyBindsAndGuards) . (exprs .- r
 -- | Puts the elements in the orginal order and remove duplicates (elements with the same source range)
 normalizeElements :: [Ann e dom SrcTemplateStage] -> [Ann e dom SrcTemplateStage]
 normalizeElements elems = nubBy ((==) `on` getRange) $ sortBy (compare `on` srcSpanStart . getRange) elems
+
+-- | Groups elements together into equivalence groups.
+groupElemsBy :: Ord k => (a -> k) -> [a] -> [[a]]
+groupElemsBy f = map (map snd)
+               . groupBy ((==) `on` fst)
+               . sortBy (compare `on` fst)
+               . map ((,) <$> f <*> id)
+
+-- | Chooses a representative element for each equivalence group,
+-- and pairs them with their corresponding group.
+reprElems :: [[a]] -> [(a,[a])]
+reprElems = map ((,) <$> head <*> id)
+
+-- | Sorts the elements of a list into equivalence groups based on a function,
+-- then chooses a representative element for each group,
+-- and pairs them with their corresponding group.
+equivalenceGroupsBy :: Ord k => (a -> k) -> [a] -> [(a,[a])]
+equivalenceGroupsBy f = reprElems . groupElemsBy f

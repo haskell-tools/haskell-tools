@@ -10,6 +10,7 @@ import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
+import qualified Type      as GHC (eqType)
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
 import           GHC       (GhcMonad)
@@ -19,6 +20,8 @@ import Language.Haskell.Tools.Rewrite
 import Language.Haskell.Tools.Refactor.Utils.NameLookup
 import Language.Haskell.Tools.Refactor.Utils.Maybe
 
+instance Eq GHC.Type where
+  (==) = GHC.eqType
 
 type ClosedTyFam = GHC.CoAxiom GHC.Branched
 
