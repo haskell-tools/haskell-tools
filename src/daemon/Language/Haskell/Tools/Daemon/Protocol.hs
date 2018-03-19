@@ -94,7 +94,9 @@ data ResponseMsg
                  , loadedModuleName :: String
                  }
     -- ^ The engine has loaded the given module.
-  | QueryResult { queryResult :: Value }
+  | QueryResult { queryName :: String
+                , queryResult :: Value
+                }
     -- ^ The result of querying the program representation.
   | UnusedFlags { unusedFlags :: [String] }
     -- ^ Returns the flags that are not used by the engine.
