@@ -80,8 +80,13 @@ canonExt x = fromMaybe x (lookup x irregularExtensions)
 -- | Serializes the extension's GHC name into its LANGUAGE pragma name.
 -- Should be always used in composition with show (@seriealizeExt . show@)
 -- when refactoring extensions.
-seriealizeExt :: String -> String
-seriealizeExt x = fromMaybe x (lookup x . map swap $ irregularExtensions)
+-- This function also replaces depracted extensions with their new versions.
+serializeExt :: String -> String
+serializeExt "Cpp" = "CPP"
+serializeExt "Rank2Types" = "RankNTypes"
+serializeExt "RecordPuns" = "NamedFieldPuns"
+serializeExt x = x
+
 
 -- * Mapping of Cabal haskell extensions to their GHC counterpart
 

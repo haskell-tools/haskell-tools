@@ -16,7 +16,7 @@ import Language.Haskell.Tools.Refactor.Utils.Extensions
 import GHC (Ghc(..))
 
 import Control.Reference
-import Data.Char (isAlpha)
+import Data.Char (isAlphaNum)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
@@ -44,11 +44,16 @@ tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
-  let langExts = mkLanguagePragma . map (seriealizeExt . show) $ exts
+  let langExts = mkLanguagePragma . map (serializeExt . show) $ exts
       ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
       ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
 
-      newPragmas = mkFilePragmas $ langExts:ghcOpts'
+      offExts  = mkLanguagePragma
+               . map (("No" ++) . serializeExt . show)
+               . collectTurnedOffExtensions
+               $ moduleAST
+
+      newPragmas = mkFilePragmas $ offExts:langExts:ghcOpts'
 
   (filePragmas != newPragmas)
     -- remove empty {-# LANGUAGE #-} pragmas
@@ -88,11 +93,18 @@ expandExtensions = nub . concatMap expandExtension
 -- | Collects extensions enabled by default
 collectDefaultExtensions :: UnnamedModule -> [Extension]
 collectDefaultExtensions = mapMaybe toExt . getExtensions
-  where
-  getExtensions :: UnnamedModule -> [String]
-  getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
+
+-- | Collects extensions enabled by default
+collectTurnedOffExtensions :: UnnamedModule -> [Extension]
+collectTurnedOffExtensions = mapMaybe (toExt . drop 2)
+                           . filter (isPrefixOf "No")
+                           . getExtensions
+
+-- | Collects the string representation of the extensions in the module
+getExtensions :: UnnamedModule -> [String]
+getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
 
 toExt :: String -> Maybe Extension
-toExt str = case map fst . reads . canonExt . takeWhile isAlpha $ str of
+toExt str = case map fst . reads . canonExt . takeWhile isAlphaNum $ str of
               e:_ -> Just e
-              []  -> fail $ "Extension '" ++ takeWhile isAlpha str ++ "' is not known."
+              []  -> fail $ "Extension '" ++ takeWhile isAlphaNum str ++ "' is not known."
