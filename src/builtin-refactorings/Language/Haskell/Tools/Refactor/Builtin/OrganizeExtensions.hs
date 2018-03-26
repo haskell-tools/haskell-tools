@@ -44,7 +44,7 @@ tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
-  let langExts = mkLanguagePragma . map show $ exts
+  let langExts = mkLanguagePragma . map (seriealizeExt . show) $ exts
       ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
       ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
 
@@ -62,7 +62,7 @@ reduceExtensions moduleAST = do
       expanded = expandExtensions defaults
       (xs, ys) = partition isSupported expanded
   -- we can't say anything about generated code
-  if TemplateHaskell `notElem` expanded
+  if (TemplateHaskell `notElem` expanded) && (Cpp `notElem` expanded)
     then do
       xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
       -- Merging is needed because there might be unsopported extensions

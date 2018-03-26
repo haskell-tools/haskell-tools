@@ -39,7 +39,7 @@ chkAssertion a@(InfixAssert lhs op rhs)
   | Just name <- semanticsName op
   , name == eqTyConName
   = return a
-  -- If the constraint has only type variable head, it doesn't need FlexibleContexts
+  -- If the constraint has only type variable heads, it doesn't need FlexibleContexts
   | hasTyVarHead lhs && hasTyVarHead rhs = return a
   -- In any other case, we keep FlexibleContexts
   | otherwise = addEvidence FlexibleContexts a
