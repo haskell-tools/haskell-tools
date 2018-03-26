@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, LambdaCase, RankNTypes, RecordPuns, TupleSections, TypeApplications #-}
+{-# LANGUAGE BangPatterns, LambdaCase, Rank2Types, NamedFieldPuns, TupleSections, TypeApplications #-}
 
 -- | Collecting modules contained in a module collection (library, executable, testsuite or
 -- benchmark). Gets names, source file locations, compilation and load flags for these modules.

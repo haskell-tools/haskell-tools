@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, Rank2Types #-}
 
 -- | Utility operations for the reprsentation of module collections.
 module Language.Haskell.Tools.Daemon.Utils where

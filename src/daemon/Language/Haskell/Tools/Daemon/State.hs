@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordPuns, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE NamedFieldPuns, RecordWildCards, TemplateHaskell #-}
 
 module Language.Haskell.Tools.Daemon.State where
 
