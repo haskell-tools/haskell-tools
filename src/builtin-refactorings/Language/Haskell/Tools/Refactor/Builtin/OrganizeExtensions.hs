@@ -44,16 +44,17 @@ tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
-  let langExts = mkLanguagePragma . map (serializeExt . show) $ exts
+  let langExts = map (mkLanguagePragma . pure . serializeExt . show) exts
       ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
       ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
 
-      offExts  = mkLanguagePragma
+      offExts  = map (mkLanguagePragma . pure)
+               . sort
                . map (("No" ++) . serializeExt . show)
                . collectTurnedOffExtensions
                $ moduleAST
 
-      newPragmas = mkFilePragmas $ offExts:langExts:ghcOpts'
+      newPragmas = mkFilePragmas $ offExts ++ langExts ++ ghcOpts'
 
   (filePragmas != newPragmas)
     -- remove empty {-# LANGUAGE #-} pragmas

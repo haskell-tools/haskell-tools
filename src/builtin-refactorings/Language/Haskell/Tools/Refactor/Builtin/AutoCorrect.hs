@@ -6,14 +6,14 @@ import SrcLoc
 import GHC
 import Type
 -- import Outputable
--- 
+--
 import Control.Monad.State
 import Control.Reference
 import Data.List
 import Data.Maybe
--- 
+--
 import Language.Haskell.Tools.Refactor as HT
--- 
+--
 import Language.Haskell.Tools.PrettyPrint
 
 autoCorrectRefactoring :: RefactoringChoice
@@ -46,7 +46,7 @@ reOrderExpr insts e@(App (App f a1) a2)
        if not (isJust (appTypeMatches insts funTy [arg1Ty, arg2Ty])) && isJust (appTypeMatches insts funTy [arg2Ty, arg1Ty])
           then put True >> return (exprArg .= a1 $ exprFun&exprArg .= a2 $ e)
           else return e
-reOrderExpr insts e@(InfixApp lhs op rhs) 
+reOrderExpr insts e@(InfixApp lhs op rhs)
   = do let funTy = idType $ semanticsId (op ^. operatorName)
        lhsTy <- lift $ typeExpr lhs
        rhsTy <- lift $ typeExpr rhs
@@ -86,9 +86,9 @@ type Build = Either Atom Expr
 
 extractAtoms :: Expr -> Ghc [(GHC.Type, Atom)]
 extractAtoms e = do lits <- mapM (\l -> (, LiteralA l) <$> literalType l) (e ^? biplateRef)
-                    return $ sortOn (srcSpanStart . atomRange . snd) 
-                           $ map (\n -> (idType $ semanticsId (n ^. simpleName), NameA n)) (e ^? biplateRef) 
-                               ++ map (\o -> (idType $ semanticsId (o ^. operatorName), OperatorA o)) (e ^? biplateRef) 
+                    return $ sortOn (srcSpanStart . atomRange . snd)
+                           $ map (\n -> (idType $ semanticsId (n ^. simpleName), NameA n)) (e ^? biplateRef)
+                               ++ map (\o -> (idType $ semanticsId (o ^. operatorName), OperatorA o)) (e ^? biplateRef)
                                ++ lits
 
 atomRange :: Atom -> SrcSpan
@@ -116,17 +116,17 @@ reduceBy insts (zip [0..] -> ls) i = maybeToList (reduceFunctionApp ls i) ++ may
   where reduceFunctionApp ls i | Just (funT, fun) <- lookup i ls
                                , Just (argT, arg) <- lookup (i+1) ls
                                , Just (subst, resTyp) <- appTypeMatches insts funT [argT]
-          = Just $ map ((_1 .- substTy subst) . snd) (take i ls) 
-                     ++ [(resTyp, mkParen' (mkApp' fun arg))] 
+          = Just $ map ((_1 .- substTy subst) . snd) (take i ls)
+                     ++ [(resTyp, mkParen' (mkApp' fun arg))]
                      ++ map ((_1 .- substTy subst) . snd) (drop (i + 2) ls)
         reduceFunctionApp _ _ = Nothing
-        
+
         reduceOperatorApp ls i | Just (opT, Left (OperatorA op)) <- lookup i ls
                                , Just (lArgT, lArg) <- lookup (i-1) ls
                                , Just (rArgT, rArg) <- lookup (i+1) ls
                                , Just (subst, resTyp) <- appTypeMatches insts opT [lArgT, rArgT]
-          = Just $ map ((_1 .- substTy subst) . snd) (take (i - 1) ls) 
-                     ++ [(resTyp, mkParen' (mkInfixApp' lArg op rArg))] 
+          = Just $ map ((_1 .- substTy subst) . snd) (take (i - 1) ls)
+                     ++ [(resTyp, mkParen' (mkInfixApp' lArg op rArg))]
                      ++ map ((_1 .- substTy subst) . snd) (drop (i + 2) ls)
         reduceOperatorApp _ _ = Nothing
 
