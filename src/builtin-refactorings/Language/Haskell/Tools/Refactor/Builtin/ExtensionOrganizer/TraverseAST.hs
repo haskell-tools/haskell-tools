@@ -14,5 +14,5 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Chec
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector()
 
 
-traverseModule :: CheckNode UnnamedModule
+traverseModule :: CheckNode Module
 traverseModule = topDownM @Checkable check

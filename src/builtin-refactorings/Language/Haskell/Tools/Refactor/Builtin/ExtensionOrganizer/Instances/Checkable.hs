@@ -12,6 +12,7 @@ instance Checkable Module where
   check = gblChkQNamesForTypeEq
       >=> gblChkUndecidableInstances
       >=> gblChkQNamesForFC
+      >=> gblChkCPP
 
 instance Checkable Decl where
   check = chkFlexibleInstancesDecl

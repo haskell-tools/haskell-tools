@@ -20,7 +20,7 @@ import Data.Char (isAlphaNum)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
-import qualified Data.Map.Strict as SMap (empty)
+import qualified Data.Map.Strict as SMap (empty, keys)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.
@@ -67,15 +67,17 @@ reduceExtensions moduleAST = do
   let defaults = map replaceDeprecated . collectDefaultExtensions $ moduleAST
       expanded = expandExtensions defaults
       (xs, ys) = partition isSupported expanded
-  -- we can't say anything about generated code
-  if (TemplateHaskell `notElem` expanded) && (Cpp `notElem` expanded)
-    then do
-      xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-      -- Merging is needed because there might be unsopported extensions
-      -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
-      return . sortBy (compare `on` show) . nub . mergeImplied $ (determineExtensions xs' ++ ys)
-    else
-      return . mergeImplied $ defaults
+
+  xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
+  let filteredExts = nub . mergeImplied $ (determineExtensions xs' ++ ys)
+  if any (`elem` filteredExts) [Cpp, TemplateHaskell, TemplateHaskellQuotes, QuasiQuotes]
+    -- We can't say anything about generated code
+    then return . mergeImplied $ defaults
+    -- Merging is needed because there might be unsopported extensions
+    -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
+    else return . sortBy (compare `on` show) $ filteredExts
+
+--
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap

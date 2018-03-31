@@ -72,7 +72,8 @@ type Line            = Int
 type SimpleMap       = SMap.Map (LogicalRelation Extension) [Occurence Line]
 
 spanToLine :: SrcSpan -> Line
-spanToLine (RealSrcSpan s) = srcSpanEndLine s
+spanToLine (RealSrcSpan s)   = srcSpanEndLine s
+spanToLine (UnhelpfulSpan s) = 0
 
 simplifyExtMap :: ExtMap -> SimpleMap
 simplifyExtMap = SMap.map (map (fmap spanToLine))
