@@ -1,4 +1,8 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
 

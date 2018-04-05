@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RecordPuns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 
 -- | Pretty printing the AST

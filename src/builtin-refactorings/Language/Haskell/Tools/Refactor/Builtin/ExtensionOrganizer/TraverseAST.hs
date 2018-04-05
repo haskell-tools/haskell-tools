@@ -1,4 +1,6 @@
-{-# LANGUAGE MonoLocalBinds, RankNTypes, TypeApplications #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST

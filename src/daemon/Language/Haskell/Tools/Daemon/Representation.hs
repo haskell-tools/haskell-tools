@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | Representation of the modules and packages in the daemon session.
 module Language.Haskell.Tools.Daemon.Representation where

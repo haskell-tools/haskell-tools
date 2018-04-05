@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This transformation expands nodes to contain the comments that should be attached to them. After this, a
 -- normalizing transformation should be performed that expands parents to contain their children.

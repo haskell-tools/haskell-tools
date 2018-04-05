@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, MultiWayIf, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE ViewPatterns #-}
 
 
 {-

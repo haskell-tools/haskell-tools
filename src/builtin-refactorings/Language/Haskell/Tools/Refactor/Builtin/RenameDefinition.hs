@@ -1,4 +1,10 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, ScopedTypeVariables, TupleSections, TypeApplications, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.RenameDefinition
   (renameDefinition, renameDefinition', renameDefinitionRefactoring) where
