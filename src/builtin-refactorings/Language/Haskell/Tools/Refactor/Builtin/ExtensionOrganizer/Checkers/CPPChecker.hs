@@ -1,11 +1,11 @@
-{-# LANGUAGE CPP #-}
-
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.CPPChecker where
 
 import GHC hiding (Module)
 import StringBuffer
 
 import Data.List (isSubsequenceOf)
+import Data.String (fromString)
+import Text.PortableLines.ByteString.Lazy (lines8)
 
 import Language.Haskell.Tools.PrettyPrint
 import Language.Haskell.Tools.Refactor
@@ -21,8 +21,9 @@ gblChkCPP' m = do
   let cppSrc = preprocessedSrc ms
   case ml_hs_file . ms_location $ ms of
     Just fp -> do
-      let cppSrc' = rmDefaultIncludes fp cppSrc
-          origSrc = prettyPrint m
+      let lines'  = lines8 . fromString
+          cppSrc' = lines' . rmDefaultIncludes fp $ cppSrc
+          origSrc = lines' . prettyPrint $ m
       when (cppSrc' /= origSrc) (addEvidenceLoc Cpp noSrcSpan)
     _ -> addEvidenceLoc Cpp noSrcSpan
   return m
