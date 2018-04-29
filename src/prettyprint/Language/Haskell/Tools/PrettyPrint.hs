@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RecordPuns, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, NamedFieldPuns, UndecidableInstances #-}
 
 
 -- | Pretty printing the AST
@@ -40,10 +40,10 @@ printRose' parent (RoseTree (RoseSpan (SourceTemplateNode rng elems minInd relIn
            printTemplateElems (ChildElem : rest) (child : children) = printRose' parent child >+< printTemplateElems rest children
            printTemplateElems [] [] = return empty
            printTemplateElems _ []
-             = pprProblem $ "More child elem in template than actual children in: " 
+             = pprProblem $ "More child elem in template than actual children in: "
                               ++ shortShowSpanWithFile (srcLocSpan $ RealSrcLoc parent)
            printTemplateElems [] _
-             = pprProblem $ "Not all children are used to pretty printing in: " 
+             = pprProblem $ "Not all children are used to pretty printing in: "
                               ++ shortShowSpanWithFile (srcLocSpan $ RealSrcLoc parent)
 
            min = minInd `max` getPosByRelative parent relInd

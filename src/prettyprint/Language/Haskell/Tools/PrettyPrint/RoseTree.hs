@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, RecordPuns #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, NamedFieldPuns #-}
 
 -- | A simpler representation of the original AST.
 module Language.Haskell.Tools.PrettyPrint.RoseTree where
