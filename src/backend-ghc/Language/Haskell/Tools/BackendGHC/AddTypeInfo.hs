@@ -16,6 +16,7 @@ import TysWiredIn as GHC (starKindTyCon)
 import UniqDFM as GHC (eltsUDFM)
 import UniqSupply as GHC (uniqFromSupply, mkSplitUniqSupply)
 import Var as GHC (Var(..))
+import HsExtension
 
 import Control.Applicative (Applicative(..), (<$>), Alternative(..))
 import Control.Exception (evaluate, throw)
@@ -33,7 +34,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 import Language.Haskell.Tools.BackendGHC.GHCUtils (getTopLevelId)
 import Language.Haskell.Tools.BackendGHC.Utils (ConvertionProblem(..), forceElements, convProblem)
 
-addTypeInfos :: LHsBinds Id -> Ann AST.UModule (Dom GHC.Name) RangeStage -> Ghc (Ann AST.UModule IdDom RangeStage)
+addTypeInfos :: LHsBinds GhcTc -> Ann AST.UModule (Dom GhcRn) RangeStage -> Ghc (Ann AST.UModule IdDom RangeStage)
 addTypeInfos bnds mod = do
   ut <- liftIO mkUnknownType
   let getType = getType' ut
@@ -56,13 +57,14 @@ addTypeInfos bnds mod = do
                                                  ((_,id):more) -> do put (none ++ more)
                                                                      return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
                 _ -> convProblem "addTypeInfos: Cannot access a the semantics of a name.")
-      pure fetchLitType (traverse (lift . getType)) (traverse (lift . getType)) pure
+      pure fetchLitType (lift . trfImportInfoM getType) (lift . trfModuleInfoM getType) pure
         pure) mod) (extractSigIds bnds ++ extractSigBindIds bnds)
   where locMapping = Map.fromList $ map (\(L l id) -> (l, id)) $ extractExprIds bnds
+        getType' :: Type -> Name -> Ghc Id
         getType' ut name = fromMaybe (mkVanillaGlobal name ut) <$> ((<|> Map.lookup name ids) <$> getTopLevelId name)
         ids = Map.fromList $ map (\id -> (getName id, id)) $ extractTypes bnds
 
-        extractTypes :: LHsBinds Id -> [Id]
+        extractTypes :: LHsBinds GhcTc -> [Id]
         extractTypes = concatMap universeBi . bagToList
 
         fetchLitType :: Monad m => PreLiteralInfo -> m LiteralInfo
@@ -75,13 +77,13 @@ addTypeInfos bnds mod = do
         --       because they contain only UnhelpfulSrcSpans
         decompedOverloadedLits :: [(SrcSpan, Type)]
         decompedOverloadedLits = catMaybes $ map decompExprLit exprLits ++ map decompPatLit patLits
-          where exprLits :: [LHsExpr Id]
+          where exprLits :: [LHsExpr GhcTc]
                 exprLits = concatMap universeBi . bagToList $ bnds
 
                 decompExprLit (L loc (HsOverLit lit)) = Just (loc, ol_type lit)
                 decompExprLit x = Nothing
 
-                patLits :: [LPat Id]
+                patLits :: [LPat GhcTc]
                 patLits = concatMap universeBi . bagToList $ bnds
 
                 decompPatLit (L loc (NPat llit _ _ _)) = Just (loc, ol_type . unLoc $ llit)
@@ -100,27 +102,29 @@ addTypeInfos bnds mod = do
                              ifaces = moduleEnvElts pit ++ map hm_iface (eltsUDFM hpt)
                          return $ concatMap (\mi -> map (mi_module mi, ) $ mi_fixities mi) ifaces
 
-extractExprIds :: LHsBinds Id -> [Located Id]
+extractExprIds :: LHsBinds GhcTc -> [Located Id]
         -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar
-extractExprIds = catMaybes . map (\case L l (HsVar (L _ n)) -> Just (L l n)
+extractExprIds = catMaybes . map (\case L l (HsVar (L _ n) :: HsExpr GhcTc) -> Just (L l n)
                                         L l (HsWrap _ (HsVar (L _ n))) -> Just (L l n)
                                         _ -> Nothing
                                  ) . concatMap universeBi . bagToList
 
-extractSigIds :: LHsBinds Id -> [(SrcSpan,Id)]
+extractSigIds :: LHsBinds GhcTc -> [(SrcSpan,Id)]
 extractSigIds = filter (isGoodSrcSpan . fst)
                   . concat
-                  . map (\case L l bs@(AbsBindsSig {} :: HsBind Id) -> map (l,) $ getImplVars (abs_sig_ev_bind bs)
-                               _                                    -> [] )
+                  . map (\case L l bs@(AbsBinds { abs_sig = True } :: HsBind GhcTc)
+                                 -> map (l,) $ concatMap getImplVars (abs_ev_binds bs)
+                               _ -> [] )
                   . concatMap universeBi . bagToList
   where getImplVars (EvBinds evbnds) = catMaybes $ map getEvVar $ bagToList evbnds
         getImplVars _                = []
         getEvVar (EvBind lhs _ False) = Just lhs
         getEvVar _                    = Nothing
 
-extractSigBindIds :: LHsBinds Id -> [(SrcSpan,Id)]
+extractSigBindIds :: LHsBinds GhcTc -> [(SrcSpan,Id)]
 extractSigBindIds = filter (isGoodSrcSpan . fst)
                       . catMaybes
-                      . map (\case L l (IPBind (Right id) _) -> Just (l,id)
-                                   _                         -> Nothing )
-                      . concatMap universeBi . bagToList
+                      . map (\case L l (IPBind (Right id) _ :: IPBind GhcTc) -> Just (l,id)
+                                   _                                         -> Nothing )
+                      . concatMap universeBi
+                      . bagToList

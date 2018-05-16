@@ -115,7 +115,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Utils.Debug
 
 
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.11  && < 4.12
                      , mtl                       >= 2.2  && < 2.3
                      , aeson                     >= 1.0 && < 1.4
                      , uniplate                  >= 1.6  && < 1.7
@@ -128,9 +128,9 @@ library
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , filepath                  >= 1.4  && < 1.5
-                     , template-haskell          >= 2.12 && < 2.13
+                     , template-haskell          >= 2.13 && < 2.14
                      , minisat-solver            >= 0.1  && < 0.2
-                     , ghc                       >= 8.2  && < 8.3
+                     , ghc                       >= 8.4  && < 8.5
                      , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
@@ -144,7 +144,7 @@ test-suite haskell-tools-builtin-refactorings-test
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.10 && < 4.11
+  build-depends:       base                      >= 4.11 && < 4.12
                      , tasty                     >= 0.11 && < 1.1
                      , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
@@ -157,8 +157,8 @@ test-suite haskell-tools-builtin-refactorings-test
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , time                      >= 1.8  && < 1.9
-                     , template-haskell          >= 2.12 && < 2.13
-                     , ghc                       >= 8.2  && < 8.3
+                     , template-haskell          >= 2.13 && < 2.14
+                     , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
@@ -177,7 +177,7 @@ test-suite ht-extension-organizer-test
                      , ExtensionOrganizerTest.Parser
   hs-source-dirs:      test
   main-is:             ExtensionOrganizerTest/Main.hs
-  build-depends:       base                      >= 4.10 && < 4.11
+  build-depends:       base                      >= 4.11 && < 4.12
                      , tasty                     >= 0.11 && < 1.1
                      , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
@@ -190,8 +190,8 @@ test-suite ht-extension-organizer-test
                      , references                >= 0.3  && < 0.4
                      , split                     >= 0.2  && < 0.3
                      , time                      >= 1.8  && < 1.9
-                     , template-haskell          >= 2.12 && < 2.13
-                     , ghc                       >= 8.2  && < 8.3
+                     , template-haskell          >= 2.13 && < 2.14
+                     , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
@@ -210,7 +210,7 @@ test-suite ht-extension-organizer-test
 --                      , ExtensionOrganizerBenchmark.UniPlateTraversal
 --   hs-source-dirs:      benchmark
 --   main-is:             ExtensionOrganizerBenchmark/Main.hs
---   build-depends:       base                      >= 4.10 && < 4.11
+--   build-depends:       base                      >= 4.11 && < 4.12
 --                      , criterion                 >= 1.2  && < 1.3
 --                      , silently                  >= 1.2  && < 1.3
 --                      , transformers              >= 0.5  && < 0.6
@@ -223,8 +223,8 @@ test-suite ht-extension-organizer-test
 --                      , references                >= 0.3  && < 0.4
 --                      , split                     >= 0.2  && < 0.3
 --                      , time                      >= 1.8  && < 1.9
---                      , template-haskell          >= 2.12 && < 2.13
---                      , ghc                       >= 8.2  && < 8.3
+--                      , template-haskell          >= 2.13 && < 2.14
+--                      , ghc                       >= 8.4  && < 8.5
 --                      , ghc-paths                 >= 0.1  && < 0.2
 --                      , Cabal                     >= 2.0  && < 2.3
 --                      , haskell-tools-ast         >= 1.0  && < 1.1

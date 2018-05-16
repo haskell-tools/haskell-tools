@@ -5,12 +5,11 @@
 -- | Generating instances for traversing the semantic information of the Haskell Representation
 module Language.Haskell.Tools.AST.Instances.ClassyPlate where
 
-import Data.Generics.ClassyPlate
 import Data.Generics.ClassyPlate.TH
 
 import Language.Haskell.Tools.AST.Ann
-import Language.Haskell.Tools.AST.Instances.Data
-import Language.Haskell.Tools.AST.Instances.Generic
+import Language.Haskell.Tools.AST.Instances.Data ()
+import Language.Haskell.Tools.AST.Instances.Generic ()
 
 import Language.Haskell.Tools.AST.Representation.Binds
 import Language.Haskell.Tools.AST.Representation.Decls

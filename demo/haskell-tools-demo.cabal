@@ -16,7 +16,7 @@ library
   exposed-modules:     Language.Haskell.Tools.Demo
   other-modules:       Language.Haskell.Tools.ASTDebug
                      , Language.Haskell.Tools.ASTDebug.Instances
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.11  && < 4.12
                      , mtl                       >= 2.2  && < 2.3
                      , transformers              >= 0.5  && < 0.6
                      , directory                 >= 1.2  && < 1.4
@@ -29,7 +29,7 @@ library
                      , websockets                >= 0.12  && < 0.13
                      , wai-websockets            >= 3.0  && < 3.1
                      , references                >= 0.3  && < 0.4
-                     , ghc                       >= 8.2  && < 8.3
+                     , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , filepath                  >= 1.4  && < 1.5
                      , haskell-tools-ast         >= 1.0  && < 1.1
@@ -43,7 +43,7 @@ executable ht-demo
   main-is:             Main.hs
   hs-source-dirs:      exe
   ghc-options:         -with-rtsopts=-M1500m
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.11  && < 4.12
                      , haskell-tools-demo
   default-language:  Haskell2010
 
@@ -52,7 +52,7 @@ test-suite haskell-tools-demo-tests
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.10 && < 4.11
+  build-depends:       base                      >= 4.11 && < 4.12
                      , HUnit                     >= 1.5 && < 1.7
                      , tasty                     >= 0.11 && < 1.1
                      , tasty-hunit               >= 0.9 && < 0.11

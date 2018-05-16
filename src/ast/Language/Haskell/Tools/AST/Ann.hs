@@ -11,6 +11,7 @@ import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.AST.Utils.GHCInstances ()
 import qualified Name as GHC
 import SrcLoc as GHC
+import HsExtension
 
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Exprs as AST
 import {-# SOURCE #-} Language.Haskell.Tools.AST.Representation.Modules as AST
@@ -83,15 +84,15 @@ type instance SemanticInfo' (Dom n) SemaInfoNameCls = NameInfo n
 type instance SemanticInfo' (Dom n) SemaInfoLitCls = PreLiteralInfo
 type instance SemanticInfo' (Dom n) SemaInfoExprCls = ScopeInfo
 type instance SemanticInfo' (Dom n) SemaInfoImportCls = ImportInfo n
-type instance SemanticInfo' (Dom n) SemaInfoModuleCls = ModuleInfo GHC.Name
+type instance SemanticInfo' (Dom n) SemaInfoModuleCls = ModuleInfo GhcRn
 type instance SemanticInfo' (Dom n) SemaInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' (Dom n) SemaInfoDefaultCls = NoSemanticInfo
 
 type instance SemanticInfo' IdDom SemaInfoNameCls = CNameInfo
 type instance SemanticInfo' IdDom SemaInfoExprCls = ScopeInfo
 type instance SemanticInfo' IdDom SemaInfoLitCls = LiteralInfo
-type instance SemanticInfo' IdDom SemaInfoImportCls = ImportInfo GHC.Id
-type instance SemanticInfo' IdDom SemaInfoModuleCls = ModuleInfo GHC.Id
+type instance SemanticInfo' IdDom SemaInfoImportCls = ImportInfo GhcTc
+type instance SemanticInfo' IdDom SemaInfoModuleCls = ModuleInfo GhcTc
 type instance SemanticInfo' IdDom SemaInfoWildcardCls = ImplicitFieldInfo
 type instance SemanticInfo' IdDom SemaInfoDefaultCls = NoSemanticInfo
 

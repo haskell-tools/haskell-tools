@@ -13,7 +13,7 @@ module Language.Haskell.Tools.AST.SemaInfoTypes
   , mkNoSemanticInfo, mkScopeInfo, mkNameInfo, mkAmbiguousNameInfo, mkImplicitNameInfo, mkCNameInfo
   , mkModuleInfo, mkImportInfo, mkImplicitFieldInfo
   -- utils
-  , PName(..), pName, pNameParent
+  , PName(..), pName, pNameParent, trfPNames, trfPNamesM, trfImportInfo, trfImportInfoM, trfModuleInfoM
   , getInstances
   ) where
 
@@ -31,14 +31,11 @@ import SrcLoc as GHC
 import Type as GHC
 import HscTypes as GHC
 import CoAxiom as GHC
+import HsExtension (IdP)
 
-import Data.Maybe
 import Data.Data as Data
 import Control.Reference
-import Control.Monad
 import Control.Monad.IO.Class
-
-import Outputable
 
 type Scope = [[(Name, Maybe [UsageSpec], Maybe Name)]]
 
@@ -78,7 +75,7 @@ data LiteralInfo = LiteralInfo { _literalType :: Type
 -- | Info corresponding to a name
 data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                            , _nameIsDefined :: Bool
-                           , _nameInfo :: n
+                           , _nameInfo :: IdP n
                            }
                 | AmbiguousNameInfo { _nameScopedLocals :: Scope
                                     , _nameIsDefined :: Bool
@@ -91,10 +88,13 @@ data NameInfo n = NameInfo { _nameScopedLocals :: Scope
                                    , _nameLocation :: SrcSpan
                                    }
 
-  deriving (Data, Functor, Foldable, Traversable)
+deriving instance (Data n, Typeable n, Data (IdP n)) => Data (NameInfo n)
+-- deriving instance Functor NameInfo
+-- deriving instance Foldable NameInfo
+-- deriving instance Traversable NameInfo
 
 -- | Creates semantic information for an unambiguous name
-mkNameInfo :: Scope -> Bool -> n -> NameInfo n
+mkNameInfo :: Scope -> Bool -> IdP n -> NameInfo n
 mkNameInfo = NameInfo
 
 -- | Creates semantic information for a name that is ambiguous because the lack of type info
@@ -118,10 +118,18 @@ mkCNameInfo :: Scope -> Bool -> Id -> Maybe GHC.Fixity -> CNameInfo
 mkCNameInfo = CNameInfo
 
 data PName n
-  = PName { _pName :: n
-          , _pNameParent :: Maybe n
+  = PName { _pName :: IdP n
+          , _pNameParent :: Maybe (IdP n)
           }
-  deriving (Data, Functor, Foldable, Traversable)
+
+deriving instance (Data n, Typeable n, Data (IdP n)) => Data (PName n)
+
+trfPNames :: (IdP n -> IdP n') -> PName n -> PName n'
+trfPNames f (PName name parent) = PName (f name) (fmap f parent)
+
+trfPNamesM :: Monad m => (IdP n -> m (IdP n')) -> PName n -> m (PName n')
+trfPNamesM f (PName name (Just parent)) = PName <$> f name <*> (Just <$> f parent)
+trfPNamesM f (PName name Nothing) = PName <$> f name <*> return Nothing
 
 -- | Info for the module element
 data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
@@ -130,7 +138,12 @@ data ModuleInfo n = ModuleInfo { _defModuleName :: GHC.Module
                                , _implicitNames :: [PName n] -- ^ implicitly imported names
                                , _prelTransMods :: [GHC.Module] -- ^ Modules imported transitively.
                                }
-  deriving (Data, Functor, Foldable, Traversable)
+
+trfModuleInfoM :: Monad m => (IdP n -> m (IdP n')) -> ModuleInfo n -> m (ModuleInfo n')
+trfModuleInfoM f (ModuleInfo mn df bm impl tm)
+  = ModuleInfo mn df bm <$> mapM (trfPNamesM f) impl <*> return tm
+
+deriving instance (Data n, Typeable n, Data (IdP n)) => Data (ModuleInfo n)
 
 instance Data DynFlags where
   gunfold _ _ _ = error "Cannot construct dyn flags"
@@ -149,18 +162,27 @@ mkModuleInfo mod dfs boot !imported deps = ModuleInfo mod dfs boot imported deps
 
 -- | Info corresponding to an import declaration
 data ImportInfo n = ImportInfo { _importedModule :: GHC.Module -- ^ The name and package of the imported module
-                               , _availableNames :: [n] -- ^ Names available from the imported module
+                               , _availableNames :: [IdP n] -- ^ Names available from the imported module
                                , _importedNames :: [PName n] -- ^ Names actually imported from the module.
                                , _importTransMods :: [GHC.Module] -- ^ Modules imported transitively.
                                }
-  deriving (Data, Functor, Foldable, Traversable)
+
+trfImportInfo :: (IdP n -> IdP n') -> ImportInfo n -> ImportInfo n'
+trfImportInfo f (ImportInfo mod avail imp trm)
+  = ImportInfo mod (map f avail) (map (trfPNames f) imp) trm
+
+trfImportInfoM :: Monad m => (IdP n -> m (IdP n')) -> ImportInfo n -> m (ImportInfo n')
+trfImportInfoM f (ImportInfo mod avail imp trm)
+  = ImportInfo mod <$> (mapM f avail) <*> (mapM (trfPNamesM f) imp) <*> return trm
+
+deriving instance (Data n, Typeable n, Data (IdP n)) => Data (ImportInfo n)
 
 deriving instance Data FamInst
 deriving instance Data FamFlavor
 
 -- | Creates semantic information for an import declaration
 -- Strict in the list of the used and imported declarations, orphan and family instances.
-mkImportInfo :: GHC.Module -> [n] -> [PName n] -> [GHC.Module] -> ImportInfo n
+mkImportInfo :: GHC.Module -> [IdP n] -> [PName n] -> [GHC.Module] -> ImportInfo n
 -- the calculate of these fields involves a big parts of the GHC state and it causes a space leak
 -- if not evaluated strictly
 mkImportInfo mod !names !imported deps = ImportInfo mod names imported deps
@@ -170,8 +192,7 @@ getInstances :: [Module] -> GHC.Ghc ([ClsInst], [FamInst])
 getInstances mods = do
   env <- GHC.getSession
   eps <- liftIO $ hscEPS env
-  let homePkgs = catMaybes $ map (lookupHpt (hsc_HPT env) . GHC.moduleName) mods
-      (hptInsts, hptFamInsts) = hptInstances env (`elem` map GHC.moduleName mods)
+  let (hptInsts, hptFamInsts) = hptInstances env (`elem` map GHC.moduleName mods)
       isFromMods inst = maybe False (`elem` mods) $ nameModule_maybe $ Var.varName $ is_dfun inst
       famIsFromMods inst = maybe False (`elem` mods) $ nameModule_maybe $ co_ax_name $ fi_axiom inst
       epsInsts = filter isFromMods $ instEnvElts $ eps_inst_env eps

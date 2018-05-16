@@ -1,4 +1,4 @@
-
+{-# LANGUAGE ScopedTypeVariables, TypeApplications #-}
 -- | Functions that convert the Template-Haskell-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.TH where
 
@@ -20,10 +20,10 @@ import Language.Haskell.Tools.BackendGHC.Utils
 import Language.Haskell.Tools.AST (Ann, Dom, RangeStage)
 import qualified Language.Haskell.Tools.AST as AST
 
-trfQuasiQuotation' :: TransformName n r => HsSplice n -> Trf (AST.UQuasiQuote (Dom r) RangeStage)
+trfQuasiQuotation' :: forall n r . TransformName n r => HsSplice n -> Trf (AST.UQuasiQuote (Dom r) RangeStage)
  -- the lexer does not provide us with tokens '[', '|' and '|]'
 trfQuasiQuotation' (HsQuasiQuote _ id l str)
-  = AST.UQuasiQuote <$> annLocNoSema quoterLoc (trfName' id)
+  = AST.UQuasiQuote <$> annLocNoSema quoterLoc (trfName' @n id)
                     <*> annLocNoSema (pure strLoc) (pure $ AST.QQString (unpackFS str))
   where -- assume that there are no white spaces ain the head and the end of the quasi quote
         quoterLoc = do rng <- asks contRange
@@ -47,7 +47,7 @@ trfSplice' (HsUntypedSplice _ _ expr) = trfSpliceExpr expr
 trfSplice' s = unhandledElement "splice" s
 
 -- | TODO: easier with splice decoration
-trfSpliceExpr :: TransformName n r => Located (HsExpr n) -> Trf (AST.USplice (Dom r) RangeStage)
+trfSpliceExpr :: forall n r . TransformName n r => Located (HsExpr n) -> Trf (AST.USplice (Dom r) RangeStage)
 trfSpliceExpr expr =
   do hasDollar <- allTokenLoc AnnThIdSplice
      hasDoubleDollar <- allTokenLoc AnnThIdTySplice
@@ -55,16 +55,16 @@ trfSpliceExpr expr =
                    ([], []) -> getLoc expr
                    (_, []) -> updateStart (updateCol (+1)) (getLoc expr)
                    ([], _) -> updateStart (updateCol (+2)) (getLoc expr)
-     case expr of L _ (HsVar (L _ varName)) -> AST.UIdSplice <$> trfName (L newSp varName)
+     case expr of L _ (HsVar (L _ varName)) -> AST.UIdSplice <$> trfName @n (L newSp varName)
                   L _ (HsRecFld fldName) -> AST.UIdSplice <$> trfAmbiguousFieldName' newSp fldName
                   expr -> AST.UParenSplice <$> trfExpr expr
 
-trfBracket' :: TransformName n r => HsBracket n -> Trf (AST.UBracket (Dom r) RangeStage)
+trfBracket' :: forall n r . TransformName n r => HsBracket n -> Trf (AST.UBracket (Dom r) RangeStage)
 trfBracket' (ExpBr expr) = AST.UExprBracket <$> trfExpr expr
 trfBracket' (TExpBr expr) = AST.UExprBracket <$> trfExpr expr
 trfBracket' (VarBr isSingle expr)
   = AST.UExprBracket <$> annLoc createScopeInfo (updateStart (updateCol (if isSingle then (+1) else (+2))) <$> asks contRange)
-      (AST.UVar <$> (annContNoSema (trfName' expr)))
+      (AST.UVar <$> (annContNoSema (trfName' @n expr)))
 trfBracket' (PatBr pat) = AST.UPatternBracket <$> trfPattern pat
 trfBracket' (DecBrL decls) = AST.UDeclsBracket <$> trfDecls decls
 trfBracket' (DecBrG decls) = AST.UDeclsBracket <$> trfDeclsGroup decls
