@@ -12,6 +12,7 @@ fullyHandledExtensions = syntacticExtensions
                       ++ typeSystemExtensions
                       ++ thExtensions
                       ++ [Cpp]
+                      ++ [OverloadedStrings]
 
 syntacticExtensions :: [Extension]
 syntacticExtensions = [ RecordWildCards, BangPatterns
