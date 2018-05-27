@@ -39,8 +39,27 @@ deriving instance (Generic a, NFData a) => NFData (Formula a)
 
 type LogicalRelation a = Formula a
 
-data Occurence a = Hint a
-                 | Evidence a
+prettyPrintFormula :: Show a => LogicalRelation a -> String
+prettyPrintFormula (Var x) = show x
+prettyPrintFormula (x :||: y) = prettyPrintFormula x ++ " OR " ++ prettyPrintFormula y
+prettyPrintFormula (x :&&: y) = prettyPrintFormula x ++ " AND " ++ prettyPrintFormula y
+prettyPrintFormula (x :++: y) = prettyPrintFormula x ++ " XOR " ++ prettyPrintFormula y
+prettyPrintFormula (x :->: y) = prettyPrintFormula x ++ " => " ++ prettyPrintFormula y
+prettyPrintFormula (x :<->: y) = prettyPrintFormula x ++ " <=> " ++ prettyPrintFormula y
+prettyPrintFormula (All xs) = "All [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (Some xs) = "Some [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (None xs) = "None [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (ExactlyOne xs) = "ExactlyOne [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (AtMostOne xs) = "AtMostOne [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (Not x) = "Not " ++ prettyPrintFormula x
+prettyPrintFormula Yes = "True"
+prettyPrintFormula No = "False"
+prettyPrintFormula Let{} = "Let ..."
+prettyPrintFormula Bound{} = error "Bound is for internal use only"
+
+data Occurence a = Hint               { unOcc :: a }
+                 | Evidence           { unOcc :: a }
+                 | MissingInformation { unOcc :: a }
   deriving (Show, Eq, Ord, Functor)
 
 type ExtMap = SMap.Map (LogicalRelation Extension) [Occurence SrcSpan]
@@ -89,7 +108,7 @@ determineExtensions :: SMap.Map (LogicalRelation Extension) v -> [Extension]
   - it contains extension with minimal complexity
   - it is lexicographically the first one (based on the Ord instance of Extension)
 
-  TODO: Comparing on length might be unnecessary 
+  TODO: Comparing on length might be unnecessary
 -}
 determineExtensions x = minimal . map toExts $ solution
   where solution = solve_all . All . LMap.keys $ x

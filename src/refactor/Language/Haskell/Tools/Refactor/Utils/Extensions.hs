@@ -5,7 +5,6 @@ module Language.Haskell.Tools.Refactor.Utils.Extensions
   , GHC.Extension(..)
   ) where
 
-import Data.Tuple (swap)
 import Data.Maybe (fromMaybe)
 
 import Control.Reference ((^.), _1, _2, _3)

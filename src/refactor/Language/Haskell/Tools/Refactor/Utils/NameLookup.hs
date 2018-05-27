@@ -10,7 +10,7 @@ import Control.Reference ((^.))
 
 import Language.Haskell.Tools.AST
 import Language.Haskell.Tools.Rewrite
-import Language.Haskell.Tools.Refactor.Utils.Maybe
+import Language.Haskell.Tools.Refactor.Utils.Maybe()
 
 
 instance HasNameInfo' GHC.Name where

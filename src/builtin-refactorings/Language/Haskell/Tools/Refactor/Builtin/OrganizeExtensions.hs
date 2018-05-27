@@ -24,13 +24,18 @@ import Data.Char (isAlphaNum)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
-import qualified Data.Map.Strict as SMap (empty)
+import qualified Data.Map.Strict as SMap (empty, toList)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.
 --       For example if it already found a record wildcard, it won't check again
 
 --       Pretty easy now. Chcek wheter it is already in the ExtMap.
+
+highlightExtensionsQuery :: QueryChoice
+highlightExtensionsQuery = GlobalQuery "HighlightExtensions" extQuery
+  where extQuery :: ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
+        extQuery (_,m) _ = lift . fmap MarkerQuery . extensionMarkers $ m
 
 organizeExtensionsRefactoring :: RefactoringChoice
 organizeExtensionsRefactoring = ModuleRefactoring "OrganizeExtensions" (localRefactoring organizeExtensions)
@@ -81,7 +86,11 @@ reduceExtensions moduleAST = do
     -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
     else return . sortBy (compare `on` show) $ filteredExts
 
---
+extensionMarkers :: UnnamedModule -> Ghc [Marker]
+extensionMarkers = fmap (concatMap toMarkers . SMap.toList) . collectExtensions
+  where toMarkers (rel, occs) = map (toMarker rel) occs
+        toMarker  rel occ     = Marker (unOcc occ) Info (showWithLevel rel occ)
+        showWithLevel rel occ = (head . words . show $ occ) ++ ": " ++ prettyPrintFormula rel
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap

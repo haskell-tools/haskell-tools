@@ -155,7 +155,7 @@ updateClient' UpdateCtx{..} (PerformQuery query modPath selection args shutdown)
        res <- lift $ performQuery queries (query:selection:args) (maybe (Left modPath) Right selectedMod) otherMods
        case res of
          Left err -> liftIO $ response $ ErrorMessage err
-         Right res -> liftIO $ response $ QueryResult query res
+         Right (qType, qRes) -> liftIO $ response $ QueryResult query qType qRes
        when shutdown $ liftIO $ response Disconnected
        return (not shutdown)
 
