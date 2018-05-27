@@ -1,5 +1,5 @@
 name:                haskell-tools-builtin-refactorings
-version:             1.0.1.0
+version:             1.0.1.1
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -122,7 +122,7 @@ library
 
   build-depends:       base                      >= 4.10  && < 4.11
                      , mtl                       >= 2.2  && < 2.3
-                     , aeson                     >= 1.0 && < 1.3
+                     , aeson                     >= 1.0 && < 1.4
                      , uniplate                  >= 1.6  && < 1.7
                      , classyplate               >= 0.3  && < 0.4
                      , deepseq                   >= 1.4  && < 1.5
@@ -137,7 +137,7 @@ library
                      , minisat-solver            >= 0.1  && < 0.2
                      , portable-lines            >= 0.1  && < 0.2
                      , ghc                       >= 8.2  && < 8.3
-                     , Cabal                     >= 2.0  && < 2.1
+                     , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
@@ -150,9 +150,9 @@ test-suite haskell-tools-builtin-refactorings-test
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.10 && < 4.11
                      , tasty                     >= 0.11 && < 1.1
-                     , tasty-hunit               >= 0.9 && < 0.11
+                     , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 5.1
                      , filepath                  >= 1.4  && < 1.5
@@ -166,7 +166,7 @@ test-suite haskell-tools-builtin-refactorings-test
                      , template-haskell          >= 2.12 && < 2.13
                      , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
-                     , Cabal                     >= 2.0 && < 2.1
+                     , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
@@ -185,7 +185,7 @@ test-suite ht-extension-organizer-test
   main-is:             ExtensionOrganizerTest/Main.hs
   build-depends:       base                      >= 4.10 && < 4.11
                      , tasty                     >= 0.11 && < 1.1
-                     , tasty-hunit               >= 0.9 && < 0.11
+                     , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 5.1
                      , filepath                  >= 1.4  && < 1.5
@@ -199,7 +199,7 @@ test-suite ht-extension-organizer-test
                      , template-haskell          >= 2.12 && < 2.13
                      , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
-                     , Cabal                     >= 2.0  && < 2.1
+                     , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
@@ -232,7 +232,7 @@ test-suite ht-extension-organizer-test
 --                      , template-haskell          >= 2.12 && < 2.13
 --                      , ghc                       >= 8.2  && < 8.3
 --                      , ghc-paths                 >= 0.1  && < 0.2
---                      , Cabal                     >= 2.0  && < 2.1
+--                      , Cabal                     >= 2.0  && < 2.3
 --                      , haskell-tools-ast         >= 1.0  && < 1.1
 --                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
 --                      , haskell-tools-rewrite     >= 1.0  && < 1.1

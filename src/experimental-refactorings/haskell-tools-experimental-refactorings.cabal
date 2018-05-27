@@ -1,5 +1,5 @@
 name:                haskell-tools-experimental-refactorings
-version:             1.0.1.0
+version:             1.0.1.1
 synopsis:            Refactoring Tool for Haskell
 description:         Contains experimental refactorings implemented in the Haskell-tools framework for tutorial purposes, or to be added later to the set of mature refactorings.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -25,7 +25,7 @@ library
                      , Language.Haskell.Tools.Refactor.Builtin.DollarApp3
                      , Language.Haskell.Tools.Refactor.Builtin.FindUnused
 
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.10 && < 4.11
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
                      , ghc-paths                 >= 0.1  && < 0.2
@@ -37,7 +37,7 @@ library
                      , filepath                  >= 1.4  && < 1.5
                      , template-haskell          >= 2.12 && < 2.13
                      , ghc                       >= 8.2  && < 8.3
-                     , Cabal                     >= 2.0 && < 2.1
+                     , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
@@ -50,9 +50,9 @@ test-suite haskell-tools-experimental-refactorings-test
   ghc-options:         -with-rtsopts=-M2g
   hs-source-dirs:      test
   main-is:             Main.hs
-  build-depends:       base                      >= 4.10  && < 4.11
+  build-depends:       base                      >= 4.10 && < 4.11
                      , tasty                     >= 0.11 && < 1.1
-                     , tasty-hunit               >= 0.9 && < 0.11
+                     , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 5.1
                      , filepath                  >= 1.4  && < 1.5
@@ -66,7 +66,7 @@ test-suite haskell-tools-experimental-refactorings-test
                      , template-haskell          >= 2.12 && < 2.13
                      , ghc                       >= 8.2  && < 8.3
                      , ghc-paths                 >= 0.1  && < 0.2
-                     , Cabal                     >= 2.0 && < 2.1
+                     , Cabal                     >= 2.0  && < 2.3
                      , haskell-tools-ast         >= 1.0  && < 1.1
                      , haskell-tools-backend-ghc >= 1.0  && < 1.1
                      , haskell-tools-rewrite     >= 1.0  && < 1.1
