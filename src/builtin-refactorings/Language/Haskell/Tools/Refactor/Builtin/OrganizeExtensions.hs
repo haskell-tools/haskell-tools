@@ -24,7 +24,7 @@ import Data.Char (isAlphaNum)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
-import qualified Data.Map.Strict as SMap (empty, keys)
+import qualified Data.Map.Strict as SMap (empty)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.

@@ -2,7 +2,6 @@ module Language.Haskell.Tools.Refactor.Builtin.GetMatches where
 
 import Language.Haskell.Tools.Refactor
 
-import Control.Monad.Writer
 import Control.Reference
 import Data.Aeson
 
