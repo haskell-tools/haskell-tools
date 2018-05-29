@@ -50,7 +50,7 @@ chkInstanceHead ih = do
   mCls <- runMaybeT . lookupClassFromInstance $ ih
   case mCls of
     Just cls -> mapM_ (chkTypeArg cls) types >> return ih
-    Nothing  -> addEvidence FlexibleInstances ih
+    Nothing  -> addMI FlexibleInstances ih
 
 -- | Checks a type argument of class whether it needs FlexibleInstances
 -- First checks the structure of the type argument opaquely

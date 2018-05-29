@@ -29,8 +29,9 @@ chkFlexibleContexts' ctx@(Context a) = chkAssertion a >> return ctx
 
 chkAssertion :: CheckNode Assertion
 chkAssertion a@(ClassAssert con annTys) = do
-  -- If a lookup fails, we presume that it is a class
-  isClass <- fromMaybeT True (isClassTyConNameM con)
+  -- If a lookup fails, add MissingInformation FlexibleContexts
+  let errDefault = addMI FlexibleContexts a >> return False
+  isClass <- fromMaybeTM errDefault (isClassTyConNameM con)
   if not isClass || all hasTyVarHead (annTys ^. annListElems)
     then return a
     else addEvidence FlexibleContexts a

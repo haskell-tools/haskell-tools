@@ -1,6 +1,7 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.GADTsChecker where
 
-import Data.Maybe (catMaybes, fromMaybe)
 import Control.Reference ((^.), (&))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
@@ -20,20 +21,26 @@ chkGADTsGadtConDecl = conditional chkGADTsGadtConDecl' GADTSyntax
 chkConDeclForExistentials :: CheckNode ConDecl
 chkConDeclForExistentials = conditionalAny chkConDeclForExistentials' [GADTs, ExistentialQuantification]
 
--- If all data constructors are vanilla Haskell 98 data constructors, then only GADTSyntax is needed.
+-- | Checks whether a GADTs-style constructor declaration requires GADTs.
+-- If all data constructors are vanilla Haskell 98 data constructors
+-- , then only GADTSyntax is needed. If any constructor's lookup fails
+-- , we add MissingInformation.
 chkGADTsGadtConDecl' :: CheckNode GadtConDecl
 chkGADTsGadtConDecl' conDecl = do
-  let conNames = conDecl ^. (gadtConNames & annListElems)
+  let conNames   = conDecl ^. (gadtConNames & annListElems)
   mres <- mapM (runMaybeT . isVanillaDataConNameM) conNames
-  if and . catMaybes $ mres
-    then addEvidence GADTSyntax conDecl
-    else do addEvidence GADTSyntax conDecl
-            addRelation (GADTs `lOr` ExistentialQuantification) conDecl
+  addEvidence_ GADTSyntax conDecl
+  if | any isNothing mres ->
+       addRelationMI (GADTs `lOr` ExistentialQuantification) conDecl
+     | any (not . fromJust) mres ->
+       addRelation (GADTs `lOr` ExistentialQuantification) conDecl
+     | otherwise -> return conDecl
 
--- Extracts the name from a ConDecl, and checks whether it is a vanilla
--- data constructor.
+-- | Extracts the name from a ConDecl, and checks whether it is a vanilla
+-- data constructor. Ifthe lookup fails, adds MissingInformation.
 chkConDeclForExistentials' :: CheckNode ConDecl
-chkConDeclForExistentials' conDecl = liftM (fromMaybe conDecl) . runMaybeT $
+chkConDeclForExistentials' conDecl =
+  fromMaybeTM (addRelationMI (GADTs `lOr` ExistentialQuantification) conDecl) $
   case conDecl ^. element of
     UConDecl _ _ n _         -> chkName n
     URecordDecl _ _ n _      -> chkName n

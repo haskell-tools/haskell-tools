@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module ExtensionOrganizerTest.AnnotationParser
   -- (getLocalExtensionAnnotations, getGlobalExtensionAnnotations)
   where
@@ -18,28 +20,32 @@ getGlobalExtensionAnnotations s
   | [] <- getGlobalAnnot s = []
   | otherwise              = parseGlobalAnnot . getGlobalAnnot $ s
 
+-- | Parses a file, collects occurences mapped to extension formulas
+-- , transform them into formulas mapped to occurences.
 getLocalExtensionAnnotations :: String -> SMap.Map (LogicalRelation Extension) [Occurence Int]
 getLocalExtensionAnnotations s = foldl f SMap.empty (parseFile s)
-  where f m (num, exts) = foldl (g num) m exts
-        g num m' ext = SMap.insertWith (++) ext [num] m'
+  where f m (occ, exts) = foldl (g occ) m exts
+        g occ m' ext    = SMap.insertWith (++) ext [occ] m'
 
 parseFile :: String -> [(Occurence Int, [LogicalRelation Extension])] -- SMap.Map Extension [Int]
 parseFile = concatMap (separateOccurences . parseLine) . zip [1..] . lines
 
 -- | Separates the occurences into hints and evidence.
--- The resulting list will always contain two elements
+-- The resulting list will always contain three elements
 separateOccurences :: (Int, [Occurence (LogicalRelation Extension)]) ->
                       [(Occurence Int, [LogicalRelation Extension])]
-separateOccurences (ln, occs) = [(Evidence ln, evs'), (Hint ln, hints')]
-  where (evs, hints) = partition isEvidence occs
-        evs' = map fromOcc evs
+separateOccurences (ln, occs) = [(Evidence ln, evs'), (Hint ln, hints'), (Hint ln, mis')]
+  where evs   = filter (\case Evidence{}           -> True; _ -> False;) occs
+        hints = filter (\case Hint{}               -> True; _ -> False;) occs
+        mis   = filter (\case MissingInformation{} -> True; _ -> False;) occs
+
+        evs'   = map fromOcc evs
         hints' = map fromOcc hints
+        mis'   = map fromOcc mis
 
-        isEvidence (Evidence _) = True
-        isEvidence _            = False
-
-        fromOcc (Evidence x) = x
-        fromOcc (Hint x)     = x
+        fromOcc (Evidence x)           = x
+        fromOcc (Hint x)               = x
+        fromOcc (MissingInformation x) = x
 
 parseLine :: (Int, String) -> (Int, [Occurence (LogicalRelation Extension)])
 parseLine (num, line) = (num, parseLocalAnnot . getLocalAnnot $ line)
@@ -87,8 +93,9 @@ crop :: String -> String
 crop = dropWhile isSpace . reverse . dropWhile isSpace . reverse
 
 relation :: Parser (Occurence (LogicalRelation Extension))
-relation = Hint     <$> (token "(" *> relation' <* token ")")
-       <|> Evidence <$> relation'
+relation = Hint               <$> (token "(" *> relation' <* token ")")
+       <|> MissingInformation <$> (token "[" *> relation' <* token "]")
+       <|> Evidence           <$> relation'
 
 -- | A relation parser that tries to reduce the left-hand side of operators,
 -- before applíing the left-recursive rules.

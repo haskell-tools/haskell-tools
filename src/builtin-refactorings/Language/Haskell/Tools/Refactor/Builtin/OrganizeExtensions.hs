@@ -86,6 +86,7 @@ reduceExtensions moduleAST = do
     -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
     else return . sortBy (compare `on` show) $ filteredExts
 
+-- | Collect the required extensions in a module and returns a markers associated with them
 extensionMarkers :: UnnamedModule -> Ghc [Marker]
 extensionMarkers = fmap (concatMap toMarkers . SMap.toList) . collectExtensions
   where toMarkers (rel, occs) = map (toMarker rel) occs
@@ -96,6 +97,8 @@ extensionMarkers = fmap (concatMap toMarkers . SMap.toList) . collectExtensions
 collectExtensions :: UnnamedModule -> Ghc ExtMap
 collectExtensions = collectExtensionsWith traverseModule
 
+
+-- | Collects the required extensions from a module using the given traversal method
 collectExtensionsWith :: CheckNode UnnamedModule -> UnnamedModule -> Ghc ExtMap
 collectExtensionsWith trvModule moduleAST = do
   let expanded = expandExtensions . collectDefaultExtensions $ moduleAST

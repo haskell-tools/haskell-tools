@@ -11,11 +11,17 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 isJustT :: Monad m => MaybeT m a -> m Bool
 isJustT m = liftM isJust . runMaybeT $ m
 
+isNothingT :: Monad m => MaybeT m a -> m Bool
+isNothingT m = liftM isNothing . runMaybeT $ m
+
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
 fromMaybeT :: Monad m => a -> MaybeT m a -> m a
-fromMaybeT def = maybeT def id 
+fromMaybeT def = maybeT def id
+
+fromMaybeTM :: Monad m => m a -> MaybeT m a -> m a
+fromMaybeTM def = maybeTM def return
 
 maybeT :: Monad m => b -> (a -> b) -> MaybeT m a -> m b
 maybeT def f x = liftM (maybe def f) (runMaybeT x)

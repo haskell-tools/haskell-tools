@@ -58,6 +58,27 @@ addRelationHint :: (MonadState ExtMap m, HasRange node) =>
 addRelationHint rel node = addRelationHint_ rel node >> return node
 
 
+addMI' :: (Ord k, HasRange a) =>
+                 k -> a -> SMap.Map k [Occurence SrcSpan] -> SMap.Map k [Occurence SrcSpan]
+addMI' key node = SMap.insertWith (++) key [MissingInformation (getRange node)]
+
+addMI_ :: (MonadState ExtMap m, HasRange node) =>
+             Extension -> node -> m ()
+addMI_ extension element = modify $ addMI' (lVar extension) element
+
+addMI :: (MonadState ExtMap m, HasRange node) =>
+            Extension -> node -> m node
+addMI ext node = addMI_ ext node >> return node
+
+addRelationMI_ :: (MonadState ExtMap m, HasRange node) =>
+                     LogicalRelation Extension -> node -> m ()
+addRelationMI_ rel element = modify $ addMI' rel element
+
+addRelationMI :: (MonadState ExtMap m, HasRange node) =>
+                    LogicalRelation Extension -> node -> m node
+addRelationMI rel node = addRelationMI_ rel node >> return node
+
+
 addEvidence' :: (Ord k, HasRange a) =>
                  k -> a -> SMap.Map k [Occurence SrcSpan] -> SMap.Map k [Occurence SrcSpan]
 addEvidence' key node = SMap.insertWith (++) key [Evidence (getRange node)]
