@@ -1,4 +1,6 @@
-{-# LANGUAGE GADTs, LambdaCase, ViewPatterns #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Functions that convert the statement-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Stmts where

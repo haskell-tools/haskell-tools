@@ -1,12 +1,16 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
-import qualified TyCoRep   as GHC (Type(..), TyThing(..))
-import qualified Kind      as GHC (isConstraintKind, typeKind)
+import qualified CoAxiom   as GHC
 import qualified ConLike   as GHC (ConLike(..))
 import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
+import qualified Kind      as GHC (isConstraintKind, typeKind)
+import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
+import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
+import qualified TyCoRep   as GHC (Type(..), TyThing(..))
+import qualified Type      as GHC (eqType)
 import qualified Var       as GHC (varType)
 import qualified GHC       hiding (typeKind)
 import           GHC       (GhcMonad)
@@ -16,6 +20,10 @@ import Language.Haskell.Tools.Rewrite
 import Language.Haskell.Tools.Refactor.Utils.NameLookup
 import Language.Haskell.Tools.Refactor.Utils.Maybe
 
+instance Eq GHC.Type where
+  (==) = GHC.eqType
+
+type ClosedTyFam = GHC.CoAxiom GHC.Branched
 
 hasConstraintKind :: GHC.Type -> Bool
 hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
@@ -110,11 +118,14 @@ lookupClassWith getName x = do
     GHC.ATyCon tc | GHC.isClassTyCon tc -> liftMaybe . GHC.tyConClass_maybe $ tc
     _ -> fail "TypeLookup.lookupClassWith: Argument does not contain a class type constructor"
 
+lookupClass :: (GhcMonad m, HasNameInfo' n) => n -> MaybeT m GHC.Class
+lookupClass = lookupClassWith (liftMaybe . semanticsName)
+
 lookupClassFromInstance :: GhcMonad m => InstanceHead -> MaybeT m GHC.Class
-lookupClassFromInstance = lookupClassWith instHeadSemName
+lookupClassFromInstance = lookupClassWith (liftMaybe . instHeadSemName)
 
 lookupClassFromDeclHead :: GhcMonad m => DeclHead -> MaybeT m GHC.Class
-lookupClassFromDeclHead = lookupClassWith declHeadSemName
+lookupClassFromDeclHead = lookupClassWith (liftMaybe . declHeadSemName)
 
 -- | Looks up the right-hand side (GHC representation)
 -- of a Haskell Tools Type corresponding to a type synonym
@@ -125,30 +136,75 @@ semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeSynRhs
 semanticsType :: GhcMonad m => Type -> MaybeT m GHC.Type
 semanticsType ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeFromGlobalName
 
--- | Extracts the name of a type
--- In case of a type application, it finds the type being applied
-nameFromType :: Type -> Maybe Name
-nameFromType (TypeApp f _)    = nameFromType f
-nameFromType (ParenType x)    = nameFromType x
-nameFromType (KindedType t _) = nameFromType t
-nameFromType (BangType t)     = nameFromType t
-nameFromType (LazyType t)     = nameFromType t
-nameFromType (UnpackType t)   = nameFromType t
-nameFromType (NoUnpackType t) = nameFromType t
-nameFromType (VarType x)      = Just x
-nameFromType _                = Nothing
-
 isNewtypeTyCon :: GHC.TyThing -> Bool
 isNewtypeTyCon (GHC.ATyCon tycon) = GHC.isNewTyCon tycon
 isNewtypeTyCon _ = False
 
--- | Decides whether a given name is a standard Haskell98 data constructor.
--- Fails if not given a proper name.
-isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
-isVanillaDataConNameM name = do
+-- | Looks up the given name, extracts something out of it.
+-- If the extraction is not succesful, it returns False,
+-- if it is successful, then checks the result against the predicate.
+-- The reasoning behind this, is that the predicate can only be
+-- satisfied by a proper name.
+satisfies :: (HasNameInfo' n, GhcMonad m) =>
+             (GHC.TyThing -> Maybe a) -> (a -> Bool) -> n -> MaybeT m Bool
+satisfies extract pred name = do
   sname <- liftMaybe . semanticsName  $ name
   tt    <- MaybeT    . GHC.lookupName $ sname
-  dc    <- liftMaybe . extractDataCon $ tt
-  return . GHC.isVanillaDataCon $ dc
+  return $ maybe False pred (extract tt)
+
+-- | Decides whether a given name is a type family constructor.
+-- Fails if the lookup is not successful.
+isClassTyConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
+isClassTyConNameM = satisfies extractTyCon GHC.isClassTyCon
+  where extractTyCon (GHC.ATyCon tc) = Just tc
+        extractTyCon  _              = Nothing
+
+-- | Decides whether a given name is a standard Haskell98 data constructor.
+-- Fails if the lookup is not successful.
+isVanillaDataConNameM :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m Bool
+isVanillaDataConNameM = satisfies extractDataCon GHC.isVanillaDataCon
   where extractDataCon (GHC.AConLike (GHC.RealDataCon dc)) = Just dc
         extractDataCon  _                                  = Nothing
+
+-- | Looks up a closed type family from a name.
+lookupClosedTyFam :: (HasNameInfo' n, GhcMonad m) => n -> MaybeT m ClosedTyFam
+lookupClosedTyFam name = do
+  sname <- liftMaybe . semanticsName $ name
+  tt    <- MaybeT    . GHC.lookupName $ sname
+  liftMaybe . coAxiomFromTyThing $ tt
+
+-- | Extract the CoAxioms from a TyThing representing a closed type family.
+coAxiomFromTyThing :: GHC.TyThing -> Maybe (GHC.CoAxiom GHC.Branched)
+coAxiomFromTyThing (GHC.ATyCon tc)   = GHC.isClosedSynFamilyTyConWithAxiom_maybe tc
+coAxiomFromTyThing (GHC.ACoAxiom ax) = Just ax
+coAxiomFromTyThing _                 = Nothing
+
+-- | Determines whether a Type itself has a type variable head.
+hasTyVarHead :: Type -> Bool
+hasTyVarHead (ForallType _ t) = hasTyVarHead t
+hasTyVarHead (CtxType _ t) = hasTyVarHead t
+hasTyVarHead FunctionType{} = False
+hasTyVarHead TupleType{} = False
+hasTyVarHead UnboxedTupleType{} = False
+hasTyVarHead ListType{} = False
+hasTyVarHead ParArrayType{} = False
+hasTyVarHead (TypeApp f _) = hasTyVarHead f
+hasTyVarHead InfixTypeApp{} = False
+hasTyVarHead (ParenType t) = hasTyVarHead t
+hasTyVarHead (VarType n) = maybe False GHC.isTyVarName (semanticsName n)
+hasTyVarHead (KindedType t _) = hasTyVarHead t
+hasTyVarHead (BangType t) = hasTyVarHead t
+hasTyVarHead (LazyType t) = hasTyVarHead t
+hasTyVarHead (UnpackType t) = hasTyVarHead t
+hasTyVarHead (NoUnpackType t) = hasTyVarHead t
+hasTyVarHead WildcardType{} = False
+hasTyVarHead NamedWildcardType{} = False
+hasTyVarHead SpliceType{} = False
+hasTyVarHead QuasiQuoteType{} = False
+hasTyVarHead PromotedIntType{} = False
+hasTyVarHead PromotedStringType{} = False
+hasTyVarHead PromotedConType{} = False
+hasTyVarHead PromotedListType{} = False
+hasTyVarHead PromotedTupleType{} = False
+hasTyVarHead PromotedUnitType{} = False
+hasTyVarHead UnboxedSumType{} = False

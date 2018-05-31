@@ -1,4 +1,10 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, RankNTypes, ScopedTypeVariables, TypeApplications, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
   (extractBinding', tryItOut, extractBindingRefactoring) where

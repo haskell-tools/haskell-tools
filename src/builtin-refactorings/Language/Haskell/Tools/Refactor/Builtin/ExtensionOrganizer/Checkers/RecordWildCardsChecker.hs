@@ -7,9 +7,9 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 --       but we don't really need any contraint.
 
 chkRecordWildCardsPatField :: CheckNode PatternField
-chkRecordWildCardsPatField p@(FieldWildcardPattern {}) = addOccurence RecordWildCards p
+chkRecordWildCardsPatField p@(FieldWildcardPattern {}) = addEvidence RecordWildCards p
 chkRecordWildCardsPatField p = return p
 
 chkRecordWildCardsFieldUpdate :: CheckNode FieldUpdate
-chkRecordWildCardsFieldUpdate e@(FieldWildcard {}) = addOccurence RecordWildCards e
+chkRecordWildCardsFieldUpdate e@(FieldWildcard {}) = addEvidence RecordWildCards e
 chkRecordWildCardsFieldUpdate e = return e

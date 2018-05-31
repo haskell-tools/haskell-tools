@@ -7,5 +7,5 @@ chkMultiWayIfExpr :: CheckNode Expr
 chkMultiWayIfExpr = conditional chkMultiWayIfExpr' MultiWayIf
 
 chkMultiWayIfExpr' :: CheckNode Expr
-chkMultiWayIfExpr' e@(MultiIf _) = addOccurence MultiWayIf e
+chkMultiWayIfExpr' e@(MultiIf _) = addEvidence MultiWayIf e
 chkMultiWayIfExpr' x = return x

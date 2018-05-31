@@ -18,23 +18,23 @@ chkMagicHashKind = conditional chkMagicHashKind' MagicHash
 
 
 chkMagicHashLiteral' :: CheckNode Literal
-chkMagicHashLiteral' l@(PrimIntLit _)    = addOccurence MagicHash l
-chkMagicHashLiteral' l@(PrimWordLit _)   = addOccurence MagicHash l
-chkMagicHashLiteral' l@(PrimFloatLit _)  = addOccurence MagicHash l
-chkMagicHashLiteral' l@(PrimDoubleLit _) = addOccurence MagicHash l
-chkMagicHashLiteral' l@(PrimCharLit _)   = addOccurence MagicHash l
-chkMagicHashLiteral' l@(PrimStringLit _) = addOccurence MagicHash l
+chkMagicHashLiteral' l@(PrimIntLit _)    = addEvidence MagicHash l
+chkMagicHashLiteral' l@(PrimWordLit _)   = addEvidence MagicHash l
+chkMagicHashLiteral' l@(PrimFloatLit _)  = addEvidence MagicHash l
+chkMagicHashLiteral' l@(PrimDoubleLit _) = addEvidence MagicHash l
+chkMagicHashLiteral' l@(PrimCharLit _)   = addEvidence MagicHash l
+chkMagicHashLiteral' l@(PrimStringLit _) = addEvidence MagicHash l
 chkMagicHashLiteral' l = return l
 
 
 chkMagicHashNamePart' :: CheckNode NamePart
 chkMagicHashNamePart' n@(NamePart name) =
-  if (last name == '#') then addOccurence MagicHash n
+  if (last name == '#') then addEvidence MagicHash n
                         else return n
 
 -- NOTE: is this really needed?
 chkMagicHashKind' :: CheckNode Kind
-chkMagicHashKind' k@UnboxKind = addOccurence MagicHash k
+chkMagicHashKind' k@UnboxKind = addEvidence MagicHash k
 chkMagicHashKind' k = return k
 
 {- Name can be reached from:

@@ -9,7 +9,10 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 -- | Global checks
 instance Checkable Module where
-  check = globalChkNamesForTypeEq
+  check = gblChkQNamesForTypeEq
+      >=> gblChkUndecidableInstances
+      >=> gblChkQNamesForFC
+      >=> gblChkCPP
 
 instance Checkable Decl where
   check = chkFlexibleInstancesDecl
@@ -19,7 +22,9 @@ instance Checkable Decl where
       >=> chkConstraintKindsDecl
       >=> chkConstrainedClassMethodsDecl
       >=> chkTypeSynonymInstancesDecl
-      >=> chkTypeOperatorsDecl'
+      >=> chkTypeOperatorsDecl
+      >=> chkUndecidableInstancesDecl
+      >=> chkFlexibleContextsDecl
 
 instance Checkable Pattern where
   check = chkBangPatterns
@@ -108,3 +113,6 @@ instance Checkable Assertion where
 
 instance Checkable InstanceHead where
   check = chkTypeOperatorsInstHead
+
+instance Checkable Context where
+  check = chkFlexibleContexts

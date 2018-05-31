@@ -128,8 +128,8 @@ processMessage pedantic output (CompilationProblem marks hints)
 processMessage _ output (LoadedModule fp name)
   = do hPutStrLn output $ "Loaded module: " ++ name ++ "( " ++ fp ++ ") "
        return Nothing
-processMessage _ output (QueryResult query value)
-  = do hPutStrLn output $ "Query " ++ query ++ " result: " ++ show value
+processMessage _ output (QueryResult query qType qResult)
+  = do hPutStrLn output $ "Query " ++ query ++ " type: " ++ qType ++ " result: " ++ show qResult
        return Nothing
 processMessage _ output (DiffInfo diff)
   = do hPutStrLn output diff

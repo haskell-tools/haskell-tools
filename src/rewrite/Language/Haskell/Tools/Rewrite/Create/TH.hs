@@ -1,5 +1,6 @@
 -- | Generation of Template Haskell AST fragments for refactorings.
-{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.Haskell.Tools.Rewrite.Create.TH where
 

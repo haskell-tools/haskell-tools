@@ -1,4 +1,7 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 

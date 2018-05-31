@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, TypeApplications #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.TraverseAST
@@ -14,5 +16,5 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.Chec
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector()
 
 
-traverseModule :: CheckNode UnnamedModule
+traverseModule :: CheckNode Module
 traverseModule = topDownM @Checkable check

@@ -10,5 +10,5 @@ chkExplicitNamespacesIESpec :: CheckNode IESpec
 chkExplicitNamespacesIESpec = conditional chkIESpec ExplicitNamespaces
   where chkIESpec :: CheckNode IESpec
         chkIESpec x@(IESpec (AnnJust imod) _ _)
-          | UImportType <- imod ^. element = addOccurence ExplicitNamespaces x
+          | UImportType <- imod ^. element = addEvidence ExplicitNamespaces x
         chkIESpec x = return x

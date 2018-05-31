@@ -1,15 +1,17 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- | This module declares the messages that can be sent from the client to the
 -- daemon engine and from the engine to the client.
-module Language.Haskell.Tools.Daemon.Protocol where
+module Language.Haskell.Tools.Daemon.Protocol
+  ( module Language.Haskell.Tools.Daemon.Protocol
+  , Marker(..), Severity(..)
+  ) where
 
 import Control.DeepSeq (NFData)
-import qualified Data.Aeson as A ((.=))
-import Data.Aeson hiding ((.=))
+import Data.Aeson (ToJSON, FromJSON, Value)
 import GHC.Generics (Generic)
 
-import FastString (unpackFS)
 import SrcLoc
 
 import Language.Haskell.Tools.Refactor
@@ -95,6 +97,7 @@ data ResponseMsg
                  }
     -- ^ The engine has loaded the given module.
   | QueryResult { queryName :: String
+                , queryType :: String
                 , queryResult :: Value
                 }
     -- ^ The result of querying the program representation.
@@ -104,29 +107,7 @@ data ResponseMsg
     -- ^ The engine has closed the connection.
   deriving (Show, Generic)
 
-data Marker = Marker { location :: SrcSpan
-                     , severity :: Severity
-                     , message :: String
-                     } deriving (Generic, Eq)
-
-instance Show Marker where
-  show marker = show (severity marker) ++ " at " ++ shortShowSpanWithFile (location marker) ++ ": " ++ message marker
-
-data Severity = Error | Warning | Info
-  deriving (Show, Generic, Eq)
-
 instance ToJSON ResponseMsg
-instance ToJSON Marker
-instance ToJSON Severity
-
-instance ToJSON SrcSpan where
-  toJSON (RealSrcSpan sp) = object [ "file" A..= unpackFS (srcSpanFile sp)
-                                   , "startRow" A..= srcLocLine (realSrcSpanStart sp)
-                                   , "startCol" A..= srcLocCol (realSrcSpanStart sp)
-                                   , "endRow" A..= srcLocLine (realSrcSpanEnd sp)
-                                   , "endCol" A..= srcLocCol (realSrcSpanEnd sp)
-                                   ]
-  toJSON _ = Null
 
 data UndoRefactor = RemoveAdded { undoRemovePath :: FilePath }
                   | RestoreRemoved { undoRestorePath :: FilePath

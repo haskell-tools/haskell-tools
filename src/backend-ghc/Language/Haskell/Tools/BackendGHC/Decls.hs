@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Functions that convert the declarations of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Decls where

@@ -7,7 +7,7 @@ chkBangPatterns :: CheckNode Pattern
 chkBangPatterns = conditional chkBangPatterns' BangPatterns
 
 chkBangPatterns' :: CheckNode Pattern
-chkBangPatterns' p@(BangPat _) = addOccurence BangPatterns p
+chkBangPatterns' p@(BangPat _) = addEvidence BangPatterns p
 chkBangPatterns' x = return x
 
 {-

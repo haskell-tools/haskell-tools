@@ -14,14 +14,14 @@ chkUnboxedTuplesType = conditional chkUnboxedTuplesType' UnboxedTuples
 
 
 chkUnboxedTuplesExpr' :: CheckNode Expr
-chkUnboxedTuplesExpr' e@(UnboxedTuple        _) = addOccurence UnboxedTuples e
-chkUnboxedTuplesExpr' e@(UnboxedTupleSection _) = addOccurence UnboxedTuples e
+chkUnboxedTuplesExpr' e@(UnboxedTuple        _) = addEvidence UnboxedTuples e
+chkUnboxedTuplesExpr' e@(UnboxedTupleSection _) = addEvidence UnboxedTuples e
 chkUnboxedTuplesExpr' e = return e
 
 chkUnboxedTuplesPat' :: CheckNode Pattern
-chkUnboxedTuplesPat' p@(UnboxTuplePat _) = addOccurence UnboxedTuples p
+chkUnboxedTuplesPat' p@(UnboxTuplePat _) = addEvidence UnboxedTuples p
 chkUnboxedTuplesPat' p = return p
 
 chkUnboxedTuplesType' :: CheckNode Type
-chkUnboxedTuplesType' t@(UnboxedTupleType _) = addOccurence UnboxedTuples t
+chkUnboxedTuplesType' t@(UnboxedTupleType _) = addEvidence UnboxedTuples t
 chkUnboxedTuplesType' t = return t

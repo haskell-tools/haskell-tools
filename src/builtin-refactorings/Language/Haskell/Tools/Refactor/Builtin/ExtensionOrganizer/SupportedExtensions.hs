@@ -10,10 +10,13 @@ fullyHandledExtensions = syntacticExtensions
                       ++ derivingExtensions
                       ++ typeClassExtensions
                       ++ typeSystemExtensions
+                      ++ thExtensions
+                      ++ [Cpp]
+                      ++ [OverloadedStrings]
 
 syntacticExtensions :: [Extension]
-syntacticExtensions = [ RecordWildCards, TemplateHaskell, BangPatterns
-                      , PatternSynonyms, TupleSections, LambdaCase, QuasiQuotes
+syntacticExtensions = [ RecordWildCards, BangPatterns
+                      , PatternSynonyms, TupleSections, LambdaCase
                       , ViewPatterns, MagicHash, UnboxedTuples
                       , FunctionalDependencies, DefaultSignatures
                       , RecursiveDo, Arrows, ParallelListComp
@@ -30,8 +33,12 @@ derivingExtensions = [ DeriveDataTypeable, DeriveGeneric, DeriveFunctor
 typeClassExtensions :: [Extension]
 typeClassExtensions = [ MultiParamTypeClasses, ConstrainedClassMethods
                       , FlexibleInstances, TypeSynonymInstances
+                      , FlexibleContexts
                       ]
 
 typeSystemExtensions :: [Extension]
 typeSystemExtensions = [ TypeFamilies, GADTs, ExistentialQuantification
-                       , ConstraintKinds ]
+                       , ConstraintKinds, UndecidableInstances ]
+
+thExtensions :: [Extension]
+thExtensions = [TemplateHaskell, TemplateHaskellQuotes, QuasiQuotes]

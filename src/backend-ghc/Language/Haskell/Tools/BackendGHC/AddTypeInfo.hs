@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Language.Haskell.Tools.BackendGHC.AddTypeInfo (addTypeInfos) where
 

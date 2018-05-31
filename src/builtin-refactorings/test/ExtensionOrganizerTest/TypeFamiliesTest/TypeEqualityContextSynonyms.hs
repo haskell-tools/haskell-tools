@@ -7,7 +7,7 @@ import Definitions
 {-@ GADTs @-}
 
 f :: EqRel a b => a -> b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
-f = id
+f = id                    {-* TypeFamilies + GADTs *-}
 
 g :: TrfAB a b  {-* TypeFamilies + GADTs, TypeFamilies + GADTs *-}
-g = id
+g = id          {-* TypeFamilies + GADTs *-}

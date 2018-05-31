@@ -7,7 +7,7 @@ chkLambdaCase :: CheckNode Expr
 chkLambdaCase = conditional chkLambdaCase' Ext.LambdaCase
 
 chkLambdaCase' :: CheckNode Expr
-chkLambdaCase' e@(Refact.LambdaCase _) = addOccurence Ext.LambdaCase e
+chkLambdaCase' e@(Refact.LambdaCase _) = addEvidence Ext.LambdaCase e
 chkLambdaCase' e = return e
 
 

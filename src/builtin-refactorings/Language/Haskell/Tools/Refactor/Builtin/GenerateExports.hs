@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE TupleSections #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.GenerateExports
   (generateExports, generateExportsRefactoring) where

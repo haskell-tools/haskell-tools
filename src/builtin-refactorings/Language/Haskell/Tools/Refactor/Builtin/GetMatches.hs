@@ -2,7 +2,6 @@ module Language.Haskell.Tools.Refactor.Builtin.GetMatches where
 
 import Language.Haskell.Tools.Refactor
 
-import Control.Monad.Writer
 import Control.Reference
 import Data.Aeson
 
@@ -16,10 +15,9 @@ import DataCon as GHC
 getMatchesQuery :: QueryChoice
 getMatchesQuery = LocationQuery "GetMatches" getMatches
 
-getMatches :: RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad Value
+getMatches :: RealSrcSpan -> ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
 getMatches sp (_,mod) _
-  = case selectedName of [n] -> do ctors <- getCtors $ idType $ semanticsId n
-                                   return $ toJSON ctors
+  = case selectedName of [n] -> fmap (GeneralQuery . toJSON) . getCtors . idType . semanticsId $ n
                          []  -> queryError "No name is selected."
                          _   -> queryError "Multiple names are selected."
   where

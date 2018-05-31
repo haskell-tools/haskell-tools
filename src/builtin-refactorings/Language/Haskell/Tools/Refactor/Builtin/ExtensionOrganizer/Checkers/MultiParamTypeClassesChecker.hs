@@ -14,10 +14,10 @@ chkMultiParamTypeClassesDecl = conditional chkMultiParamTypeClassesDecl' MultiPa
 chkMultiParamTypeClassesDecl' :: CheckNode Decl
 chkMultiParamTypeClassesDecl' cd@(ClassDecl _ dh _ _)
   | n <- length . collectTyVars $ dh
-  , n /= 1 = addOccurence MultiParamTypeClasses dh >> return cd
+  , n /= 1 = addEvidence MultiParamTypeClasses dh >> return cd
 chkMultiParamTypeClassesDecl' i@(InstanceDecl rule _)
   | isMultiParamNeeded (rule ^. irHead)
-  = addOccurence MultiParamTypeClasses rule >> return i
+  = addEvidence MultiParamTypeClasses rule >> return i
 chkMultiParamTypeClassesDecl' d = return d
 
 

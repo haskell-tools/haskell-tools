@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, RankNTypes, ScopedTypeVariables, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Language.Haskell.Tools.Refactor.Utils.Type (typeExpr, appTypeMatches, literalType) where
 

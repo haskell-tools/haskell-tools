@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, RankNTypes, TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.OrganizeExtensions
@@ -16,17 +20,22 @@ import Language.Haskell.Tools.Refactor.Utils.Extensions
 import GHC (Ghc(..))
 
 import Control.Reference
-import Data.Char (isAlpha)
+import Data.Char (isAlphaNum)
 import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import Data.List
-import qualified Data.Map.Strict as SMap (empty)
+import qualified Data.Map.Strict as SMap (empty, toList)
 
 -- NOTE: When working on the entire AST, we should build a monad,
 --       that will will avoid unnecessary checks.
 --       For example if it already found a record wildcard, it won't check again
 
 --       Pretty easy now. Chcek wheter it is already in the ExtMap.
+
+highlightExtensionsQuery :: QueryChoice
+highlightExtensionsQuery = GlobalQuery "HighlightExtensions" extQuery
+  where extQuery :: ModuleDom -> [ModuleDom] -> QueryMonad QueryValue
+        extQuery (_,m) _ = lift . fmap MarkerQuery . extensionMarkers $ m
 
 organizeExtensionsRefactoring :: RefactoringChoice
 organizeExtensionsRefactoring = ModuleRefactoring "OrganizeExtensions" (localRefactoring organizeExtensions)
@@ -44,11 +53,17 @@ tryOut = tryRefactor (localRefactoring . const organizeExtensions)
 organizeExtensions :: LocalRefactoring
 organizeExtensions moduleAST = do
   exts <- liftGhc $ reduceExtensions moduleAST
-  let langExts = mkLanguagePragma . map show $ exts
+  let langExts = map (mkLanguagePragma . pure . serializeExt . show) exts
       ghcOpts  = moduleAST ^? filePragmas & annList & opStr & stringNodeStr
       ghcOpts' = map (mkOptionsGHC . unwords . filter (isPrefixOf "-") . words) ghcOpts
 
-      newPragmas = mkFilePragmas $ langExts:ghcOpts'
+      offExts  = map (mkLanguagePragma . pure)
+               . sort
+               . map (("No" ++) . serializeExt . show)
+               . collectTurnedOffExtensions
+               $ moduleAST
+
+      newPragmas = mkFilePragmas $ offExts ++ langExts ++ ghcOpts'
 
   (filePragmas != newPragmas)
     -- remove empty {-# LANGUAGE #-} pragmas
@@ -61,20 +76,29 @@ reduceExtensions moduleAST = do
   let defaults = map replaceDeprecated . collectDefaultExtensions $ moduleAST
       expanded = expandExtensions defaults
       (xs, ys) = partition isSupported expanded
-  -- we can't say anything about generated code
-  if TemplateHaskell `notElem` expanded
-    then do
-      xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
-      -- Merging is needed because there might be unsopported extensions
-      -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
-      return . sortBy (compare `on` show) . nub . mergeImplied $ (determineExtensions xs' ++ ys)
-    else
-      return . mergeImplied $ defaults
+
+  xs' <- flip execStateT SMap.empty . flip runReaderT xs . traverseModule $ moduleAST
+  let filteredExts = nub . mergeImplied $ (determineExtensions xs' ++ ys)
+  if any (`elem` filteredExts) [Cpp, TemplateHaskell, TemplateHaskellQuotes, QuasiQuotes]
+    -- We can't say anything about generated code
+    then return . mergeImplied $ defaults
+    -- Merging is needed because there might be unsopported extensions
+    -- that are implied by supported extensions (TypeFamilies -> MonoLocalBinds)
+    else return . sortBy (compare `on` show) $ filteredExts
+
+-- | Collect the required extensions in a module and returns a markers associated with them
+extensionMarkers :: UnnamedModule -> Ghc [Marker]
+extensionMarkers = fmap (concatMap toMarkers . SMap.toList) . collectExtensions
+  where toMarkers (rel, occs) = map (toMarker rel) occs
+        toMarker  rel occ     = Marker (unOcc occ) Info (showWithLevel rel occ)
+        showWithLevel rel occ = (head . words . show $ occ) ++ ": " ++ prettyPrintFormula rel
 
 -- | Collects extensions induced by the source code (with location info)
 collectExtensions :: UnnamedModule -> Ghc ExtMap
 collectExtensions = collectExtensionsWith traverseModule
 
+
+-- | Collects the required extensions from a module using the given traversal method
 collectExtensionsWith :: CheckNode UnnamedModule -> UnnamedModule -> Ghc ExtMap
 collectExtensionsWith trvModule moduleAST = do
   let expanded = expandExtensions . collectDefaultExtensions $ moduleAST
@@ -88,11 +112,18 @@ expandExtensions = nub . concatMap expandExtension
 -- | Collects extensions enabled by default
 collectDefaultExtensions :: UnnamedModule -> [Extension]
 collectDefaultExtensions = mapMaybe toExt . getExtensions
-  where
-  getExtensions :: UnnamedModule -> [String]
-  getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
+
+-- | Collects extensions enabled by default
+collectTurnedOffExtensions :: UnnamedModule -> [Extension]
+collectTurnedOffExtensions = mapMaybe (toExt . drop 2)
+                           . filter (isPrefixOf "No")
+                           . getExtensions
+
+-- | Collects the string representation of the extensions in the module
+getExtensions :: UnnamedModule -> [String]
+getExtensions = flip (^?) (filePragmas & annList & lpPragmas & annList & langExt)
 
 toExt :: String -> Maybe Extension
-toExt str = case map fst . reads . canonExt . takeWhile isAlpha $ str of
+toExt str = case map fst . reads . canonExt . takeWhile isAlphaNum $ str of
               e:_ -> Just e
-              []  -> fail $ "Extension '" ++ takeWhile isAlpha str ++ "' is not known."
+              []  -> fail $ "Extension '" ++ takeWhile isAlphaNum str ++ "' is not known."

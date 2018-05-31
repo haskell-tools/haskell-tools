@@ -1,4 +1,6 @@
-{-# LANGUAGE NamedFieldPuns, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Language.Haskell.Tools.Daemon.State where
 

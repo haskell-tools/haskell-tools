@@ -4,4 +4,4 @@ import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkFunDeps :: CheckNode FunDepList
-chkFunDeps = addOccurence FunctionalDependencies
+chkFunDeps = addEvidence FunctionalDependencies

@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase, MonoLocalBinds #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
            
 module Main where

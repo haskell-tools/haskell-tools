@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, NamedFieldPuns, UndecidableInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 
 -- | Pretty printing the AST

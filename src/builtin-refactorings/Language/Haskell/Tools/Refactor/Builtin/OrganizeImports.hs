@@ -1,4 +1,9 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, ScopedTypeVariables, TupleSections, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.OrganizeImports
   ( organizeImports, projectOrganizeImports

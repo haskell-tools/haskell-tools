@@ -55,6 +55,8 @@ extensionOrganizerTestGroup = testGroup "ExtensionOrganizerTest"
   , mkTests constrainedClassMethodsTest
   , mkTests multiWayIfTest
   , mkTests typeOperatorsTest
+  , mkTests undecidableInstancesTest
+  , mkTests flexibleContextsTest
   ]
 
 testRoot = "test/ExtensionOrganizerTest"
@@ -67,13 +69,14 @@ type TestSuite       = (FilePath, [TestName])
 type TestName        = String
 type ModuleName      = String
 type Line            = Int
-type SimpleMap       = SMap.Map (LogicalRelation Extension) [Line]
+type SimpleMap       = SMap.Map (LogicalRelation Extension) [Occurence Line]
 
 spanToLine :: SrcSpan -> Line
-spanToLine (RealSrcSpan s) = srcSpanEndLine s
+spanToLine (RealSrcSpan s)   = srcSpanEndLine s
+spanToLine (UnhelpfulSpan _) = 0
 
 simplifyExtMap :: ExtMap -> SimpleMap
-simplifyExtMap = SMap.map (map spanToLine)
+simplifyExtMap = SMap.map (map (fmap spanToLine))
 
 getExtensionsFrom :: FilePath -> ModuleName -> IO SimpleMap
 getExtensionsFrom dir moduleName = runGhc (Just libdir) $ do
@@ -422,4 +425,37 @@ toModules = [ "InfixClassDecl"
             , "NormalClassDecl"
             , "NormalDataDecl"
             , "NormalInstance"
+            ]
+
+undecidableInstancesTest :: TestSuite
+undecidableInstancesTest = (udRoot, udModules)
+udRoot = "UndecidableInstancesTest"
+udModules = [ "BadTyVars"
+            , "GNDForAssociatedTypes"
+            , "NoSmallerPred"
+            , "SynBadTyVars"
+            , "SynNoSmallerPred"
+            , "SynTupleConstraint"
+            , "SynTyFamBadTyVars"
+            , "SynTyFamNestedTyFun"
+            , "SynTyFamNoSmaller"
+            , "SynTyFunInSuperClass"
+            , "TupleConstraint"
+            , "TyFamBadTyVars"
+            , "TyFamNestedTyFun"
+            , "TyFamNoSmaller"
+            , "TyFunInSuperClass"
+            ]
+
+flexibleContextsTest :: TestSuite
+flexibleContextsTest = (fcRoot, fcModules)
+fcRoot = "FlexibleContextsTest"
+fcModules = [ "ForAll"
+            , "NestedCtx"
+            , "Synonyms"
+            , "TyFamConstraints"
+            , "TypeApp"
+            , "TySynConstraints"
+            , "VarType"
+            , "WithScopedTyVarsMagic"
             ]
