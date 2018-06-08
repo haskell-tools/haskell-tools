@@ -7,7 +7,7 @@ chkTupleSections :: CheckNode Expr
 chkTupleSections = conditional chkTupleSections' TupleSections
 
 chkTupleSections' :: CheckNode Expr
-chkTupleSections' e@(TupleSection        _) = addOccurence TupleSections e
-chkTupleSections' e@(UnboxedTupleSection _) = addOccurence TupleSections e
-                                           >> addOccurence UnboxedTuples e
+chkTupleSections' e@(TupleSection        _) = addEvidence TupleSections e
+chkTupleSections' e@(UnboxedTupleSection _) = addEvidence TupleSections e
+                                           >> addEvidence UnboxedTuples e
 chkTupleSections' e = return e

@@ -1,7 +1,8 @@
 -- | Generation of expression-level AST fragments for refactorings.
 -- The bindings defined here create a the annotated version of the AST constructor with the same name.
 -- For example, @mkApp@ creates the annotated version of the @App@ AST constructor.
-{-# LANGUAGE MonoLocalBinds, OverloadedStrings #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.Haskell.Tools.Rewrite.Create.Exprs where
 

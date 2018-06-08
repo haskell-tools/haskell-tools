@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Controls the file system watching in the daemon. The file system watching must run in a
 -- separate process to prevent blocking because of file operations interfering with watch.

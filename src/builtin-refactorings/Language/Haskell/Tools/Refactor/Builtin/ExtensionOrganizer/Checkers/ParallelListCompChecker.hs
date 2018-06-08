@@ -6,5 +6,5 @@ import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
 
 chkParallelListComp :: CheckNode Expr
 chkParallelListComp e@(ListComp _ body)
-  | annLength body > 1 = addOccurence ParallelListComp e
+  | annLength body > 1 = addEvidence ParallelListComp e
 chkParallelListComp e = return e

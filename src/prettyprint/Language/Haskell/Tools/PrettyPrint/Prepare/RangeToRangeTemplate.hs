@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Transform a syntax tree with ranges to a syntax tree that has range templates. Cuts the ranges of children
 -- from the ranges of their parents and replaces it with placeholders.

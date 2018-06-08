@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, MultiWayIf, ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE ViewPatterns #-}
 
 
 {-
@@ -130,14 +132,14 @@ chkDataDecl d = return d
 
 chkGADTDataDecl :: CheckNode Decl
 chkGADTDataDecl d@(GADTDataDecl keyw _ _ _ _ derivs) = do
-  addOccurence_ GADTs d
+  addEvidence_ GADTs d
   annList !~ separateByKeyword keyw $ derivs
   return d
 chkGADTDataDecl d = return d
 
 chkDataInstance :: CheckNode Decl
 chkDataInstance d@(DataInstance keyw _ _ derivs) = do
-  addOccurence_ TypeFamilies d
+  addEvidence_ TypeFamilies d
   annList !~ separateByKeyword keyw $ derivs
   return d
 chkDataInstance d = return d
@@ -158,7 +160,7 @@ getStrategy d = d ^. (deriveStrategy & annMaybe)
 addExtension :: (MonadState ExtMap m, HasRange node) =>
                  GHC.Name -> node -> m node
 addExtension sname
-  | Just ext <- whichExtension sname = addOccurence ext
+  | Just ext <- whichExtension sname = addEvidence ext
   | otherwise                        = return
 
 addStockExtension :: CheckNode InstanceHead
@@ -169,15 +171,15 @@ addStockExtension x
 chkByStrat :: CheckNode InstanceHead -> CheckNode Deriving
 chkByStrat checker d
   | Just strat <- getStrategy d = do
-    addOccurence DerivingStrategies d
+    addEvidence DerivingStrategies d
     chkDerivingClause (chkStrat strat) d
   | otherwise =
     chkDerivingClause checker d
 
 chkStrat :: DeriveStrategy -> CheckNode InstanceHead
 chkStrat (_element -> UStockStrategy)    = addStockExtension
-chkStrat (_element -> UNewtypeStrategy)  = addOccurence GeneralizedNewtypeDeriving
-chkStrat (_element -> UAnyClassStrategy) = addOccurence DeriveAnyClass
+chkStrat (_element -> UNewtypeStrategy)  = addEvidence GeneralizedNewtypeDeriving
+chkStrat (_element -> UAnyClassStrategy) = addEvidence DeriveAnyClass
 
 chkDerivingClause :: CheckNode InstanceHead -> CheckNode Deriving
 chkDerivingClause checker d@(DerivingOne   x)  = checker x               >> return d
@@ -195,21 +197,21 @@ nameFromStock x
 chkClassForData :: CheckNode InstanceHead
 chkClassForData x
   | Just sname <- nameFromStock x = addExtension sname x
-  | otherwise = addOccurence DeriveAnyClass x
+  | otherwise = addEvidence DeriveAnyClass x
 
 -- performs check in case no explicit strategy is given
 chkClassForNewtype :: CheckNode InstanceHead
 chkClassForNewtype x
   | Just sname <- nameFromStock x
     = if | gndNotNeeded  sname -> return x
-         | gndNeeded     sname -> addOccurence GeneralizedNewtypeDeriving x
+         | gndNeeded     sname -> addEvidence GeneralizedNewtypeDeriving x
          | gndNotAllowed sname -> addExtension sname x
   | otherwise = do
       gndOn       <- isTurnedOn GeneralizedNewtypeDeriving
       deriveAnyOn <- isTurnedOn DeriveAnyClass
-      if | gndOn && deriveAnyOn -> addOccurence_ DeriveAnyClass x
-         | deriveAnyOn          -> addOccurence_ DeriveAnyClass x
-         | gndOn                -> addOccurence_ GeneralizedNewtypeDeriving x
+      if | gndOn && deriveAnyOn -> addEvidence_ DeriveAnyClass x
+         | deriveAnyOn          -> addEvidence_ DeriveAnyClass x
+         | gndOn                -> addEvidence_ GeneralizedNewtypeDeriving x
          | otherwise             -> return ()
       return x
 
@@ -220,12 +222,12 @@ skipParens x = x
 chkStandaloneDeriving :: CheckNode Decl
 chkStandaloneDeriving d@(Refact.StandaloneDeriving strat _ (decompRule -> (cls,ty)))
   | Just strat' <- strat = do
-    addOccurence_  Ext.DerivingStrategies d
-    addOccurence_  Ext.StandaloneDeriving d
+    addEvidence_  Ext.DerivingStrategies d
+    addEvidence_  Ext.StandaloneDeriving d
     chkStrat strat' cls
     return d
   | otherwise = do
-    addOccurence_  Ext.StandaloneDeriving d
+    addEvidence_  Ext.StandaloneDeriving d
     itIsNewType    <- isNewtype ty
     itIsSynNewType <- isSynNewType ty
     if itIsNewType || itIsSynNewType

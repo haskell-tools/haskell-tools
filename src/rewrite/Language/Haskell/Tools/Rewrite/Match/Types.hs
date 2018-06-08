@@ -112,6 +112,10 @@ pattern PromotedTupleType elems <- Ann _ (UTyPromoted (Ann _ (UPromotedTuple ele
 pattern PromotedUnitType :: Type
 pattern PromotedUnitType <- Ann _ (UTyPromoted (Ann _ UPromotedUnit))
 
+-- | An unboxed sum type.
+pattern UnboxedSumType :: TypeList -> Type
+pattern UnboxedSumType tys <- Ann _ (UUnbSumType tys)
+
 -- * Type variable
 
 -- | Type variable declaration

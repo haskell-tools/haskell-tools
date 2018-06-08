@@ -21,3 +21,4 @@ extra-deps:
   - knob-0.1.1
   - classyplate-0.3.1.0
   - minisat-solver-0.1
+  - portable-lines-0.1

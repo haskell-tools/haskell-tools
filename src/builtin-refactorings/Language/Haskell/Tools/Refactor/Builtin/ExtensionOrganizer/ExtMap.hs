@@ -1,4 +1,7 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
   ( module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMap
@@ -36,7 +39,30 @@ deriving instance (Generic a, NFData a) => NFData (Formula a)
 
 type LogicalRelation a = Formula a
 
-type ExtMap = SMap.Map (LogicalRelation Extension) [SrcSpan]
+prettyPrintFormula :: Show a => LogicalRelation a -> String
+prettyPrintFormula (Var x) = show x
+prettyPrintFormula (x :||: y) = prettyPrintFormula x ++ " OR " ++ prettyPrintFormula y
+prettyPrintFormula (x :&&: y) = prettyPrintFormula x ++ " AND " ++ prettyPrintFormula y
+prettyPrintFormula (x :++: y) = prettyPrintFormula x ++ " XOR " ++ prettyPrintFormula y
+prettyPrintFormula (x :->: y) = prettyPrintFormula x ++ " => " ++ prettyPrintFormula y
+prettyPrintFormula (x :<->: y) = prettyPrintFormula x ++ " <=> " ++ prettyPrintFormula y
+prettyPrintFormula (All xs) = "All [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (Some xs) = "Some [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (None xs) = "None [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (ExactlyOne xs) = "ExactlyOne [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (AtMostOne xs) = "AtMostOne [" ++ (intercalate ", " . map prettyPrintFormula $ xs) ++ "]"
+prettyPrintFormula (Not x) = "Not " ++ prettyPrintFormula x
+prettyPrintFormula Yes = "True"
+prettyPrintFormula No = "False"
+prettyPrintFormula Let{} = "Let ..."
+prettyPrintFormula Bound{} = error "Bound is for internal use only"
+
+data Occurence a = Hint               { unOcc :: a }
+                 | Evidence           { unOcc :: a }
+                 | MissingInformation { unOcc :: a }
+  deriving (Show, Eq, Ord, Functor)
+
+type ExtMap = SMap.Map (LogicalRelation Extension) [Occurence SrcSpan]
 
 lVar :: a -> LogicalRelation a
 lVar = Var
@@ -57,11 +83,23 @@ lAll :: [LogicalRelation a] -> LogicalRelation a
 lAll = All
 
 complexity :: Extension -> Int
-complexity = length . expandExtension
+complexity = length . expandExtension'
+
+-- | Completely expand extension
+expandExtension' :: Extension -> [Extension]
+expandExtension' e = findFixedPoint (nub . expand) [e]
+  where expand = concatMap expandExtension
+
+-- | Terminating variant of Control.Monad.Fix.fix
+-- It tries to find the fixpoint of a function with a given starting value.
+-- It terminates if a value repeats itself.
+findFixedPoint :: Eq a => (a -> a) -> a -> a
+findFixedPoint f x = findFix' f (f x) x
+  where findFix' f cur prev = if cur == prev then cur else findFix' f (f cur) cur
 
 determineExtensions :: SMap.Map (LogicalRelation Extension) v -> [Extension]
 {- NOTE:
- We calculate all the possible extension set that satisfy the logical relation,
+ We calculate all possible extension sets that satisfy the logical relation,
  then for each extension we remove all the extensions implied by it, (mergeImplied)
  finally we select the minimal extension set.
 
@@ -69,6 +107,8 @@ determineExtensions :: SMap.Map (LogicalRelation Extension) v -> [Extension]
   - it contains the least amount of extensions
   - it contains extension with minimal complexity
   - it is lexicographically the first one (based on the Ord instance of Extension)
+
+  TODO: Comparing on length might be unnecessary
 -}
 determineExtensions x = minimal . map toExts $ solution
   where solution = solve_all . All . LMap.keys $ x
@@ -77,7 +117,7 @@ determineExtensions x = minimal . map toExts $ solution
 
 rmImplied :: Extension -> [Extension] -> [Extension]
 rmImplied e = flip (\\) implied
-  where implied = delete e $ expandExtension e
+  where implied = delete e . expandExtension' $ e
 
 mergeImplied :: [Extension] -> [Extension]
 mergeImplied exts = foldl (flip rmImplied) exts exts

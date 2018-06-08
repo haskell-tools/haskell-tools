@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleContexts, GADTs, MultiWayIf #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleInstancesChecker where
 
@@ -48,7 +50,7 @@ chkInstanceHead ih = do
   mCls <- runMaybeT . lookupClassFromInstance $ ih
   case mCls of
     Just cls -> mapM_ (chkTypeArg cls) types >> return ih
-    Nothing  -> addOccurence FlexibleInstances ih
+    Nothing  -> addMI FlexibleInstances ih
 
 -- | Checks a type argument of class whether it needs FlexibleInstances
 -- First checks the structure of the type argument opaquely
@@ -56,8 +58,8 @@ chkInstanceHead ih = do
 -- needs the extension.
 --
 -- Might find false positive occurences for phantom types:
--- > type Phatom a b = [a]
--- > instance C (Phatnom a a)
+-- > type Phantom a b = [a]
+-- > instance C (Phantom a a)
 -- > instance C (Phantom a Int)
 chkTypeArg :: GHC.Class -> Type -> ExtMonad Type
 chkTypeArg cls ty = do
@@ -65,7 +67,7 @@ chkTypeArg cls ty = do
   maybeTM (return ty) (chkSynonymTypeArg cls) (semanticsTypeSynRhs ty)
   where chkSynonymTypeArg :: GHC.Class -> GHC.Type -> ExtMonad Type
         chkSynonymTypeArg cls' ty'
-          | tyArgNeedsFI cls' ty' = addOccurence FlexibleInstances ty
+          | tyArgNeedsFI cls' ty' = addEvidence FlexibleInstances ty
           | otherwise             = return ty
 
 -- | Checks a type argument of class whether it has only (distinct) type variable arguments.
@@ -77,7 +79,7 @@ chkNormalTypeArg vars = performCheck . refact rmTypeMisc $ vars
           case isOk of
             Just isOk ->
               unless (isOk && length vs == (length . nubBy ((==) `on` (semanticsName . (^. simpleName))) $ vs)) --tyvars are different
-                (addOccurence_ FlexibleInstances vars)
+                (addEvidence_ FlexibleInstances vars)
             Nothing   -> error "chkNormalTypeArg: Couldn't look up something"
           return vars
 
@@ -153,7 +155,7 @@ rmTypeMisc (KindedType t _) = t
 rmTypeMisc (ParenType x)    = x
 rmTypeMisc x                = x
 
--- Decides whether a type argument of a type class constructor need FlexibleInstances
+-- Decides whether a type argument of a type class constructor needs FlexibleInstances
 tyArgNeedsFI :: GHC.Class -> GHC.Type -> Bool
 tyArgNeedsFI cls arg = not . hasOnlyDistinctTyVars $ tyArg
   where [tyArg] = GHC.filterOutInvisibleTypes (GHC.classTyCon cls) [arg]

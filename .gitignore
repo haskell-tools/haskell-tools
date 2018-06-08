@@ -14,3 +14,6 @@ error-log.txt
 hackage-test
 stackage-test
 stackage-test-logs
+*.hidden
+*.todo
+*.notes

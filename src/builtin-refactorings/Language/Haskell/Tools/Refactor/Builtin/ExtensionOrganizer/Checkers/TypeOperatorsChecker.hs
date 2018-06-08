@@ -1,12 +1,11 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeOperatorsChecker where
 
+import PrelNames (eqTyConName)
 import qualified Name    as GHC (nameOccName)
 import qualified OccName as GHC (isTcOcc, isSymOcc)
 
 import Data.Generics.Uniplate.Data()
 import Data.Generics.Uniplate.Operations
-
-import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.ExtMonad
@@ -32,22 +31,26 @@ chkTypeOperatorsDecl = conditional chkTypeOperatorsDecl' TypeOperators
 
 
 chkTypeOperatorsType' :: CheckNode Type
-chkTypeOperatorsType' t@InfixTypeApp{} = addOccurence TypeOperators t
+chkTypeOperatorsType' t@(InfixTypeApp _ op _)
+  | Just name <- semanticsName op
+  , name == eqTyConName
+  = return t
+  | otherwise = addEvidence TypeOperators t
 chkTypeOperatorsType' t = return t
 
 chkTypeOperatorsAssertion' :: CheckNode Assertion
-chkTypeOperatorsAssertion' a@InfixAssert{} = addOccurence TypeOperators a
+chkTypeOperatorsAssertion' a@InfixAssert{} = addEvidence TypeOperators a
 chkTypeOperatorsAssertion' a = return a
 
 chkTypeOperatorsInstHead' :: CheckNode InstanceHead
-chkTypeOperatorsInstHead' ih@InfixInstanceHead{} = addOccurence TypeOperators ih
+chkTypeOperatorsInstHead' ih@InfixInstanceHead{} = addEvidence TypeOperators ih
 chkTypeOperatorsInstHead' ih = return ih
 
 chkTypeOperatorsDecl' :: CheckNode Decl
 chkTypeOperatorsDecl' d = do
   let dhs = universeBi d :: [DeclHead]
   anyNeedsTO <- liftM or $ mapM isOperatorM dhs
-  if anyNeedsTO then addOccurence TypeOperators d
+  if anyNeedsTO then addEvidence TypeOperators d
                 else return d
 
 -- OccName: [Type and class operator definitions]
@@ -55,7 +58,7 @@ chkTypeOperatorsDecl' d = do
   -- but one that uses an operator OccName.
 isOperatorM :: DeclHead -> ExtMonad Bool
 isOperatorM dh = do
-  mSemName <- runMaybeT . declHeadSemName $ dh
+  let mSemName = declHeadSemName dh
   case mSemName of
     Just semName
       | occ <- GHC.nameOccName semName

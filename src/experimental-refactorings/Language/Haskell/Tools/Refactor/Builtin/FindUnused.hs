@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.FindUnused where
 

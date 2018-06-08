@@ -1,5 +1,5 @@
 -- | Show instance for Haskell AST representation ignoring source and semantic information
-{-# LANGUAGE FlexibleContexts, StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Language.Haskell.Tools.Debug.Show () where
 

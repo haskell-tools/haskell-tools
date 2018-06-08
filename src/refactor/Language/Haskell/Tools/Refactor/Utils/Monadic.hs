@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds, MultiWayIf, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Basic utilities and types for defining refactorings.
 module Language.Haskell.Tools.Refactor.Utils.Monadic where

@@ -17,8 +17,11 @@ type family F a :: * where
 type HiddenEqRel a b = EqRel a b
 
 type ComplexEqRelType a =
-  Eq a => a -> a -> (forall c . HiddenEqRel a c => c -> c -> Bool) -> Bool  
+  Eq a => a -> a -> (forall c . HiddenEqRel a c => c -> c -> Bool) -> Bool
 
 
 eqRelName :: EqRel a b => a -> b
 eqRelName = id
+
+nestedEqRelName :: a -> (forall a b . EqRel a b => a -> b) -> a
+nestedEqRelName x f = f x

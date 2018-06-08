@@ -20,12 +20,12 @@ chkConstraintKindsDecl' d@(TypeDecl dh rhs)
   -- Has any constraints of form (x t1 t2)
   | ctxts <- universeBi rhs :: [Context]
   , any hasTyVarHeadAsserts ctxts
-  = addOccurence ConstraintKinds d
+  = addEvidence ConstraintKinds d
   -- Right-hand side has kind Constraint
   | otherwise = do
   let ty = typeOrKindFromId . declHeadQName $ dh
   if hasConstraintKind ty || returnsConstraintKind ty
-     then addOccurence ConstraintKinds d
+     then addEvidence ConstraintKinds d
      else return d
 chkConstraintKindsDecl' d = return d
 
@@ -40,9 +40,3 @@ hasAnyTyVarHeads ta@TupleAssert{}
   | Just assertions <- ta ^? innerAsserts & annListElems
   = any hasAnyTyVarHeads assertions
 hasAnyTyVarHeads _ = False
-
-declHeadQName :: DeclHead -> QualifiedName
-declHeadQName (NameDeclHead n)       = n ^. simpleName
-declHeadQName (ParenDeclHead dh)     = declHeadQName dh
-declHeadQName (DeclHeadApp dh _)     = declHeadQName dh
-declHeadQName (InfixDeclHead _ op _) = op ^. operatorName

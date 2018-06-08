@@ -1,4 +1,12 @@
-{-# LANGUAGE TypeFamilies, UndecidableInstances, TypeApplications, FlexibleContexts, FlexibleInstances, LambdaCase, RecordWildCards, ScopedTypeVariables, AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.BackendGHC.GHCUtils where

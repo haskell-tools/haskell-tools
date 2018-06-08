@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.DollarApp2 where
 

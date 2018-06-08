@@ -10,7 +10,7 @@ chkPatternSynonymsSyn :: CheckNode PatternSynonym
 chkPatternSynonymsSyn = conditional chkPatternSynonymsSyn' PatternSynonyms
 
 chkPatternSynonymsSyn' :: CheckNode PatternSynonym
-chkPatternSynonymsSyn' = addOccurence PatternSynonyms
+chkPatternSynonymsSyn' = addEvidence PatternSynonyms
 
 chkPatternSynonymsTypeSig :: CheckNode PatternSignature
-chkPatternSynonymsTypeSig = conditional (addOccurence PatternSynonyms) PatternSynonyms
+chkPatternSynonymsTypeSig = conditional (addEvidence PatternSynonyms) PatternSynonyms

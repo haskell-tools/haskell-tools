@@ -1,4 +1,7 @@
- {-# LANGUAGE DeriveGeneric, LambdaCase, ScopedTypeVariables, StandaloneDeriving #-}
+ {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Language.Haskell.Tools.Debug where
 

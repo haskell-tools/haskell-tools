@@ -5,5 +5,5 @@ module MixedTyVars where
 import Definitions
 
 class C a where
-  op1 :: D (a, b) => a -> b
+  op1 :: D (a, b) => a -> b  {-* FlexibleContexts, FlexibleContexts *-}
   op2 :: D b      => b -> a

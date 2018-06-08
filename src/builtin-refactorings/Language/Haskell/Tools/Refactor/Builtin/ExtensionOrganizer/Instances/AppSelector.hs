@@ -1,4 +1,5 @@
-{-# LANGUAGE DataKinds, TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Instances.AppSelector where
@@ -37,6 +38,7 @@ type family HasChecker node where
   HasChecker ConDecl          = 'True
   HasChecker Assertion        = 'True
   HasChecker InstanceHead     = 'True
+  HasChecker Context          = 'True
   HasChecker _                = 'False
 
 type instance AppSelector Checkable node = HasChecker node

@@ -1,4 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes, LambdaCase #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- | Operations for changing the AST
 module Language.Haskell.Tools.Refactor.Utils.AST (removeChild, removeSeparator) where
