@@ -24,6 +24,7 @@ import BasicTypes as GHC (WarningTxt(..), StringLiteral(..))
 import FastString as GHC (unpackFS)
 import FieldLabel as GHC (FieldLbl(..))
 import GHC
+import Avail
 import SrcLoc as GHC
 import TcRnMonad as GHC (Applicative(..), (<$>))
 
@@ -38,24 +39,25 @@ import Language.Haskell.Tools.BackendGHC.Names (TransformName, trfName)
 import Language.Haskell.Tools.BackendGHC.Utils
 
 -- Transformes a module in its renamed state. This will be performed to help the transformation of the actual typed module representation.
-trfModule :: ModSummary -> Located (HsModule RdrName) -> Trf (Ann AST.UModule (Dom RdrName) RangeStage)
-trfModule mod hsMod = do -- createModuleInfo involves reading the ghc compiler state, so it must be evaluated
-                         -- or large parts of the representation will be kept
-                         !modInfo <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod)
-                         trfLocCorrect (pure modInfo)
-                            (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
-                            (\(HsModule name exports imports decls deprec _) ->
-                               AST.UModule <$> trfFilePragmas
-                                           <*> trfModuleHead name (srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls))) exports deprec
-                                           <*> trfImports imports
-                                           <*> trfDecls decls) $ hsMod
+trfModule :: ModSummary -> Located (HsModule GhcPs) -> Trf (Ann AST.UModule (Dom GhcPs) RangeStage)
+trfModule mod hsMod = do
+  -- createModuleInfo involves reading the ghc compiler state, so it must be evaluated
+  -- or large parts of the representation will be kept
+  !modInfo <- createModuleInfo mod (maybe noSrcSpan getLoc $ hsmodName $ unLoc hsMod) (hsmodImports $ unLoc hsMod)
+  trfLocCorrect (pure modInfo)
+     (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos))
+     (\(HsModule name exports imports decls deprec _) ->
+        AST.UModule <$> trfFilePragmas
+                    <*> trfModuleHead name (srcSpanStart (foldLocs (map getLoc imports ++ map getLoc decls))) exports deprec
+                    <*> trfImports imports
+                    <*> trfDecls decls) $ hsMod
 
 -- | Transformes the module in its typed state. Uses the results of 'trfModule' to extract program
 -- elements (splices for example) that are not kept in the typed representation.
-trfModuleRename :: ModSummary -> Ann AST.UModule (Dom RdrName) RangeStage
-                              -> (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
-                              -> Located (HsModule RdrName)
-                              -> Trf (Ann AST.UModule (Dom GHC.Name) RangeStage)
+trfModuleRename :: ModSummary -> Ann AST.UModule (Dom GhcPs) RangeStage
+                              -> RenamedSource
+                              -> Located (HsModule GhcPs)
+                              -> Trf (Ann AST.UModule (Dom GhcRn) RangeStage)
 trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
     = do -- createModuleInfo involves reading the ghc compiler state, so it must be evaluated
          -- or large parts of the representation will be kept
@@ -63,20 +65,22 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
          trfLocCorrect (pure info) (\sr -> combineSrcSpans sr <$> (uniqueTokenAnywhere AnnEofPos)) (trfModuleRename' (info ^. implicitNames)) hsMod
   where roleAnnots = rangeMod ^? AST.modDecl&AST.annList&filtered ((\case Ann _ (AST.URoleDecl {}) -> True; _ -> False))
         originalNames = Map.fromList $ mapMaybe getSourceAndInfo (rangeMod ^? biplateRef)
-        getSourceAndInfo :: Ann AST.UQualifiedName (Dom RdrName) RangeStage -> Maybe (SrcSpan, RdrName)
+        getSourceAndInfo :: Ann AST.UQualifiedName (Dom GhcPs) RangeStage -> Maybe (SrcSpan, RdrName)
         getSourceAndInfo n = (,) <$> (n ^? annotation&sourceInfo&nodeSpan) <*> (n ^? semantics&nameInfo)
 
         exportDecls = rangeMod ^? AST.modHead & AST.annJust & AST.mhExports & AST.annJust & AST.espExports & AST.annList
         exportSubspecs = map (\e -> e ^? AST.exportDecl & AST.ieSubspec & AST.annJust & AST.essList & AST.annList) exportDecls
         exportSubspecsRngs = map (map AST.getRange) exportSubspecs
 
-        replaceSubspecLocs :: [LIE Name] -> [LIE Name]
+        replaceSubspecLocs :: [LIE GhcRn] -> [LIE GhcRn]
         replaceSubspecLocs exps = zipWith (\ss ie -> case ie of (L l (IEThingWith n wc ls flds)) -> L l (IEThingWith n wc (replaceNames ss ls) (replaceFieldNames (drop (length ls) ss) flds))
                                                                 _ -> ie) exportSubspecsRngs exps
           where replaceNames ss ls = zipWith (\(L _ iew) l -> case iew of IEName (L _ n) -> L l (IEName (L l n))
                                                                           _              -> L l iew) ls ss
                 replaceFieldNames ss ls = zipWith (\(L _ iew) l -> L l iew) ls ss
 
+        trfModuleRename' :: [PName GhcRn]
+                         -> HsModule GhcPs -> Trf (AST.UModule (Dom GhcRn) RangeStage)
         trfModuleRename' preludeImports hsMod@(HsModule name exports _ _ deprec _) = do
           transformedImports <- orderAnnList <$> (trfImports imports)
 
@@ -94,21 +98,23 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
                  AST.UModule filePrags
                   <$> trfModuleHead name
                        (srcSpanEnd (AST.getRange filePrags))
-                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l (replaceSubspecLocs (orderLocated ie)))
+                       (case (exports, exps) of (Just (L l _), Just ie) -> Just (L l (replaceSubspecLocs (orderLocated (map fst ie))))
                                                 _                       -> Nothing)
                        deprec
                   <*> return transformedImports
                   <*> trfDeclsGroup gr
 
 -- | Extract the template haskell splices from the representation and adds them to the transformation state.
-loadSplices :: HsModule RdrName -> Trf a -> Trf a
+loadSplices :: HsModule GhcPs -> Trf a -> Trf a
 loadSplices hsMod trf = do
-    let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        exprSpls = mapMaybe (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
-        typeSpls = mapMaybe (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice RdrName)]
+    let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
+        exprSpls = mapMaybe (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
+        typeSpls = mapMaybe (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
     setSplices declSpls typeSpls exprSpls trf
 
-trfModuleHead :: TransformName n r => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n]) -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
+trfModuleHead :: TransformName n r
+              => Maybe (Located ModuleName) -> SrcLoc -> Maybe (Located [LIE n])
+                   -> Maybe (Located WarningTxt) -> Trf (AnnMaybeG AST.UModuleHead (Dom r) RangeStage)
 trfModuleHead (Just mn) _ exports modPrag
   = makeJust <$> (annLocNoSema (tokensLoc [AnnModule, AnnWhere])
                                (AST.UModuleHead <$> trfModuleName mn
@@ -198,16 +204,16 @@ trfImportSpecs Nothing = nothing " " "" atTheEnd
 trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UIESpec (Dom r) RangeStage))
 trfIESpec = trfMaybeLocNoSema trfIESpec'
 
-trfIESpec' :: TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
-trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
-trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
+trfIESpec' :: forall n r . TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
+trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
 trfIESpec' (IEThingAll n)
-  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName (getWrappedName n) <*> (makeJust <$> subspec))
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (makeJust <$> subspec))
   where subspec = annLocNoSema (combineSrcSpans <$> tokenLocBack AnnOpenP <*> tokenLocBack AnnCloseP) (pure AST.USubSpecAll)
 trfIESpec' (IEThingWith n _ ls flds)
-  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName (getWrappedName n) <*> (makeJust <$> subspec))
+  = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (makeJust <$> subspec))
   where subspec = annLocNoSema (combineSrcSpans <$> tokenLocBack AnnOpenP <*> tokenLocBack AnnCloseP)
-                    $ AST.USubSpecList <$> between AnnOpenP AnnCloseP (makeList ", " atTheStart ((++) <$> mapM (trfName . getWrappedName) ls <*> mapM trfName (map (fmap flSelector) flds)))
+                    $ AST.USubSpecList <$> between AnnOpenP AnnCloseP (makeList ", " atTheStart ((++) <$> mapM ((trfName @n) . getWrappedName) ls <*> mapM (trfName @n) (map (fmap flSelector) flds)))
 trfIESpec' _ = pure Nothing
 
 getWrappedName :: Located (IEWrappedName n) -> Located n

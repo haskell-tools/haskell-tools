@@ -62,19 +62,19 @@ createScopeInfo :: Trf ScopeInfo
 createScopeInfo = do scope <- asks localsInScope
                      return (mkScopeInfo scope)
 
-trfExpr' :: TransformName n r => HsExpr n -> Trf (AST.UExpr (Dom r) RangeStage)
-trfExpr' (HsVar name) = AST.UVar <$> trfName name
+trfExpr' :: forall n r . TransformName n r => HsExpr n -> Trf (AST.UExpr (Dom r) RangeStage)
+trfExpr' (HsVar name) = AST.UVar <$> trfName @n name
 trfExpr' (HsUnboundVar name) = AST.UVar <$> trfNameText (occNameString $ unboundVarOcc name)
 trfExpr' (HsRecFld fld) = AST.UVar <$> (asks contRange >>= \l -> trfAmbiguousFieldName' l fld)
 trfExpr' (HsIPVar ip) = AST.UVar <$> trfImplicitName ip
 trfExpr' (HsOverLit (ol_val -> val)) = AST.ULit <$> annCont (asks contRange >>= pure . PreLiteralInfo) (trfOverloadedLit val)
 trfExpr' (HsLit val) = AST.ULit <$> annCont (pure $ RealLiteralInfo (monoLiteralType val)) (trfLiteral' val)
-trfExpr' (HsLam (unLoc . mg_alts -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] expr] (unLoc -> EmptyLocalBinds))]))
+trfExpr' (HsLam (unLoc . mg_alts -> [unLoc -> Match _ pats (GRHSs [unLoc -> GRHS [] expr] (unLoc -> EmptyLocalBinds))]))
   = AST.ULambda <$> (makeNonemptyList " " $ mapM trfPattern pats) <*> addToScope pats (trfExpr expr)
 trfExpr' (HsLamCase (unLoc . mg_alts -> matches)) = AST.ULamCase <$> addToScope matches (trfAnnList " " trfAlt' matches)
 trfExpr' (HsApp e1 e2) = AST.UApp <$> trfExpr e1 <*> trfExpr e2
 trfExpr' (OpApp e1 (unLoc -> HsVar op) _ e2)
-  = AST.UInfixApp <$> trfExpr e1 <*> trfOperator op <*> trfExpr e2
+  = AST.UInfixApp <$> trfExpr e1 <*> trfOperator @n op <*> trfExpr e2
 trfExpr' (OpApp e1 (L nameLoc (HsRecFld fld)) _ e2)
   = AST.UInfixApp <$> trfExpr e1 <*> trfAmbiguousOperator' nameLoc fld <*> trfExpr e2
 trfExpr' (OpApp _ (L _ op) _ _) = unhandledElement "OpApp expression" op
@@ -82,11 +82,11 @@ trfExpr' (NegApp e _) = AST.UPrefixApp <$> annLocNoSema loc (AST.UNormalOp <$> a
                                        <*> trfExpr e
   where loc = mkSrcSpan <$> atTheStart <*> (pure $ srcSpanStart (getLoc e))
         info = createNameInfo =<< (fromMaybe (convProblem "minus operation is not found") <$> liftGhc negateOpName)
-        negateOpName = getFromNameUsing (\n -> (\case Just (AnId id) -> Just id; _ -> Nothing) <$> lookupName n) negateName
-trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.ULeftSection <$> trfExpr expr <*> trfOperator op
+        negateOpName = getFromNameUsing @r (\n -> (\case Just (AnId id) -> Just id; _ -> Nothing) <$> lookupName n) negateName
+trfExpr' (HsPar (unLoc -> SectionL expr (unLoc -> HsVar op))) = AST.ULeftSection <$> trfExpr expr <*> trfOperator @n op
 trfExpr' (HsPar (unLoc -> SectionL expr (L nameLoc (HsRecFld op))))
   = AST.ULeftSection <$> trfExpr expr <*> trfAmbiguousOperator' nameLoc op
-trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.URightSection <$> trfOperator op <*> trfExpr expr
+trfExpr' (HsPar (unLoc -> SectionR (unLoc -> HsVar op) expr)) = AST.URightSection <$> trfOperator @n op <*> trfExpr expr
 trfExpr' (HsPar (unLoc -> SectionR (L nameLoc (HsRecFld op)) expr))
   = AST.URightSection <$> trfAmbiguousOperator' nameLoc op <*> trfExpr expr
 trfExpr' (HsPar expr) = AST.UParen <$> trfExpr expr
@@ -141,7 +141,7 @@ trfExpr' (HsDo PArrComp (unLoc -> stmts) _)
   = AST.UParArrayComp <$> trfExpr (getLastStmt stmts) <*> trfListCompStmts stmts
 trfExpr' (ExplicitList _ _ exprs) = AST.UList <$> trfAnnList' ", " trfExpr exprs
 trfExpr' (ExplicitPArr _ exprs) = AST.UParArray <$> trfAnnList' ", " trfExpr exprs
-trfExpr' (RecordCon name _ _ fields) = AST.URecCon <$> trfName name <*> trfFieldInits fields
+trfExpr' (RecordCon name _ _ fields) = AST.URecCon <$> trfName @n name <*> trfFieldInits fields
 trfExpr' (RecordUpd expr fields _ _ _ _) = AST.URecUpdate <$> trfExpr expr <*> trfAnnList ", " trfFieldUpdate fields
 trfExpr' (ExprWithTySig expr typ) = AST.UTypeSig <$> trfExpr expr <*> trfType (hsib_body $ hswc_body typ)
 trfExpr' (ArithSeq _ _ (From from)) = AST.UEnum <$> trfExpr from <*> nothing "," "" (before AnnDotdot)
@@ -195,10 +195,10 @@ trfFieldInits (HsRecFields fields dotdot)
                                                                     (AST.UFieldWildcard <$> (annCont (createImplicitFldInfo (unLoc . (\(HsVar n) -> n) . unLoc) (map unLoc implicitFlds)) (pure AST.FldWildcard)))
                                         else pure []))
 
-trfFieldInit :: TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.UFieldUpdate (Dom r) RangeStage)
+trfFieldInit :: forall n r . TransformName n r => Located (HsRecField n (LHsExpr n)) -> Trf (Ann AST.UFieldUpdate (Dom r) RangeStage)
 trfFieldInit = trfLocNoSema $ \case
-  HsRecField id _ True -> AST.UFieldPun <$> trfName (getFieldOccName id)
-  HsRecField id val False -> AST.UNormalFieldUpdate <$> trfName (getFieldOccName id) <*> trfExpr val
+  HsRecField id _ True -> AST.UFieldPun <$> trfName @n (getFieldOccName id)
+  HsRecField id val False -> AST.UNormalFieldUpdate <$> trfName @n (getFieldOccName id) <*> trfExpr val
 
 trfFieldUpdate :: TransformName n r => HsRecField' (AmbiguousFieldOcc n) (LHsExpr n) -> Trf (AST.UFieldUpdate (Dom r) RangeStage)
 trfFieldUpdate (HsRecField id _ True) = AST.UFieldPun <$> trfAmbiguousFieldName id
@@ -211,7 +211,7 @@ trfAlt' :: TransformName n r => Match n (LHsExpr n) -> Trf (AST.UAlt (Dom r) Ran
 trfAlt' = gTrfAlt' trfExpr
 
 gTrfAlt' :: TransformName n r => (Located (ge n) -> Trf (Ann ae (Dom r) RangeStage)) -> Match n (Located (ge n)) -> Trf (AST.UAlt' ae (Dom r) RangeStage)
-gTrfAlt' te (Match _ [pat] _ (GRHSs rhss (unLoc -> locBinds)))
+gTrfAlt' te (Match _ [pat] (GRHSs rhss (unLoc -> locBinds)))
   = AST.UAlt <$> trfPattern pat <*> gTrfCaseRhss te rhss <*> trfWhereLocalBinds (collectLocs rhss) locBinds
 gTrfAlt' _ _ = convertionProblem "gTrfAlt': not exactly one alternative when transforming a case alternative"
 
@@ -249,7 +249,7 @@ trfCmd' (HsCmdArrApp left right _ typ dir) = AST.UArrowAppCmd <$> trfExpr left <
                                                                        -- FIXME: needs a before
 trfCmd' (HsCmdArrForm expr _ _ cmds) = AST.UArrowFormCmd <$> trfExpr expr <*> makeList " " (before AnnClose) (mapM trfCmdTop cmds)
 trfCmd' (HsCmdApp cmd expr) = AST.UAppCmd <$> trfCmd cmd <*> trfExpr expr
-trfCmd' (HsCmdLam (MG (unLoc -> [unLoc -> Match _ pats _ (GRHSs [unLoc -> GRHS [] body] _)]) _ _ _))
+trfCmd' (HsCmdLam (MG (unLoc -> [unLoc -> Match _ pats (GRHSs [unLoc -> GRHS [] body] _)]) _ _ _))
   = AST.ULambdaCmd <$> (makeNonemptyList " " $ mapM trfPattern pats) <*> trfCmd body
 trfCmd' (HsCmdPar cmd) = AST.UParenCmd <$> trfCmd cmd
 trfCmd' (HsCmdCase expr (MG (unLoc -> alts) _ _ _))

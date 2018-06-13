@@ -4,7 +4,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Language.Haskell.Tools.AST.SemaInfoClasses (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
+module Language.Haskell.Tools.AST.SemaInfoClasses
+  (module Language.Haskell.Tools.AST.SemaInfoClasses, getInstances, UsageSpec(..)) where
 
 import GHC
 import Id as GHC (Id, idName)
@@ -30,7 +31,7 @@ type HasNameInfo dom = (Domain dom, HasNameInfo' (SemanticInfo dom UQualifiedNam
 class HasNameInfo' si where
   semanticsName :: si -> Maybe GHC.Name
 
-instance HasNameInfo' (NameInfo GHC.Name) where
+instance HasNameInfo' (NameInfo GhcRn) where
   semanticsName = (^? nameInfo)
 
 instance HasNameInfo' CNameInfo where
@@ -145,14 +146,14 @@ class HasModuleInfo' si where
   semanticsImplicitImports :: si -> [GHC.Name]
   semanticsPrelTransMods :: si -> [Module]
 
-instance HasModuleInfo' (AST.ModuleInfo GHC.Name) where
+instance HasModuleInfo' (AST.ModuleInfo GhcRn) where
   semanticsModule = (^. defModuleName)
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
   semanticsImplicitImports = (^? implicitNames&traversal&pName)
   semanticsPrelTransMods = (^. prelTransMods)
 
-instance HasModuleInfo' (AST.ModuleInfo GHC.Id) where
+instance HasModuleInfo' (AST.ModuleInfo GhcTc) where
   semanticsModule = (^. defModuleName)
   semanticsDynFlags = (^. defDynFlags)
   isBootModule = (^. defIsBootModule)
@@ -176,13 +177,13 @@ class HasImportInfo' si where
   semanticsImported :: si -> [GHC.Name]
   semanticsTransMods :: si -> [Module]
 
-instance HasImportInfo' (AST.ImportInfo GHC.Name) where
+instance HasImportInfo' (AST.ImportInfo GhcRn) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = (^. availableNames)
   semanticsImported = (^? importedNames&traversal&pName)
   semanticsTransMods = (^. importTransMods)
 
-instance HasImportInfo' (AST.ImportInfo GHC.Id) where
+instance HasImportInfo' (AST.ImportInfo GhcTc) where
   semanticsImportedModule = (^. importedModule)
   semanticsAvailable = map idName . (^. availableNames)
   semanticsImported = map idName . (^? importedNames&traversal&pName)

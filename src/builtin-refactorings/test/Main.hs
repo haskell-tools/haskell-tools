@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MonoLocalBinds #-}
 
-           
+
 module Main where
 
 import Test.Tasty (TestTree, testGroup, defaultMain)
@@ -143,7 +143,7 @@ renameDefinitionTests =
   , ("Refactor.RenameDefinition.AccentName", "3:1-3:2", "á")
   , ("Refactor.RenameDefinition.QualName", "3:1-3:2", "q")
   , ("Refactor.RenameDefinition.BacktickName", "3:1-3:2", "g")
-  , ("Refactor.RenameDefinition.ParenName", "4:3-4:5", "<->")
+  , ("Refactor.RenameDefinition.ParenName", "4:3-4:5", "<-->")
   , ("Refactor.RenameDefinition.RecordWildcards", "4:32-4:33", "yy")
   , ("Refactor.RenameDefinition.RecordPatternSynonyms", "4:16-4:17", "xx")
   , ("Refactor.RenameDefinition.ClassMember", "7:3-7:4", "q")
@@ -278,7 +278,7 @@ multiModuleTests =
 wrongMultiModuleTests =
   [ ("InlineBinding 3:1-3:2", "A", "Refactor" </> "InlineBinding" </> "AppearsInAnother", [])
   ]
-  
+
 autoCorrectTests =
   [ ("Refactor.AutoCorrect.SimpleReParen", "3:5-3:12")
   , ("Refactor.AutoCorrect.ExternalInstanceReParen", "4:5-4:15")
@@ -413,7 +413,7 @@ performRefactors command workingDir flags target = do
       load LoadAllTargets
       allMods <- getModuleGraph
       selectedMod <- getModSummary (GHC.mkModuleName target)
-      let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) allMods
+      let otherModules = filter (not . (\ms -> ms_mod ms == ms_mod selectedMod && ms_hsc_src ms == ms_hsc_src selectedMod)) (mgModSummaries allMods)
       targetMod <- parseTyped selectedMod
       otherMods <- mapM parseTyped otherModules
       res <- performCommand builtinRefactorings (splitOn " " command)
@@ -426,7 +426,7 @@ performRefactors command workingDir flags target = do
                       Left l -> Left l)
              $ res
 
-type ParsedModule = Ann AST.UModule (Dom RdrName) SrcTemplateStage
+type ParsedModule = Ann AST.UModule (Dom GhcPs) SrcTemplateStage
 
 parseAST :: ModSummary -> Ghc ParsedModule
 parseAST modSum = do
@@ -440,7 +440,7 @@ parseAST modSum = do
   (if hasCppExtension then prepareASTCpp else prepareAST) sourceOrigin . placeComments (fst annots) (getNormalComments $ snd annots)
      <$> (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms $ pm_parsed_source p)
 
-type RenamedModule = Ann AST.UModule (Dom GHC.Name) SrcTemplateStage
+type RenamedModule = Ann AST.UModule (Dom GhcRn) SrcTemplateStage
 
 parseRenamed :: ModSummary -> Ghc RenamedModule
 parseRenamed modSum = do

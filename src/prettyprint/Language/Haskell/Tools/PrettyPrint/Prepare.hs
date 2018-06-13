@@ -4,7 +4,7 @@ module Language.Haskell.Tools.PrettyPrint.Prepare
   -- comment handling
   , placeComments, getNormalComments, getPragmaComments
   -- generating source templates
-  , child, opt, list, after, followedBy, relativeIndented, minimumIndented, separatedBy, indented, (<>)
+  , child, opt, list, after, followedBy, relativeIndented, minimumIndented, separatedBy, indented
   -- references on source templates
   , sourceTemplateNodeRange, sourceTemplateNodeElems
   , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators

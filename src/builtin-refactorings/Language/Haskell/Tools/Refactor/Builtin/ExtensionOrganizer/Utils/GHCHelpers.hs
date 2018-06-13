@@ -56,7 +56,6 @@ fvProv UnsafeCoerceProv    = []
 fvProv (PhantomProv co)    = fvCo co
 fvProv (ProofIrrelProv co) = fvCo co
 fvProv (PluginProv _)      = []
-fvProv (HoleProv _)        = error "fvProv falls into a hole"
 
 sizeType :: Type -> Int
 -- Size of a type: the number of variables and constructors

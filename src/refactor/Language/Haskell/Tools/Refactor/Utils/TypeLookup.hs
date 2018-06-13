@@ -2,23 +2,25 @@
 
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
-import qualified CoAxiom   as GHC
+import qualified TyCoRep   as GHC (Type(..), TyThing(..))
+import qualified Kind      as GHC (isConstraintKind)
 import qualified ConLike   as GHC (ConLike(..))
 import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
-import qualified Kind      as GHC (isConstraintKind, typeKind)
+import qualified Kind      as GHC (isConstraintKind)
 import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
-import qualified Type      as GHC (eqType)
+import qualified Type      as GHC (eqType, typeKind)
 import qualified Var       as GHC (varType)
+import qualified CoAxiom   as GHC
 import qualified GHC       hiding (typeKind)
 import           GHC       (GhcMonad)
 
-import Language.Haskell.Tools.AST
-import Language.Haskell.Tools.Rewrite
-import Language.Haskell.Tools.Refactor.Utils.NameLookup
-import Language.Haskell.Tools.Refactor.Utils.Maybe
+import Language.Haskell.Tools.AST as AST
+import Language.Haskell.Tools.Rewrite as AST
+import Language.Haskell.Tools.Refactor.Utils.NameLookup as AST
+import Language.Haskell.Tools.Refactor.Utils.Maybe as AST
 
 instance Eq GHC.Type where
   (==) = GHC.eqType
@@ -95,14 +97,14 @@ tyconFromGHCType _ = Nothing
 
 -- NOTE: Returns false if the type is certainly not a newtype
 --       Returns true if it is a newtype or it could not have been looked up
-isNewtype :: GhcMonad m => Type -> m Bool
+isNewtype :: GhcMonad m => AST.Type -> m Bool
 isNewtype t = do
   tycon <- runMaybeT . lookupType $ t
   return $! maybe True isNewtypeTyCon tycon
 
 
 
-lookupType :: GhcMonad m => Type -> MaybeT m GHC.TyThing
+lookupType :: GhcMonad m => AST.Type -> MaybeT m GHC.TyThing
 lookupType t = do
   name  <- liftMaybe . nameFromType $ t
   sname <- liftMaybe . semanticsName   $ name
@@ -129,11 +131,11 @@ lookupClassFromDeclHead = lookupClassWith (liftMaybe . declHeadSemName)
 
 -- | Looks up the right-hand side (GHC representation)
 -- of a Haskell Tools Type corresponding to a type synonym
-semanticsTypeSynRhs :: GhcMonad m => Type -> MaybeT m GHC.Type
+semanticsTypeSynRhs :: GhcMonad m => AST.Type -> MaybeT m GHC.Type
 semanticsTypeSynRhs ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeSynRhs
 
 -- | Converts a global Haskell Tools type to a GHC type
-semanticsType :: GhcMonad m => Type -> MaybeT m GHC.Type
+semanticsType :: GhcMonad m => AST.Type -> MaybeT m GHC.Type
 semanticsType ty = (liftMaybe . nameFromType $ ty) >>= lookupTypeFromGlobalName
 
 isNewtypeTyCon :: GHC.TyThing -> Bool

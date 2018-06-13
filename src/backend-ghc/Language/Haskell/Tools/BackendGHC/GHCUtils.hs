@@ -1,8 +1,12 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- | Utility functions defined on the GHC AST representation.
 module Language.Haskell.Tools.BackendGHC.GHCUtils where
@@ -24,30 +28,28 @@ import SrcLoc
 import Type (TyThing(..), mkFunTys)
 
 class OutputableBndrId name => GHCName name where
-  rdrName :: name -> RdrName
-  getFromNameUsing :: Applicative f => (Name -> Ghc (f Id)) -> Name -> Ghc (f name)
+  rdrName :: IdP name -> RdrName
+  getFromNameUsing :: Applicative f => (Name -> Ghc (f Id)) -> Name -> Ghc (f (IdP name))
   getBindsAndSigs :: HsValBinds name -> ([LSig name], LHsBinds name)
-  nameFromId :: Id -> name
-  unpackPostRn :: RdrName -> PostRn name name -> name
+  nameFromId :: Id -> IdP name
+  unpackPostRn :: RdrName -> PostRn name (IdP name) -> IdP name
+  gunpackPostRn :: a -> (IdP name -> a) -> PostRn name (IdP name) -> a
 
-  gunpackPostRn :: a -> (name -> a) -> PostRn name name -> a
-
-instance GHCName RdrName where
+instance GHCName GhcPs where
   rdrName = id
   getFromNameUsing _ n = return $ pure (nameRdrName n)
   getBindsAndSigs (ValBindsIn binds sigs) = (sigs, binds)
   getBindsAndSigs _ = error "ValBindsOut: ValBindsOut in parsed source"
   nameFromId = nameRdrName . getName
   unpackPostRn rdr _ = rdr
-
   gunpackPostRn a _ _ = a
 
-occName :: GHCName n => n -> OccName
-occName = rdrNameOcc . rdrName
+occName :: forall n . GHCName n => IdP n -> OccName
+occName = rdrNameOcc . rdrName @n
 
-instance GHCName GHC.Name where
+instance GHCName GhcRn where
   rdrName = nameRdrName
-  getFromNameUsing f n = fmap nameFromId <$> f n
+  getFromNameUsing f n = fmap (nameFromId @GhcRn) <$> f n
   getBindsAndSigs (ValBindsOut bindGroups sigs) = (sigs, unionManyBags (map snd bindGroups))
   getBindsAndSigs _ = error "getBindsAndSigs: ValBindsIn in renamed source"
   nameFromId = getName
@@ -55,13 +57,11 @@ instance GHCName GHC.Name where
 
   gunpackPostRn _ f pr = f pr
 
-getFieldOccName :: GHCName n => Located (FieldOcc n) -> Located n
-getFieldOccName (L l (FieldOcc (L _ rdr) postRn)) = L l (unpackPostRn rdr postRn)
+getFieldOccName :: forall n . GHCName n => Located (FieldOcc n) -> Located (IdP n)
+getFieldOccName (L l (FieldOcc (L _ rdr) postRn)) = L l ((unpackPostRn @n) rdr postRn)
 
-getFieldOccName' :: GHCName n => FieldOcc n -> n
-getFieldOccName' (FieldOcc (L _ rdr) postRn) = unpackPostRn rdr postRn
-
-
+getFieldOccName' :: forall n . GHCName n => FieldOcc n -> IdP n
+getFieldOccName' (FieldOcc (L _ rdr) postRn) = (unpackPostRn @n) rdr postRn
 
 -- | Loading ids for top-level ghc names
 getTopLevelId :: GHC.Name -> Ghc (Maybe GHC.Id)
@@ -96,29 +96,32 @@ instance HsHasName e => HsHasName [e] where
 instance HsHasName e => HsHasName (Located e) where
   hsGetNames p (L _ e) = hsGetNames p e
 
-instance HsHasName n => HsHasName (HsLocalBinds n) where
+instance HsHasName (IdP n) => HsHasName (HsLocalBinds n) where
   hsGetNames p (HsValBinds bnds) = hsGetNames p bnds
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName n) => HsHasName (HsDecl n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (HsDecl n) where
   hsGetNames p (TyClD tycl) = hsGetNames p tycl
   hsGetNames p (ValD vald) = hsGetNames p vald
   hsGetNames p (ForD ford) = hsGetNames p ford
   hsGetNames p (InstD inst) = hsGetNames p inst
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName n) => HsHasName (InstDecl n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (InstDecl n) where
   hsGetNames p (ClsInstD clsInst) = hsGetNames p (cid_datafam_insts clsInst)
   hsGetNames p (DataFamInstD dataFamInst) = hsGetNames p dataFamInst
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName n) => HsHasName (DataFamInstDecl n) where
-  hsGetNames p dfid = hsGetNames p (dfid_defn dfid)
+instance (GHCName n, HsHasName (IdP n), HsHasName r) => HsHasName (FamEqn n p r) where
+  hsGetNames p (FamEqn id _ _ rhs) = hsGetNames p id ++ hsGetNames p rhs
 
-instance (GHCName n, HsHasName n) => HsHasName (TyClGroup n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (DataFamInstDecl n) where
+  hsGetNames p dfid = hsGetNames p (hsib_body $ dfid_eqn dfid)
+
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (TyClGroup n) where
   hsGetNames p (TyClGroup tycls _ _) = hsGetNames p tycls
 
-instance (GHCName n, HsHasName n) => HsHasName (TyClDecl n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (TyClDecl n) where
   hsGetNames p (FamDecl fd) = hsGetNames p fd
   hsGetNames p (SynDecl {tcdLName = name}) = hsGetNames p name
   hsGetNames p (DataDecl {tcdLName = name, tcdDataDefn = datadef})
@@ -127,13 +130,13 @@ instance (GHCName n, HsHasName n) => HsHasName (TyClDecl n) where
     = let n = hsGetNames p name in n ++ hsGetNames (listToMaybe (map fst n)) sigs
                                      ++ hsGetNames (listToMaybe (map fst n)) typeAssocs
 
-instance (GHCName n, HsHasName n) => HsHasName (FamilyDecl n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (FamilyDecl n) where
  hsGetNames p (FamilyDecl { fdLName = name }) = hsGetNames p name
 
-instance (GHCName n, HsHasName n) => HsHasName (HsDataDefn n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (HsDataDefn n) where
   hsGetNames p (HsDataDefn {dd_cons = ctors}) = hsGetNames p ctors
 
-instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (ConDecl n) where
   hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsFunTy (L _ (HsRecTy flds)) _)) _)})
     = hsGetNames p names ++ hsGetNames p flds
   hsGetNames p (ConDeclGADT {con_names = names, con_type = (HsIB _ (L _ (HsRecTy flds)) _)})
@@ -142,60 +145,60 @@ instance (GHCName n, HsHasName n) => HsHasName (ConDecl n) where
   hsGetNames p (ConDeclH98 {con_name = name, con_details = details})
     = hsGetNames p name ++ hsGetNames p details
 
-instance (GHCName n, HsHasName n) => HsHasName (HsConDeclDetails n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (HsConDeclDetails n) where
   hsGetNames p (RecCon rec) = hsGetNames p rec
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName n) => HsHasName (ConDeclField n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (ConDeclField n) where
   hsGetNames p (ConDeclField name _ _) = hsGetNames p name
 
-instance (GHCName n, HsHasName n) => HsHasName (FieldOcc n) where
-  hsGetNames p (FieldOcc _ pr) = gunpackPostRn [] (hsGetNames p :: n -> [(Name, Maybe Name)]) pr
+instance forall n . (GHCName n, HsHasName (IdP n)) => HsHasName (FieldOcc n) where
+  hsGetNames p (FieldOcc _ pr) = (gunpackPostRn @n) [] (hsGetNames p :: IdP n -> [(Name, Maybe Name)]) pr
 
-instance (GHCName n, HsHasName n) => HsHasName (Sig n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (Sig n) where
   hsGetNames p (TypeSig n _) = hsGetNames p n
   hsGetNames p (ClassOpSig _ n _) = hsGetNames p n
   hsGetNames p (PatSynSig n _) = hsGetNames p n
   hsGetNames _ _ = []
 
-instance HsHasName n => HsHasName (ForeignDecl n) where
+instance HsHasName (IdP n) => HsHasName (ForeignDecl n) where
   hsGetNames p (ForeignImport n _ _ _) = hsGetNames p n
   hsGetNames _ _ = []
 
-instance HsHasName n => HsHasName (HsValBinds n) where
+instance HsHasName (IdP n) => HsHasName (HsValBinds n) where
   hsGetNames p (ValBindsIn bnds _) = hsGetNames p bnds
   hsGetNames p (ValBindsOut bnds _) = hsGetNames p $ map snd bnds
 
 instance HsHasName n => HsHasName (Bag n) where
   hsGetNames p = hsGetNames p . bagToList
 
-instance HsHasName n => HsHasName (HsBind n) where
+instance HsHasName (IdP n) => HsHasName (HsBind n) where
   hsGetNames p (FunBind {fun_id = lname}) = hsGetNames p lname
   hsGetNames p (PatBind {pat_lhs = pat}) = hsGetNames p pat
   hsGetNames p (VarBind {var_id = id}) = hsGetNames p id
   hsGetNames p (PatSynBind (PSB {psb_id = id})) = hsGetNames p id
   hsGetNames _ _ = error "hsGetNames: called on compiler-generated binding"
 
-instance HsHasName n => HsHasName (ParStmtBlock l n) where
+instance HsHasName (IdP n) => HsHasName (ParStmtBlock l n) where
   hsGetNames p (ParStmtBlock _ binds _) = hsGetNames p binds
 
 --instance HsHasName n => HsHasName (LHsTyVarBndrs n) where
 --  hsGetNames (HsQTvs kvs tvs) = hsGetNames kvs ++ hsGetNames tvs
 
-instance HsHasName n => HsHasName (HsTyVarBndr n) where
+instance HsHasName (IdP n) => HsHasName (HsTyVarBndr n) where
   hsGetNames p (UserTyVar n) = hsGetNames p n
   hsGetNames p (KindedTyVar n _) = hsGetNames p n
 
-instance HsHasName n => HsHasName (Match n b) where
-  hsGetNames p (Match _ pats _ _) = concatMap (hsGetNames p) pats
+instance HsHasName (IdP n) => HsHasName (Match n b) where
+  hsGetNames p (Match _ pats _) = concatMap (hsGetNames p) pats
 
-instance HsHasName n => HsHasName (Stmt n b) where
+instance HsHasName (IdP n) => HsHasName (Stmt n b) where
   hsGetNames p (LetStmt binds) = hsGetNames p binds
   hsGetNames p (BindStmt pat _ _ _ _) = hsGetNames p pat
   hsGetNames p (RecStmt {recS_rec_ids = ids}) = hsGetNames p ids
   hsGetNames _ _ = []
 
-instance HsHasName n => HsHasName (Pat n) where
+instance HsHasName (IdP n) => HsHasName (Pat n) where
   hsGetNames x (VarPat id) = hsGetNames x id
   hsGetNames x (LazyPat p) = hsGetNames x p
   hsGetNames x (AsPat lname p) = hsGetNames x lname ++ hsGetNames x p
@@ -212,7 +215,7 @@ instance HsHasName n => HsHasName (Pat n) where
   hsGetNames x (SigPatOut p _) = hsGetNames x p
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName n) => HsHasName (HsGroup n) where
+instance (GHCName n, HsHasName (IdP n)) => HsHasName (HsGroup n) where
   hsGetNames p g@(HsGroup vals _ clds _ _ _ foreigns _ _ _ _ _)
     = hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p (hsGroupInstDecls g) ++ hsGetNames p foreigns
 
@@ -225,21 +228,21 @@ class FromGHCName n where
   fromGHCName :: GHC.Name -> n
 
 instance FromGHCName RdrName where
-  fromGHCName = rdrName
+  fromGHCName = rdrName @GhcRn
 
 instance FromGHCName GHC.Name where
   fromGHCName = id
 
 -- | Tries to simplify the type that has HsAppsTy before renaming. Does not always provide the correct form.
 -- Treats each operator as if they are of equivalent precedence and always left-associative.
-cleanHsType :: forall n . (OutputableBndrId n) => HsType n -> HsType n
+cleanHsType :: forall n . (OutputableBndrId n, SourceTextX n) => HsType n -> HsType n
 -- for some reason * is considered infix
 cleanHsType (HsAppsTy apps) = unLoc $ guessType apps
   where guessType :: OutputableBndrId n => [LHsAppType n] -> LHsType n
         guessType (L l (HsAppInfix n) : rest) -- must be a prefix actually
           = guessType' (L l (HsTyVar NotPromoted n)) rest
         guessType (L _ (HsAppPrefix t) : rest) = guessType' t rest
-        guessType [] = error $ "guessType: empty: " ++ showSDocUnsafe (ppr apps)
+        guessType [] = error $ "guessType: empty" ++ showSDocUnsafe (ppr apps)
 
         guessType' :: LHsType n -> [LHsAppType n] -> LHsType n
         guessType' fun (L _ (HsAppPrefix t) : rest) = guessType' (hsAppTy fun t) rest
@@ -252,7 +255,7 @@ cleanHsType (HsAppsTy apps) = unLoc $ guessType apps
         hsAppTy :: LHsType n -> LHsType n -> LHsType n
         hsAppTy t1 t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsAppTy t1 t2
 
-        hsOpTy :: LHsType n -> Located n -> LHsType n -> LHsType n
+        hsOpTy :: LHsType n -> Located (IdP n) -> LHsType n -> LHsType n
         hsOpTy t1 n t2 = L (getLoc t1 `combineSrcSpans` getLoc t2) $ HsOpTy t1 n t2
 cleanHsType t = t
 

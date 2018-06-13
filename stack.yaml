@@ -1,4 +1,4 @@
-resolver: lts-10.8
+resolver: nightly-2018-05-06
 
 ghc-options:
   "$locals": -fwarn-unused-binds -fwarn-unused-matches -fwarn-unused-imports
@@ -17,8 +17,8 @@ packages:
   - src/daemon
 
 extra-deps:
-  - fswatch-0.1.0.2
+  - fswatch-0.1.0.3
   - knob-0.1.1
-  - classyplate-0.3.0.2
+  - classyplate-0.3.1.0
   - minisat-solver-0.1
   - portable-lines-0.1

@@ -14,7 +14,7 @@ import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import System.Directory (canonicalizePath)
 import System.FilePath
 
-import CmdLineParser (CmdLineP(..), processArgs)
+import CmdLineParser (CmdLineP(..), processArgs, Warn(..), Err(..))
 import DynFlags
 import FastString (mkFastString)
 import GHC hiding (loadModule, ModuleName)
@@ -22,7 +22,7 @@ import qualified GHC (loadModule)
 import GHC.Paths ( libdir )
 import GhcMonad
 import HscTypes
-import Outputable (Outputable(..), showSDocUnsafe)
+import Outputable (Outputable(..), showSDocUnsafe, cat, (<>))
 import Packages (initPackages)
 import SrcLoc
 import StringBuffer (hGetStringBuffer)
@@ -69,12 +69,15 @@ useFlags args = do
   let change = runCmdLine $ processArgs flagsAll lArgs
   let ((leftovers, errs, warnings), newDynFlags) = change dynflags
   unless (null warnings)
-    $ liftIO $ putStrLn $ showSDocUnsafe $ ppr warnings
+    $ liftIO $ putStrLn $ showSDocUnsafe $ cat $ map pprWarning warnings
   unless (null errs)
-    $ liftIO $ putStrLn $ showSDocUnsafe $ ppr errs
+    $ liftIO $ putStrLn $ showSDocUnsafe $ cat $ map pprErr errs
   void $ setSessionDynFlags newDynFlags
   when (any ("-package-db" `isSuffixOf`) args) reloadPkgDb
   return (map unLoc leftovers, snd . change)
+
+pprWarning (Warn reason msg) = ppr reason Outputable.<> ppr msg
+pprErr (Err msg) = ppr msg
 
 -- | Reloads the package database based on the session flags
 reloadPkgDb :: Ghc ()

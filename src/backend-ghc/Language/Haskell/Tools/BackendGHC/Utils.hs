@@ -1,8 +1,11 @@
 -- | Utility functions for transforming the GHC AST representation into our own.
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Language.Haskell.Tools.BackendGHC.Utils where
@@ -10,16 +13,12 @@ module Language.Haskell.Tools.BackendGHC.Utils where
 import ApiAnnotation (AnnKeywordId)
 import Avail (availNamesWithSelectors, availNames, availName)
 import BasicTypes (StringLiteral(..))
-import CoAxiom as GHC (CoAxiom(..))
 import DynFlags (xopt)
-import FamInstEnv as GHC (FamInst(..), famInstEnvElts)
 import FastString (unpackFS, mkFastString)
 import FieldLabel as GHC (FieldLbl(..))
 import GHC
 import HsSyn
 import HscTypes
-import Var
-import InstEnv as GHC (ClsInst(..), instEnvElts)
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Module as GHC
 import Name
@@ -43,7 +42,7 @@ import Language.Haskell.Tools.BackendGHC.GHCUtils
 import Language.Haskell.Tools.BackendGHC.Monad
 import Language.Haskell.Tools.BackendGHC.SourceMap
 
-createModuleInfo :: ModSummary -> SrcSpan -> [LImportDecl n] -> Trf (Sema.ModuleInfo GHC.Name)
+createModuleInfo :: ModSummary -> SrcSpan -> [LImportDecl n] -> Trf (Sema.ModuleInfo GhcRn)
 createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) = do
   let prelude = (xopt ImplicitPrelude $ ms_hspp_opts mod)
                   && all (\idecl -> ("Prelude" /= (GHC.moduleNameString $ unLoc $ ideclName $ unLoc idecl))
@@ -57,7 +56,7 @@ createModuleInfo mod nameLoc (filter (not . ideclImplicit . unLoc) -> imports) =
                         (forceElements preludeImports) deps
 
 -- | Creates a semantic information for a name
-createNameInfo :: n -> Trf (NameInfo n)
+createNameInfo :: IdP n -> Trf (NameInfo n)
 createNameInfo name = do locals <- asks localsInScope
                          isDefining <- asks defining
                          return (mkNameInfo locals isDefining name)
@@ -76,28 +75,29 @@ createImplicitNameInfo name = do locals <- asks localsInScope
                                  return (mkImplicitNameInfo locals isDefining name rng)
 
 -- | Creates a semantic information for an implicit name
-createImplicitFldInfo :: (GHCName n, HsHasName n) => (a -> n) -> [HsRecField n a] -> Trf ImplicitFieldInfo
+createImplicitFldInfo :: (GHCName n, HsHasName (IdP n)) => (a -> IdP n) -> [HsRecField n a] -> Trf ImplicitFieldInfo
 createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAndExpr flds))
   where getLabelAndExpr fld = ( getTheName $ unLoc (getFieldOccName (hsRecFieldLbl fld))
                               , getTheName $ select (hsRecFieldArg fld) )
         getTheName = (\case e:_ -> e; [] -> convProblem "createImplicitFldInfo: missing names") . hsGetNames'
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
-createImportData :: (GHCName r, HsHasName n) => GHC.ImportDecl n -> Trf (ImportInfo r)
+createImportData :: forall r n . (GHCName r, HsHasName (IdP n)) => GHC.ImportDecl n -> Trf (ImportInfo r)
 createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
   do (mod,importedNames) <- getImportedNames (GHC.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
      names <- liftGhc $ filterM (checkImportVisible declHiding . (^. pName)) importedNames
      -- TODO: only use getFromNameUsing once
      lookedUpNames <- liftGhc $ mapM translatePName $ names
-     lookedUpImported <- liftGhc $ mapM (getFromNameUsing getTopLevelId . (^. pName)) $ importedNames
+     lookedUpImported <- liftGhc $ mapM ((getFromNameUsing @r) getTopLevelId . (^. pName)) $ importedNames
      deps <- lift $ getDeps mod
      -- This function (via getInstances) refers the ghc environment,
      -- we must evaluate the result or the reference may be kept preventing garbage collection.
      return $ mkImportInfo mod (forceElements $ catMaybes lookedUpImported)
                                (forceElements $ catMaybes lookedUpNames)
                                deps
-  where translatePName (PName n p) = do n' <- getFromNameUsing getTopLevelId n
-                                        p' <- maybe (return Nothing) (getFromNameUsing getTopLevelId) p
+  where translatePName :: PName GhcRn -> Ghc (Maybe (PName r))
+        translatePName (PName n p) = do n' <- (getFromNameUsing @r) getTopLevelId n
+                                        p' <- maybe (return Nothing) ((getFromNameUsing @r) getTopLevelId) p
                                         return (PName <$> n' <*> Just p')
 
 getDeps :: Module -> Ghc [Module]
@@ -107,7 +107,7 @@ getDeps mod = do
   case lookupIfaceByModule (hsc_dflags env) (hsc_HPT env) (eps_PIT eps) mod of
     Just ifc -> (mod :) <$> mapM (liftIO . getModule env . fst) (dep_mods (mi_deps ifc))
     Nothing -> return [mod]
-  where getModule env modName = do 
+  where getModule env modName = do
           res <- findHomeModule env modName
           case res of Found _ m -> return m
                       _ -> case lookupPluginModuleWithSuggestions (hsc_dflags env) modName Nothing of
@@ -116,7 +116,7 @@ getDeps mod = do
                              _ -> error $ "getDeps: module not found: " ++ GHC.moduleNameString modName
 
 -- | Get names that are imported from a given import
-getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [PName GHC.Name])
+getImportedNames :: String -> Maybe String -> Trf (GHC.Module, [PName GhcRn])
 getImportedNames name pkg = liftGhc $ do
   hpt <- hsc_HPT <$> getSession
   eps <- getSession >>= liftIO . readIORef . hsc_EPS
@@ -130,7 +130,8 @@ getImportedNames name pkg = liftGhc $ do
     where availToPName f a = map (\n -> if n == availName a then PName n Nothing else PName n (Just (availName a))) (f a)
 
 -- | Check is a given name is imported from an import with given import specification.
-checkImportVisible :: (HsHasName name, GhcMonad m) => Maybe (Bool, Located [LIE name]) -> GHC.Name -> m Bool
+checkImportVisible :: (HsHasName (IdP name), GhcMonad m)
+                   => Maybe (Bool, Located [LIE name]) -> GHC.Name -> m Bool
 checkImportVisible (Just (isHiding, specs)) name
   | isHiding  = not . or @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
   | otherwise = or @[] <$> mapM (`ieSpecMatches` name) (map unLoc (unLoc specs))
@@ -142,7 +143,7 @@ forceElements [] = []
 forceElements (a : ls) = let res = forceElements ls
                           in a `seq` res `seq` (a : ls)
 
-ieSpecMatches :: (HsHasName name, GhcMonad m) => IE name -> GHC.Name -> m Bool
+ieSpecMatches :: (HsHasName (IdP name), GhcMonad m) => IE name -> GHC.Name -> m Bool
 ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -> ls) name
   | name `elem` ls = return True
 -- ieNames does not consider field names
@@ -481,10 +482,11 @@ unhandledElement label e = convertionProblem ("Illegal " ++ label ++ ": " ++ sho
 unhandledElementNoPpr :: (Data a) => String -> a -> Trf b
 unhandledElementNoPpr label e = convertionProblem ("Illegal " ++ label ++ ": (ctor: " ++ show (toConstr e) ++ ")")
 
+instance Semigroup SrcSpan where
+  span1@(RealSrcSpan _) <> _     = span1
+  _                     <> span2 = span2
 
 instance Monoid SrcSpan where
-  span1@(RealSrcSpan _) `mappend` _ = span1
-  _ `mappend` span2 = span2
   mempty = noSrcSpan
 
 data ConvertionProblem = ConvertionProblem SrcSpan String

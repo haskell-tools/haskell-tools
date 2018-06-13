@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Functions that convert the type-related elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
@@ -6,6 +7,7 @@ module Language.Haskell.Tools.BackendGHC.Types where
 
 import ApiAnnotation as GHC (AnnKeywordId(..))
 import HsExpr (HsSplice(..))
+import HsExtension (IdP)
 import HsTypes as GHC
 import Id (mkVanillaGlobal)
 import SrcLoc as GHC
@@ -27,7 +29,7 @@ import Language.Haskell.Tools.BackendGHC.Names
 import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.TH (trfSplice, trfQuasiQuotation')
 import Language.Haskell.Tools.BackendGHC.Utils
 
-trfType :: TransformName n r => Located (HsType n) -> Trf (Ann AST.UType (Dom r) RangeStage)
+trfType :: forall n r . TransformName n r => Located (HsType n) -> Trf (Ann AST.UType (Dom r) RangeStage)
 trfType typ | RealSrcSpan loce <- getLoc typ
   = do othSplices <- asks typeSplices
        let contSplice = filter (\sp -> case getLoc sp of (RealSrcSpan spLoc) -> spLoc `containsSpan` loce; _ -> False) othSplices
@@ -36,15 +38,16 @@ trfType typ | RealSrcSpan loce <- getLoc typ
                                 in typeSpliceInserted lsp (annLocNoSema (pure l) (AST.UTySplice <$> (trfSplice =<< rdrSplice sp)))
   | otherwise = trfLocNoSema trfType' typ
 
-trfType' :: TransformName n r => HsType n -> Trf (AST.UType (Dom r) RangeStage)
+trfType' :: forall n r . TransformName n r => HsType n -> Trf (AST.UType (Dom r) RangeStage)
 trfType' = trfType'' . cleanHsType where
+  trfType'' :: HsType n -> Trf (AST.UType (Dom r) RangeStage)
   trfType'' (HsForAllTy [] typ) = trfType' (unLoc typ)
   trfType'' (HsForAllTy bndrs typ) = AST.UTyForall <$> defineTypeVars (trfBindings bndrs)
                                                    <*> addToScope bndrs (trfType typ)
   trfType'' (HsQualTy (L _ []) typ) = trfType' (unLoc typ)
   trfType'' (HsQualTy ctx typ) = AST.UTyCtx <$> (fromJust . (^. annMaybe) <$> trfCtx atTheStart ctx)
                                             <*> trfType typ
-  trfType'' (HsTyVar _ name) = AST.UTyVar <$> transformingPossibleVar name (trfName name)
+  trfType'' (HsTyVar _ name) = AST.UTyVar <$> transformingPossibleVar name (trfName @n name)
   trfType'' (HsAppsTy apps) | Just (head, args, _) <- getAppsTyHead_maybe apps
     = foldl (\core t -> AST.UTyApp <$> annLocNoSema (pure $ getLoc head `combineSrcSpans` getLoc t) core <*> trfType t) (trfType' (unLoc head)) args
   trfType'' (HsAppTy t1 t2) = AST.UTyApp <$> trfType t1 <*> trfType t2
@@ -54,7 +57,7 @@ trfType' = trfType'' . cleanHsType where
   trfType'' (HsTupleTy HsBoxedOrConstraintTuple typs) = AST.UTyTuple <$> trfAnnList ", " trfType' typs
   trfType'' (HsTupleTy HsBoxedTuple typs) = AST.UTyTuple <$> trfAnnList ", " trfType' typs
   trfType'' (HsTupleTy HsUnboxedTuple typs) = AST.UTyUnbTuple <$> trfAnnList ", " trfType' typs
-  trfType'' (HsOpTy t1 op t2) = AST.UTyInfix <$> trfType t1 <*> trfOperator op <*> trfType t2
+  trfType'' (HsOpTy t1 op t2) = AST.UTyInfix <$> trfType t1 <*> trfOperator @n op <*> trfType t2
   trfType'' (HsParTy typ) = AST.UTyParen <$> trfType typ
   trfType'' (HsKindSig typ kind) = AST.UTyKinded <$> trfType typ <*> trfKind kind
   trfType'' (HsSpliceTy qq@(HsQuasiQuote {}) _) = AST.UTyQuasiQuote <$> annContNoSema (trfQuasiQuotation' qq)
@@ -76,10 +79,10 @@ trfBindings vars = trfAnnList " " trfTyVar' vars
 trfTyVar :: TransformName n r => Located (HsTyVarBndr n) -> Trf (Ann AST.UTyVar (Dom r) RangeStage)
 trfTyVar = trfLocNoSema trfTyVar'
 
-trfTyVar' :: TransformName n r => HsTyVarBndr n -> Trf (AST.UTyVar (Dom r) RangeStage)
-trfTyVar' (UserTyVar name) = AST.UTyVarDecl <$> typeVarTransform (trfName name)
+trfTyVar' :: forall n r . TransformName n r => HsTyVarBndr n -> Trf (AST.UTyVar (Dom r) RangeStage)
+trfTyVar' (UserTyVar name) = AST.UTyVarDecl <$> typeVarTransform (trfName @n name)
                                            <*> (nothing " " "" atTheEnd)
-trfTyVar' (KindedTyVar name kind) = AST.UTyVarDecl <$> typeVarTransform (trfName name)
+trfTyVar' (KindedTyVar name kind) = AST.UTyVarDecl <$> typeVarTransform (trfName @n name)
                                                   <*> trfKindSig (Just kind)
 
 trfCtx :: TransformName n r => Trf SrcLoc -> Located (HsContext n) -> Trf (AnnMaybeG AST.UContext (Dom r) RangeStage)
@@ -100,14 +103,14 @@ trfAssertion' :: forall n r . TransformName n r => HsType n -> Trf (AST.UAsserti
 trfAssertion' (cleanHsType -> HsParTy t)
   = trfAssertion' (unLoc t)
 trfAssertion' (cleanHsType -> HsOpTy left op right)
-  = AST.UInfixAssert <$> trfType left <*> trfOperator op <*> trfType right
+  = AST.UInfixAssert <$> trfType left <*> trfOperator @n op <*> trfType right
 trfAssertion' (cleanHsType -> HsTupleTy _ tys)
   = AST.UTupleAssert <$> makeList ", " (after AnnOpenP) (mapM trfAssertion tys)
 trfAssertion' (cleanHsType -> HsWildCardTy _)
   = pure AST.UWildcardAssert
 trfAssertion' (cleanHsType -> t) = case cleanHsType base of
-   HsTyVar _ name -> AST.UClassAssert <$> trfName name <*> trfAnnList " " trfType' args
-   HsEqTy t1 t2 -> AST.UInfixAssert <$> trfType t1 <*> annLocNoSema (tokenLoc AnnTilde) (trfOperator' typeEq) <*> trfType t2
+   HsTyVar _ name -> AST.UClassAssert <$> trfName @n name <*> trfAnnList " " trfType' args
+   HsEqTy t1 t2 -> AST.UInfixAssert <$> trfType t1 <*> annLocNoSema (tokenLoc AnnTilde) (trfOperator' @n typeEq) <*> trfType t2
    HsIParamTy name t -> AST.UImplicitAssert <$> define (focusOn (getLoc name) (trfImplicitName (unLoc name))) <*> trfType t
    t -> unhandledElement "assertion" t
   where (args, _, base) = getArgs t
@@ -116,5 +119,5 @@ trfAssertion' (cleanHsType -> t) = case cleanHsType base of
         getArgs (HsAppTy (L l ft) at) = case getArgs ft of (args, sp, base) -> (args++[at], sp <|> Just l, base)
         getArgs t = ([], Nothing, t)
 
-        typeEq :: n
-        typeEq = nameFromId (mkVanillaGlobal (tyConName heqTyCon) (tyConKind heqTyCon))
+        typeEq :: IdP n
+        typeEq = nameFromId @n (mkVanillaGlobal (tyConName heqTyCon) (tyConKind heqTyCon))

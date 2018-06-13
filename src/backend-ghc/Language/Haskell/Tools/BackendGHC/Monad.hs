@@ -28,7 +28,7 @@ import Name (Name, isVarName, isTyVarName)
 import OccName as GHC (HasOccName(..), mkOccEnv)
 import Outputable hiding (empty)
 import RdrName
-import RnEnv (mkUnboundNameRdr)
+import RnUnbound (mkUnboundNameRdr)
 import RnExpr (rnLExpr)
 import TcRnMonad
 import TcRnTypes (TcGblEnv(..))
@@ -40,16 +40,16 @@ type Trf = ReaderT TrfInput Ghc
 data TrfInput
   = TrfInput { srcMap :: SourceMap -- ^ The lexical tokens of the source file
              , pragmaComms :: Map String [Located String] -- ^ Pragma comments
-             , declsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -- ^ Declarations that are from the parsed AST
+             , declsToInsert :: [Ann UDecl (Dom GhcPs) RangeStage] -- ^ Declarations that are from the parsed AST
              , contRange :: SrcSpan -- ^ The focus of the transformation
              , localsInScope :: [[(GHC.Name, Maybe [UsageSpec], Maybe Name)]] -- ^ Local names visible
              , defining :: Bool -- ^ True, if names are defined in the transformed AST element.
              , definingTypeVars :: Bool -- ^ True, if type variable names are defined in the transformed AST element.
              , originalNames :: Map SrcSpan RdrName -- ^ Stores the original format of names.
-             , declSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Location of the TH splices for extracting declarations from the renamed AST.
+             , declSplices :: [Located (HsSplice GhcPs)] -- ^ Location of the TH splices for extracting declarations from the renamed AST.
                  -- ^ It is possible that multiple declarations stand in the place of the declaration splice or none at all.
-             , typeSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Type splices
-             , exprSplices :: [Located (HsSplice GHC.RdrName)] -- ^ Expression splices
+             , typeSplices :: [Located (HsSplice GhcPs)] -- ^ Type splices
+             , exprSplices :: [Located (HsSplice GhcPs)] -- ^ Expression splices
              }
 
 trfInit :: Map ApiAnnKey [SrcSpan] -> Map String [Located String] -> TrfInput
@@ -93,7 +93,7 @@ addEmptyScope :: Trf a -> Trf a
 addEmptyScope = local (\s -> s { localsInScope = [] : localsInScope s })
 
 -- | Perform the transformation putting the given definition in a new local scope.
-addToScopeImported :: [(String, Maybe String, Bool, [PName GHC.Name])] -> Trf a -> Trf a
+addToScopeImported :: [(String, Maybe String, Bool, [PName GhcRn])] -> Trf a -> Trf a
 addToScopeImported ls = local (\s -> s { localsInScope = concatMap (\(mn, asName, q, e) -> map (\(PName n p) -> (n, Just [UsageSpec q mn (fromMaybe mn asName)], p)) e) ls : localsInScope s })
 
 
@@ -119,12 +119,12 @@ getOriginalName n = do sp <- asks contRange
                        asks (rdrNameStr . fromMaybe n . (Map.lookup sp) . originalNames)
 
 -- | Set splices that must replace the elements that are generated into the AST representation.
-setSplices :: [Located (HsSplice GHC.RdrName)] -> [Located (HsSplice GHC.RdrName)] -> [Located (HsSplice GHC.RdrName)] -> Trf a -> Trf a
+setSplices :: [Located (HsSplice GhcPs)] -> [Located (HsSplice GhcPs)] -> [Located (HsSplice GhcPs)] -> Trf a -> Trf a
 setSplices declSpls typeSpls exprSpls
   = local (\s -> s { typeSplices = typeSpls, exprSplices = exprSpls, declSplices = declSpls })
 
 -- | Set the list of declarations that will be missing from AST
-setDeclsToInsert :: [Ann UDecl (Dom RdrName) RangeStage] -> Trf a -> Trf a
+setDeclsToInsert :: [Ann UDecl (Dom GhcPs) RangeStage] -> Trf a -> Trf a
 setDeclsToInsert decls = local (\s -> s {declsToInsert = decls})
 
 -- Remove the splice that has already been added
@@ -135,7 +135,7 @@ exprSpliceInserted spl = local (\s -> s { exprSplices = Prelude.filter (\sp -> g
 typeSpliceInserted :: Located (HsSplice n) -> Trf a -> Trf a
 typeSpliceInserted spl = local (\s -> s { typeSplices = Prelude.filter (\sp -> getLoc sp /= getLoc spl) (typeSplices s) })
 
-rdrSplice :: HsSplice RdrName -> Trf (HsSplice GHC.Name)
+rdrSplice :: HsSplice GhcPs -> Trf (HsSplice GhcRn)
 rdrSplice spl = do
     rng <- asks contRange
     env <- liftGhc getSession

@@ -17,12 +17,12 @@ library
                      , Language.Haskell.Tools.Debug.Show
                      , Language.Haskell.Tools.Debug.RangeDebug
                      , Language.Haskell.Tools.Debug.RangeDebugInstances
-  build-depends:       base                      >= 4.10 && < 4.11
+  build-depends:       base                      >= 4.11 && < 4.12
                      , filepath                  >= 1.4 && < 1.5
-                     , template-haskell          >= 2.12 && < 2.13
+                     , template-haskell          >= 2.13 && < 2.14
                      , references                >= 0.3 && < 0.4
                      , split                     >= 0.2 && < 0.3
-                     , ghc                       >= 8.2 && < 8.3
+                     , ghc                       >= 8.4 && < 8.5
                      , ghc-paths                 >= 0.1 && < 0.2
                      , haskell-tools-ast         >= 1.0 && < 1.1
                      , haskell-tools-backend-ghc >= 1.0 && < 1.1

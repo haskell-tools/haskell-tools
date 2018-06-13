@@ -120,7 +120,7 @@ updateClient' UpdateCtx{..} (RemovePackages packagePathes) = do
     lift $ forM_ existingFiles (\fs -> removeTarget (TargetFile fs Nothing))
     lift $ deregisterDirs (mcs ^? traversal & filtered isRemoved & mcSourceDirs & traversal)
     modify' $ refSessMCs .- filter (not . isRemoved)
-    modifySession (\s -> s { hsc_mod_graph = filter ((`notElem` existingFiles) . getModSumOrig) (hsc_mod_graph s) })
+    modifySession (\s -> s { hsc_mod_graph = mkModuleGraph $ filter ((`notElem` existingFiles) . getModSumOrig) (mgModSummaries $ hsc_mod_graph s) })
     mcs <- gets (^. refSessMCs)
     when (null mcs) $ modify' (packageDB .= Nothing)
     return True
@@ -256,7 +256,7 @@ addPackages resp warnMVar packagePathes = do
                         <$> getReachableModules (\_ -> return ()) (\ms -> ms_mod ms `elem` existingModNames)
       modify' $ refSessMCs .- filter (not . isTheAdded roots) -- remove the added package from the database
       forM_ existing $ \ms -> removeTarget (TargetFile (getModSumOrig ms) Nothing)
-      modifySession (\s -> s { hsc_mod_graph = filter (not . (`elem` existingModNames) . ms_mod) (hsc_mod_graph s) })
+      modifySession (\s -> s { hsc_mod_graph = mkModuleGraph $ filter (not . (`elem` existingModNames) . ms_mod) (mgModSummaries $ hsc_mod_graph s) })
       -- load new modules
       pkgDBok <- initializePackageDBIfNeeded roots
       if pkgDBok then do
@@ -324,7 +324,7 @@ reloadModules resp warnMVar added changed removed = do
   -- remove targets deleted
   modify' $ refSessMCs & traversal & mcModules
               .- Map.filter (\m -> maybe True ((`notElem` removed) . getModSumOrig) (m ^? modRecMS))
-  modifySession (\s -> s { hsc_mod_graph = filter (\mod -> getModSumOrig mod `notElem` removed) (hsc_mod_graph s) })
+  modifySession (\s -> s { hsc_mod_graph = mkModuleGraph $ filter (\mod -> getModSumOrig mod `notElem` removed) (mgModSummaries $ hsc_mod_graph s) })
   -- reload changed modules
   -- TODO: filter those that are in reloaded packages
   reloadChangedModules (\ms -> resp (LoadedModule (getModSumOrig ms) (getModSumName ms)))

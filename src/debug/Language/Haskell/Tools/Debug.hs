@@ -31,6 +31,7 @@ import ErrUtils
 import Bag
 import RdrName
 import Exception
+import Avail
 
 import Language.Haskell.Tools.AST (NodeInfo(..))
 import Language.Haskell.Tools.BackendGHC
@@ -49,13 +50,13 @@ demoRefactor command workingDir args moduleName =
     initGhcFlags
     _ <- useFlags args
     useDirs [workingDir]
-    
+
     liftIO $ putStrLn "=========== parsed source:"
     ms <- loadModule workingDir moduleName
-    
+
     dfs <- getSessionDynFlags
     -- setSessionDynFlags (dfs `dopt_set` Opt_D_dump_rn_trace `dopt_set` Opt_D_dump_tc_trace)
-    
+
     p <- parseModule ms
     let annots = pm_annotations $ p
     liftIO $ putStrLn $ show (pm_parsed_source p)
@@ -64,38 +65,38 @@ demoRefactor command workingDir args moduleName =
     liftIO $ putStrLn "=========== comments:"
     liftIO $ putStrLn $ show (snd annots)
     liftIO $ putStrLn "=========== renamed source:"
-    
+
     (rnSrc, tcSrc) <- ((\t -> (tm_renamed_source t, typecheckedSource t)) <$> typecheckModule p)
                          `gcatch` \(e :: SomeException) -> forcedTypecheck ms p
     liftIO $ putStrLn $ show rnSrc
-    
+
     -- liftIO $ putStrLn $ show (fromJust $ tm_renamed_source t)
     liftIO $ putStrLn "=========== typechecked source:"
     liftIO $ putStrLn $ show tcSrc
-    
+
     let hasCPP = Cpp `xopt` ms_hspp_opts ms
-    
+
     liftIO $ putStrLn "=========== parsed:"
     --transformed <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule (pm_parsed_source p)
     parseTrf <- runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModule ms (pm_parsed_source p)
     liftIO $ putStrLn $ srcInfoDebug parseTrf
-    
+
     liftIO $ putStrLn "=========== typed:"
     transformed <- addTypeInfos tcSrc =<< (runTrf (fst annots) (getPragmaComments $ snd annots) $ trfModuleRename ms parseTrf (fromJust $ rnSrc) (pm_parsed_source p))
     liftIO $ putStrLn $ srcInfoDebug transformed
-    
+
     liftIO $ putStrLn "=========== ranges fixed:"
     sourceOrigin <- if hasCPP then liftIO $ hGetStringBuffer (workingDir </> map (\case '.' -> pathSeparator; c -> c) moduleName <.> "hs")
                               else return (fromJust $ ms_hspp_buf $ pm_mod_summary p)
     let commented = fixRanges $ placeComments (fst annots) (getNormalComments $ snd annots) $ fixMainRange sourceOrigin transformed
     liftIO $ putStrLn $ srcInfoDebug commented
-    
+
     liftIO $ putStrLn "=========== cut up:"
     let cutUp = cutUpRanges commented
     liftIO $ putStrLn $ srcInfoDebug cutUp
     liftIO $ putStrLn $ show $ getLocIndices cutUp
     liftIO $ putStrLn $ show $ mapLocIndices sourceOrigin (getLocIndices cutUp)
-    
+
     liftIO $ putStrLn "=========== sourced:"
     let sourced = (if hasCPP then extractStayingElems else id) $ rangeToSource sourceOrigin cutUp
     liftIO $ putStrLn $ srcInfoDebug sourced
@@ -130,13 +131,14 @@ demoRefactor command workingDir args moduleName =
 
 deriving instance Generic SrcSpan
 deriving instance Generic (NodeInfo sema src)
+instance Show AvailInfo where show = showSDocUnsafe . ppr
 
 forcedTypecheck :: ModSummary -> ParsedModule -> Ghc (Maybe RenamedSource, TypecheckedSource)
 forcedTypecheck ms p = do
   env <- getSession
   store <- liftIO $ newIORef (error "not found")
   let hpm = HsParsedModule (pm_parsed_source p) (pm_extra_src_files p) (pm_annotations p)
-  (msgs, Just (gblEnv, lclEnv)) <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv 
+  (msgs, Just (gblEnv, lclEnv)) <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv
   let finalizeModule = do gbl <- getGblEnv
                           liftIO $ writeIORef store ( (,,,) <$> tcg_rn_decls gbl
                                                             <*> return (tcg_rn_imports gbl)
