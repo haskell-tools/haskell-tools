@@ -1,5 +1,5 @@
 name:                haskell-tools-demo
-version:             1.0.1.1
+version:             1.1.0.0
 synopsis:            A web-based demo for Haskell-tools Refactor.
 description:         Allows websocket clients to connect and performs refactorings on demand. The clients maintain a continous connection with the server, sending changes in the source files. When a refactor request is received, it performs the changes and sends the modified source files to the client.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -32,11 +32,11 @@ library
                      , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , filepath                  >= 1.4  && < 1.5
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-builtin-refactorings >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
+                     , haskell-tools-ast         >= 1.1  && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1  && < 1.2
+                     , haskell-tools-prettyprint >= 1.1  && < 1.2
+                     , haskell-tools-builtin-refactorings >= 1.1  && < 1.2
+                     , haskell-tools-refactor    >= 1.1  && < 1.2
   default-language:  Haskell2010
 
 executable ht-demo
