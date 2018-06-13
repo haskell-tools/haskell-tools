@@ -1,5 +1,5 @@
 module Refactor.OrganizeImports.MakeExplicit.ImportThree where
 
-import Refactor.OrganizeImports.MakeExplicit.Source (g, e, a)
+import Refactor.OrganizeImports.MakeExplicit.Source (a, e, g)
 
 x = (a,e,g)
