@@ -24,11 +24,11 @@ library
                      , split                     >= 0.2 && < 0.3
                      , ghc                       >= 8.4 && < 8.5
                      , ghc-paths                 >= 0.1 && < 0.2
-                     , haskell-tools-ast         >= 1.0 && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0 && < 1.1
-                     , haskell-tools-refactor    >= 1.0 && < 1.1
-                     , haskell-tools-prettyprint >= 1.0 && < 1.1
-                     , haskell-tools-builtin-refactorings >= 1.0 && < 1.1
+                     , haskell-tools-ast         >= 1.1 && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1 && < 1.2
+                     , haskell-tools-refactor    >= 1.1 && < 1.2
+                     , haskell-tools-prettyprint >= 1.1 && < 1.2
+                     , haskell-tools-builtin-refactorings >= 1.1 && < 1.2
                      , uniplate                  >= 1.6 && < 1.7
                      , classyplate               >= 0.3 && < 0.4
                      , criterion                 >= 1.1 && < 1.5

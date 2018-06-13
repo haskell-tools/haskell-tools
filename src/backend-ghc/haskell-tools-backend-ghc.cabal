@@ -42,6 +42,6 @@ library
                      , split             >= 0.2  && < 0.3
                      , template-haskell  >= 2.13 && < 2.14
                      , ghc               >= 8.4  && < 8.5
-                     , haskell-tools-ast >= 1.0  && < 1.1
+                     , haskell-tools-ast >= 1.1  && < 1.2
                      , ghc-boot-th       >= 8.4  && < 8.5
   default-language:    Haskell2010

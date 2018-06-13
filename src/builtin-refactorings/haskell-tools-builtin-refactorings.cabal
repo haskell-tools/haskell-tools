@@ -137,11 +137,11 @@ library
                      , minisat-solver            >= 0.1  && < 0.2
                      , ghc                       >= 8.4  && < 8.5
                      , portable-lines            >= 0.1  && < 0.2                     , Cabal                     >= 2.0  && < 2.3
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-rewrite     >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
+                     , haskell-tools-ast         >= 1.1  && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1  && < 1.2
+                     , haskell-tools-rewrite     >= 1.1  && < 1.2
+                     , haskell-tools-prettyprint >= 1.1  && < 1.2
+                     , haskell-tools-refactor    >= 1.1  && < 1.2
   default-language:    Haskell2010
 
 test-suite haskell-tools-builtin-refactorings-test
@@ -166,11 +166,11 @@ test-suite haskell-tools-builtin-refactorings-test
                      , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 2.0  && < 2.3
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-rewrite     >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
+                     , haskell-tools-ast         >= 1.1  && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1  && < 1.2
+                     , haskell-tools-rewrite     >= 1.1  && < 1.2
+                     , haskell-tools-prettyprint >= 1.1  && < 1.2
+                     , haskell-tools-refactor    >= 1.1  && < 1.2
                      , haskell-tools-builtin-refactorings
   default-language:    Haskell2010
 
@@ -199,11 +199,11 @@ test-suite ht-extension-organizer-test
                      , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , Cabal                     >= 2.0  && < 2.3
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-rewrite     >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
+                     , haskell-tools-ast         >= 1.1  && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1  && < 1.2
+                     , haskell-tools-rewrite     >= 1.1  && < 1.2
+                     , haskell-tools-prettyprint >= 1.1  && < 1.2
+                     , haskell-tools-refactor    >= 1.1  && < 1.2
                      , haskell-tools-builtin-refactorings
 
   default-language:    Haskell2010

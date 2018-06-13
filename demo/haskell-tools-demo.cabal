@@ -32,11 +32,11 @@ library
                      , ghc                       >= 8.4  && < 8.5
                      , ghc-paths                 >= 0.1  && < 0.2
                      , filepath                  >= 1.4  && < 1.5
-                     , haskell-tools-ast         >= 1.0  && < 1.1
-                     , haskell-tools-backend-ghc >= 1.0  && < 1.1
-                     , haskell-tools-prettyprint >= 1.0  && < 1.1
-                     , haskell-tools-builtin-refactorings >= 1.0  && < 1.1
-                     , haskell-tools-refactor    >= 1.0  && < 1.1
+                     , haskell-tools-ast         >= 1.1  && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1  && < 1.2
+                     , haskell-tools-prettyprint >= 1.1  && < 1.2
+                     , haskell-tools-builtin-refactorings >= 1.1  && < 1.2
+                     , haskell-tools-refactor    >= 1.1  && < 1.2
   default-language:  Haskell2010
 
 executable ht-demo
