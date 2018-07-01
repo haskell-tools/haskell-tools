@@ -84,7 +84,7 @@ benchmark cli-benchmark
   build-depends:       base                      >= 4.11 && < 4.12
                      , criterion                 >= 1.1 && < 1.5
                      , time                      >= 1.6 && < 1.9
-                     , aeson                     >= 1.0 && < 1.4
+                     , aeson                     >= 1.0 && < 1.5
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
                      , knob                      >= 0.1 && < 0.2
