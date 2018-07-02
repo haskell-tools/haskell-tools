@@ -1,5 +1,5 @@
 name:                haskell-tools-refactor
-version:             1.1.0.0
+version:             1.1.0.1
 synopsis:            Refactoring Tool for Haskell
 description:         Contains a set of refactorings based on the Haskell-Tools framework to easily transform a Haskell program. For the descriptions of the implemented refactorings, see the homepage.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -49,7 +49,7 @@ library
                      , Language.Haskell.Tools.Refactor.Querying
 
   build-depends:       base                      >= 4.11 && < 4.12
-                     , aeson                     >= 1.0  && < 1.4
+                     , aeson                     >= 1.0  && < 1.5
                      , mtl                       >= 2.2  && < 2.3
                      , uniplate                  >= 1.6  && < 1.7
                      , ghc-paths                 >= 0.1  && < 0.2
