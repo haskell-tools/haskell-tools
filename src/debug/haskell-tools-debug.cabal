@@ -31,7 +31,7 @@ library
                      , haskell-tools-builtin-refactorings >= 1.1 && < 1.2
                      , uniplate                  >= 1.6 && < 1.7
                      , classyplate               >= 0.3 && < 0.4
-                     , criterion                 >= 1.1 && < 1.5
+                     , criterion                 >= 1.1 && < 1.6
                      , mtl                       >= 2.2 && < 2.3
   default-language:    Haskell2010
 
