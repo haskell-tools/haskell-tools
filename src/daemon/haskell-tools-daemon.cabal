@@ -1,5 +1,5 @@
 name:                haskell-tools-daemon
-version:             1.1.0.1
+version:             1.1.0.2
 synopsis:            Background process for Haskell-tools that editors can connect to.
 description:         Background process for Haskell-tools that provides a way to use the tools on a
                      whole project. It also makes it possible to use the tools on the project in a
@@ -100,7 +100,7 @@ library
                      , ghc                       >= 8.4   && < 8.5
                      , ghc-paths                 >= 0.1   && < 0.2
                      , references                >= 0.3.2 && < 1.0
-                     , network                   >= 2.6   && < 3.0
+                     , network                   >= 2.6   && < 2.8
                      , Diff                      >= 0.3   && < 0.4
                      , Cabal                     >= 2.0   && < 2.3
                      , pretty                    >= 1.1   && < 1.2
@@ -149,13 +149,13 @@ test-suite haskell-tools-daemon-tests
   build-depends:       base                      >= 4.11 && < 4.12
                      , HUnit                     >= 1.5  && < 1.7
                      , ghc                       >= 8.4  && < 8.5
-                     , tasty                     >= 0.11 && < 1.1
+                     , tasty                     >= 0.11 && < 1.2
                      , tasty-hunit               >= 0.9  && < 0.11
                      , directory                 >= 1.2  && < 1.4
                      , process                   >= 1.6  && < 1.7
                      , filepath                  >= 1.4  && < 2.0
                      , bytestring                >= 0.10 && < 0.11
-                     , network                   >= 2.6  && < 2.7
+                     , network                   >= 2.6  && < 2.8
                      , aeson                     >= 1.0  && < 1.5
                      , Glob                      >= 0.9  && < 0.10
                      , haskell-tools-daemon

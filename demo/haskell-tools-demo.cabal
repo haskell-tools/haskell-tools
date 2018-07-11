@@ -1,5 +1,5 @@
 name:                haskell-tools-demo
-version:             1.1.0.1
+version:             1.1.0.2
 synopsis:            A web-based demo for Haskell-tools Refactor.
 description:         Allows websocket clients to connect and performs refactorings on demand. The clients maintain a continous connection with the server, sending changes in the source files. When a refactor request is received, it performs the changes and sends the modified source files to the client.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -54,12 +54,12 @@ test-suite haskell-tools-demo-tests
   main-is:             Main.hs
   build-depends:       base                      >= 4.11 && < 4.12
                      , HUnit                     >= 1.5 && < 1.7
-                     , tasty                     >= 0.11 && < 1.1
+                     , tasty                     >= 0.11 && < 1.2
                      , tasty-hunit               >= 0.9 && < 0.11
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
                      , bytestring                >= 0.10 && < 0.11
-                     , network                   >= 2.6 && < 2.7
+                     , network                   >= 2.6 && < 2.8
                      , websockets                >= 0.12 && < 0.13
                      , aeson                     >= 1.0 && < 1.5
                      , haskell-tools-demo

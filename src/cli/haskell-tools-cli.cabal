@@ -1,5 +1,5 @@
 name:                haskell-tools-cli
-version:             1.1.0.1
+version:             1.1.0.2
 synopsis:            Command-line frontend for Haskell-tools Refact
 description:         Command-line frontend for Haskell-tools Refact. Not meant as a final product, only for demonstration purposes.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -55,7 +55,7 @@ test-suite haskell-tools-cli-tests
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.11 && < 4.12
-                     , tasty                     >= 0.11 && < 1.1
+                     , tasty                     >= 0.11 && < 1.2
                      , tasty-hunit               >= 0.9 && < 0.11
                      , directory                 >= 1.2 && < 1.4
                      , filepath                  >= 1.4 && < 2.0
@@ -82,7 +82,7 @@ benchmark cli-benchmark
   type:                exitcode-stdio-1.0
   ghc-options:         -with-rtsopts=-M2g
   build-depends:       base                      >= 4.11 && < 4.12
-                     , criterion                 >= 1.1 && < 1.5
+                     , criterion                 >= 1.1 && < 1.6
                      , time                      >= 1.6 && < 1.9
                      , aeson                     >= 1.0 && < 1.5
                      , directory                 >= 1.2 && < 1.4

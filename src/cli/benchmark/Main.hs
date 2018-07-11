@@ -3,8 +3,8 @@
 
 module Main where
 
-import Criterion.Measurement hiding (runBenchmark)
-import Criterion.Types hiding(measure)
+import Criterion
+import Criterion.Main
 
 import Control.Exception (finally)
 import Control.Monad
@@ -30,25 +30,7 @@ import Language.Haskell.Tools.Refactor.CLI (CLIOptions(..), normalRefactorSessio
 rootDir = "examples"
 
 main :: IO ()
-main = do
-  args <- getArgs
-  (year, month, day) <- date
-  cases <- bms2Mcases (Date {..}) bms
-  case args of
-    [file] -> writeFile file (show $ encode cases)
-    _ -> putStrLn $ LazyBS.unpack $ encode cases
-  putStrLn "Execution times (cycles):"
-  mapM_ (\c -> putStrLn $ "# " ++ bmId (bm c) ++ ": " ++ showGrouped (measCycles (ms c))) cases
-    where showGrouped = reverse . concat . intersperse " " . chunksOf 3 . reverse . show
-
-date :: IO (Integer,Int,Int) -- (year,month,day)
-date = getCurrentTime >>= return . toGregorian . utctDay
-
-data Date = Date { year  :: Integer
-                 , month :: Int
-                 , day   :: Int
-                 }
-  deriving (Eq, Show, Generic)
+main = defaultMain (map createBench bms)
 
 data BM = BM { bmId       :: String
              , workingDir :: FilePath
@@ -56,18 +38,8 @@ data BM = BM { bmId       :: String
              }
   deriving (Eq, Show, Generic)
 
-data BMCase = BMCase { bm :: BM
-                     , ms :: Measured
-                     , dt :: Date
-                     }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON Date
-instance ToJSON Date
 instance FromJSON BM
 instance ToJSON BM
-instance FromJSON BMCase
-instance ToJSON BMCase
 
 bms :: [BM]
 bms = [ BM { bmId = "full-1", workingDir = rootDir </> "CppHs", refactors = [
@@ -109,23 +81,8 @@ bms = [ BM { bmId = "full-1", workingDir = rootDir </> "CppHs", refactors = [
       , BM { bmId ="empty", workingDir = rootDir </> "CppHs", refactors = [ "Exit" ] }
       ]
 
-
-
-bms2Mcases :: Date -> [BM] -> IO [BMCase]
-bms2Mcases = mapM . bm2Mcase
-
-runBenchmark :: Benchmarkable -> IO Measured
-runBenchmark bm = fst <$> (measure bm 1)
-
-bm2Mms :: BM -> IO Measured
-bm2Mms (BM { .. }) = runBenchmark $ benchmakable workingDir refactors
-
-bm2Mcase :: Date -> BM -> IO BMCase
-bm2Mcase d bm = BMCase bm <$> (bm2Mms bm) <*> (return d)
-
-benchmakable :: String -> [String] -> Benchmarkable -- IO (Either String String)
-benchmakable wd rfs = toBenchmarkable $ \ _ -> do
-  makeCliTest wd rfs
+createBench :: BM -> Benchmark
+createBench (BM { .. }) = bench bmId $ nfIO $ makeCliTest workingDir refactors
 
 makeCliTest :: String -> [String] -> IO ()
 makeCliTest wd rfs = do

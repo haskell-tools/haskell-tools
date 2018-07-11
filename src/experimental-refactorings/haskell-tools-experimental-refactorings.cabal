@@ -1,5 +1,5 @@
 name:                haskell-tools-experimental-refactorings
-version:             1.1.0.1
+version:             1.1.0.2
 synopsis:            Refactoring Tool for Haskell
 description:         Contains experimental refactorings implemented in the Haskell-tools framework for tutorial purposes, or to be added later to the set of mature refactorings.
 homepage:            https://github.com/haskell-tools/haskell-tools
@@ -51,7 +51,7 @@ test-suite haskell-tools-experimental-refactorings-test
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base                      >= 4.11 && < 4.12
-                     , tasty                     >= 0.11 && < 1.1
+                     , tasty                     >= 0.11 && < 1.2
                      , tasty-hunit               >= 0.9  && < 0.11
                      , transformers              >= 0.5  && < 0.6
                      , either                    >= 4.4  && < 5.1
