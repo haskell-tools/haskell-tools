@@ -1,5 +1,5 @@
 name:                haskell-tools-daemon
-version:             1.1.0.1
+version:             1.1.0.2
 synopsis:            Background process for Haskell-tools that editors can connect to.
 description:         Background process for Haskell-tools that provides a way to use the tools on a
                      whole project. It also makes it possible to use the tools on the project in a
