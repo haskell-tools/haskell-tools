@@ -36,22 +36,22 @@ import Language.Haskell.Tools.Refactor.Builtin (builtinRefactorings)
 
 main :: IO ()
 main = defaultMain $ testGroup "refactor tests"
-                       $
---                       map makeOrganizeImportsTest organizeImportTests
---                           ++ map makeGenerateSignatureTest generateSignatureTests
---                           ++ map makeWrongGenerateSigTest wrongGenerateSigTests
---                           ++ map makeGenerateExportsTest generateExportsTests
---                           ++ map makeRenameDefinitionTest renameDefinitionTests
---                           ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
-                           map makeExtractBindingWithIndentationTest extractBindingTests
---                           ++ map makeWrongExtractBindingTest wrongExtractBindingTests
---                           ++ map makeInlineBindingTest inlineBindingTests
---                           ++ map makeWrongInlineBindingTest wrongInlineBindingTests
---                           ++ map makeFloatOutTest floatOutTests
---                           ++ map makeAutoCorrectTest autoCorrectTests
---                           ++ map makeWrongFloatOutTest wrongFloatOutTests
---                           ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
---                           ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
+                       $ map makeOrganizeImportsTest organizeImportTests
+                           ++ map makeGenerateSignatureTest generateSignatureTests
+                           ++ map makeWrongGenerateSigTest wrongGenerateSigTests
+                           ++ map makeGenerateExportsTest generateExportsTests
+                           ++ map makeRenameDefinitionTest renameDefinitionTests
+                           ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
+                           ++ map makeExtractBindingTest extractBindingTests
+                           ++ map makeExtractBindingIndentTest extractBindingIndentTests
+                           ++ map makeWrongExtractBindingTest wrongExtractBindingTests
+                           ++ map makeInlineBindingTest inlineBindingTests
+                           ++ map makeWrongInlineBindingTest wrongInlineBindingTests
+                           ++ map makeFloatOutTest floatOutTests
+                           ++ map makeAutoCorrectTest autoCorrectTests
+                           ++ map makeWrongFloatOutTest wrongFloatOutTests
+                           ++ map (makeMultiModuleTest checkMultiResults) multiModuleTests
+                           ++ map (makeMultiModuleTest checkMultiFail) wrongMultiModuleTests
 
 rootDir = "examples"
 
@@ -194,30 +194,33 @@ wrongRenameDefinitionTests =
   ]
 
 extractBindingTests =
-  [
---  ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
---  , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
---  , ("Refactor.ExtractBinding.AddToExisting", "3:10-3:12", "b")
---  , ("Refactor.ExtractBinding.LocalDefinition", "4:13-4:16", "y")
---  , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
---  , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
---  , ("Refactor.ExtractBinding.Records", "5:5-5:39", "plus")
---  , ("Refactor.ExtractBinding.RecordWildcards", "6:5-6:27", "plus")
---  , ("Refactor.ExtractBinding.ExistingLocalDef", "3:5-3:10", "a")
---  , ("Refactor.ExtractBinding.Indentation", "3:12-3:18", "extracted")
---  , ("Refactor.ExtractBinding.IndentationMultiLine", "3:12-3:18", "extracted")
---  , ("Refactor.ExtractBinding.IndentationOperator", "3:13-3:20", "extracted")
---  , ("Refactor.ExtractBinding.ExtractedFormatting", "4:5-5:7", "extracted")
---  , ("Refactor.ExtractBinding.LeftSection", "3:5-3:8", "f")
---  , ("Refactor.ExtractBinding.RightSection", "3:7-3:10", "f")
---  , ("Refactor.ExtractBinding.SectionWithLocals", "6:13-6:24", "f")
---  , ("Refactor.ExtractBinding.SectionInfix", "3:5-3:12", "f")
---  , ("Refactor.ExtractBinding.AssocOp", "3:9-3:14", "b")
---  , ("Refactor.ExtractBinding.AssocOpRightAssoc", "3:5-3:12", "g")
---  , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
---  , ("Refactor.ExtractBinding.SiblingDefs", "7:9-7:10", "a")
---  , ("Refactor.ExtractBinding.Case", "3:26-3:31", "g")
-  ("Refactor.ExtractBinding.Guards", "5:22-5:25", "test", "2")
+  [ ("Refactor.ExtractBinding.Simple", "3:19-3:27", "exaggerate")
+  , ("Refactor.ExtractBinding.Parentheses", "3:23-3:62", "sqDistance")
+  , ("Refactor.ExtractBinding.AddToExisting", "3:10-3:12", "b")
+  , ("Refactor.ExtractBinding.LocalDefinition", "4:13-4:16", "y")
+  , ("Refactor.ExtractBinding.ClassInstance", "6:30-6:35", "g")
+  , ("Refactor.ExtractBinding.ListComprehension", "5:25-5:39", "notDivisible")
+  , ("Refactor.ExtractBinding.Records", "5:5-5:39", "plus")
+  , ("Refactor.ExtractBinding.RecordWildcards", "6:5-6:27", "plus")
+  , ("Refactor.ExtractBinding.ExistingLocalDef", "3:5-3:10", "a")
+  , ("Refactor.ExtractBinding.Indentation", "3:12-3:18", "extracted")
+  , ("Refactor.ExtractBinding.IndentationMultiLine", "3:12-3:18", "extracted")
+  , ("Refactor.ExtractBinding.IndentationOperator", "3:13-3:20", "extracted")
+  , ("Refactor.ExtractBinding.ExtractedFormatting", "4:5-5:7", "extracted")
+  , ("Refactor.ExtractBinding.LeftSection", "3:5-3:8", "f")
+  , ("Refactor.ExtractBinding.RightSection", "3:7-3:10", "f")
+  , ("Refactor.ExtractBinding.SectionWithLocals", "6:13-6:24", "f")
+  , ("Refactor.ExtractBinding.SectionInfix", "3:5-3:12", "f")
+  , ("Refactor.ExtractBinding.AssocOp", "3:9-3:14", "b")
+  , ("Refactor.ExtractBinding.AssocOpRightAssoc", "3:5-3:12", "g")
+  , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
+  , ("Refactor.ExtractBinding.SiblingDefs", "7:9-7:10", "a")
+  , ("Refactor.ExtractBinding.Case", "3:26-3:31", "g")
+  , ("Refactor.ExtractBinding.Guards", "5:22-5:25", "test")
+  ]
+
+extractBindingIndentTests =
+  [ ("Refactor.ExtractBinding.GuardsIndent", "5:22-5:25", "test", "2")
   ]
 
 wrongExtractBindingTests =
@@ -353,8 +356,8 @@ makeWrongGenerateSigTest (mod, rng) = createFailTest "GenerateSignature" [rng] m
 makeExtractBindingTest :: (String, String, String) -> TestTree
 makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod
 
-makeExtractBindingWithIndentationTest :: (String, String, String, String) -> TestTree
-makeExtractBindingWithIndentationTest (mod, rng, newName, indent) = createTest "ExtractBinding" [rng, newName, indent] mod
+makeExtractBindingIndentTest :: (String, String, String, String) -> TestTree
+makeExtractBindingIndentTest (mod, rng, newName, indent) = createTest "ExtractBinding" [rng, newName, indent] mod
 
 makeWrongExtractBindingTest :: (String, String, String) -> TestTree
 makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod

@@ -10,11 +10,11 @@ packages:
   - src/prettyprint
   - src/refactor
   - src/builtin-refactorings
-#  - src/experimental-refactorings
-#  - demo
-#  - src/cli
-#  - src/debug
-#  - src/daemon
+  - src/experimental-refactorings
+  - demo
+  - src/cli
+  - src/debug
+  - src/daemon
 
 extra-deps:
   - knob-0.1.1
