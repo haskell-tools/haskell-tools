@@ -18,6 +18,10 @@ data RefactoringChoice
   = NamingRefactoring { refactoringName :: String
                       , namingRefactoring :: RealSrcSpan -> String -> Refactoring
                       }
+  | NamingRefactoringWithIndent
+                      { refactoringName :: String
+                      , namingRefactoringIndent :: RealSrcSpan -> String -> String -> Refactoring
+                      }
   | SelectionRefactoring { refactoringName :: String
                          , selectionRefactoring :: RealSrcSpan -> Refactoring
                          }
@@ -37,6 +41,11 @@ performCommand :: [RefactoringChoice] -- ^ The set of available refactorings
                     -> Ghc (Either String [RefactorChange])
 performCommand refactorings (name:args) mod mods =
     case (refactoring, mod, args) of
+      (Just (NamingRefactoringWithIndent _ trf), Right mod, (sp:newName:indent:_))
+        -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName indent mod mods
+      (Just (NamingRefactoringWithIndent _ _), Right _, _)
+        -> return $ Left $ "The refactoring '" ++ name
+                             ++ "' needs three arguments: a source range, a name and an indentation"
       (Just (NamingRefactoring _ trf), Right mod, (sp:newName:_))
         -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName mod mods
       (Just (NamingRefactoring _ _), Right _, _)
