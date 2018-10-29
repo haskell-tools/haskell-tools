@@ -27,13 +27,13 @@ import Language.Haskell.Tools.Refactor
 
 
 extractBindingRefactoring :: RefactoringChoice
-extractBindingRefactoring = NamingRefactoringIndent "ExtractBinding" (\loc s i -> localRefactoring (extractBinding' loc s i))
+extractBindingRefactoring = NamingRefactoringIndent "ExtractBinding" (\loc s i -> localRefactoring (extractBinding' s i loc ))
 
---tryItOut :: String -> String -> String -> String -> IO ()
---tryItOut mod sp indent name = tryRefactor (localRefactoring . flip extractBinding' name) mod indent sp
+tryItOut :: String -> String -> Maybe String -> String -> IO ()
+tryItOut mod sp indent name = tryRefactor (localRefactoring . extractBinding' name indent) sp mod
 
-extractBinding' :: RealSrcSpan -> String -> Maybe String -> LocalRefactoring
-extractBinding' sp name indent mod
+extractBinding' :: String -> Maybe String -> RealSrcSpan -> LocalRefactoring
+extractBinding' name indent sp mod
   = if isNothing (isValidBindingName name)
       then extractBinding sp (read $ fromMaybe "4" indent) (nodesContaining sp) (nodesContaining sp) name mod
       else refactError $ "The given name is not a valid for the extracted binding: " ++ fromJust (isValidBindingName name)
