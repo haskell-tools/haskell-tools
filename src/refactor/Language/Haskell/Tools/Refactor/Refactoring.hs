@@ -18,6 +18,9 @@ data RefactoringChoice
   = NamingRefactoring { refactoringName :: String
                       , namingRefactoring :: RealSrcSpan -> String -> Refactoring
                       }
+  | NamingRefactoringIndent { refactoringName :: String
+                             , namingRefactoringIndent :: RealSrcSpan -> String -> Maybe String -> Refactoring
+                             }
   | SelectionRefactoring { refactoringName :: String
                          , selectionRefactoring :: RealSrcSpan -> Refactoring
                          }
@@ -37,12 +40,17 @@ performCommand :: [RefactoringChoice] -- ^ The set of available refactorings
                     -> Ghc (Either String [RefactorChange])
 performCommand refactorings (name:args) mod mods =
     case (refactoring, mod, args) of
-      (Just (NamingRefactoring _ trf), Right mod, (sp:newName:_))
+      (Just (NamingRefactoring _ trf), Right mod, sp:newName:_)
         -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName mod mods
       (Just (NamingRefactoring _ _), Right _, _)
-        -> return $ Left $ "The refactoring '" ++ name
-                             ++ "' needs two argument: a source range and a name"
-      (Just (SelectionRefactoring _ trf), Right mod, (sp:_))
+        -> return $ Left $ "The refactoring '" ++ name ++ "' needs two arguments: a source range and a name"
+      (Just (NamingRefactoringIndent _ trf), Right mod, sp:newName:indent:_)
+        -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName (Just indent) mod mods
+      (Just (NamingRefactoringIndent _ trf), Right mod, sp:newName:_)
+        -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) newName Nothing mod mods
+      (Just (NamingRefactoringIndent _ _), Right _, _)
+        -> return $ Left $ "The refactoring '" ++ name ++ "' needs two or three arguments: a source range and a name, and optionally an indentation"
+      (Just (SelectionRefactoring _ trf), Right mod, sp:_)
         -> runExceptT $ trf (correctRefactorSpan (snd mod) $ readSrcSpan sp) mod mods
       (Just (SelectionRefactoring _ _), Right _, _)
         -> return $ Left $ "The refactoring '" ++ name ++ "' needs one argument: a source range"

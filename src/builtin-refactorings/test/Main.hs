@@ -43,6 +43,7 @@ main = defaultMain $ testGroup "refactor tests"
                            ++ map makeRenameDefinitionTest renameDefinitionTests
                            ++ map makeWrongRenameDefinitionTest wrongRenameDefinitionTests
                            ++ map makeExtractBindingTest extractBindingTests
+                           ++ map makeExtractBindingIndentTest extractBindingIndentTests
                            ++ map makeWrongExtractBindingTest wrongExtractBindingTests
                            ++ map makeInlineBindingTest inlineBindingTests
                            ++ map makeWrongInlineBindingTest wrongInlineBindingTests
@@ -215,6 +216,11 @@ extractBindingTests =
   , ("Refactor.ExtractBinding.AssocOpMiddle", "3:9-3:14", "b")
   , ("Refactor.ExtractBinding.SiblingDefs", "7:9-7:10", "a")
   , ("Refactor.ExtractBinding.Case", "3:26-3:31", "g")
+  , ("Refactor.ExtractBinding.Guards", "5:22-5:25", "test")
+  ]
+
+extractBindingIndentTests =
+  [ ("Refactor.ExtractBinding.GuardsIndent", "5:22-5:25", "test", "2")
   ]
 
 wrongExtractBindingTests =
@@ -349,6 +355,9 @@ makeWrongGenerateSigTest (mod, rng) = createFailTest "GenerateSignature" [rng] m
 
 makeExtractBindingTest :: (String, String, String) -> TestTree
 makeExtractBindingTest (mod, rng, newName) = createTest "ExtractBinding" [rng, newName] mod
+
+makeExtractBindingIndentTest :: (String, String, String, String) -> TestTree
+makeExtractBindingIndentTest (mod, rng, newName, indent) = createTest "ExtractBinding" [rng, newName, indent] mod
 
 makeWrongExtractBindingTest :: (String, String, String) -> TestTree
 makeWrongExtractBindingTest (mod, rng, newName) = createFailTest "ExtractBinding" [rng, newName] mod

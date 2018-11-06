@@ -7,7 +7,7 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Language.Haskell.Tools.Refactor.Builtin.ExtractBinding
-  (extractBinding', tryItOut, extractBindingRefactoring) where
+  (extractBinding', extractBindingRefactoring) where
 
 import qualified GHC
 import Name (nameModule_maybe)
@@ -27,23 +27,23 @@ import Language.Haskell.Tools.Refactor
 
 
 extractBindingRefactoring :: RefactoringChoice
-extractBindingRefactoring = NamingRefactoring "ExtractBinding" (\loc s -> localRefactoring (extractBinding' loc s))
+extractBindingRefactoring = NamingRefactoringIndent "ExtractBinding" (\loc s i -> localRefactoring (extractBinding' s i loc ))
 
-tryItOut :: String -> String -> String -> IO ()
-tryItOut mod sp name = tryRefactor (localRefactoring . flip extractBinding' name) mod sp
+tryItOut :: String -> String -> Maybe String -> String -> IO ()
+tryItOut mod sp indent name = tryRefactor (localRefactoring . extractBinding' name indent) sp mod
 
-extractBinding' :: RealSrcSpan -> String -> LocalRefactoring
-extractBinding' sp name mod
+extractBinding' :: String -> Maybe String -> RealSrcSpan -> LocalRefactoring
+extractBinding' name indent sp mod
   = if isNothing (isValidBindingName name)
-      then extractBinding sp (nodesContaining sp) (nodesContaining sp) name mod
+      then extractBinding sp (read $ fromMaybe "4" indent) (nodesContaining sp) (nodesContaining sp) name mod
       else refactError $ "The given name is not a valid for the extracted binding: " ++ fromJust (isValidBindingName name)
 
 -- | Safely performs the transformation to introduce the local binding and replace the expression with the call.
 -- Checks if the introduction of the name causes a name conflict.
-extractBinding :: RealSrcSpan -> Simple Traversal Module ValueBind
+extractBinding :: RealSrcSpan -> Int -> Simple Traversal Module ValueBind
                    -> Simple Traversal ValueBind Expr
                    -> String -> LocalRefactoring
-extractBinding sp selectDecl selectExpr name mod
+extractBinding sp indent selectDecl selectExpr name mod
   = let conflicting = filter (isConflicting name) ((take 1 $ reverse $ mod ^? selectDecl) ^? biplateRef :: [QualifiedName])
         exprRanges = map getRange (mod ^? selectDecl & selectExpr)
         decl = last (mod ^? selectDecl)
@@ -58,7 +58,7 @@ extractBinding sp selectDecl selectExpr name mod
                | otherwise
                -> case decl ^? actualContainingExpr exprRange of
                     expr:_ -> do (res, st) <- runStateT (selectDecl&selectExpr !~ extractThatBind sp name expr $ mod) Nothing
-                                 case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange def $ res) False
+                                 case st of Just def -> return $ evalState (selectDecl !~ addLocalBinding exprRange indent def $ res) False
                                             Nothing -> refactError "There is no applicable expression to extract."
                     [] -> refactError $ "There is no applicable expression to extract."
           [] -> refactError "There is no applicable expression to extract."
@@ -128,9 +128,9 @@ extractThatBind sp name cont e
           where ops = [plus_RDR, times_RDR, append_RDR, and_RDR, {- or_RDR, -} compose_RDR] -- somehow or is missing... WHY?
 
 -- | Adds a local binding to the where clause of the enclosing binding
-addLocalBinding :: SrcSpan -> ValueBind -> ValueBind -> State Bool ValueBind
+addLocalBinding :: SrcSpan -> Int -> ValueBind -> ValueBind -> State Bool ValueBind
 -- this uses the state monad to only add the local binding to the first selected element
-addLocalBinding exprRange local bind
+addLocalBinding exprRange indent local bind
   = do done <- get
        if not done then do put True
                            return $ indentBody $ doAddBinding exprRange local bind
@@ -145,7 +145,7 @@ addLocalBinding exprRange local bind
     indentBody = (valBindRhs .- updIndent) . (funBindMatches & annList & matchLhs .- updIndent) . (funBindMatches & annList & matchRhs .- updIndent)
 
     updIndent :: SourceInfoTraversal elem => elem dom SrcTemplateStage -> elem dom SrcTemplateStage
-    updIndent = setMinimalIndent 4
+    updIndent = setMinimalIndent indent
 
 -- | Puts a value definition into a list of local binds
 insertLocalBind :: ValueBind -> MaybeLocalBinds -> MaybeLocalBinds
