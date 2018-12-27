@@ -31,17 +31,17 @@ library
                      , Language.Haskell.Tools.BackendGHC.SourceMap
                      , Language.Haskell.Tools.BackendGHC.AddTypeInfo
 
-  build-depends:       base              >= 4.11  && < 4.12
+  build-depends:       base              >= 4.11  && < 4.13
                      , transformers      >= 0.5  && < 0.6
                      , references        >= 0.3  && < 0.4
                      , bytestring        >= 0.10 && < 0.11
                      , safe              >= 0.3  && < 0.4
                      , uniplate          >= 1.6  && < 1.7
-                     , containers        >= 0.5  && < 0.6
+                     , containers        >= 0.5  && < 0.7
                      , mtl               >= 2.2  && < 2.3
                      , split             >= 0.2  && < 0.3
-                     , template-haskell  >= 2.13 && < 2.14
-                     , ghc               >= 8.4  && < 8.5
+                     , template-haskell  >= 2.13 && < 2.15
+                     , ghc               >= 8.4  && < 8.7
                      , haskell-tools-ast >= 1.1  && < 1.2
-                     , ghc-boot-th       >= 8.4  && < 8.5
+                     , ghc-boot-th       >= 8.4  && < 8.7
   default-language:    Haskell2010

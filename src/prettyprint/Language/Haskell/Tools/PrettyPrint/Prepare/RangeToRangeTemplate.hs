@@ -33,10 +33,13 @@ cutUpRanges n = evalState (cutUpRanges' n) [[],[]]
         -- combine the current node with its children, and add it to the list of current nodes
         trf :: HasRange (x RngTemplateStage)
             => ([SrcSpan] -> x NormRangeStage -> x RngTemplateStage) -> x NormRangeStage -> State [[SrcSpan]] (x RngTemplateStage)
-        trf f ni = do (below : top : xs) <- get
-                      let res = f below ni
-                      put ([] : (top ++ [ getRange res ]) : xs)
-                      return res
+        trf f ni = do stack <- get
+                      case stack of 
+                        (below : top : xs) -> do
+                          let res = f below ni
+                          put ([] : (top ++ [ getRange res ]) : xs)
+                          return res
+                        _ -> trfProblem "RangeToRangeTemplate.cutUpRanges.trf: stack is not right"
 
 -- | Cuts out a list of source ranges from a given range
 cutOutElemSpan :: [SrcSpan] -> SpanInfo NormRangeStage -> SpanInfo RngTemplateStage
@@ -108,15 +111,18 @@ fixRanges node = evalState (sourceInfoTraverseUp (SourceInfoTrf (trf expandToCon
 
         trf :: HasRange (x NormRangeStage)
             => ([SrcSpan] -> x RangeStage -> x NormRangeStage) -> x RangeStage -> State [[SrcSpan]] (x NormRangeStage)
-        trf f ni = do (below : top : xs) <- get
-                      let res = f below ni
-                          resRange = getRange res
-                          endOfSiblings = srcSpanEnd (collectSpanRanges (srcSpanStart resRange) top)
-                          correctedRange = if endOfSiblings > srcSpanStart resRange
-                                             then mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))
-                                             else resRange
-                      put ([] : (top ++ [ correctedRange ]) : xs)
-                      return $ setRange correctedRange res
+        trf f ni = do stack <- get
+                      case stack of 
+                        (below : top : xs) -> do
+                          let res = f below ni
+                              resRange = getRange res
+                              endOfSiblings = srcSpanEnd (collectSpanRanges (srcSpanStart resRange) top)
+                              correctedRange = if endOfSiblings > srcSpanStart resRange
+                                                 then mkSrcSpan endOfSiblings (max endOfSiblings (srcSpanEnd resRange))
+                                                 else resRange
+                          put ([] : (top ++ [ correctedRange ]) : xs)
+                          return $ setRange correctedRange res
+                        _ -> trfProblem "RangeToRangeTemplate.fixRanges.trf: stack is not right"
 
 -- | Expand a simple node to contain its children
 expandToContain :: [SrcSpan] -> SpanInfo RangeStage -> SpanInfo NormRangeStage

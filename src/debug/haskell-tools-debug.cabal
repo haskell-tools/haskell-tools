@@ -17,15 +17,15 @@ library
                      , Language.Haskell.Tools.Debug.Show
                      , Language.Haskell.Tools.Debug.RangeDebug
                      , Language.Haskell.Tools.Debug.RangeDebugInstances
-  build-depends:       base                      >= 4.11 && < 4.12
+  build-depends:       base                      >= 4.11 && < 4.13
                      , filepath                  >= 1.4 && < 1.5
-                     , template-haskell          >= 2.13 && < 2.14
+                     , template-haskell          >= 2.13 && < 2.15
                      , references                >= 0.3 && < 0.4
                      , split                     >= 0.2 && < 0.3
-                     , ghc                       >= 8.4 && < 8.5
+                     , ghc                       >= 8.4 && < 8.7
                      , ghc-paths                 >= 0.1 && < 0.2
                      , haskell-tools-ast         >= 1.1 && < 1.2
-                     , haskell-tools-backend-ghc >= 1.1 && < 1.2
+                     , haskell-tools-backend-ghc >= 1.1 && < 8.7
                      , haskell-tools-refactor    >= 1.1 && < 1.2
                      , haskell-tools-prettyprint >= 1.1 && < 1.2
                      , haskell-tools-builtin-refactorings >= 1.1 && < 1.2
@@ -36,7 +36,7 @@ library
   default-language:    Haskell2010
 
 executable ht-debug
-  build-depends:       base                      >= 4.9 && < 5.0
+  build-depends:       base                      >= 4.9 && < 4.13
                      , haskell-tools-debug
   hs-source-dirs:      exe
   main-is:             Main.hs
