@@ -88,7 +88,11 @@ type CorrectPass n = ( Data (HsLit n), Outputable (HsLit n)
                      , Data (HsSplice n), Outputable (HsSplice n)
                      )
 
-type ConvOk n = (XExprWithTySig n ~ LHsSigWcType n, XAppTypeE n ~ LHsWcType n, NameOrRdrName (IdP n) ~ IdP n)
+type ConvOk n = ( XSigPat n ~ HsWildCardBndrs n (HsImplicitBndrs n (LHsType n))
+                , XExprWithTySig n ~ LHsSigWcType n
+                , XAppTypeE n ~ LHsWcType n
+                , NameOrRdrName (IdP n) ~ IdP n
+                )
 
 class (ConvOk n, Eq n, CorrectPass n, GHCName n, FromGHCName (IdP n), HasOccName (IdP n))
         => TransformableName n where

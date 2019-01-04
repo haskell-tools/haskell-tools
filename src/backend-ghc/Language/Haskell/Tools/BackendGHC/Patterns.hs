@@ -14,13 +14,14 @@ import Data.List
 import HsExpr (HsSplice(..))
 import HsLit as GHC (HsOverLit(..))
 import HsPat as GHC
-import HsTypes as GHC (HsConDetails(..))
+import HsTypes as GHC (HsConDetails(..), hswc_body, hsib_body)
 import Language.Haskell.Tools.BackendGHC.GHCUtils (getFieldOccName)
 import SrcLoc as GHC
 import Control.Monad.Reader
 import HsExtension (GhcPass)
 
 import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Exprs (trfExpr)
+import {-# SOURCE #-} Language.Haskell.Tools.BackendGHC.Types (trfType)
 import Language.Haskell.Tools.AST.SemaInfoTypes
 import Language.Haskell.Tools.BackendGHC.Literals
 import Language.Haskell.Tools.BackendGHC.Monad
@@ -66,6 +67,7 @@ trfPattern' (SplicePat _ splice) = AST.USplicePat <$> trfSplice splice
 trfPattern' (LitPat _ lit) = AST.ULitPat <$> annCont (pure $ RealLiteralInfo (monoLiteralType lit)) (trfLiteral' lit)
 trfPattern' (NPat _ (ol_val . unLoc -> lit) _ _) = AST.ULitPat <$> annCont (asks contRange >>= pure . PreLiteralInfo) (trfOverloadedLit lit)
 trfPattern' (NPlusKPat _ id (L l lit) _ _ _) = AST.UNPlusKPat <$> define (trfName @n id) <*> annLoc (asks contRange >>= pure . PreLiteralInfo) (pure l) (trfOverloadedLit (ol_val lit))
+trfPattern' (SigPat typ pat) = AST.UTypeSigPat <$> trfPattern pat <*> trfType (hsib_body $ hswc_body typ)
 trfPattern' (CoPat _ _ pat _) = trfPattern' pat -- coercion pattern introduced by GHC
 trfPattern' (SumPat _ pat tag arity)
   = do sepsBefore <- focusBeforeLoc (srcSpanStart (getLoc pat)) (eachTokenLoc (AnnOpen : replicate (tag - 1) AnnVbar))
