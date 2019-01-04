@@ -185,8 +185,8 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
           forM changes $ \case
             ModuleCreated n m otherM -> do
               mcs <- gets (^. refSessMCs)
-              Just (_, otherMR) <- gets (lookupModInSCs otherM . (^. refSessMCs))
-              let Just otherMS = otherMR ^? modRecMS
+              otherMR <- gets (lookupModInSCs otherM . (^. refSessMCs))
+              let Just otherMS = otherMR ^? just & _2 & modRecMS
                   Just mc = lookupModuleColl (otherM ^. sfkModuleName) mcs
               otherSrcDir <- liftIO $ getSourceDir otherMS
               let loc = toFileName otherSrcDir n
@@ -215,8 +215,8 @@ updateClient' UpdateCtx{..} (PerformRefactoring refact modPath selection args sh
                  hFlush handle
               return $ Right (n, file, UndoChanges file undo, unifiedDiff)
             ModuleRemoved mod -> do
-              Just (sfk,_) <- gets (lookupModuleInSCs mod . (^. refSessMCs))
-              let file = sfk ^. sfkFileName
+              sfk <- gets (lookupModuleInSCs mod . (^. refSessMCs))
+              let Just file = sfk ^? just & _1 & sfkFileName
               origCont <- liftIO (StrictBS.unpack <$> StrictBS.readFile file)
               when (not diffMode) $ do
                 lift $ removeTarget (TargetFile file Nothing)

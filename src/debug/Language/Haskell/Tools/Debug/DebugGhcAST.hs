@@ -34,7 +34,7 @@ deriving instance Show (ABExport GhcPs)
 deriving instance Show (AmbiguousFieldOcc GhcPs)
 deriving instance Show (AnnDecl GhcPs)
 deriving instance Show (AnnProvenance RdrName)
-deriving instance Show (ApplicativeArg GhcPs GhcPs)
+deriving instance Show (ApplicativeArg GhcPs)
 deriving instance Show (ArithSeqInfo GhcPs)
 deriving instance Show (BooleanFormula (Located RdrName))
 deriving instance Show (ClsInstDecl GhcPs)
@@ -53,7 +53,7 @@ deriving instance Show (ForeignDecl GhcPs)
 deriving instance Show a => Show (GRHS GhcPs a)
 deriving instance Show a => Show (GRHSs GhcPs a)
 deriving instance Show (InjectivityAnn GhcPs)
-deriving instance Show (HsAppType GhcPs)
+-- deriving instance Show (HsAppType GhcPs)
 deriving instance Show (HsBindLR GhcPs GhcPs)
 deriving instance Show (HsBracket GhcPs)
 deriving instance Show (HsCmd GhcPs)
@@ -62,6 +62,7 @@ deriving instance Show (HsConDeclDetails GhcPs)
 deriving instance Show (HsConPatDetails GhcPs)
 deriving instance Show (HsDataDefn GhcPs)
 deriving instance Show (HsDerivingClause GhcPs)
+deriving instance Show (DerivStrategy GhcPs)
 deriving instance Show (HsDecl GhcPs)
 deriving instance Show (HsExpr GhcPs)
 deriving instance Show (HsGroup GhcPs)
@@ -80,7 +81,6 @@ deriving instance Show (HsTupArg GhcPs)
 deriving instance Show (HsTyVarBndr GhcPs)
 deriving instance Show (HsType GhcPs)
 deriving instance Show (HsValBindsLR GhcPs GhcPs)
-deriving instance Show (HsWildCardInfo GhcPs)
 deriving instance Show (IE GhcPs)
 deriving instance Show (IEWrappedName RdrName)
 deriving instance Show (ImportDecl GhcPs)
@@ -105,16 +105,17 @@ deriving instance Show (TyClDecl GhcPs)
 deriving instance Show (TyClGroup GhcPs)
 deriving instance (Show a, Show b) => Show (FamEqn GhcPs a b)
 deriving instance Show (TyFamInstDecl GhcPs)
-deriving instance Show (VectDecl GhcPs)
+-- deriving instance Show (VectDecl GhcPs)
 deriving instance Show (WarnDecl GhcPs)
 deriving instance Show (WarnDecls GhcPs)
+deriving instance Show (NHsValBindsLR GhcPs)
 
 
 deriving instance Show (ABExport GhcRn)
 deriving instance Show (AmbiguousFieldOcc GhcRn)
 deriving instance Show (AnnDecl GhcRn)
 deriving instance Show (AnnProvenance Name)
-deriving instance Show (ApplicativeArg GhcRn GhcRn)
+deriving instance Show (ApplicativeArg GhcRn)
 deriving instance Show (ArithSeqInfo GhcRn)
 deriving instance Show (BooleanFormula (Located Name))
 deriving instance Show (ClsInstDecl GhcRn)
@@ -133,7 +134,7 @@ deriving instance Show (ForeignDecl GhcRn)
 deriving instance Show a => Show (GRHS GhcRn a)
 deriving instance Show a => Show (GRHSs GhcRn a)
 deriving instance Show (InjectivityAnn GhcRn)
-deriving instance Show (HsAppType GhcRn)
+-- deriving instance Show (HsAppType GhcRn)
 deriving instance Show (HsBindLR GhcRn GhcRn)
 deriving instance Show (HsBracket GhcRn)
 deriving instance Show (HsCmd GhcRn)
@@ -142,6 +143,7 @@ deriving instance Show (HsConDeclDetails GhcRn)
 deriving instance Show (HsConPatDetails GhcRn)
 deriving instance Show (HsDataDefn GhcRn)
 deriving instance Show (HsDerivingClause GhcRn)
+deriving instance Show (DerivStrategy GhcRn)
 deriving instance Show (HsDecl GhcRn)
 deriving instance Show (HsExpr GhcRn)
 deriving instance Show (HsGroup GhcRn)
@@ -161,7 +163,6 @@ deriving instance Show (HsTupArg GhcRn)
 deriving instance Show (HsTyVarBndr GhcRn)
 deriving instance Show (HsType GhcRn)
 deriving instance Show (HsValBindsLR GhcRn GhcRn)
-deriving instance Show (HsWildCardInfo GhcRn)
 deriving instance Show (IE GhcRn)
 deriving instance Show (IEWrappedName Name)
 deriving instance Show (ImportDecl GhcRn)
@@ -185,16 +186,17 @@ deriving instance Show (TyClDecl GhcRn)
 deriving instance Show (TyClGroup GhcRn)
 deriving instance (Show a, Show b) => Show (FamEqn GhcRn a b)
 deriving instance Show (TyFamInstDecl GhcRn)
-deriving instance Show (VectDecl GhcRn)
+-- deriving instance Show (VectDecl GhcRn)
 deriving instance Show (WarnDecl GhcRn)
 deriving instance Show (WarnDecls GhcRn)
+deriving instance Show (NHsValBindsLR GhcRn)
 
 
 deriving instance Show (ABExport GhcTc)
 deriving instance Show (AmbiguousFieldOcc GhcTc)
 deriving instance Show (AnnDecl GhcTc)
 deriving instance Show (AnnProvenance Id)
-deriving instance Show (ApplicativeArg GhcTc GhcTc)
+deriving instance Show (ApplicativeArg GhcTc)
 deriving instance Show (ArithSeqInfo GhcTc)
 deriving instance Show (BooleanFormula (Located Id))
 deriving instance Show (ClsInstDecl GhcTc)
@@ -203,6 +205,7 @@ deriving instance Show (ConDeclField GhcTc)
 deriving instance Show (DataFamInstDecl GhcTc)
 deriving instance Show (DefaultDecl GhcTc)
 deriving instance Show (DerivDecl GhcTc)
+deriving instance Show (DerivStrategy GhcTc)
 deriving instance Show (FamilyDecl GhcTc)
 deriving instance Show (FamilyInfo GhcTc)
 deriving instance Show (FamilyResultSig GhcTc)
@@ -213,7 +216,7 @@ deriving instance Show (ForeignDecl GhcTc)
 deriving instance Show a => Show (GRHS GhcTc a)
 deriving instance Show a => Show (GRHSs GhcTc a)
 deriving instance Show (InjectivityAnn GhcTc)
-deriving instance Show (HsAppType GhcTc)
+-- deriving instance Show (HsAppType GhcTc)
 deriving instance Show (HsBindLR GhcTc GhcTc)
 deriving instance Show (HsBracket GhcTc)
 deriving instance Show (HsCmd GhcTc)
@@ -241,7 +244,6 @@ deriving instance Show (HsTupArg GhcTc)
 deriving instance Show (HsTyVarBndr GhcTc)
 deriving instance Show (HsType GhcTc)
 deriving instance Show (HsValBindsLR GhcTc GhcTc)
-deriving instance Show (HsWildCardInfo GhcTc)
 deriving instance Show (IE GhcTc)
 deriving instance Show (IEWrappedName Id)
 deriving instance Show (ImportDecl GhcTc)
@@ -265,9 +267,10 @@ deriving instance Show (TyClDecl GhcTc)
 deriving instance Show (TyClGroup GhcTc)
 deriving instance (Show a, Show b) => Show (FamEqn GhcTc a b)
 deriving instance Show (TyFamInstDecl GhcTc)
-deriving instance Show (VectDecl GhcTc)
+-- deriving instance Show (VectDecl GhcTc)
 deriving instance Show (WarnDecl GhcTc)
 deriving instance Show (WarnDecls GhcTc)
+deriving instance Show (NHsValBindsLR GhcTc)
 
 deriving instance Show Activation
 deriving instance Show HsArrAppType
@@ -292,7 +295,7 @@ deriving instance Show NewOrData
 deriving instance Show Origin
 deriving instance Show OverLitVal
 deriving instance Show OverlapMode
-deriving instance Show PlaceHolder
+-- deriving instance Show PlaceHolder
 deriving instance Show Role
 deriving instance Show RecFlag
 deriving instance Show SpliceExplicitFlag
@@ -302,6 +305,12 @@ deriving instance Show TransForm
 deriving instance Show WarningTxt
 deriving instance Show PendingRnSplice
 deriving instance Show PendingTcSplice
+deriving instance Show OverLitTc
+deriving instance Show RecordConTc
+deriving instance Show CmdTopTc
+deriving instance Show NPatBindTc
+deriving instance Show NewHsTypeX
+deriving instance Show RecordUpdTc
 
 instance Show UnboundVar where
   show (OutOfScope n _) = "OutOfScope " ++ show n
@@ -323,12 +332,21 @@ instance Show OccName where
   -- show = showSDocUnsafe . ppr
 
 deriving instance Show RdrName
+deriving instance Show NoExt
 deriving instance Show Module
 deriving instance Show StringLiteral
 deriving instance Show UntypedSpliceFlavour
 deriving instance Show SrcUnpackedness
 deriving instance Show SrcStrictness
 deriving instance Show IEWildcard
+deriving instance Show HsWildCardInfo
+deriving instance Show HsIBRn
+deriving instance Show DataDeclRn
+deriving instance Show RecStmtTc
+deriving instance Show HsRuleRn
+deriving instance Show ListPatTc
+deriving instance Show MatchGroupTc
+deriving instance Show HsQTvsRn
 
 deriving instance (Show t) => Show (HsImplicitBndrs GhcPs t)
 deriving instance (Show t) => Show (HsImplicitBndrs GhcRn t)
@@ -356,15 +374,15 @@ instance Show Class where
   show = showSDocUnsafe . ppr
 instance Show TcCoercion where
   show = showSDocUnsafe . ppr
-instance Show DerivStrategy where
-  show = showSDocUnsafe . ppr
+-- instance Show DerivStrategy where
+--   show = showSDocUnsafe . ppr
 instance Outputable a => Show (UniqFM a) where
   show = showSDocUnsafe . ppr
 instance Outputable a => Show (UniqSet a) where
   show = showSDocUnsafe . ppr
 instance Outputable a => Show (Tickish a) where
   show = showSDocUnsafe . ppr
-instance (OutputableBndrId a, SourceTextX a) => Show (HsIPBinds a) where
+instance (OutputableBndrId (GhcPass p)) => Show (HsIPBinds (GhcPass p)) where
   show = showSDocUnsafe . ppr
 instance Show LexicalFixity where
   show = showSDocUnsafe . ppr

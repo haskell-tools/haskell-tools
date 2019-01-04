@@ -77,7 +77,7 @@ hsGetNames' :: HsHasName a => a -> [GHC.Name]
 hsGetNames' = map fst . hsGetNames Nothing
 
 -- | Get names from the GHC AST
-class HsHasName n where
+class HsHasName a where
   hsGetNames :: Maybe GHC.Name -> a -> [(GHC.Name, Maybe GHC.Name)]
 
 instance HsHasName RdrName where
@@ -95,7 +95,7 @@ instance HsHasName e => HsHasName [e] where
 instance HsHasName e => HsHasName (Located e) where
   hsGetNames p (L _ e) = hsGetNames p e
 
-instance HsHasName (IdP n) => HsHasName (HsLocalBinds n) where
+instance HsHasName (IdP (GhcPass n)) => HsHasName (HsLocalBinds (GhcPass n)) where
   hsGetNames p (HsValBinds _ bnds) = hsGetNames p bnds
   hsGetNames _ _ = []
 
@@ -165,9 +165,9 @@ instance HsHasName (IdP n) => HsHasName (ForeignDecl n) where
   hsGetNames p (ForeignImport _ n _ _) = hsGetNames p n
   hsGetNames _ _ = []
 
-instance HsHasName (IdP n) => HsHasName (HsValBinds n) where
+instance forall n . HsHasName (IdP (GhcPass n)) => HsHasName (HsValBinds (GhcPass n)) where
   hsGetNames p (ValBinds _ bnds _) = hsGetNames p bnds
-  hsGetNames p (XValBindsLR (NValBinds bnds _)) = hsGetNames p $ map snd bnds
+  hsGetNames p (XValBindsLR (NValBinds bnds _ :: NHsValBindsLR (GhcPass n))) = hsGetNames p $ map snd bnds
 
 instance HsHasName n => HsHasName (Bag n) where
   hsGetNames p = hsGetNames p . bagToList
@@ -193,7 +193,7 @@ instance HsHasName (IdP n) => HsHasName (HsTyVarBndr n) where
 instance HsHasName (IdP n) => HsHasName (Match n b) where
   hsGetNames p (Match _ _ pats _) = concatMap (hsGetNames p) pats
 
-instance HsHasName (IdP n) => HsHasName (Stmt n b) where
+instance HsHasName (IdP (GhcPass n)) => HsHasName (StmtLR (GhcPass n) (GhcPass n) b) where
   hsGetNames p (LetStmt _ binds) = hsGetNames p binds
   hsGetNames p (BindStmt _ pat _ _ _) = hsGetNames p pat
   hsGetNames p (RecStmt {recS_rec_ids = ids}) = hsGetNames p ids
@@ -214,7 +214,7 @@ instance HsHasName (IdP n) => HsHasName (Pat n) where
   hsGetNames x (SigPat _ p) = hsGetNames x p
   hsGetNames _ _ = []
 
-instance (GHCName n, HsHasName (IdP n)) => HsHasName (HsGroup n) where
+instance (GHCName (GhcPass n), HsHasName (IdP (GhcPass n))) => HsHasName (HsGroup (GhcPass n)) where
   hsGetNames p g@(HsGroup _ vals _ clds _ _ _ foreigns _ _ _ _)
     = hsGetNames p vals ++ hsGetNames p clds ++ hsGetNames p (hsGroupInstDecls g) ++ hsGetNames p foreigns
 
@@ -273,7 +273,7 @@ mergeFixityDefs (s@(L l _) : rest)
   where mergeWith (L l (FixitySig x names fixity)) (FixitySig _ otherNames _) = L l (FixitySig x (names ++ otherNames) fixity)
 mergeFixityDefs [] = []
 
-getGroupRange :: HsGroup n -> SrcSpan
+getGroupRange :: HsGroup (GhcPass n) -> SrcSpan
 getGroupRange (HsGroup {..})
   = foldr combineSrcSpans noSrcSpan locs
   where locs = [getHsValRange hs_valds] ++ map getLoc hs_splcds ++ map getLoc (concatMap group_tyclds hs_tyclds)
@@ -282,7 +282,7 @@ getGroupRange (HsGroup {..})
                  ++ map getLoc hs_fords ++ map getLoc hs_warnds ++ map getLoc hs_annds ++ map getLoc hs_ruleds
                  ++ map getLoc hs_docs
 
-getHsValRange :: HsValBinds n -> SrcSpan
+getHsValRange :: HsValBinds (GhcPass n) -> SrcSpan
 getHsValRange (ValBinds _ vals sig) = foldr combineSrcSpans noSrcSpan $ map getLoc (bagToList vals) ++ map getLoc sig
 getHsValRange ((XValBindsLR (NValBinds vals sig))) = foldr combineSrcSpans noSrcSpan $ concatMap (map getLoc . bagToList . snd) vals ++ map getLoc sig
 

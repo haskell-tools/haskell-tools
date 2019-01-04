@@ -138,15 +138,18 @@ forcedTypecheck ms p = do
   env <- getSession
   store <- liftIO $ newIORef (error "not found")
   let hpm = HsParsedModule (pm_parsed_source p) (pm_extra_src_files p) (pm_annotations p)
-  (msgs, Just (gblEnv, lclEnv)) <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv
-  let finalizeModule = do gbl <- getGblEnv
-                          liftIO $ writeIORef store ( (,,,) <$> tcg_rn_decls gbl
-                                                            <*> return (tcg_rn_imports gbl)
-                                                            <*> return (tcg_rn_exports gbl)
-                                                            <*> return (tcg_doc_hdr gbl)
-                                                    , tcg_binds gbl)
-  liftIO $ modifyIORef (tcg_th_modfinalizers gblEnv) (finalizeModule :)
-  let gblEnv' = gblEnv { tcg_rn_exports = Just [], tcg_rn_decls = Just emptyRnGroup }
-  liftIO $ initTcRnIf 'a' env gblEnv' lclEnv $ void (tcRnModuleTcRnM env HsSrcFile hpm (ms_mod ms, getLoc (pm_parsed_source p)))
-                                                 `gcatch` \(e :: SomeException) -> return ()
-  liftIO $ readIORef store
+  tcRes <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv
+  case tcRes of
+    (msgs, Just (gblEnv, lclEnv)) -> do
+      let finalizeModule = do gbl <- getGblEnv
+                              liftIO $ writeIORef store ( (,,,) <$> tcg_rn_decls gbl
+                                                                <*> return (tcg_rn_imports gbl)
+                                                                <*> return (tcg_rn_exports gbl)
+                                                                <*> return (tcg_doc_hdr gbl)
+                                                        , tcg_binds gbl)
+      liftIO $ modifyIORef (tcg_th_modfinalizers gblEnv) (finalizeModule :)
+      let gblEnv' = gblEnv { tcg_rn_exports = Just [], tcg_rn_decls = Just emptyRnGroup }
+      liftIO $ initTcRnIf 'a' env gblEnv' lclEnv $ void (tcRnModuleTcRnM env ms hpm (ms_mod ms, getLoc (pm_parsed_source p)))
+                                                     `gcatch` \(e :: SomeException) -> return ()
+      liftIO $ readIORef store
+    _ -> error "forcedTypecheck: runTcInteractive failed" 

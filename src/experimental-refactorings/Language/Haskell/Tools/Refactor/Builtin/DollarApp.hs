@@ -8,8 +8,7 @@ import Language.Haskell.Tools.Refactor
 import BasicTypes (Fixity(..))
 import Id (idName)
 import qualified Name as GHC (Name)
-import PrelInfo (wiredInIds)
-import PrelNames (dollarIdKey)
+import PrelNames (dollarName)
 import SrcLoc (RealSrcSpan, SrcSpan)
 import Unique (getUnique)
 
@@ -45,6 +44,3 @@ parenDollar lhs expr@(InfixApp _ _ arg)
          then return $ mkParen expr
          else return expr
 parenDollar _ e = return e
-
-dollarName :: GHC.Name
-[dollarName] = map idName $ filter ((dollarIdKey==) . getUnique) wiredInIds

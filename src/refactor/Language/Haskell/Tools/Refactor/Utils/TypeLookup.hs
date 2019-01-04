@@ -3,15 +3,13 @@
 module Language.Haskell.Tools.Refactor.Utils.TypeLookup where
 
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
-import qualified Kind      as GHC (isConstraintKind)
 import qualified ConLike   as GHC (ConLike(..))
 import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
-import qualified Kind      as GHC (isConstraintKind)
 import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
 import qualified TyCoRep   as GHC (Type(..), TyThing(..))
-import qualified Type      as GHC (eqType, typeKind)
+import qualified Type      as GHC (eqType, typeKind, tcIsConstraintKind)
 import qualified Var       as GHC (varType)
 import qualified CoAxiom   as GHC
 import qualified GHC       hiding (typeKind)
@@ -28,7 +26,7 @@ instance Eq GHC.Type where
 type ClosedTyFam = GHC.CoAxiom GHC.Branched
 
 hasConstraintKind :: GHC.Type -> Bool
-hasConstraintKind = GHC.isConstraintKind . GHC.typeKind
+hasConstraintKind = GHC.tcIsConstraintKind . GHC.typeKind
 
 
 -- | Looks up the Type of an entity with an Id of any locality.

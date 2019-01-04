@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 -- | Functions that convert the basic elements of the GHC AST to corresponding elements in the Haskell-tools AST representation
 module Language.Haskell.Tools.BackendGHC.Names where
@@ -13,6 +14,7 @@ module Language.Haskell.Tools.BackendGHC.Names where
 import Control.Monad.Reader ((=<<), asks)
 import Data.Char (isAlphaNum)
 import Data.List.Split (splitOn)
+import Data.Data (Data)
 
 import FastString as GHC (FastString, unpackFS)
 import HsSyn as GHC
@@ -22,6 +24,9 @@ import OccName as GHC (HasOccName)
 import RdrName as GHC (RdrName)
 import SrcLoc as GHC
 import qualified Id  as GHC (Id)
+import HsLit as GHC (OverLitVal(..), HsLit(..))
+import Outputable (Outputable)
+import HsTypes as GHC
 
 import Language.Haskell.Tools.AST (Ann(..), AnnListG, RangeStage, Dom)
 import qualified Language.Haskell.Tools.AST as AST
@@ -52,22 +57,40 @@ trfAmbiguousFieldName :: TransformName n r => Located (AmbiguousFieldOcc n) -> T
 trfAmbiguousFieldName (L l af) = trfAmbiguousFieldName' l af
 
 trfAmbiguousFieldName' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UName (Dom r) RangeStage)
-trfAmbiguousFieldName' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfName' @n (unpackPostRn @n rdr pr)
+trfAmbiguousFieldName' l (Unambiguous pr (L _ rdr)) = annLocNoSema (pure l) $ trfName' @n (fieldOccToId @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
-trfAmbiguousFieldName' _ (Ambiguous (L l rdr) _)
+trfAmbiguousFieldName' _ (Ambiguous _ (L l rdr))
   = annLocNoSema (pure l)
       $ (if (isSymOcc (occName @GhcPs rdr)) then AST.UParenName else AST.UNormalName)
           <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfNameStr (isSymOcc (occName @GhcPs rdr)) (rdrNameStr rdr))
 
 trfAmbiguousOperator' :: forall n r . TransformName n r => SrcSpan -> AmbiguousFieldOcc n -> Trf (Ann AST.UOperator (Dom r) RangeStage)
-trfAmbiguousOperator' l (Unambiguous (L _ rdr) pr) = annLocNoSema (pure l) $ trfOperator' @n (unpackPostRn @n rdr pr)
+trfAmbiguousOperator' l (Unambiguous pr (L _ rdr)) = annLocNoSema (pure l) $ trfOperator' @n (fieldOccToId @n rdr pr)
 -- no Id transformation is done, so we can basically ignore the postTC value
-trfAmbiguousOperator' _ (Ambiguous (L l rdr) _)
+trfAmbiguousOperator' _ (Ambiguous _ (L l rdr))
   = annLocNoSema (pure l)
       $ (if (isSymOcc (occName @GhcPs rdr)) then AST.UNormalOp else AST.UBacktickOp)
           <$> (annLoc (createAmbigousNameInfo rdr l) (pure l) $ AST.nameFromList <$> trfOperatorStr (not $ isSymOcc (occName @GhcPs rdr)) (rdrNameStr rdr))
 
-class (DataId n, Eq n, GHCName n, FromGHCName (IdP n), NameOrRdrName (IdP n) ~ IdP n, HasOccName (IdP n), SourceTextX n)
+type CorrectPass n = ( Data (HsLit n), Outputable (HsLit n)
+                     , Data (HsType n), Outputable (HsType n)
+                     , Data (Pat n), Outputable (Pat n)
+                     , Data (HsExpr n), Outputable (HsExpr n)
+                     , Data (Stmt n (LHsExpr n)), Outputable (Stmt n (LHsExpr n))
+                     , Data (Stmt n (LHsCmd n)), Outputable (Stmt n (LHsCmd n))
+                     , Data (HsCmd n), Outputable (HsCmd n)
+                     , Data (Sig n), Outputable (Sig n)
+                     , Data (HsLocalBinds n), Outputable (HsLocalBinds n)
+                     , Data (HsBind n), Outputable (HsBind n)
+                     , Data (IdP n), Outputable (IdP n)
+                     , Data (ConDecl n), Outputable (ConDecl n)
+                     , Data (HsDecl n), Outputable (HsDecl n)
+                     , Data (HsSplice n), Outputable (HsSplice n)
+                     )
+
+type ConvOk n = (XExprWithTySig n ~ LHsSigWcType n, XAppTypeE n ~ LHsWcType n, NameOrRdrName (IdP n) ~ IdP n)
+
+class (ConvOk n, Eq n, CorrectPass n, GHCName n, FromGHCName (IdP n), HasOccName (IdP n))
         => TransformableName n where
   correctNameString :: IdP n -> Trf String
   transformSplice :: HsSplice GhcPs -> Trf (HsSplice n)
@@ -82,7 +105,7 @@ instance TransformableName GhcRn where
 
 -- | This class allows us to use the same transformation code for multiple variants of the GHC AST.
 -- GHC UName annotated with 'name' can be transformed to our representation with semantic annotations of 'res'.
-class (TransformableName name, HsHasName (IdP name), FromGHCName (IdP res), Eq (IdP name) {-, TransformableName res, HsHasName res -}, GHCName res, NameOrRdrName (IdP name) ~ (IdP name))
+class (TransformableName name, HsHasName (IdP name), FromGHCName (IdP res), Eq (IdP name), GHCName res, NameOrRdrName (IdP name) ~ (IdP name), XUnambiguous name ~ XCFieldOcc name)
         => TransformName name res where
   -- | Demote a given name
   transformName :: IdP name -> IdP res

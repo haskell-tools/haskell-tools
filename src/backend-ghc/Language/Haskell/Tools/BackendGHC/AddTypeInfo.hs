@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Language.Haskell.Tools.BackendGHC.AddTypeInfo (addTypeInfos) where
 
@@ -14,7 +15,7 @@ import OccName as GHC (OccName, mkDataOcc)
 import SrcLoc as GHC
 import TcEvidence as GHC (EvBind(..), TcEvBinds(..))
 import Type as GHC (Type, mkTyVarTy, mkTyConTy)
-import TysWiredIn as GHC (starKindTyCon)
+import TysWiredIn as GHC (anyTyCon)
 import UniqDFM as GHC (eltsUDFM)
 import UniqSupply as GHC (uniqFromSupply, mkSplitUniqSupply)
 import Var as GHC (Var(..))
@@ -31,6 +32,8 @@ import Data.Generics.Uniplate.Operations (universeBi)
 import Data.List as List
 import qualified Data.Map as Map (fromList, lookup)
 import Data.Maybe (Maybe(..), fromMaybe, catMaybes)
+import GHC.Stack (emptyCallStack)
+
 import Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.AST.SemaInfoTypes as AST
 import Language.Haskell.Tools.BackendGHC.GHCUtils (getTopLevelId)
@@ -55,7 +58,7 @@ addTypeInfos bnds mod = do
                   -> case Map.lookup l locMapping of
                             Just id -> return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
                             _ -> do (none,rest) <- gets (break ((\case (RealSrcSpan sp) -> sp `containsSpan` loc) . fst))
-                                    case rest of [] -> throw $ ConvertionProblem (RealSrcSpan loc) "Ambiguous or implicit name missing"
+                                    case rest of [] -> throw $ ConvertionProblem emptyCallStack (RealSrcSpan loc) "Ambiguous or implicit name missing"
                                                  ((_,id):more) -> do put (none ++ more)
                                                                      return $ createCName (AST.semanticsScope ni) (AST.semanticsDefining ni) id
                 _ -> convProblem "addTypeInfos: Cannot access a the semantics of a name.")
@@ -82,20 +85,22 @@ addTypeInfos bnds mod = do
           where exprLits :: [LHsExpr GhcTc]
                 exprLits = concatMap universeBi . bagToList $ bnds
 
-                decompExprLit (L loc (HsOverLit lit)) = Just (loc, ol_type lit)
+                decompExprLit :: LHsExpr GhcTc -> Maybe (SrcSpan, Type)
+                decompExprLit (L loc (HsOverLit _ lit)) = Just (loc, ol_type (ol_ext lit))
                 decompExprLit x = Nothing
 
                 patLits :: [LPat GhcTc]
                 patLits = concatMap universeBi . bagToList $ bnds
 
-                decompPatLit (L loc (NPat llit _ _ _)) = Just (loc, ol_type . unLoc $ llit)
+                decompPatLit :: LPat GhcTc -> Maybe (SrcSpan, Type)
+                decompPatLit (L loc (NPat llit _ _ _)) = Just (loc, llit)
                 decompPatLit x = Nothing
 
 
         mkUnknownType :: IO Type
         mkUnknownType = do
           tUnique <- mkSplitUniqSupply 'x'
-          return $ mkTyVarTy $ mkVanillaGlobal (mkSystemName (uniqFromSupply tUnique) (mkDataOcc "TypeNotFound")) (mkTyConTy starKindTyCon)
+          return $ mkTyVarTy $ mkVanillaGlobal (mkSystemName (uniqFromSupply tUnique) (mkDataOcc "TypeNotFound")) (mkTyConTy anyTyCon)
 
         getFixities :: Ghc [(Module, (OccName, GHC.Fixity))]
         getFixities = do env <- getSession
@@ -106,8 +111,8 @@ addTypeInfos bnds mod = do
 
 extractExprIds :: LHsBinds GhcTc -> [Located Id]
         -- expressions like HsRecFld are removed from the typechecked representation, they are replaced by HsVar
-extractExprIds = catMaybes . map (\case L l (HsVar (L _ n) :: HsExpr GhcTc) -> Just (L l n)
-                                        L l (HsWrap _ (HsVar (L _ n))) -> Just (L l n)
+extractExprIds = catMaybes . map (\case L l (HsVar _ (L _ n) :: HsExpr GhcTc) -> Just (L l n)
+                                        L l (HsWrap _ _ (HsVar _ (L _ n))) -> Just (L l n)
                                         _ -> Nothing
                                  ) . concatMap universeBi . bagToList
 
@@ -126,7 +131,7 @@ extractSigIds = filter (isGoodSrcSpan . fst)
 extractSigBindIds :: LHsBinds GhcTc -> [(SrcSpan,Id)]
 extractSigBindIds = filter (isGoodSrcSpan . fst)
                       . catMaybes
-                      . map (\case L l (IPBind (Right id) _ :: IPBind GhcTc) -> Just (l,id)
+                      . map (\case L l (IPBind _ (Right id) _ :: IPBind GhcTc) -> Just (l,id)
                                    _                                         -> Nothing )
                       . concatMap universeBi
                       . bagToList

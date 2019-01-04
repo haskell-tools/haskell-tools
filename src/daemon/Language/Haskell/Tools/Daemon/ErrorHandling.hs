@@ -27,7 +27,7 @@ userExceptionHandlers sendError sendCompProblems =
   , Handler (\case (BreakUpProblem outer rng _) -> sendError ("The program element at " ++ (if isGoodSrcSpan rng then shortShowSpanWithFile rng else shortShowSpanWithFile (RealSrcSpan outer)) ++ " could not be prepared for refactoring. The most likely reason is preprocessor usage. Only conditional compilation is supported, includes and preprocessor macros are not. If there is no preprocessor usage at the given location, there might be a weirdly placed comment causing a problem."))
   , Handler (\(TransformationProblem msg) -> sendError ("A problem occurred while preparing the program for refactoring: " ++ msg))
   , Handler (\(PrettyPrintProblem msg) -> sendError ("A problem occurred while pretty printing the result of the refactoring: " ++ msg))
-  , Handler (\case (ConvertionProblem rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpanWithFile rng ++ ": " ++ msg)
+  , Handler (\case (ConvertionProblem _ rng msg) -> sendError ("An unexpected problem occurred while converting the representation of the program element at " ++ shortShowSpanWithFile rng ++ ": " ++ msg)
                    (UnrootedConvertionProblem msg) -> sendError ("An unexpected problem occurred while converting between different program representations: " ++ msg))
   , Handler (uncurry sendCompProblems . getProblems)
   ]
