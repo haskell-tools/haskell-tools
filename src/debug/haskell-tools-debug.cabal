@@ -1,5 +1,5 @@
 name:                haskell-tools-debug
-version:             1.1.0.2
+version:             1.1.1.0
 synopsis:            Debugging Tools for Haskell-tools
 description:         Debugging Tools for Haskell-tools
 homepage:            https://github.com/haskell-tools/haskell-tools
