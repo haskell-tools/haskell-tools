@@ -147,7 +147,7 @@ rdrSplice spl = do
                    -- group up locals by name
                    $ map (foldl1 (\e1 e2 -> ((^. _1) e1, (^. _2) e1 `mappend` (^. _2) e2, (^. _3) e1 <|> (^. _3) e2)))
                    $ groupBy ((==) `on` (^. _1)) $ sortBy (compare `on` (^. _1)) locals
-    tcSpl <- liftIO $ runTcInteractive env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes }
+    tcSpl <- liftIO $ runTcInteractive (env { hsc_dflags = xopt_set (hsc_dflags env) TemplateHaskellQuotes })
       $ updGblEnv (\gbl -> gbl { tcg_rdr_env = readEnv })
       $ tcHsSplice' spl
     let typecheckErrors = showSDocUnsafe (vcat (pprErrMsgBagWithLoc (fst (fst tcSpl)))
@@ -158,12 +158,12 @@ rdrSplice spl = do
     return $ fromMaybe (throw $ SpliceInsertionProblem rng typecheckErrors)
                        (snd tcSpl)
   where
-    tcHsSplice' (HsTypedSplice dec id e)
-      = HsTypedSplice dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
-    tcHsSplice' (HsUntypedSplice dec id e)
-      = HsUntypedSplice dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
-    tcHsSplice' (HsQuasiQuote id1 id2 sp fs)
-      = pure $ HsQuasiQuote (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
+    tcHsSplice' (HsTypedSplice ex dec id e)
+      = HsTypedSplice ex dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
+    tcHsSplice' (HsUntypedSplice ex dec id e)
+      = HsUntypedSplice ex dec (mkUnboundNameRdr id) <$> (fst <$> rnLExpr e)
+    tcHsSplice' (HsQuasiQuote ex  id1 id2 sp fs)
+      = pure $ HsQuasiQuote ex (mkUnboundNameRdr id1) (mkUnboundNameRdr id2) sp fs
 
 
     unifyScopes :: [GHC.Name] -> [[(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]] -> [(GHC.Name, Maybe [UsageSpec], Maybe GHC.Name)]

@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Language.Haskell.Tools.BackendGHC.Binds where
 
 import ApiAnnotation (AnnKeywordId)
@@ -8,8 +9,9 @@ import qualified Language.Haskell.Tools.AST as AST
 import Language.Haskell.Tools.BackendGHC.Monad (Trf)
 import Language.Haskell.Tools.BackendGHC.Names (TransformName(..))
 import SrcLoc as GHC (Located, SrcSpan)
+import HsExtension (GhcPass)
 
-trfLocalBinds :: TransformName n r => AnnKeywordId -> HsLocalBinds n -> Trf (AnnListG AST.ULocalBind (Dom r) RangeStage)
-trfWhereLocalBinds :: TransformName n r => SrcSpan -> HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
-trfRhsGuard :: TransformName n r => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.URhsGuard (Dom r) RangeStage)
-trfRhsGuard' :: TransformName n r => Stmt n (LHsExpr n) -> Trf (AST.URhsGuard (Dom r) RangeStage)
+trfLocalBinds :: (TransformName n r, n ~ GhcPass p)=> AnnKeywordId -> HsLocalBinds n -> Trf (AnnListG AST.ULocalBind (Dom r) RangeStage)
+trfWhereLocalBinds :: (TransformName n r, n ~ GhcPass p) => SrcSpan -> HsLocalBinds n -> Trf (AnnMaybeG AST.ULocalBinds (Dom r) RangeStage)
+trfRhsGuard :: (TransformName n r, n ~ GhcPass p) => Located (Stmt n (LHsExpr n)) -> Trf (Ann AST.URhsGuard (Dom r) RangeStage)
+trfRhsGuard' :: (TransformName n r, n ~ GhcPass p) => Stmt n (LHsExpr n) -> Trf (AST.URhsGuard (Dom r) RangeStage)

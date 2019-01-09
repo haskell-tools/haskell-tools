@@ -66,10 +66,14 @@ applyFragments srcs = flip evalState srcs
                return (SourceTemplateList (RealSrcSpan rng) bef aft sep indented (Prelude.zip (Prelude.map ((:[]) . NormalText) own) (Prelude.map RealSrcSpan seps)) 0 Nothing))
      (\(RangeTemplateOpt rng bef aft) -> return (SourceTemplateOpt (RealSrcSpan rng) bef aft 0 Nothing)))
      (return ()) (return ())
-  where getTextFor RangeChildElem = return [ChildElem]
-        getTextFor (RangeElem rng) = do (src:rest) <- get
-                                        put rest
-                                        return [TextElem [NormalText src] (RealSrcSpan rng)]
+  where getTextFor :: RangeTemplateElem -> State [String] [SourceTemplateElem]
+        getTextFor RangeChildElem = return [ChildElem]
+        getTextFor (RangeElem rng) = do stack <- get
+                                        case stack of
+                                          (src:rest) -> do
+                                            put rest
+                                            return [TextElem [NormalText src] (RealSrcSpan rng)]
+                                          _ -> trfProblem "RangeTemplateToSourceTemplate.applyFragments.getTextFpr: stack is not right"
 
 -- | Marks template elements in the AST that should always be present in the source code, regardless of their
 -- containing elements being deleted.

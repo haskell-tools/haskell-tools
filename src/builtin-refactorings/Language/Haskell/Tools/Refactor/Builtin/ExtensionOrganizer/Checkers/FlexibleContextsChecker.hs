@@ -1,6 +1,5 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.FlexibleContextsChecker where
 
-import Kind (returnsConstraintKind)
 import TcType (tcSplitNestedSigmaTys, checkValidClsArgs)
 import Type hiding (Type(..))
 import PrelNames (eqTyConName, eqTyConKey)
@@ -55,7 +54,7 @@ chkFlexibleContextsDecl = conditional chkFlexibleContextsDecl' FlexibleContexts
 chkFlexibleContextsDecl' :: CheckNode Decl
 chkFlexibleContextsDecl' d@(TypeDecl dh rhs) = do
   let ty = typeOrKindFromId . declHeadQName $ dh
-  when (hasConstraintKind ty || returnsConstraintKind ty)
+  when (hasConstraintKind ty || tcReturnsConstraintKind ty)
        (chkClassesInside rhs)
   return d
 chkFlexibleContextsDecl' d = return d

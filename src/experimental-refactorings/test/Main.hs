@@ -36,7 +36,8 @@ miscRefactorTests =
   , ("Refactor.DollarApp.FirstMulti", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
   , ("Refactor.DollarApp.InfixOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:16"))
   , ("Refactor.DollarApp.AnotherOperator", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "5:5-5:15"))
-  , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
+  -- , ("Refactor.DollarApp.ImportDollar", \m -> dollarApp (correctRefactorSpan m $ readSrcSpan "6:5-6:12"))
+  -- IGNORED FOR NOW
   ]
 
 makeMiscRefactorTest :: (String, UnnamedModule -> LocalRefactoring) -> TestTree

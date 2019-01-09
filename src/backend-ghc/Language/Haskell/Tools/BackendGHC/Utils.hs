@@ -26,6 +26,7 @@ import Outputable (Outputable(..), showSDocUnsafe)
 import Packages
 import Finder
 import SrcLoc
+import GHC.Stack hiding (SrcLoc(..))
 
 import Control.Exception (Exception, throw)
 import Control.Monad.Reader
@@ -83,7 +84,7 @@ createImplicitFldInfo select flds = return (mkImplicitFieldInfo (map getLabelAnd
 
 -- | Adds semantic information to an impord declaration. See ImportInfo.
 createImportData :: forall r n . (GHCName r, HsHasName (IdP n)) => GHC.ImportDecl n -> Trf (ImportInfo r)
-createImportData (GHC.ImportDecl _ name pkg _ _ _ _ _ declHiding) =
+createImportData (GHC.ImportDecl _ _ name pkg _ _ _ _ _ declHiding) =
   do (mod,importedNames) <- getImportedNames (GHC.moduleNameString $ unLoc name) (fmap (unpackFS . sl_fs) pkg)
      names <- liftGhc $ filterM (checkImportVisible declHiding . (^. pName)) importedNames
      -- TODO: only use getFromNameUsing once
@@ -147,10 +148,10 @@ ieSpecMatches :: (HsHasName (IdP name), GhcMonad m) => IE name -> GHC.Name -> m 
 ieSpecMatches (concatMap hsGetNames' . HsSyn.ieNames -> ls) name
   | name `elem` ls = return True
 -- ieNames does not consider field names
-ieSpecMatches (IEThingWith thing _ with flds) name
+ieSpecMatches (IEThingWith _ thing _ with flds) name
   | name `elem` concatMap hsGetNames' (map (ieWrappedName . unLoc) (thing : with) ++ map (flSelector . unLoc) flds)
   = return True
-ieSpecMatches ie@(IEThingAll _) name | [n] <- hsGetNames' (HsSyn.ieName ie), isTyConName n
+ieSpecMatches ie@(IEThingAll {}) name | [n] <- hsGetNames' (HsSyn.ieName ie), isTyConName n
   = do entity <- lookupName n
        return $ case entity of Just (ATyCon tc)
                                  | Just cls <- tyConClass_maybe tc
@@ -476,10 +477,10 @@ compareSpans (RealSrcSpan a) (RealSrcSpan b)
 compareSpans _ _ = EQ
 
 -- | Report errors when cannot convert a type of element
-unhandledElement :: (Data a, Outputable a) => String -> a -> Trf b
+unhandledElement :: (Data a, Outputable a, HasCallStack) => String -> a -> Trf b
 unhandledElement label e = convertionProblem ("Illegal " ++ label ++ ": " ++ showSDocUnsafe (ppr e) ++ " (ctor: " ++ show (toConstr e) ++ ")")
 
-unhandledElementNoPpr :: (Data a) => String -> a -> Trf b
+unhandledElementNoPpr :: (Data a, HasCallStack) => String -> a -> Trf b
 unhandledElementNoPpr label e = convertionProblem ("Illegal " ++ label ++ ": (ctor: " ++ show (toConstr e) ++ ")")
 
 instance Semigroup SrcSpan where
@@ -489,15 +490,15 @@ instance Semigroup SrcSpan where
 instance Monoid SrcSpan where
   mempty = noSrcSpan
 
-data ConvertionProblem = ConvertionProblem SrcSpan String
+data ConvertionProblem = ConvertionProblem CallStack SrcSpan String
                        | UnrootedConvertionProblem String
   deriving Show
 
 instance Exception ConvertionProblem
 
-convertionProblem :: String -> Trf a
+convertionProblem :: HasCallStack => String -> Trf a
 convertionProblem msg = do rng <- asks contRange
-                           throw $ ConvertionProblem rng msg
+                           throw $ ConvertionProblem callStack rng msg
 
 convProblem :: String -> a
 convProblem = throw . UnrootedConvertionProblem

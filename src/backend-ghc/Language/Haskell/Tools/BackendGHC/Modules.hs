@@ -24,7 +24,6 @@ import BasicTypes as GHC (WarningTxt(..), StringLiteral(..))
 import FastString as GHC (unpackFS)
 import FieldLabel as GHC (FieldLbl(..))
 import GHC
-import Avail
 import SrcLoc as GHC
 import TcRnMonad as GHC (Applicative(..), (<$>))
 
@@ -73,7 +72,7 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
         exportSubspecsRngs = map (map AST.getRange) exportSubspecs
 
         replaceSubspecLocs :: [LIE GhcRn] -> [LIE GhcRn]
-        replaceSubspecLocs exps = zipWith (\ss ie -> case ie of (L l (IEThingWith n wc ls flds)) -> L l (IEThingWith n wc (replaceNames ss ls) (replaceFieldNames (drop (length ls) ss) flds))
+        replaceSubspecLocs exps = zipWith (\ss ie -> case ie of (L l (IEThingWith ext n wc ls flds)) -> L l (IEThingWith ext n wc (replaceNames ss ls) (replaceFieldNames (drop (length ls) ss) flds))
                                                                 _ -> ie) exportSubspecsRngs exps
           where replaceNames ss ls = zipWith (\(L _ iew) l -> case iew of IEName (L _ n) -> L l (IEName (L l n))
                                                                           _              -> L l iew) ls ss
@@ -107,9 +106,9 @@ trfModuleRename mod rangeMod (gr,imports,exps,_) hsMod
 -- | Extract the template haskell splices from the representation and adds them to the transformation state.
 loadSplices :: HsModule GhcPs -> Trf a -> Trf a
 loadSplices hsMod trf = do
-    let declSpls = map (\(SpliceDecl sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
-        exprSpls = mapMaybe (\case L l (HsSpliceE sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
-        typeSpls = mapMaybe (\case L l (HsSpliceTy sp _) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
+    let declSpls = map (\(SpliceDecl _ sp _) -> sp) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
+        exprSpls = mapMaybe (\case L l (HsSpliceE _ sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
+        typeSpls = mapMaybe (\case L l (HsSpliceTy _ sp) -> Just (L l sp); _ -> Nothing) $ hsMod ^? biplateRef :: [Located (HsSplice GhcPs)]
     setSplices declSpls typeSpls exprSpls trf
 
 trfModuleHead :: TransformName n r
@@ -155,7 +154,7 @@ trfExportList' exps = AST.UExportSpecs <$> (makeList ", " (after AnnOpenP) (orde
 
 trfExport :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UExportSpec (Dom r) RangeStage))
 trfExport = trfMaybeLocNoSema $ \case
-  IEModuleContents n -> Just . AST.UModuleExport <$> (trfModuleName n)
+  IEModuleContents _ n -> Just . AST.UModuleExport <$> (trfModuleName n)
   other -> do trf <- trfIESpec' other
               fmap AST.UDeclExport <$> (sequence $ fmap (annContNoSema . return) trf)
 
@@ -171,7 +170,7 @@ trfImports (filter (not . ideclImplicit . unLoc) -> imps)
                                                   <*> (srcLocSpan . srcSpanEnd <$> tokenLoc AnnWhere))
 
 trfImport :: TransformName n r => LImportDecl n -> Trf (Ann AST.UImportDecl (Dom r) RangeStage)
-trfImport (L l (GHC.ImportDecl _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
+trfImport (L l (GHC.ImportDecl _ _ name pkg isSrc _ isQual _ declAs declHiding)) = focusOn l $
   do safeTok <- tokenLoc AnnSafe
      let -- default positions of optional parts of an import declaration
          annBeforeQual = if isSrc then AnnClose else AnnImport
@@ -205,12 +204,12 @@ trfIESpec :: TransformName n r => LIE n -> Trf (Maybe (Ann AST.UIESpec (Dom r) R
 trfIESpec = trfMaybeLocNoSema trfIESpec'
 
 trfIESpec' :: forall n r . TransformName n r => IE n -> Trf (Maybe (AST.UIESpec (Dom r) RangeStage))
-trfIESpec' (IEVar n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
-trfIESpec' (IEThingAbs n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
-trfIESpec' (IEThingAll n)
+trfIESpec' (IEVar _ n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEThingAbs _ n) = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (nothing "(" ")" atTheEnd))
+trfIESpec' (IEThingAll _ n)
   = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (makeJust <$> subspec))
   where subspec = annLocNoSema (combineSrcSpans <$> tokenLocBack AnnOpenP <*> tokenLocBack AnnCloseP) (pure AST.USubSpecAll)
-trfIESpec' (IEThingWith n _ ls flds)
+trfIESpec' (IEThingWith _ n _ ls flds)
   = Just <$> (AST.UIESpec <$> trfImportModifier <*> trfName @n (getWrappedName n) <*> (makeJust <$> subspec))
   where subspec = annLocNoSema (combineSrcSpans <$> tokenLocBack AnnOpenP <*> tokenLocBack AnnCloseP)
                     $ AST.USubSpecList <$> between AnnOpenP AnnCloseP (makeList ", " atTheStart ((++) <$> mapM ((trfName @n) . getWrappedName) ls <*> mapM (trfName @n) (map (fmap flSelector) flds)))

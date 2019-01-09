@@ -10,7 +10,7 @@ import Data.List
 import Control.Monad.State
 import Control.Reference
 
-import GHC
+import GHC hiding (typeKind)
 import Module as GHC
 import InstEnv as GHC
 import Unify as GHC
@@ -96,11 +96,6 @@ typeExpr' (List elems) = do
                                      return $ pack $ mkListTy typ
                            e:_ -> do (typ, pack) <- splitType' <$> typeExpr' e
                                      return $ pack $ mkListTy typ
-typeExpr' (ParArray elems) = do
-  case elems ^? annList of []  -> do (typ, pack) <- splitType' <$> resultType
-                                     return $ pack $ mkPArrTy typ
-                           e:_ -> do (typ, pack) <- splitType' <$> typeExpr' e
-                                     return $ pack $ mkPArrTy typ
 typeExpr' (Paren inner) = typeExpr' inner
 typeExpr' (LeftSection lhs op) = do
   let opType = idType $ semanticsId (op ^. operatorName)
@@ -128,9 +123,7 @@ typeExpr' (AST.RecCon name _)
          _ -> resultType
 typeExpr' (AST.RecUpdate e _) = typeExpr' e
 typeExpr' (AST.Enum from _ _) = mkListTy <$> typeExpr' from
-typeExpr' (AST.ParArrayEnum from _ _) = mkPArrTy <$> typeExpr' from
 typeExpr' (AST.ListComp e _) = mkListTy <$> typeExpr' e
-typeExpr' (AST.ParArrayComp e _) = mkPArrTy <$> typeExpr' e
 -- typeExpr' (AST.UTypeSig _ t) = -- TODO: evaluate type
 typeExpr' Hole = resultType
 typeExpr' _ = resultType
@@ -192,15 +185,18 @@ splitType typ =
 resultType :: StateT [Unique] Ghc GHC.Type
 resultType = do 
   name <- newName
-  let tv = mkTyVar name (mkTyConTy starKindTyCon)
+  let tv = mkTyVar name (GHC.typeKind boolTy)
   return $ mkInvForAllTys [tv] (mkTyVarTy tv)
 
 litType :: GHC.Name -> StateT [Unique] Ghc GHC.Type
 litType constraint = do 
-  Just (ATyCon numTyCon) <- lift $ lookupName constraint
-  name <- newName
-  let tv = mkTyVar name (mkTyConTy starKindTyCon)
-  return $ mkInvForAllTys [tv] $ mkFunTy (mkTyConApp numTyCon [mkTyVarTy tv]) (mkTyVarTy tv)
+  litty <- lift $ lookupName constraint
+  case litty of
+    Just (ATyCon numTyCon) -> do
+      name <- newName
+      let tv = mkTyVar name (GHC.typeKind boolTy)
+      return $ mkInvForAllTys [tv] $ mkFunTy (mkTyConApp numTyCon [mkTyVarTy tv]) (mkTyVarTy tv)
+    _ -> error "Type.litType: not found"
 
 newName :: Monad m => StateT [Unique] m GHC.Name
 newName = do uniq <- gets head

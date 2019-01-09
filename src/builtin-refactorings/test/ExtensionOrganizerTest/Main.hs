@@ -245,7 +245,7 @@ mhNameRoot = "Name"
 mhNameModules = [ "InAssertion"
                 , "InClassElement"
                 , "InDecl"
-                , "InDeclHead"
+                -- , "InDeclHead" IGNORED FOR NOW
                 , "InExpr"
                 , "InFieldDecl"
                 , "InFieldUpdate"

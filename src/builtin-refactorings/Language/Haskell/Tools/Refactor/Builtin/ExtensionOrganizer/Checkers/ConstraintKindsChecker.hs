@@ -1,7 +1,7 @@
 module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.ConstraintKindsChecker where
 
 import Name as GHC (isTyVarName)
-import Kind as GHC (returnsConstraintKind)
+import Type as GHC (tcReturnsConstraintKind)
 
 import Control.Reference ((^?), (^.), (&))
 
@@ -24,7 +24,7 @@ chkConstraintKindsDecl' d@(TypeDecl dh rhs)
   -- Right-hand side has kind Constraint
   | otherwise = do
   let ty = typeOrKindFromId . declHeadQName $ dh
-  if hasConstraintKind ty || returnsConstraintKind ty
+  if hasConstraintKind ty || tcReturnsConstraintKind ty
      then addEvidence ConstraintKinds d
      else return d
 chkConstraintKindsDecl' d = return d
