@@ -50,7 +50,6 @@ trfKind' = trfKind'' where
     = pure AST.UUnboxKind
   trfKind'' (HsStarTy _ _) = pure AST.UStarKind
   trfKind'' (HsParTy _ kind) = AST.UParenKind <$> trfKind kind
-  trfKind'' (HsParTy _ kind) = AST.UParenKind <$> trfKind kind
   trfKind'' (HsFunTy _ k1 k2) = AST.UFunKind <$> trfKind k1 <*> trfKind k2
   trfKind'' (HsAppTy _ k1 k2) = AST.UAppKind <$> trfKind k1 <*> trfKind k2
   trfKind'' (HsOpTy _ k1 op k2) = AST.UInfixAppKind <$> trfKind k1 <*> trfOperator @n op <*> trfKind k2

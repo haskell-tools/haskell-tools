@@ -25,7 +25,6 @@ import RdrName (RdrName(..))
 import TcEvidence
 import UniqFM (UniqFM(..))
 import UniqSet (UniqSet(..))
-import HsExtension
 
 instance Show a => Show (Located a) where
   show (L l a) = "L(" ++ shortShowSpan l ++ ") (" ++ show a ++ ")"

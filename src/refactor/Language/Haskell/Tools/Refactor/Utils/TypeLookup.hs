@@ -8,7 +8,6 @@ import qualified DataCon   as GHC (dataConUserType, isVanillaDataCon)
 import qualified Name      as GHC (isTyVarName)
 import qualified PatSyn    as GHC (patSynBuilder)
 import qualified TyCon     as GHC (isClosedSynFamilyTyConWithAxiom_maybe, isClassTyCon)
-import qualified TyCoRep   as GHC (Type(..), TyThing(..))
 import qualified Type      as GHC (eqType, typeKind, tcIsConstraintKind)
 import qualified Var       as GHC (varType)
 import qualified CoAxiom   as GHC

@@ -29,9 +29,6 @@ import Language.Haskell.Tools.Refactor
 extractBindingRefactoring :: RefactoringChoice
 extractBindingRefactoring = NamingRefactoringIndent "ExtractBinding" (\loc s i -> localRefactoring (extractBinding' s i loc ))
 
-tryItOut :: String -> String -> Maybe String -> String -> IO ()
-tryItOut mod sp indent name = tryRefactor (localRefactoring . extractBinding' name indent) sp mod
-
 extractBinding' :: String -> Maybe String -> RealSrcSpan -> LocalRefactoring
 extractBinding' name indent sp mod
   = if isNothing (isValidBindingName name)

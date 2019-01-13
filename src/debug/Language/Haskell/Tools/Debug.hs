@@ -19,18 +19,12 @@ import GHC.Paths ( libdir )
 import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import StringBuffer (hGetStringBuffer)
 import Outputable
-import HscMain
 import HscTypes
 import TcRnDriver
 import TcRnTypes
 import TcRnMonad
 import Data.IORef
-import UniqSupply
 import DynFlags
-import ErrUtils
-import Bag
-import RdrName
-import Exception
 import Avail
 
 import Language.Haskell.Tools.AST (NodeInfo(..))
@@ -53,9 +47,6 @@ demoRefactor command workingDir args moduleName =
 
     liftIO $ putStrLn "=========== parsed source:"
     ms <- loadModule workingDir moduleName
-
-    dfs <- getSessionDynFlags
-    -- setSessionDynFlags (dfs `dopt_set` Opt_D_dump_rn_trace `dopt_set` Opt_D_dump_tc_trace)
 
     p <- parseModule ms
     let annots = pm_annotations $ p
@@ -140,7 +131,7 @@ forcedTypecheck ms p = do
   let hpm = HsParsedModule (pm_parsed_source p) (pm_extra_src_files p) (pm_annotations p)
   tcRes <- liftIO $ runTcInteractive env $ (,) <$> getGblEnv <*> getLclEnv
   case tcRes of
-    (msgs, Just (gblEnv, lclEnv)) -> do
+    (_, Just (gblEnv, lclEnv)) -> do
       let finalizeModule = do gbl <- getGblEnv
                               liftIO $ writeIORef store ( (,,,) <$> tcg_rn_decls gbl
                                                                 <*> return (tcg_rn_imports gbl)
@@ -150,6 +141,6 @@ forcedTypecheck ms p = do
       liftIO $ modifyIORef (tcg_th_modfinalizers gblEnv) (finalizeModule :)
       let gblEnv' = gblEnv { tcg_rn_exports = Just [], tcg_rn_decls = Just emptyRnGroup }
       liftIO $ initTcRnIf 'a' env gblEnv' lclEnv $ void (tcRnModuleTcRnM env ms hpm (ms_mod ms, getLoc (pm_parsed_source p)))
-                                                     `gcatch` \(e :: SomeException) -> return ()
+                                                     `gcatch` \(_ :: SomeException) -> return ()
       liftIO $ readIORef store
     _ -> error "forcedTypecheck: runTcInteractive failed" 

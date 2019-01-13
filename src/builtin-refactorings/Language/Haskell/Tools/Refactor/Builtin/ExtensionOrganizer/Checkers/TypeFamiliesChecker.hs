@@ -3,7 +3,7 @@ module Language.Haskell.Tools.Refactor.Builtin.ExtensionOrganizer.Checkers.TypeF
 import TyCon          as GHC (TyCon())
 import PrelNames      as GHC
 import Unique         as GHC (hasKey)
-import Var            as GHC (isTyVar, isId)
+import Var            as GHC (isId)
 import qualified Type as GHC (expandTypeSynonyms)
 
 import Control.Reference ((^.))
@@ -109,7 +109,6 @@ gblChkQNamesForTypeEq' m = do
   -- if they do, add occurences for every node in their group.
   -- If chkQNameForTyEqn fails, we add MissingInformation.
   let hasTypeEq    = fromMaybeT False . chkQNameForTyEqn
-      failedLookup = isNothingT       . chkQNameForTyEqn
 
   es <- filterM (hasTypeEq . fst) groupedEs
   hs <- filterM (hasTypeEq . fst) groupedHs
