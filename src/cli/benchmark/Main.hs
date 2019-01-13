@@ -8,17 +8,11 @@ import Criterion.Main
 
 import Control.Exception (finally)
 import Control.Monad
-import Data.Aeson (ToJSON, FromJSON, encode)
+import Data.Aeson (ToJSON, FromJSON)
 import qualified Data.ByteString.Char8 as BS (pack)
-import qualified Data.ByteString.Lazy.Char8 as LazyBS (unpack)
 import Data.Knob (newKnob, newFileHandle)
-import Data.List
-import Data.List.Split (chunksOf)
-import Data.Time.Calendar (toGregorian)
-import Data.Time.Clock (UTCTime(..), getCurrentTime)
 import GHC.Generics (Generic)
 import System.Directory
-import System.Environment (getArgs)
 import System.FilePath (FilePath, (</>))
 import System.IO
 

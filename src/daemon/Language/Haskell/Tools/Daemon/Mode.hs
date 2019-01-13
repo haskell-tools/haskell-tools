@@ -29,7 +29,8 @@ socketMode = WorkingMode sockConn sockDisconnect sockSend sockReceive
     sockConn portNumber = do
       sock <- socket AF_INET Stream 0
       setSocketOption sock ReuseAddr 1
-      bind sock (SockAddrInet (read $ show portNumber) iNADDR_ANY)
+      addr:_ <- getAddrInfo Nothing Nothing (Just $ show portNumber)
+      bind sock (addrAddress addr)
       listen sock 1
       (conn, _) <- accept sock
       return (sock,conn)

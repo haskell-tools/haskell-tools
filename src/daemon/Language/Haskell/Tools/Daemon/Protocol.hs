@@ -12,8 +12,6 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON, FromJSON, Value)
 import GHC.Generics (Generic)
 
-import SrcLoc
-
 import Language.Haskell.Tools.Refactor
 import Language.Haskell.Tools.Daemon.PackageDB (PackageDB)
 

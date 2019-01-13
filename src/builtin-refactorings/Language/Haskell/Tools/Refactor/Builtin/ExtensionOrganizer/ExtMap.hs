@@ -15,7 +15,6 @@ import Control.DeepSeq
 import SrcLoc (SrcSpan)
 
 import Data.List
-import Data.Monoid hiding (All)
 import Data.Function (on)
 import qualified Data.Map.Lazy   as LMap
 import qualified Data.Map.Strict as SMap (Map)

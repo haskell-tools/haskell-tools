@@ -30,7 +30,7 @@ findUnusedRefactoring :: RefactoringChoice
 findUnusedRefactoring = ProjectRefactoring "FindUnused" findUnused
 
 findUnused :: ProjectRefactoring
-findUnused mods = do let (mod', st) = flip runState initState $ mapM (biplateRef !~ recordName) (map snd mods)
+findUnused mods = do let (_, st) = flip runState initState $ mapM (biplateRef !~ recordName) (map snd mods)
                          unused = toList ((st ^. defined) \\ (st ^. used))
                      unusedDefs <- filterM (fmap not . isRecordName) unused
                      let groupedUnused = groupBy ((==) `on` nameModule_maybe) unusedDefs

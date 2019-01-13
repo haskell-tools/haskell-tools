@@ -4,10 +4,7 @@ module Language.Haskell.Tools.Refactor
   , Ann, HasSourceInfo(..), HasRange(..), annListElems, annListAnnot, annList, annJust, annMaybe, isAnnNothing, Domain, Dom, IdDom
   , shortShowSpan, shortShowSpanWithFile, SrcTemplateStage, SourceInfoTraversal(..)
   -- elements of source templates
-  , sourceTemplateNodeRange, sourceTemplateNodeElems
-  , sourceTemplateListRange, srcTmpListBefore, srcTmpListAfter, srcTmpDefaultSeparator, srcTmpIndented, srcTmpSeparators
-  , sourceTemplateOptRange, srcTmpOptBefore, srcTmpOptAfter
-  , SourceTemplateTextElem(..), sourceTemplateText
+  , SourceTemplateTextElem(..)
   , UnsupportedExtension(..), SpliceInsertionProblem(..), ConvertionProblem(..)
   , TransformationProblem(..), BreakUpProblem(..), PrettyPrintProblem(..)
   ) where
@@ -35,7 +32,6 @@ import Language.Haskell.Tools.Refactor.Utils.NameLookup  as X
 import Language.Haskell.Tools.Refactor.Utils.Type        as X
 import Language.Haskell.Tools.Refactor.Utils.TypeLookup  as X
 import Language.Haskell.Tools.Rewrite                    as X
-import Language.Haskell.Tools.Rewrite.ElementTypes       as X
 
 import Language.Haskell.Tools.AST.Ann
 import Language.Haskell.Tools.BackendGHC (SpliceInsertionProblem(..), ConvertionProblem(..))

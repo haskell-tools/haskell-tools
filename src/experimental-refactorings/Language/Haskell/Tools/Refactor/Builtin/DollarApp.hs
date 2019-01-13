@@ -6,11 +6,8 @@ module Language.Haskell.Tools.Refactor.Builtin.DollarApp (dollarApp, tryItOut) w
 import Language.Haskell.Tools.Refactor
 
 import BasicTypes (Fixity(..))
-import Id (idName)
-import qualified Name as GHC (Name)
 import PrelNames (dollarName)
 import SrcLoc (RealSrcSpan, SrcSpan)
-import Unique (getUnique)
 
 import Control.Monad.State
 import Control.Reference ((^.), (!~), biplateRef)
